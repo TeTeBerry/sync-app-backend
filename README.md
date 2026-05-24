@@ -142,3 +142,4 @@ TARO_APP_AI_CHAT_URL=http://localhost:3000/api/ai/chat
 ```
 
 未配置时前端使用 mock 流式输出。
+# sync-app-backend
