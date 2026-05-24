@@ -1,0 +1,32 @@
+# 默认只启动 MongoDB；Chroma 改用本地目录（见 .env 的 CHROMA_PATH），无需 Docker
+services:
+  mongo:
+    image: ${MONGO_IMAGE:-mongo:7}
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # 可选：docker compose --profile chroma up -d chroma
+  chroma:
+    profiles: [chroma]
+    image: ${CHROMA_IMAGE:-chromadb/chroma:0.5.23}
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+
+volumes:
+  mongo_data:
+  chroma_data:
