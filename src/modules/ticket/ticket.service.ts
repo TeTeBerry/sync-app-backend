@@ -27,20 +27,34 @@ export class TicketService implements OnModuleInit {
     const exist = await this.ticketModel.findOne();
     if (exist) return;
 
-    await this.ticketModel.create([
+    await this.ticketModel.insertMany([
       {
-        activityId: 'edc',
-        userId: 'demo-user',
-        skuCode: 'GA',
+        activityId: 'tomorrowland',
+        userId: 'Mia',
+        skuCode: 'VIP B区',
         status: 'open',
         seatOrSlot: { type: 'sell', quantity: 2, price: 880 },
       },
       {
-        activityId: 's2o',
-        userId: 'demo-user-2',
-        skuCode: 'VIP',
+        activityId: 'edc',
+        userId: 'Leo',
+        skuCode: 'GA',
         status: 'open',
-        seatOrSlot: { type: 'buy', quantity: 1, price: 1200 },
+        seatOrSlot: { type: 'buy', quantity: 1, price: 560 },
+      },
+      {
+        activityId: 's2o',
+        userId: 'Zara',
+        skuCode: '水上区',
+        status: 'open',
+        seatOrSlot: { type: 'sell', quantity: 4, price: 420 },
+      },
+      {
+        activityId: 'ultra',
+        userId: 'Jake',
+        skuCode: 'Front Stage',
+        status: 'open',
+        seatOrSlot: { type: 'buy', quantity: 2, price: 1100 },
       },
     ]);
   }

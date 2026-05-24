@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ActivityModule } from '../activity/activity.module';
+import { TicketModule } from '../ticket/ticket.module';
 import { PindanModule } from '../pindan/pindan.module';
 import { HomeController } from './home.controller';
 import { HomeService } from './home.service';
 
 @Module({
-  imports: [ActivityModule, PindanModule],
+  imports: [ActivityModule, PindanModule, TicketModule],
   controllers: [HomeController],
   providers: [HomeService],
 })

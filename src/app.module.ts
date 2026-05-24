@@ -7,6 +7,7 @@ import { TicketModule } from './modules/ticket/ticket.module';
 import { PindanModule } from './modules/pindan/pindan.module';
 import { UserModule } from './modules/user/user.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { ProfileModule } from './modules/profile/profile.module';
 import { HomeModule } from './modules/home/home.module';
 import { AiModule } from './ai/ai.module';
 
@@ -33,6 +34,7 @@ import { AiModule } from './ai/ai.module';
     PindanModule,
     UserModule,
     ChatModule,
+    ProfileModule,
     HomeModule,
     AiModule,
   ],

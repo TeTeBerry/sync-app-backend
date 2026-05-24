@@ -40,17 +40,51 @@ export class PindanService implements OnModuleInit {
 
   async initData() {
     for (const item of PINDAN_SEED) {
+      const { joined, ...staticFields } = item;
       await this.pindanModel.findOneAndUpdate(
         { legacyId: item.legacyId },
         {
-          ...item,
-          leaderUserId: 'demo-user',
-          memberUserIds: [],
-          status: 'open',
+          $set: {
+            ...staticFields,
+            leaderUserId: 'demo-user',
+            status: 'open',
+          },
+          $setOnInsert: {
+            joined,
+            memberUserIds: [],
+          },
         },
         { upsert: true, new: true, setDefaultsOnInsert: true },
       );
     }
+  }
+
+  findByLegacyId(legacyId: number) {
+    return this.pindanModel.findOne({ legacyId }).lean();
+  }
+
+  async addMember(legacyId: number, userId: string) {
+    await this.pindanModel.findOneAndUpdate(
+      { legacyId, status: 'open' },
+      {
+        $addToSet: { memberUserIds: userId },
+        $inc: { joined: 1 },
+      },
+    );
+  }
+
+  async removeMember(legacyId: number, userId: string) {
+    const pindan = await this.pindanModel.findOne({ legacyId }).lean();
+    if (!pindan) return;
+
+    const nextJoined = Math.max(1, (pindan.joined ?? 1) - 1);
+    await this.pindanModel.findOneAndUpdate(
+      { legacyId },
+      {
+        $pull: { memberUserIds: userId },
+        $set: { joined: nextJoined },
+      },
+    );
   }
 
   health() {
