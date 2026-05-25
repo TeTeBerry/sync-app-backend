@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import { ChatMessageDto, PindanJoinCardDto } from '../dto/chat.dto';
+import { ChatMessageDto } from '../presentation/chat-message.dto';
+import type { PindanJoinCardView as PindanJoinCardDto } from '../presentation/pindan-join-card.view';
 import {
   isFindBuddyFlow,
   setFindBuddyJoinableIds,

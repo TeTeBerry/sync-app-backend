@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import type { ConversationState } from '../../ai/conversation/conversation-state.types';
+import type { ConversationState } from '../../ai/conversation';
 
 export type ChatDocument = Chat & Document;
 

@@ -6,15 +6,7 @@ import {
   type TicketSearchParams,
 } from './ticket-search.util';
 import { formatSlotPrice } from './ticket-price.util';
-
-type TicketRow = {
-  _id?: unknown;
-  activityId?: string;
-  userId?: string;
-  userName?: string;
-  skuCode?: string;
-  seatOrSlot?: Record<string, unknown>;
-};
+import type { TicketRow } from '../ticket/ticket-row.types';
 
 export interface TicketSearchReplyResult {
   text: string;

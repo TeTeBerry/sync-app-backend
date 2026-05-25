@@ -1,4 +1,4 @@
-import { TicketCreatedCardDto } from '../dto/chat.dto';
+import { TicketCreatedCardView } from '../presentation/ticket-created-card.view';
 import {
   isTicketSearchFlow,
   setTicketSearchJoinableIds,
@@ -10,23 +10,15 @@ import {
 } from './list-selection.util';
 import { ActivityService } from '../../modules/activity/activity.service';
 import { TicketService } from '../../modules/ticket/ticket.service';
+import type { TicketRow } from '../ticket/ticket-row.types';
 
 const MAX_SELECTION = 8;
 
 export interface TicketSelectReplyResult {
   text: string;
-  ticketCard?: TicketCreatedCardDto;
+  ticketCard?: TicketCreatedCardView;
   nextState?: ConversationState;
 }
-
-type TicketRow = {
-  _id?: unknown;
-  activityId?: string;
-  userId?: string;
-  userName?: string;
-  skuCode?: string;
-  seatOrSlot?: Record<string, unknown>;
-};
 
 export function shouldHandleTicketSelect(
   state: ConversationState,
@@ -42,7 +34,7 @@ async function buildTicketCard(
   ticketId: string,
   ticketService: TicketService,
   activityService: ActivityService,
-): Promise<TicketCreatedCardDto | undefined> {
+): Promise<TicketCreatedCardView | undefined> {
   const ticket = await ticketService.findById(ticketId);
   if (!ticket) return undefined;
 
@@ -74,7 +66,7 @@ async function buildTicketCard(
 function buildDetailText(
   row: TicketRow,
   activityName?: string,
-  card?: TicketCreatedCardDto,
+  card?: TicketCreatedCardView,
 ): string {
   const slot = row.seatOrSlot ?? {};
   const type = slot.type === 'buy' ? '收票' : '出票';

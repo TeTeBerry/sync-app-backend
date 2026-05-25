@@ -1,4 +1,4 @@
-import { ChatMessageDto } from '../dto/chat.dto';
+import { ChatMessageDto } from '../presentation/chat-message.dto';
 import { type ConversationState } from '../conversation';
 import { ActivityService } from '../../modules/activity/activity.service';
 import { PindanService } from '../../modules/pindan/pindan.service';

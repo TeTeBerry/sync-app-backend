@@ -1,4 +1,4 @@
-import { ChatMessageDto } from '../dto/chat.dto';
+import { ChatMessageDto } from '../presentation/chat-message.dto';
 import {
   detectCorrectionFields,
   shouldOverrideField,

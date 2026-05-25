@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { AiStreamEvent } from '../dto/chat.dto';
+import { AiStreamEvent } from '../presentation/ai-stream-event.view';
 
 export function initSseResponse(res: Response): void {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');

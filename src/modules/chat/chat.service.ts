@@ -2,15 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  ChatMessageDto,
-  PindanJoinCardDto,
-  TicketCreatedCardDto,
-} from '../../ai/dto/chat.dto';
+import { ChatMessageDto } from '../../ai/presentation/chat-message.dto';
+import { PindanJoinCardView } from '../../ai/presentation/pindan-join-card.view';
+import { TicketCreatedCardView } from '../../ai/presentation/ticket-created-card.view';
 import {
   createIdleState,
   type ConversationState,
-} from '../../ai/conversation/conversation-state.types';
+} from '../../ai/conversation';
 import { Chat, ChatDocument } from '../../database/schemas/chat.schema';
 
 export interface ChatSessionDto {
@@ -35,16 +33,16 @@ export class ChatService {
     return sessionId?.trim() || uuidv4();
   }
 
-  private normalizePindanCard(raw: unknown): PindanJoinCardDto | undefined {
+  private normalizePindanCard(raw: unknown): PindanJoinCardView | undefined {
     if (!raw || typeof raw !== 'object') return undefined;
-    const card = raw as PindanJoinCardDto;
+    const card = raw as PindanJoinCardView;
     if (typeof card.legacyId !== 'number' || !card.title) return undefined;
     return card;
   }
 
-  private normalizeTicketCard(raw: unknown): TicketCreatedCardDto | undefined {
+  private normalizeTicketCard(raw: unknown): TicketCreatedCardView | undefined {
     if (!raw || typeof raw !== 'object') return undefined;
-    const card = raw as TicketCreatedCardDto;
+    const card = raw as TicketCreatedCardView;
     if (typeof card.id !== 'string' || !card.event) return undefined;
     return card;
   }
@@ -87,7 +85,6 @@ export class ChatService {
       .filter((item): item is ChatMessageDto => Boolean(item));
   }
 
-  /** 合并 MongoDB 历史与本次请求消息，供持久化与 LLM 上下文使用 */
   mergeChatHistory(
     stored: ChatMessageDto[],
     incoming: ChatMessageDto[],
@@ -129,7 +126,6 @@ export class ChatService {
     return [...storedNorm, lastIncomingUser];
   }
 
-  /** 保留最近 N 轮（1 轮 = 用户消息 + 可选助手回复），供通义千问上下文 */
   truncateToRecentTurns(
     messages: ChatMessageDto[],
     maxTurns = 6,
@@ -177,6 +173,8 @@ export class ChatService {
       flow: state.flow,
       findBuddy: state.findBuddy,
       ticketListing: state.ticketListing,
+      ticketSearch: state.ticketSearch,
+      pendingImageDisambiguation: state.pendingImageDisambiguation,
     };
   }
 
@@ -209,12 +207,11 @@ export class ChatService {
   async saveTurn(params: {
     sessionId: string;
     userId?: string;
-    /** 完整对话（含本轮用户消息，不含助手回复） */
     messages: ChatMessageDto[];
     assistantReply: string;
     conversationState?: ConversationState;
-    pindanCard?: PindanJoinCardDto;
-    ticketCard?: TicketCreatedCardDto;
+    pindanCard?: PindanJoinCardView;
+    ticketCard?: TicketCreatedCardView;
   }): Promise<string> {
     const messageId = uuidv4();
     const stored = await this.getSession(params.sessionId);

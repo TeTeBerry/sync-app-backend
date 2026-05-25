@@ -2,14 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { ActivityService } from '../modules/activity/activity.service';
 import { ChatService } from '../modules/chat/chat.service';
 import { TicketService } from '../modules/ticket/ticket.service';
-import {
-  AiStreamEvent,
-  ChatRequestDto,
-  PindanJoinCardDto,
-  TicketCreatedCardDto,
-} from './dto/chat.dto';
+import { AiStreamEvent } from './presentation/ai-stream-event.view';
+import { ChatRequestDto } from './presentation/chat-request.dto';
+import { PindanJoinCardView } from './presentation/pindan-join-card.view';
+import { TicketCreatedCardView } from './presentation/ticket-created-card.view';
 import { DeterministicReplyService } from './orchestration/deterministic-reply.service';
-import { decodeBase64Payload, ImageTooLargeError } from './utils/image-base64.util';
+import {
+  decodeBase64Payload,
+  ImageTooLargeError,
+} from './utils/image-base64.util';
 
 export const LLM_CONTEXT_TURNS = 6;
 
@@ -79,8 +80,8 @@ export class AiService {
             error instanceof ImageTooLargeError
               ? error.message
               : error instanceof Error
-                ? error.message
-                : '图片格式无效',
+              ? error.message
+              : '图片格式无效',
         };
         return;
       }
@@ -88,8 +89,8 @@ export class AiService {
 
     let assistantReply = '';
     let ticketId: string | undefined;
-    let ticketCard: TicketCreatedCardDto | undefined;
-    let pindanCard: PindanJoinCardDto | undefined;
+    let ticketCard: TicketCreatedCardView | undefined;
+    let pindanCard: PindanJoinCardView | undefined;
     let conversationState = this.agenticReplyService.resolveConversationState(
       stored.conversationState,
       fullMessages.slice(0, -1),
@@ -152,7 +153,7 @@ export class AiService {
 
   private async buildTicketCard(
     ticketId: string,
-  ): Promise<TicketCreatedCardDto | undefined> {
+  ): Promise<TicketCreatedCardView | undefined> {
     const ticket = await this.ticketService.findById(ticketId);
     if (!ticket) return undefined;
 
@@ -171,10 +172,7 @@ export class AiService {
       id: ticketId,
       type,
       event:
-        displayEventName ??
-        activity?.name ??
-        ticket.activityId ??
-        '未知活动',
+        displayEventName ?? activity?.name ?? ticket.activityId ?? '未知活动',
       seat: `${ticket.skuCode ?? 'GA'} · ${quantity}张`,
       price: Number(slot.price ?? 0),
       eventDate: slot.eventDate ? String(slot.eventDate) : undefined,

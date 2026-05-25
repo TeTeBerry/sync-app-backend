@@ -6,7 +6,7 @@ import {
   resolveActivityId,
   shouldTreatNumberAsYearNotPrice,
 } from '../utils/ticket-draft.parser';
-import { inferPackageGroupSize } from '../utils/find-buddy-pindan-create.util';
+import { inferPackageGroupSize } from '../pindan/find-buddy-pindan-create.util';
 import {
   resolvePackageOptionsPhase,
   sanitizePackageOptions,

@@ -1,9 +1,9 @@
 import type { FindBuddyState } from '../conversation/conversation-state.types';
-import { PindanJoinCardDto } from '../dto/chat.dto';
+import type { PindanJoinCardView as PindanJoinCardDto } from '../presentation/pindan-join-card.view';
 import {
   buildPindanPricePerPerson,
   inferPackageGroupSize,
-} from './find-buddy-pindan-create.util';
+} from '../pindan/find-buddy-pindan-create.util';
 import {
   getJoinablePindanRows,
   pickBrowseCardRow,

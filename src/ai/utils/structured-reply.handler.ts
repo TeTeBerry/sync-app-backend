@@ -1,4 +1,5 @@
-import { ChatMessageDto, PindanJoinCardDto } from '../dto/chat.dto';
+import { ChatMessageDto } from '../presentation/chat-message.dto';
+import type { PindanJoinCardView as PindanJoinCardDto } from '../presentation/pindan-join-card.view';
 import type { ConversationState } from '../conversation';
 import { ActivityService } from '../../modules/activity/activity.service';
 import { PindanService } from '../../modules/pindan/pindan.service';
@@ -11,11 +12,14 @@ export interface StructuredReplyResult {
   nextState: ConversationState;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function shouldHandleStructuredReply(
   _state: ConversationState,
   _messages: ChatMessageDto[],
   _input: string,
 ): boolean {
+  // TODO: 当前未实现，保留作为功能开关入口
+  // 启用时需同时实现 buildStructuredReply
   return false;
 }
 

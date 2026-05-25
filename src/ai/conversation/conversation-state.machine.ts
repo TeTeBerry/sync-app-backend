@@ -1,4 +1,4 @@
-import { ChatMessageDto } from '../dto/chat.dto';
+import { ChatMessageDto } from '../presentation/chat-message.dto';
 import { ActivityService } from '../../modules/activity/activity.service';
 import {
   isActivityKeywordInput,
@@ -20,7 +20,7 @@ import {
   resolveActivityId,
   type TicketDraft,
 } from '../utils/ticket-draft.parser';
-import { mergeActivityCreateSlots } from '../utils/find-buddy-activity-create.util';
+import { mergeActivityCreateSlots } from '../pindan/find-buddy-activity-create.util';
 import { detectUserIntent, isExactQuickReply } from '../utils/user-intent';
 import { isTicketSearchQuery } from '../utils/ticket-search.util';
 import {

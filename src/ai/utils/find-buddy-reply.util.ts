@@ -6,7 +6,7 @@ import {
   hasActivityCreateBudget,
   isActivityOnlyCreateContext,
   resolvePerPersonBudget,
-} from './find-buddy-activity-create.util';
+} from '../pindan/find-buddy-activity-create.util';
 
 export function getMissingFindBuddyFields(fb: FindBuddyState): string[] {
   const missing: string[] = [];

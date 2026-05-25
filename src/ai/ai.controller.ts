@@ -1,7 +1,7 @@
 import { Body, Controller, Post, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { AiService } from './ai.service';
-import { ChatRequestDto } from './dto/chat.dto';
+import { ChatRequestDto } from './presentation/chat-request.dto';
 import { initSseResponse, writeSseEvent } from './utils/sse.util';
 
 @Controller('ai')

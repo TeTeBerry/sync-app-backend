@@ -1,4 +1,4 @@
-import { ChatMessageDto } from '../dto/chat.dto';
+import { ChatMessageDto } from '../presentation/chat-message.dto';
 import {
   ACTIVITY_PICKER_PROMPT,
   findAssistantBeforeIndex,

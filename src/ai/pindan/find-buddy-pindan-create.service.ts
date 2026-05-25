@@ -17,16 +17,16 @@ import {
   inferActivityPackageGroupSize,
   isActivityOnlyCreateContext,
   resolvePerPersonBudget,
-} from '../utils/find-buddy-activity-create.util';
+} from './find-buddy-activity-create.util';
 import {
   buildPindanCardSubtitle,
   buildPindanPricePerPerson,
   buildPindanRemark,
   inferPackageGroupSize,
-} from '../utils/find-buddy-pindan-create.util';
+} from './find-buddy-pindan-create.util';
 import { setFindBuddyJoinableIds } from '../conversation';
 import type { ConversationState } from '../conversation';
-import type { PindanJoinCardDto } from '../dto/chat.dto';
+import type { PindanJoinCardView as PindanJoinCardDto } from '../presentation/pindan-join-card.view';
 import { ProfileService } from '../../modules/profile/profile.service';
 
 type ActivityRow = Awaited<ReturnType<ActivityService['findByCode']>>;

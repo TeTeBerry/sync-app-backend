@@ -1,5 +1,5 @@
-import { PindanJoinCardDto } from '../dto/chat.dto';
-import { formatBudgetRangeLabel } from './find-buddy-activity-create.util';
+import type { PindanJoinCardView as PindanJoinCardDto } from '../presentation/pindan-join-card.view';
+import { formatBudgetRangeLabel } from '../pindan/find-buddy-activity-create.util';
 
 type PindanDoc = {
   legacyId?: number;

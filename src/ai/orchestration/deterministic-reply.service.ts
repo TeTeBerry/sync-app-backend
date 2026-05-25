@@ -1,24 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { ChatMessageDto } from '../dto/chat.dto';
+import { ChatMessageDto } from '../presentation/chat-message.dto';
 import type { ConversationState } from '../conversation';
 import { ConversationStateService } from './conversation-state.service';
 import { AgentRuntimeService } from './agent-runtime.service';
 import {
-  FindBuddyCollectHandler,
-  PackagePickHandler,
-  PindanCreateHandler,
-  PindanJoinHandler,
-  QuickReplyHandler,
-  StructuredReplyHandler,
-  TicketListingHandler,
-  TicketSearchHandler,
-  TicketSelectHandler,
-} from '../handlers';
-import {
   type DeterministicReplyResult,
   type ReplyContext,
-  type ReplyHandler,
-} from '../handlers/reply-handler.types';
+} from '../handler-pipeline';
 
 export interface DeterministicReplyContext {
   userId?: string;
@@ -30,33 +18,10 @@ export interface DeterministicReplyContext {
 
 @Injectable()
 export class DeterministicReplyService {
-  private readonly handlers: ReplyHandler[];
-
   constructor(
     private readonly conversationStateService: ConversationStateService,
     private readonly agentRuntime: AgentRuntimeService,
-    quickReplyHandler: QuickReplyHandler,
-    pindanJoinHandler: PindanJoinHandler,
-    findBuddyCollectHandler: FindBuddyCollectHandler,
-    packagePickHandler: PackagePickHandler,
-    pindanCreateHandler: PindanCreateHandler,
-    ticketListingHandler: TicketListingHandler,
-    structuredReplyHandler: StructuredReplyHandler,
-    ticketSearchHandler: TicketSearchHandler,
-    ticketSelectHandler: TicketSelectHandler,
-  ) {
-    this.handlers = [
-      quickReplyHandler,
-      pindanJoinHandler,
-      findBuddyCollectHandler,
-      packagePickHandler,
-      pindanCreateHandler,
-      ticketListingHandler,
-      structuredReplyHandler,
-      ticketSearchHandler,
-      ticketSelectHandler,
-    ];
-  }
+  ) {}
 
   resolveConversationState(
     stored: ConversationState | null | undefined,
@@ -102,7 +67,7 @@ export class DeterministicReplyService {
       onTicketCreated: context.onTicketCreated,
     };
 
-    const runtimeResult = await this.agentRuntime.run(replyContext, this.handlers);
+    const runtimeResult = await this.agentRuntime.run(replyContext);
     return runtimeResult.result;
   }
 }

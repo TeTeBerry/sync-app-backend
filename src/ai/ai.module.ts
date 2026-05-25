@@ -1,33 +1,15 @@
 import { Module } from '@nestjs/common';
 import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
-import { LlmService } from './llm/llm.service';
 import { ActivityModule } from '../modules/activity/activity.module';
 import { TicketModule } from '../modules/ticket/ticket.module';
 import { PindanModule } from '../modules/pindan/pindan.module';
 import { ProfileModule } from '../modules/profile/profile.module';
 import { ChatModule } from '../modules/chat/chat.module';
-import { ConversationStateService } from './orchestration/conversation-state.service';
-import { DeterministicReplyService } from './orchestration/deterministic-reply.service';
-import { AgentRuntimeService } from './orchestration/agent-runtime.service';
-import { AgentToolsService } from './orchestration/agent-tools.service';
-import { FindBuddyImageParserService } from './parser/find-buddy-image-parser.service';
-import { LlmSlotParserService } from './parser/llm-slot-parser.service';
-import { TicketImageParserService } from './parser/ticket-image-parser.service';
-import { TicketListingService } from './ticket/ticket-listing.service';
 import { RagModule } from './rag/rag.module';
-import { FindBuddyPindanCreateService } from './pindan/find-buddy-pindan-create.service';
-import {
-  FindBuddyCollectHandler,
-  PackagePickHandler,
-  PindanCreateHandler,
-  PindanJoinHandler,
-  QuickReplyHandler,
-  StructuredReplyHandler,
-  TicketListingHandler,
-  TicketSearchHandler,
-  TicketSelectHandler,
-} from './handlers';
+import { HandlerModule } from './handlers/handler.module';
+import { OrchestrationModule } from './orchestration/orchestration.module';
+import { ParserModule } from './parser/parser.module';
 
 @Module({
   imports: [
@@ -37,29 +19,11 @@ import {
     ProfileModule,
     ChatModule,
     RagModule,
+    HandlerModule,
+    OrchestrationModule,
+    ParserModule,
   ],
   controllers: [AiController],
-  providers: [
-    AiService,
-    LlmService,
-    LlmSlotParserService,
-    FindBuddyImageParserService,
-    TicketImageParserService,
-    ConversationStateService,
-    AgentToolsService,
-    AgentRuntimeService,
-    DeterministicReplyService,
-    TicketListingService,
-    FindBuddyPindanCreateService,
-    QuickReplyHandler,
-    PindanJoinHandler,
-    FindBuddyCollectHandler,
-    PackagePickHandler,
-    PindanCreateHandler,
-    TicketListingHandler,
-    StructuredReplyHandler,
-    TicketSearchHandler,
-    TicketSelectHandler,
-  ],
+  providers: [AiService],
 })
 export class AiModule {}

@@ -4,7 +4,7 @@ jest.mock('../../modules/activity/activity.service', () => ({
 
 import { TicketListingService } from './ticket-listing.service';
 import type { TicketDraft } from '../utils/ticket-draft.parser';
-import type { ReplyContext } from '../handlers/reply-handler.types';
+import type { ReplyContext } from '../handler-pipeline/reply-handler.types';
 
 describe('TicketListingService processListingFlow', () => {
   const activityService = {
