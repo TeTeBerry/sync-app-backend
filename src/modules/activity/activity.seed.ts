@@ -51,4 +51,17 @@ export const ACTIVITY_SEED = [
     attendees: 320,
     pinCount: 27,
   },
+  {
+    legacyId: 5,
+    code: 'edc-thailand',
+    name: 'EDC Thailand',
+    alias: ['edc泰国', 'edc thailand', 'edc 泰国', '泰国edc', '泰国电音节'],
+    date: '12/08',
+    location: '泰国',
+    image:
+      'https://images.unsplash.com/photo-1470229722913-7c090be5c520?w=600&q=80',
+    hot: false,
+    attendees: 180,
+    pinCount: 15,
+  },
 ];

@@ -13,6 +13,7 @@ import {
   PindanJoinDocument,
 } from '../../database/schemas/pindan-join.schema';
 import { PindanService } from '../pindan/pindan.service';
+import { TicketService } from '../ticket/ticket.service';
 
 export interface ProfilePinDanItemDto {
   id: number;
@@ -25,6 +26,18 @@ export interface ProfilePinDanItemDto {
   price: number;
   image: string;
   joinedAt: string;
+}
+
+export interface ProfileTicketItemDto {
+  id: string;
+  type: 'sell' | 'buy';
+  activityId: string;
+  skuCode: string;
+  quantity: number;
+  price: number;
+  eventDate: string;
+  contact: string;
+  createdAt: string;
 }
 
 function formatJoinedAt(date = new Date()): string {
@@ -45,7 +58,37 @@ export class ProfileService {
     private readonly joinModel: Model<PindanJoinDocument>,
     @Inject(forwardRef(() => PindanService))
     private readonly pindanService: PindanService,
+    private readonly ticketService: TicketService,
   ) {}
+
+  async listMyTickets(userId?: string): Promise<ProfileTicketItemDto[]> {
+    const uid = resolveUserId(userId);
+    const rows = await this.ticketService.searchListings({ userId: uid });
+
+    return rows.map(row => {
+      const slot = (row.seatOrSlot ?? {}) as {
+        type?: string;
+        quantity?: number;
+        price?: number;
+        eventDate?: string;
+        contact?: string;
+      };
+
+      return {
+        id: String(row._id),
+        type: slot.type === 'buy' ? 'buy' : 'sell',
+        activityId: row.activityId ?? '',
+        skuCode: row.skuCode ?? '',
+        quantity: slot.quantity ?? 1,
+        price: Number(slot.price ?? 0),
+        eventDate: slot.eventDate ?? '',
+        contact: slot.contact ?? '',
+        createdAt: String(
+          (row as { createdAt?: string | Date }).createdAt ?? '',
+        ),
+      };
+    });
+  }
 
   async listMyPindan(userId?: string): Promise<ProfilePinDanItemDto[]> {
     const uid = resolveUserId(userId);

@@ -6,10 +6,13 @@ import { Ticket, TicketDocument } from '../../database/schemas/ticket.schema';
 export interface TicketListingInput {
   activityId: string;
   userId?: string;
+  userName?: string;
   quantity: number;
   type: 'sell' | 'buy';
-  skuCode?: string;
-  price?: number;
+  skuCode: string;
+  price: number;
+  eventDate: string;
+  contact: string;
 }
 
 @Injectable()
@@ -66,6 +69,7 @@ export class TicketService implements OnModuleInit {
   async searchListings(filters: {
     activityId?: string;
     type?: 'sell' | 'buy';
+    userId?: string;
   }) {
     const query: Record<string, unknown> = { status: 'open' };
 
@@ -75,20 +79,34 @@ export class TicketService implements OnModuleInit {
     if (filters.type) {
       query['seatOrSlot.type'] = filters.type;
     }
+    if (filters.userId) {
+      query.userId = filters.userId;
+    }
 
-    return this.ticketModel.find(query).limit(10).lean();
+    return this.ticketModel
+      .find(query)
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+  }
+
+  findById(id: string) {
+    return this.ticketModel.findById(id).lean();
   }
 
   async createListing(input: TicketListingInput) {
     const ticket = await this.ticketModel.create({
-      activityId: input.activityId,
-      userId: input.userId ?? 'anonymous',
-      skuCode: input.skuCode ?? 'GA',
+      activityId: input.activityId.toLowerCase().trim(),
+      userId: input.userId?.trim() || 'anonymous',
+      userName: input.userName?.trim() || undefined,
+      skuCode: input.skuCode,
       status: 'open',
       seatOrSlot: {
         type: input.type,
         quantity: input.quantity,
         price: input.price,
+        eventDate: input.eventDate,
+        contact: input.contact,
       },
     });
 

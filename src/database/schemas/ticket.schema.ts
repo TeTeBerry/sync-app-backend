@@ -12,6 +12,9 @@ export class Ticket {
   userId?: string;
 
   @Prop()
+  userName?: string;
+
+  @Prop()
   skuCode?: string;
 
   @Prop()

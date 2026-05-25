@@ -12,6 +12,6 @@ export class ChatController {
 
   @Get('sessions/:sessionId')
   getSession(@Param('sessionId') sessionId: string) {
-    return this.chatService.getHistory(sessionId);
+    return this.chatService.getSession(sessionId);
   }
 }

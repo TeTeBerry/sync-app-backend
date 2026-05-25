@@ -39,6 +39,10 @@ export class ActivityService implements OnModuleInit {
     return this.model.findOne({ legacyId }).lean();
   }
 
+  findByCode(code: string) {
+    return this.model.findOne({ code: code.toLowerCase().trim() }).lean();
+  }
+
   resolveActivityRef(activityRef?: string | number) {
     if (activityRef == null || activityRef === '') {
       return undefined;
@@ -62,7 +66,7 @@ export class ActivityService implements OnModuleInit {
       if (byLegacy) return byLegacy;
     }
 
-    return this.model
+    const byExact = await this.model
       .findOne({
         $or: [
           { code: kw },
@@ -71,5 +75,45 @@ export class ActivityService implements OnModuleInit {
         ],
       })
       .lean();
+    if (byExact) return byExact;
+
+    if (/edc/.test(kw) && /泰国|thailand|泰國|曼谷|pattaya|芭提雅/.test(kw)) {
+      const thailand = await this.model.findOne({ code: 'edc-thailand' }).lean();
+      if (thailand) return thailand;
+    }
+
+    if (/edc/.test(kw) && /中国|china|阳澄湖|苏州/.test(kw)) {
+      const china = await this.model.findOne({ code: 'edc' }).lean();
+      if (china) return china;
+    }
+
+    const compact = kw.replace(/[\s.\-_/]/g, '');
+    const all = await this.model.find().lean();
+
+    for (const activity of all) {
+      const code = activity.code?.toLowerCase() ?? '';
+      if (!code) continue;
+
+      if (code === 'edc' && /泰国|thailand|泰國/.test(kw)) continue;
+      if (code === 'edc-thailand' && /中国|china|阳澄湖/.test(kw)) continue;
+
+      if (compact.includes(code.replace(/-/g, '')) || kw.includes(code)) {
+        return activity;
+      }
+
+      for (const alias of activity.alias ?? []) {
+        const aliasNorm = alias.toLowerCase().replace(/[\s.\-_/]/g, '');
+        if (
+          aliasNorm &&
+          (compact.includes(aliasNorm) ||
+            aliasNorm.includes(compact) ||
+            kw.includes(alias.toLowerCase()))
+        ) {
+          return activity;
+        }
+      }
+    }
+
+    return null;
   }
 }

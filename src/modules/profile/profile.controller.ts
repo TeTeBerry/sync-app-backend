@@ -9,4 +9,9 @@ export class ProfileController {
   listMyPindan(@Query('userId') userId?: string) {
     return this.profileService.listMyPindan(userId);
   }
+
+  @Get('tickets')
+  listMyTickets(@Query('userId') userId?: string) {
+    return this.profileService.listMyTickets(userId);
+  }
 }

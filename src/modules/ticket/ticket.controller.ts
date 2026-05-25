@@ -25,9 +25,12 @@ export class TicketController {
       activityId: string;
       quantity: number;
       type: 'sell' | 'buy';
+      skuCode: string;
+      price: number;
+      eventDate: string;
+      contact: string;
       userId?: string;
-      skuCode?: string;
-      price?: number;
+      userName?: string;
     },
   ) {
     return this.ticketService.createListing(body);

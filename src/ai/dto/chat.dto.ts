@@ -28,9 +28,28 @@ export class ChatRequestDto {
   @IsOptional()
   @IsString()
   userId?: string;
+
+  @IsOptional()
+  @IsString()
+  userName?: string;
+}
+
+export interface TicketCreatedCardDto {
+  id: string;
+  type: 'sell' | 'buy';
+  event: string;
+  seat: string;
+  price: number;
+  eventDate?: string;
 }
 
 export type AiStreamEvent =
   | { type: 'delta'; content: string }
-  | { type: 'done'; messageId?: string }
+  | {
+      type: 'done';
+      messageId?: string;
+      sessionId?: string;
+      ticketId?: string;
+      ticketCard?: TicketCreatedCardDto;
+    }
   | { type: 'error'; message: string };
