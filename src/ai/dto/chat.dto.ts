@@ -70,6 +70,10 @@ export interface PindanJoinCardDto {
   /** 人均费用（元/人） */
   price: number;
   pricePerPerson?: number;
+  budgetMin?: number;
+  budgetMax?: number;
+  /** 展示用预算区间文案，如 ¥1800-2200 */
+  budgetRangeLabel?: string;
   activityId?: string;
   userJoined?: boolean;
   isOwner?: boolean;

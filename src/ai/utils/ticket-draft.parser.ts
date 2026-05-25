@@ -5,6 +5,7 @@ import {
 } from '../parser/correction-intent.util';
 import { resolveFestivalBrand } from '../rag/festival-brand.util';
 import { resolveUserContactInput } from './user-contact.util';
+import { getDraftPriceBounds } from './ticket-price.util';
 
 export interface TicketDraft {
   activityId?: string;
@@ -14,13 +15,71 @@ export interface TicketDraft {
   skuCode?: string;
   quantity?: number;
   price?: number;
+  /** 价格区间上限；未填或与 price 相同时为单价 */
+  priceMax?: number;
   contact?: string;
   type?: 'sell' | 'buy';
 }
 
+const PRICE_RANGE_RE =
+  /(?:价格|单价|售价|预算)\s*[:：]?\s*(\d{2,5})\s*(?:-|~|到|至)\s*(\d{2,5})|(\d{2,5})\s*(?:-|~|到|至)\s*(\d{2,5})(?:\s*元)?/;
+
+const STILL_CREATE_LISTING_RE =
+  /继续发布|还是要发布|没有合适的|发布我的|创建我的|继续挂单|仍要发布/;
+
+export function isStillCreateListingIntent(text: string): boolean {
+  return STILL_CREATE_LISTING_RE.test(text.trim());
+}
+
+function resolveAccountPhone(accountPhone?: string): string | undefined {
+  const phone = accountPhone?.trim();
+  return phone && /1\d{10}/.test(phone) ? phone : undefined;
+}
+
+export function hasTicketContact(
+  draft: Partial<TicketDraft>,
+  accountPhone?: string,
+): boolean {
+  if (draft.contact?.trim()) return true;
+  return Boolean(resolveAccountPhone(accountPhone));
+}
+
+export function hasTicketPrice(draft: Partial<TicketDraft>): boolean {
+  return Boolean(getDraftPriceBounds(draft));
+}
+
+/** 解析价格区间，返回 [min, max]（已排序） */
+export function parsePriceRange(
+  text: string,
+): { price: number; priceMax: number } | null {
+  const trimmed = text.trim();
+  const match = trimmed.match(PRICE_RANGE_RE);
+  if (!match) return null;
+
+  const a = Number(match[1] ?? match[3]);
+  const b = Number(match[2] ?? match[4]);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  if (a < 50 || b < 50 || a > 99999 || b > 99999) return null;
+
+  const min = Math.min(a, b);
+  const max = Math.max(a, b);
+  return { price: min, priceMax: max };
+}
+
+function applyPriceRange(
+  draft: TicketDraft,
+  range: { price: number; priceMax: number },
+  text: string,
+): void {
+  if (shouldTreatNumberAsYearNotPrice(range.price, text, draft)) return;
+  if (shouldTreatNumberAsYearNotPrice(range.priceMax, text, draft)) return;
+  draft.price = range.price;
+  draft.priceMax = range.priceMax > range.price ? range.priceMax : undefined;
+}
+
 const CONFIRM_RE = /^(好的|好|确认|可以|没问题|行|嗯|对|是的|ok|yes|y)$/i;
 
-const LISTING_START_RE = /我有票要出|我要出票|我要收票|收票|卖票/;
+const LISTING_START_RE = /我有票要出|我要出票|我要收票|^出票$|^收票$|卖票/;
 
 const SKU_TOKEN_RE =
   /(双日票?|单日票?|三日票?|vip\s*[a-z区]*|ga|普通区|预售票?|电子票)/i;
@@ -72,8 +131,8 @@ export function resolveTicketListingType(
 ): 'sell' | 'buy' {
   for (const message of messages) {
     if (message.role !== 'user') continue;
-    if (/我要收票|收票|求购|想买/.test(message.content)) return 'buy';
-    if (/我有票要出|我要出票|卖票|转票/.test(message.content)) return 'sell';
+    if (/我要收票|^收票$|求购|想买/.test(message.content)) return 'buy';
+    if (/我有票要出|我要出票|^出票$|卖票|转票/.test(message.content)) return 'sell';
   }
   return 'sell';
 }
@@ -138,9 +197,17 @@ function parseRecapBullets(source: string): Partial<TicketDraft> {
     draft.quantity = Number(qtyMatch[1]);
   }
 
-  const priceMatch = source.match(/·\s*(?:单价|预算单价)：\s*¥?(\d+)/);
-  if (priceMatch) {
-    draft.price = Number(priceMatch[1]);
+  const priceRangeMatch = source.match(
+    /·\s*(?:单价|预算单价|预算)：\s*¥?(\d+)\s*-\s*(\d+)/,
+  );
+  if (priceRangeMatch) {
+    draft.price = Number(priceRangeMatch[1]);
+    draft.priceMax = Number(priceRangeMatch[2]);
+  } else {
+    const priceMatch = source.match(/·\s*(?:单价|预算单价|预算)：\s*¥?(\d+)/);
+    if (priceMatch) {
+      draft.price = Number(priceMatch[1]);
+    }
   }
 
   const contactMatch = source.match(/·\s*联系方式：\s*(.+)/);
@@ -286,6 +353,20 @@ function parseStandaloneSku(text: string): string | undefined {
     return normalizeSku(trimmed);
   }
   return undefined;
+}
+
+/** 用户本轮仅补充票种（如 GA、VIP），不应触发活动/日期推断 */
+export function isSkuOnlyMessage(text: string): boolean {
+  const trimmed = text.trim();
+  const sku = parseStandaloneSku(trimmed);
+  if (!sku) return false;
+  if (resolveActivityId(trimmed)) return false;
+  if (hasExplicitPriceSignal(trimmed)) return false;
+  if (/(\d+)\s*张|一张|1张/.test(trimmed)) return false;
+  if (/1\d{10}/.test(trimmed)) return false;
+  if (/微信|手机|电话|vx|wx/i.test(trimmed)) return false;
+  if (/(\d{4})[.\-/年](\d{1,2})[.\-/月](\d{1,2})/.test(trimmed)) return false;
+  return true;
 }
 
 function parseContact(text: string, accountPhone?: string): string | undefined {
@@ -542,18 +623,25 @@ export function absorbUserTicketMessage(
     }
   }
 
-  const explicitPriceMatch = trimmed.match(
-    /(?:价格|单价|售价|预算)\s*[:：]?\s*(\d{2,5})/,
-  );
-  if (explicitPriceMatch) {
-    const price = Number(explicitPriceMatch[1]);
-    if (!shouldTreatNumberAsYearNotPrice(price, trimmed, draft)) {
-      draft.price = price;
-    }
-  } else if (shouldOverrideField('price', correctionFields) || !draft.price) {
-    const price = inferPrice(trimmed, draft);
-    if (price != null) {
-      draft.price = price;
+  const range = parsePriceRange(trimmed);
+  if (range) {
+    applyPriceRange(draft, range, trimmed);
+  } else {
+    const explicitPriceMatch = trimmed.match(
+      /(?:价格|单价|售价|预算)\s*[:：]?\s*(\d{2,5})/,
+    );
+    if (explicitPriceMatch) {
+      const price = Number(explicitPriceMatch[1]);
+      if (!shouldTreatNumberAsYearNotPrice(price, trimmed, draft)) {
+        draft.price = price;
+        delete draft.priceMax;
+      }
+    } else if (shouldOverrideField('price', correctionFields) || !draft.price) {
+      const price = inferPrice(trimmed, draft);
+      if (price != null) {
+        draft.price = price;
+        delete draft.priceMax;
+      }
     }
   }
 
@@ -611,27 +699,42 @@ export function hasTicketActivityName(draft: Partial<TicketDraft>): boolean {
   return Boolean(draft.activityId?.trim() || draft.activityKeyword?.trim());
 }
 
-export function isTicketDraftComplete(draft: TicketDraft): boolean {
+export function isTicketDraftComplete(
+  draft: TicketDraft,
+  accountPhone?: string,
+): boolean {
   return Boolean(
     hasTicketActivityName(draft) &&
       draft.eventDate &&
       draft.skuCode &&
       draft.quantity &&
       draft.quantity > 0 &&
-      draft.price &&
-      draft.price > 0 &&
-      draft.contact &&
+      hasTicketPrice(draft) &&
+      hasTicketContact(draft, accountPhone) &&
       draft.type,
   );
 }
 
-export function missingTicketDraftFields(draft: TicketDraft): string[] {
+export function missingTicketDraftFields(
+  draft: TicketDraft,
+  accountPhone?: string,
+): string[] {
   const missing: string[] = [];
   if (!hasTicketActivityName(draft)) missing.push('活动名称');
   if (!draft.eventDate) missing.push('演出日期');
   if (!draft.skuCode) missing.push('票种');
   if (!draft.quantity) missing.push('数量');
-  if (!draft.price) missing.push('价格');
-  if (!draft.contact) missing.push('联系方式');
+  if (!hasTicketPrice(draft)) missing.push('价格');
+  if (!hasTicketContact(draft, accountPhone)) missing.push('联系方式');
   return missing;
+}
+
+/** 创建挂单前写入联系方式（含账号手机默认） */
+export function resolveTicketDraftContact(
+  draft: TicketDraft,
+  accountPhone?: string,
+): string {
+  const explicit = draft.contact?.trim();
+  if (explicit) return explicit;
+  return resolveAccountPhone(accountPhone) ?? '';
 }

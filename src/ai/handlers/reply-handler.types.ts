@@ -1,9 +1,10 @@
-import { ChatMessageDto, PindanJoinCardDto } from '../dto/chat.dto';
+import { ChatMessageDto, PindanJoinCardDto, TicketCreatedCardDto } from '../dto/chat.dto';
 import type { ConversationState } from '../conversation';
 
 export interface DeterministicReplyResult {
   text: string;
   ticketId?: string;
+  ticketCard?: TicketCreatedCardDto;
   pindanCard?: PindanJoinCardDto;
   nextState: ConversationState;
 }

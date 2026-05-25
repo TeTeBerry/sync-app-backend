@@ -18,7 +18,24 @@ export type ReplyPindanRow = {
   total?: number;
   activityId?: string;
   userJoined?: boolean;
+  isOwner?: boolean;
 };
+
+/** 用户可加入的拼单（不含本人已发起/已加入） */
+export function getJoinablePindanRows(rows: ReplyPindanRow[]): ReplyPindanRow[] {
+  return rows.filter(row => !row.userJoined && isPindanOpen(row));
+}
+
+/** 活动下仍进行中的拼单（含本人发起/已加入，用于浏览与计数） */
+export function getBrowsePindanRows(rows: ReplyPindanRow[]): ReplyPindanRow[] {
+  return rows.filter(row => row.userJoined || isPindanOpen(row));
+}
+
+export function pickBrowseCardRow(
+  rows: ReplyPindanRow[],
+): ReplyPindanRow | undefined {
+  return getJoinablePindanRows(rows)[0] ?? getBrowsePindanRows(rows)[0];
+}
 
 export function isPindanOpen(row: {
   joined?: number;
@@ -42,6 +59,7 @@ function mapPindanDoc(
     activityId?: string;
   },
   userJoined = false,
+  isOwner = false,
 ): ReplyPindanRow {
   return {
     legacyId: doc.legacyId,
@@ -54,6 +72,7 @@ function mapPindanDoc(
     total: doc.total,
     activityId: doc.activityId,
     userJoined,
+    isOwner,
   };
 }
 
@@ -68,25 +87,35 @@ export async function loadPindanRowsForReply(
 ): Promise<ReplyPindanRow[]> {
   const myPindan = await services.profileService.listMyPindan(userId);
   const joinedIds = new Set(myPindan.map(item => item.id));
+  const ownerIds = new Set(
+    myPindan.filter(item => item.isOwner).map(item => item.id),
+  );
   const rowsMap = new Map<number, ReplyPindanRow>();
 
   for (const row of candidateRows) {
     if (row.legacyId == null) continue;
-    rowsMap.set(row.legacyId, {
+    const legacyId = row.legacyId;
+    rowsMap.set(legacyId, {
       ...row,
-      userJoined: joinedIds.has(row.legacyId),
+      userJoined: joinedIds.has(legacyId),
+      isOwner: ownerIds.has(legacyId),
     });
   }
 
   for (const legacyId of joinedIds) {
     if (rowsMap.has(legacyId)) {
-      rowsMap.get(legacyId)!.userJoined = true;
+      const mapped = rowsMap.get(legacyId)!;
+      mapped.userJoined = true;
+      mapped.isOwner = ownerIds.has(legacyId);
       continue;
     }
 
     const pindan = await services.pindanService.findByLegacyId(legacyId);
     if (pindan?.legacyId != null) {
-      rowsMap.set(legacyId, mapPindanDoc(pindan, true));
+      rowsMap.set(
+        legacyId,
+        mapPindanDoc(pindan, true, ownerIds.has(legacyId)),
+      );
       continue;
     }
 
@@ -100,6 +129,7 @@ export async function loadPindanRowsForReply(
         location: profile.location,
         price: profile.price,
         userJoined: true,
+        isOwner: profile.isOwner,
       });
     }
   }
@@ -156,15 +186,17 @@ export function buildPindanIntro(
   scopeLabel: string,
 ): string {
   const joinedCount = rows.filter(row => row.userJoined).length;
-  const openCount = rows.filter(row => !row.userJoined).length;
+  const browseCount = getBrowsePindanRows(rows).length;
+  const joinableCount = getJoinablePindanRows(rows).length;
 
   if (!rows.length) {
     return `【${scopeLabel} 相关拼单】`;
   }
 
   const parts: string[] = [];
-  if (openCount) parts.push(`进行中 ${openCount} 条`);
-  if (joinedCount) parts.push(`你已加入 ${joinedCount} 条`);
+  if (browseCount) parts.push(`进行中 ${browseCount} 条`);
+  if (joinableCount) parts.push(`可加入 ${joinableCount} 条`);
+  else if (joinedCount) parts.push(`你已加入 ${joinedCount} 条`);
 
   return `【${scopeLabel} 相关拼单】${parts.length ? ` · ${parts.join(' · ')}` : ''}`;
 }

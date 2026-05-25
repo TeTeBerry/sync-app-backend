@@ -16,7 +16,11 @@ import {
   buildActivityBrowseText,
 } from './activity-pindan-card.util';
 import {
+  resolveActivityCreatePhase,
+} from './find-buddy-activity-create.util';
+import {
   buildFindBuddyBrowseReply,
+  buildFindBuddyCollectCreateReply,
   buildFindBuddyCollectingReply,
   buildFindBuddyCreatePindanPrompt,
   buildFindBuddyExclusionReply,
@@ -42,6 +46,8 @@ import {
 import {
   buildPindanIntro,
   formatPindanLines,
+  getBrowsePindanRows,
+  getJoinablePindanRows,
   loadPindanRowsForReply,
   type ReplyPindanRow,
 } from './pindan-reply.util';
@@ -77,22 +83,23 @@ function formatTicketRows(
 }
 
 function buildFindBuddyGuidance(
-  openRows: ReplyPindanRow[],
+  joinableRows: ReplyPindanRow[],
+  browseRows: ReplyPindanRow[],
   joinedRows: ReplyPindanRow[],
   activityName: string,
   missing: string[],
 ): string {
   const lines: string[] = [];
 
-  if (openRows.length) {
+  if (joinableRows.length) {
     lines.push(
       '想加入已有拼单，回复序号即可（如「第一个」）。',
       '没有合适的？点顶部「创建拼单」可发起新拼单。',
     );
-  } else if (joinedRows.length) {
+  } else if (browseRows.length || joinedRows.length) {
     lines.push(
       '你已在该活动的拼单中。',
-      '如需其他安排，可点「创建拼单」发起新拼单，或告诉我更多需求。',
+      '点击下方卡片可查看；如需其他安排，可点「创建拼单」再发起一条。',
     );
   } else {
     lines.push(
@@ -110,13 +117,17 @@ function buildFindBuddyGuidance(
 
 function shouldAttachBrowseCard(
   fb: FindBuddyState,
-  openRows: ReplyPindanRow[],
+  browseRows: ReplyPindanRow[],
   fromImage: boolean,
 ): boolean {
-  if (fb.phase === 'confirm_create_pindan' || fb.phase === 'pick_package') {
+  if (
+    fb.phase === 'confirm_create_pindan' ||
+    fb.phase === 'collect_create_pindan' ||
+    fb.phase === 'pick_package'
+  ) {
     return false;
   }
-  if (fromImage && openRows.length === 0) {
+  if (fromImage && browseRows.length === 0) {
     return false;
   }
   return true;
@@ -153,7 +164,8 @@ async function resolveFindBuddyActivity(
 
   const lockedPackageFlow =
     (fb.phase === 'pick_package' && (fb.packageOptions?.length ?? 0) >= 2) ||
-    fb.phase === 'confirm_create_pindan';
+    fb.phase === 'confirm_create_pindan' ||
+    fb.phase === 'collect_create_pindan';
 
   if (lockedPackageFlow) {
     if (fb.activityId) {
@@ -286,8 +298,9 @@ async function buildFindBuddyStructuredReply(
     },
     context.userId,
   );
-  const openRows = pindanRows.filter(row => !row.userJoined);
-  const joinableIds = openRows
+  const browseRows = getBrowsePindanRows(pindanRows);
+  const joinableRows = getJoinablePindanRows(pindanRows);
+  const joinableIds = joinableRows
     .map(row => row.legacyId)
     .filter((id): id is number => id != null);
 
@@ -298,12 +311,22 @@ async function buildFindBuddyStructuredReply(
     activityKeyword: activityName,
   });
 
+  const mergedForPhase = {
+    ...fb,
+    activityId: activity.code,
+    activityKeyword: activityName,
+  };
+  const createPhase = resolveActivityCreatePhase(
+    mergedForPhase,
+    browseRows.length === 0,
+  );
+
   let nextState = setFindBuddyJoinableIds(state, joinableIds);
   nextState = {
     ...nextState,
     findBuddy: {
       ...nextState.findBuddy!,
-      phase: openRows.length === 0 ? 'confirm_create_pindan' : 'browse_pindan',
+      phase: browseRows.length === 0 ? createPhase : 'browse_pindan',
       activityId: activity.code,
       activityKeyword: activityName,
       joinablePindanIds: joinableIds,
@@ -320,10 +343,16 @@ async function buildFindBuddyStructuredReply(
       text: [
         buildFindBuddyCollectingReply(mergedFb, activityName, false),
         '',
-        buildFindBuddyBrowseReply(activityName, openRows.length, fb, false),
+        buildFindBuddyBrowseReply(
+          activityName,
+          browseRows.length,
+          joinableRows.length,
+          fb,
+          false,
+        ),
       ].join('\n'),
-      pindanCard: shouldAttachBrowseCard(mergedFb, openRows, false)
-        ? buildActivityBrowseCard(activity, openRows, mergedFb)
+      pindanCard: shouldAttachBrowseCard(mergedFb, browseRows, false)
+        ? buildActivityBrowseCard(activity, browseRows, mergedFb)
         : undefined,
       nextState,
     };
@@ -336,19 +365,25 @@ async function buildFindBuddyStructuredReply(
   };
   const attachCard = shouldAttachBrowseCard(
     nextState.findBuddy ?? mergedFb,
-    openRows,
+    browseRows,
     fromImage,
   );
 
+  const browseText =
+    browseRows.length === 0 && createPhase === 'collect_create_pindan'
+      ? buildFindBuddyCollectCreateReply(mergedFb, activityName)
+      : buildFindBuddyBrowseReply(
+          activityName,
+          browseRows.length,
+          joinableRows.length,
+          mergedFb,
+          fromImage,
+        );
+
   return {
-    text: buildFindBuddyBrowseReply(
-      activityName,
-      openRows.length,
-      mergedFb,
-      fromImage,
-    ),
+    text: browseText,
     pindanCard: attachCard
-      ? buildActivityBrowseCard(activity, openRows, mergedFb)
+      ? buildActivityBrowseCard(activity, browseRows, mergedFb)
       : undefined,
     nextState,
   };
@@ -376,13 +411,18 @@ export async function buildStructuredReply(
       fb.activityKeyword ??
       (fb.activityId ? (await services.activityService.findByCode(fb.activityId))?.name : undefined) ??
       fb.activityId;
+    const phase = resolveActivityCreatePhase(fb, true);
+    const text =
+      phase === 'collect_create_pindan'
+        ? buildFindBuddyCollectCreateReply(fb, activityName)
+        : buildFindBuddyCreatePindanPrompt(fb, activityName);
     return {
-      text: buildFindBuddyCreatePindanPrompt(fb, activityName),
+      text,
       nextState: {
         ...state,
         findBuddy: {
           ...fb,
-          phase: 'confirm_create_pindan',
+          phase,
         },
       },
     };
@@ -409,11 +449,16 @@ export async function buildStructuredReply(
       },
       context.userId,
     );
-    const openRows = pindanRows.filter(row => !row.userJoined);
+    const browseRows = getBrowsePindanRows(pindanRows);
+    const joinableRows = getJoinablePindanRows(pindanRows);
 
     return {
-      text: buildActivityBrowseText(activity.name ?? activity.code, openRows.length),
-      pindanCard: buildActivityBrowseCard(activity, openRows),
+      text: buildActivityBrowseText(
+        activity.name ?? activity.code,
+        browseRows.length,
+        joinableRows.length,
+      ),
+      pindanCard: buildActivityBrowseCard(activity, browseRows),
       nextState: {
         ...startFindBuddyFlow('browse_pindan'),
         findBuddy: {
@@ -461,7 +506,8 @@ export async function buildStructuredReply(
   );
 
   const activityLabel = activity?.name ?? activityRef;
-  const openRows = pindanRows.filter(row => !row.userJoined);
+  const browseRows = getBrowsePindanRows(pindanRows);
+  const joinableRows = getJoinablePindanRows(pindanRows);
   const joinedRows = pindanRows.filter(row => row.userJoined);
 
   const sections = [
@@ -470,7 +516,7 @@ export async function buildStructuredReply(
       : '',
     '',
     buildPindanIntro(pindanRows, activityLabel),
-    formatPindanLines(openRows, 5, '暂无正在拼单的订单。'),
+    formatPindanLines(joinableRows, 5, '暂无正在拼单的订单。'),
     joinedRows.length
       ? ['', '【你已加入】', formatPindanLines(joinedRows, 5, '暂无')].join('\n')
       : '',

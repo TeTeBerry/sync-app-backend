@@ -6,12 +6,15 @@ import {
   applyTicketListingInput,
   bootstrapConversationState,
   mergeFindBuddyFacts,
+  startFindBuddyFlow,
+  startTicketListingFlow,
   type ConversationState,
 } from '../conversation';
 import {
   absorbUserTicketMessage,
   isTicketConfirmMessage,
   isTicketDraftComplete,
+  isSkuOnlyMessage,
   type TicketDraft,
 } from '../utils/ticket-draft.parser';
 import { ActivityService } from '../../modules/activity/activity.service';
@@ -33,6 +36,12 @@ import {
   mergeTicketSlots,
   sanitizeLlmTicketPatch,
 } from '../parser/slot-merge.util';
+import {
+  inferListingTypeFromHint,
+  isAmbiguousImageInference,
+  scoreFindBuddyVision,
+  scoreTicketVision,
+} from '../utils/image-flow-inference.util';
 
 /**
  * Agentic 状态机：规则 + LLM 槽位解析 → 带来源/置信度的结构化存储
@@ -80,7 +89,72 @@ export class ConversationStateService {
       return this.advanceFindBuddy(next, messages, input, image);
     }
 
+    if (next.flow === 'idle' && image?.trim()) {
+      return this.advanceIdleFromImage(
+        next,
+        messages,
+        input,
+        userPhone,
+        image,
+      );
+    }
+
     return next;
+  }
+
+  private async advanceIdleFromImage(
+    state: ConversationState,
+    messages: ChatMessageDto[],
+    input: string,
+    userPhone?: string,
+    image?: string,
+  ): Promise<ConversationState> {
+    if (!image?.trim()) return state;
+
+    const listingType = inferListingTypeFromHint(input);
+    const [ticketVision, findBuddyVision] = await Promise.all([
+      this.ticketImageParser.parseTicketImage(image, listingType, input),
+      this.findBuddyImageParser.parseFindBuddyImage(image, input),
+    ]);
+
+    const ticketScore = scoreTicketVision(ticketVision);
+    const buddyScore = scoreFindBuddyVision(findBuddyVision);
+
+    if (isAmbiguousImageInference(ticketScore, buddyScore)) {
+      return { ...state, pendingImageDisambiguation: true };
+    }
+
+    if (ticketScore >= 2 && ticketScore > buddyScore) {
+      const visionPatch = sanitizeLlmTicketPatch(ticketVision);
+      const draft: TicketDraft = {
+        type: listingType,
+        ...visionPatch,
+      };
+      const next = startTicketListingFlow(listingType, draft);
+      return this.advanceTicketListing(next, input, userPhone, image);
+    }
+
+    if (buddyScore >= 2 && buddyScore > ticketScore) {
+      const next = startFindBuddyFlow('pick_activity');
+      return this.advanceFindBuddy(next, messages, input, image);
+    }
+
+    if (ticketScore >= 2) {
+      const visionPatch = sanitizeLlmTicketPatch(ticketVision);
+      const draft: TicketDraft = {
+        type: listingType,
+        ...visionPatch,
+      };
+      const next = startTicketListingFlow(listingType, draft);
+      return this.advanceTicketListing(next, input, userPhone, image);
+    }
+
+    if (buddyScore >= 2) {
+      const next = startFindBuddyFlow('pick_activity');
+      return this.advanceFindBuddy(next, messages, input, image);
+    }
+
+    return state;
   }
 
   private async enrichDraftFromKnowledge(
@@ -135,11 +209,14 @@ export class ConversationStateService {
     const rulePatch = diffTicketDraft(baseDraft, ruleDraft);
     const ruleMeta = buildRuleFieldMeta(input, rulePatch, correctionFields);
 
-    const llmSlots = await this.llmSlotParser.parseTicketSlots(
-      input,
-      baseDraft,
-      listing.listingType,
-    );
+    const skipLlmParse = isSkuOnlyMessage(input);
+    const llmSlots = skipLlmParse
+      ? null
+      : await this.llmSlotParser.parseTicketSlots(
+          input,
+          baseDraft,
+          listing.listingType,
+        );
     const llmPatch = sanitizeLlmTicketPatch(llmSlots);
     const llmMeta = buildLlmFieldMeta(llmPatch, correctionFields);
 
@@ -158,10 +235,38 @@ export class ConversationStateService {
 
     await this.enrichDraftFromKnowledge(merged.draft, merged.meta);
 
-    if (
-      userPhone?.trim() &&
-      merged.draft.contact === userPhone.trim()
-    ) {
+    if (rulePatch.price != null && ruleDraft.priceMax == null) {
+      delete merged.draft.priceMax;
+    }
+    if (ruleDraft.priceMax != null && ruleDraft.priceMax > (ruleDraft.price ?? 0)) {
+      merged.draft.priceMax = ruleDraft.priceMax;
+    }
+
+    if (isSkuOnlyMessage(input)) {
+      if (rulePatch.skuCode) {
+        merged.draft.skuCode = rulePatch.skuCode;
+        if (ruleMeta.skuCode) {
+          merged.meta.skuCode = ruleMeta.skuCode;
+        }
+      }
+      if (!baseDraft.activityId && !baseDraft.activityKeyword) {
+        delete merged.draft.activityId;
+        delete merged.draft.activityKeyword;
+        delete merged.draft.eventDate;
+        delete merged.meta.activityId;
+        delete merged.meta.activityKeyword;
+        delete merged.meta.eventDate;
+      }
+    }
+
+    const phone = userPhone?.trim();
+    if (phone && !merged.draft.contact?.trim()) {
+      merged.draft.contact = phone;
+      merged.meta.contact = {
+        source: 'account',
+        confidence: 1,
+      };
+    } else if (phone && merged.draft.contact === phone) {
       merged.meta.contact = {
         source: 'account',
         confidence: 1,
@@ -174,7 +279,7 @@ export class ConversationStateService {
         ...listing,
         draft: merged.draft,
         draftMeta: merged.meta,
-        phase: isTicketDraftComplete(merged.draft) ? 'confirm' : 'collect',
+        phase: isTicketDraftComplete(merged.draft, userPhone) ? 'confirm' : 'collect',
       },
     };
   }

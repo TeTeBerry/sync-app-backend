@@ -14,7 +14,12 @@ import {
 } from '../../database/schemas/pindan-join.schema';
 import { ActivityService } from '../activity/activity.service';
 import { PindanService } from '../pindan/pindan.service';
+import { formatPindanBudgetRangeLabel } from '../pindan/pindan-budget.util';
 import { TicketService } from '../ticket/ticket.service';
+import {
+  NotificationService,
+  type CreateNotificationInput,
+} from '../notification/notification.service';
 
 export interface ProfilePinDanItemDto {
   id: number;
@@ -25,6 +30,9 @@ export interface ProfilePinDanItemDto {
   date: string;
   location: string;
   price: number;
+  budgetMin?: number;
+  budgetMax?: number;
+  budgetRangeLabel?: string;
   image: string;
   joinedAt: string;
   isOwner: boolean;
@@ -40,6 +48,7 @@ export interface ProfileTicketItemDto {
   skuCode: string;
   quantity: number;
   price: number;
+  priceMax?: number;
   eventDate: string;
   contact: string;
   createdAt: string;
@@ -63,6 +72,21 @@ function resolveUserId(userId?: string): string {
   return userId?.trim() || 'anonymous';
 }
 
+function resolveProfilePindanBudget(pindan?: {
+  budgetMin?: number;
+  budgetMax?: number;
+  price?: number;
+}): Pick<ProfilePinDanItemDto, 'budgetMin' | 'budgetMax' | 'budgetRangeLabel'> {
+  if (!pindan) return {};
+  const budgetRangeLabel = formatPindanBudgetRangeLabel(pindan);
+  if (!budgetRangeLabel) return {};
+  return {
+    budgetMin: pindan.budgetMin,
+    budgetMax: pindan.budgetMax,
+    budgetRangeLabel,
+  };
+}
+
 @Injectable()
 export class ProfileService {
   constructor(
@@ -72,6 +96,7 @@ export class ProfileService {
     private readonly pindanService: PindanService,
     private readonly ticketService: TicketService,
     private readonly activityService: ActivityService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async listMyTickets(userId?: string): Promise<ProfileTicketItemDto[]> {
@@ -101,6 +126,7 @@ export class ProfileService {
         type?: string;
         quantity?: number;
         price?: number;
+        priceMax?: number;
         eventDate?: string;
         contact?: string;
         displayEventName?: string;
@@ -119,6 +145,10 @@ export class ProfileService {
         skuCode: row.skuCode ?? '',
         quantity: slot.quantity ?? 1,
         price: Number(slot.price ?? 0),
+        priceMax:
+          slot.priceMax != null && Number(slot.priceMax) > Number(slot.price ?? 0)
+            ? Number(slot.priceMax)
+            : undefined,
         eventDate: slot.eventDate ?? '',
         contact: slot.contact ?? '',
         createdAt: formatCreatedAt(
@@ -135,9 +165,25 @@ export class ProfileService {
       this.pindanService.findByLeaderUserId(uid),
     ]);
 
+    const legacyIds = [
+      ...new Set([
+        ...joinRows.map(row => row.pindanLegacyId),
+        ...ownedPindans
+          .map(pindan => pindan.legacyId)
+          .filter((legacyId): legacyId is number => legacyId != null),
+      ]),
+    ];
+    const pindanDocs = await this.pindanService.findByLegacyIds(legacyIds);
+    const pindanByLegacyId = new Map(
+      pindanDocs
+        .filter(pindan => pindan.legacyId != null)
+        .map(pindan => [pindan.legacyId as number, pindan]),
+    );
+
     const byId = new Map<number, ProfilePinDanItemDto>();
 
     for (const row of joinRows) {
+      const pindan = pindanByLegacyId.get(row.pindanLegacyId);
       byId.set(row.pindanLegacyId, {
         id: row.pindanLegacyId,
         activityId: row.activityLegacyId ?? 0,
@@ -147,6 +193,7 @@ export class ProfileService {
         date: row.date ?? '',
         location: row.location ?? '',
         price: row.price ?? 0,
+        ...resolveProfilePindanBudget(pindan),
         image: row.image ?? '',
         joinedAt: row.joinedAt ?? formatJoinedAt(),
         isOwner: false,
@@ -162,6 +209,7 @@ export class ProfileService {
         existing.isOwner = true;
         existing.remark = pindan.remark;
         existing.total = pindan.total;
+        Object.assign(existing, resolveProfilePindanBudget(pindan));
         continue;
       }
 
@@ -174,6 +222,7 @@ export class ProfileService {
         date: pindan.date ?? '',
         location: pindan.location ?? '',
         price: pindan.price ?? 0,
+        ...resolveProfilePindanBudget(pindan),
         image: pindan.image ?? '',
         joinedAt: formatCreatedAt(
           (pindan as { createdAt?: string | Date }).createdAt,
@@ -230,6 +279,7 @@ export class ProfileService {
       date: pindan.date ?? '',
       location: pindan.location ?? '',
       price: pindan.price ?? 0,
+      ...resolveProfilePindanBudget(pindan),
       image: pindan.image ?? '',
       joinedAt,
       isOwner: Boolean(pindan.leaderUserId && pindan.leaderUserId === uid),
@@ -253,7 +303,63 @@ export class ProfileService {
 
     await this.pindanService.addMember(legacyId, uid);
 
+    await this.notifyPindanJoin(pindan, uid);
+
     return profileItem;
+  }
+
+  private async notifyPindanJoin(
+    pindan: {
+      legacyId?: number;
+      title?: string;
+      leaderUserId?: string;
+    },
+    joinerId: string,
+  ): Promise<void> {
+    const legacyId = pindan.legacyId;
+    if (legacyId == null) return;
+
+    const pindanTitle = pindan.title ?? '拼单';
+    const meta = {
+      pindanLegacyId: legacyId,
+      actorUserId: joinerId,
+      pindanTitle,
+    };
+
+    const notifications: CreateNotificationInput[] = [];
+    const leaderId = pindan.leaderUserId?.trim();
+
+    if (leaderId && leaderId !== joinerId && leaderId !== 'anonymous') {
+      notifications.push({
+        userId: leaderId,
+        type: 'pindan_join_leader',
+        title: '拼单有新成员',
+        body: `有新用户加入了你的拼单「${pindanTitle}」`,
+        meta,
+      });
+    }
+
+    const memberRows = await this.joinModel.find({ pindanLegacyId: legacyId }).lean();
+    const memberIds = new Set<string>();
+    for (const row of memberRows) {
+      if (row.userId && row.userId !== joinerId) {
+        memberIds.add(row.userId);
+      }
+    }
+    if (leaderId) memberIds.delete(leaderId);
+
+    for (const memberId of memberIds) {
+      if (memberId === 'anonymous') continue;
+      notifications.push({
+        userId: memberId,
+        type: 'pindan_join_member',
+        title: '拼单有新成员',
+        body: `你参与的拼单「${pindanTitle}」有新成员加入`,
+        meta,
+      });
+    }
+
+    await this.notificationService.createMany(notifications);
   }
 
   /** 发起人创建拼单后登记为已加入（不重复增加 joined） */
@@ -281,6 +387,7 @@ export class ProfileService {
         date: pindan.date ?? '',
         location: pindan.location ?? '',
         price: pindan.price ?? 0,
+        ...resolveProfilePindanBudget(pindan),
         image: pindan.image ?? '',
         joinedAt: existing.joinedAt ?? formatJoinedAt(),
         isOwner: true,
@@ -299,6 +406,7 @@ export class ProfileService {
       date: pindan.date ?? '',
       location: pindan.location ?? '',
       price: pindan.price ?? 0,
+      ...resolveProfilePindanBudget(pindan),
       image: pindan.image ?? '',
       joinedAt,
       isOwner: true,

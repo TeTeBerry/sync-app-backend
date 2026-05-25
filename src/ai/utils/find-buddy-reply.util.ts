@@ -1,4 +1,11 @@
 import type { FindBuddyState } from '../conversation/conversation-state.types';
+import {
+  formatBudgetRangeLabel,
+  getMissingActivityCreateFields,
+  hasActivityCreateBudget,
+  isActivityOnlyCreateContext,
+  resolvePerPersonBudget,
+} from './find-buddy-activity-create.util';
 
 export function getMissingFindBuddyFields(fb: FindBuddyState): string[] {
   const missing: string[] = [];
@@ -33,8 +40,12 @@ export function buildFindBuddyKnownLines(
       ? '（套餐总价）'
       : '（总价）';
     lines.push(`· 套餐价：¥${fb.packagePrice}${suffix}`);
-  } else if (fb.budget) {
-    lines.push(`· 预算：约 ¥${fb.budget}/人`);
+  } else if (hasActivityCreateBudget(fb)) {
+    const range = formatBudgetRangeLabel(fb, fb.peopleCount);
+    const resolved = resolvePerPersonBudget(fb, fb.peopleCount);
+    lines.push(
+      `· 预算：${range ?? (resolved.budget != null && resolved.budget > 0 ? `约¥${resolved.budget}/人` : '待定')}`,
+    );
   }
   if (fb.transportNote) lines.push(`· 交通：${fb.transportNote}`);
   if (fb.city) lines.push(`· 出发：${fb.city}`);
@@ -93,12 +104,49 @@ export function buildFindBuddyExclusionReply(excludedLabel: string): string {
   return `好的，已去掉「${excludedLabel}」。请告诉我你想参加的活动（如 S2O、Ultra），或上传套餐/酒店订单截图。`;
 }
 
+export function buildFindBuddyCollectCreateReply(
+  fb: FindBuddyState,
+  activityName?: string,
+): string {
+  const label = activityName ?? fb.activityKeyword ?? fb.activityId ?? '该活动';
+  const missing = getMissingActivityCreateFields(fb);
+  const known = buildFindBuddyKnownLines(fb, label, false);
+
+  if (missing.length === 2) {
+    return [
+      `「${label}」暂无进行中的拼单。`,
+      '',
+      '我可以帮你发起「套餐拼单」，先补充两点信息：',
+      '1. 预算多少（人均或区间，如「预算2000」或「人均500」）',
+      '2. 想拼几个人（如「拼4人」）',
+      '',
+      '也可以一次性回复，例如：「预算2000-3000，拼4人」。',
+    ].join('\n');
+  }
+
+  if (missing.includes('budget')) {
+    return [
+      ...(known.length ? ['已记录：', '', ...known, ''] : []),
+      '还差预算：请告诉我人均预算或区间（如「预算2000」或「2000-3000」）。',
+    ].join('\n');
+  }
+
+  return [
+    ...(known.length ? ['已记录：', '', ...known, ''] : []),
+    '还差人数：请告诉我想拼几个人（如「拼3人」）。',
+  ].join('\n');
+}
+
 export function buildFindBuddyCreatePindanPrompt(
   fb: FindBuddyState,
   activityName?: string,
 ): string {
   const label = activityName ?? fb.activityKeyword ?? fb.activityId ?? '该活动';
   const known = buildFindBuddyKnownLines(fb, label, false);
+
+  const packageHint = isActivityOnlyCreateContext(fb)
+    ? '将为你创建「套餐拼单」。'
+    : '';
 
   return [
     `「${label}」暂无进行中的拼单。`,
@@ -107,9 +155,12 @@ export function buildFindBuddyCreatePindanPrompt(
       ? ['我可以根据以下信息帮你发起拼单：', '', ...known].join('\n')
       : '我可以根据你的需求帮你发起拼单。',
     '',
+    packageHint,
     '是否创建？回复「确认创建」即可发布；回复「不用了」可取消。',
     '也可点顶部「创建拼单」自行填写。',
-  ].join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 export function buildFindBuddyCreatedPindanReply(
@@ -124,8 +175,13 @@ export function buildFindBuddyCreatedPindanReply(
     '已为你创建拼单，并已加入 🎉',
     '',
     ...(known.length ? [...known, ''] : []),
-    `· 拼单人数：${groupSize} 人（${groupSize === 2 ? '大床/双床套餐，仅可 2 人拼' : `最多 ${groupSize} 人`}）`,
-    pricePerPerson > 0 ? `· 人均：约 ¥${pricePerPerson}/人` : '',
+    `· 拼单人数：${groupSize} 人`,
+    (() => {
+      const range = formatBudgetRangeLabel(fb, groupSize);
+      if (range) return `· 预算区间：${range}`;
+      if (pricePerPerson > 0) return `· 人均：约 ¥${pricePerPerson}/人`;
+      return '';
+    })(),
     `· 状态：1/${groupSize} 人已加入，还差 ${Math.max(0, groupSize - 1)} 人`,
     '',
     '这是你发起的拼单，点击卡片可修改备注或价格；也可分享给朋友加入。',
@@ -136,7 +192,8 @@ export function buildFindBuddyCreatedPindanReply(
 
 export function buildFindBuddyBrowseReply(
   activityName: string,
-  openCount: number,
+  browseCount: number,
+  joinableCount: number,
   fb: FindBuddyState,
   fromImage = false,
 ): string {
@@ -146,26 +203,29 @@ export function buildFindBuddyBrowseReply(
       ? ['已从你的信息匹配拼单：', '', ...known, ''].join('\n')
       : '';
 
-  if (openCount > 0) {
+  if (browseCount > 0) {
+    const countLine =
+      joinableCount > 0
+        ? `当前有 ${browseCount} 条进行中的拼单，其中 ${joinableCount} 条可加入，点击下方卡片进入活动拼单页。`
+        : `当前有 ${browseCount} 条进行中的拼单（含你发起的），点击下方卡片查看。`;
+    const actionLine =
+      joinableCount > 0
+        ? '想加入回复序号（如「第一个」）；没有合适的可点「创建拼单」发起新拼单。'
+        : '这是你发起的拼单，可点卡片查看或分享；也可点「创建拼单」再发起一条。';
+
     return [
       prefix,
       `已为你找到「${activityName}」的拼单 🎵`,
       '',
-      `当前有 ${openCount} 条可加入，点击下方卡片进入活动拼单页。`,
-      '想加入回复序号（如「第一个」）；没有合适的可点「创建拼单」发起新拼单。',
+      countLine,
+      actionLine,
     ]
       .filter(Boolean)
       .join('\n');
   }
 
-  return [
-    prefix,
-    `「${activityName}」暂无进行中的拼单。`,
-    '',
-    '我可以根据你的信息帮你发起拼单，是否创建？',
-    '回复「确认创建」即可发布；回复「不用了」可取消。',
-    '也可点顶部「创建拼单」自行填写。',
-  ]
-    .filter(Boolean)
-    .join('\n');
+  return buildFindBuddyCollectCreateReply(
+    { ...fb, activityKeyword: activityName },
+    activityName,
+  );
 }

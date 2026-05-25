@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { isTicketListingFlow } from '../conversation';
 import { isTicketSearchQuery } from '../utils/ticket-search.util';
-import { isExactQuickReply } from '../utils/user-intent';
 import { TicketListingService } from '../ticket/ticket-listing.service';
 import type {
   DeterministicReplyResult,
@@ -15,7 +14,6 @@ export class TicketListingHandler implements ReplyHandler {
 
   canHandle(ctx: ReplyContext): boolean {
     if (!isTicketListingFlow(ctx.state)) return false;
-    if (isExactQuickReply(ctx.input) && !ctx.image?.trim()) return false;
     if (isTicketSearchQuery(ctx.input)) return false;
     return true;
   }

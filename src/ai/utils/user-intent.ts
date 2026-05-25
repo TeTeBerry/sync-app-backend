@@ -26,10 +26,18 @@ export function detectUserIntent(input: string): UserIntent {
   if (text === QUICK_REPLIES.find_buddy || /找.*搭子|找伙伴|匹配搭子|组局/.test(text)) {
     return 'find_buddy';
   }
-  if (text === QUICK_REPLIES.sell_ticket || /有票要出|卖票|转票/.test(text)) {
+  if (
+    text === QUICK_REPLIES.sell_ticket ||
+    /^出票$/.test(text) ||
+    /有票要出|我要出票|卖票|转票/.test(text)
+  ) {
     return 'sell_ticket';
   }
-  if (text === QUICK_REPLIES.buy_ticket || /收票|求购/.test(text)) {
+  if (
+    text === QUICK_REPLIES.buy_ticket ||
+    /^收票$/.test(text) ||
+    /求购|想买/.test(text)
+  ) {
     return 'buy_ticket';
   }
   if (text === QUICK_REPLIES.near_events || /最近活动|查活动|有什么活动|近期活动/.test(text)) {

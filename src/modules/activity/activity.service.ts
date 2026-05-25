@@ -264,7 +264,7 @@ export class ActivityService implements OnModuleInit {
       input.activityId?.trim();
     if (!ref) return null;
 
-    let activity =
+    const activity =
       (await this.matchActivity(ref)) ??
       (input.activityId
         ? await this.findByCode(input.activityId)

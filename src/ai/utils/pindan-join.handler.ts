@@ -6,19 +6,17 @@ import {
   type ConversationState,
 } from '../conversation';
 import { isAwaitingActivitySelection } from './activity-reply.util';
+import {
+  isListSelectionInput,
+  parseListSelectionIndex,
+} from './list-selection.util';
 import { ActivityService } from '../../modules/activity/activity.service';
 import { PindanService } from '../../modules/pindan/pindan.service';
 import { ProfileService } from '../../modules/profile/profile.service';
 import { resolveThreadPindanRows } from './pindan-query.util';
 import { isPindanOpen } from './pindan-reply.util';
 
-const CN_INDEX: Record<string, number> = {
-  一: 1,
-  二: 2,
-  三: 3,
-  四: 4,
-  五: 5,
-};
+const MAX_PINDAN_SELECTION = 5;
 
 export interface PindanJoinReplyResult {
   text: string;
@@ -26,30 +24,8 @@ export interface PindanJoinReplyResult {
   nextState?: ConversationState;
 }
 
-function parseIndexToken(raw: string): number | null {
-  const token = raw.trim();
-  if (/^[1-5]$/.test(token)) return Number(token);
-  return CN_INDEX[token] ?? null;
-}
-
 export function parsePindanSelectionIndex(input: string): number | null {
-  const text = input.trim();
-  if (!text) return null;
-
-  const patterns = [
-    /第\s*([一二三四五1-5])\s*[个条号]/,
-    /加入\s*第?\s*([一二三四五1-5])/,
-    /^([1-5])$/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match?.[1]) {
-      return parseIndexToken(match[1]);
-    }
-  }
-
-  return null;
+  return parseListSelectionIndex(input, MAX_PINDAN_SELECTION);
 }
 
 export function shouldHandlePindanJoin(
@@ -61,9 +37,7 @@ export function shouldHandlePindanJoin(
   if (state.findBuddy?.phase !== 'browse_pindan') return false;
 
   const text = input.trim();
-  const explicitSelection =
-    /第\s*([一二三四五1-5])\s*[个条号]/.test(text) ||
-    /加入\s*第?\s*([一二三四五1-5])/.test(text);
+  const explicitSelection = isListSelectionInput(text, MAX_PINDAN_SELECTION);
 
   if (explicitSelection || /^[1-5]$/.test(text)) {
     if (isAwaitingActivitySelection(messages)) {

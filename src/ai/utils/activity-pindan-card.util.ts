@@ -4,7 +4,11 @@ import {
   buildPindanPricePerPerson,
   inferPackageGroupSize,
 } from './find-buddy-pindan-create.util';
-import type { ReplyPindanRow } from './pindan-reply.util';
+import {
+  getJoinablePindanRows,
+  pickBrowseCardRow,
+  type ReplyPindanRow,
+} from './pindan-reply.util';
 
 type ActivityRow = {
   legacyId?: number;
@@ -16,10 +20,11 @@ type ActivityRow = {
 
 export function buildActivityBrowseCard(
   activity: ActivityRow,
-  openRows: ReplyPindanRow[],
+  browseRows: ReplyPindanRow[],
   fb?: FindBuddyState,
 ): PindanJoinCardDto {
-  const top = openRows[0];
+  const top = pickBrowseCardRow(browseRows);
+  const joinableCount = getJoinablePindanRows(browseRows).length;
   const category =
     top?.type === 'package' || top?.type === 'hotel' || top?.type === 'transport'
       ? top.type
@@ -39,8 +44,10 @@ export function buildActivityBrowseCard(
     category,
     title: activity.name ?? activity.code ?? '活动拼单',
     subtitle:
-      openRows.length > 0
-        ? `${openRows.length} 条拼单可加入`
+      browseRows.length > 0
+        ? joinableCount > 0
+          ? `${browseRows.length} 条进行中 · ${joinableCount} 条可加入`
+          : `${browseRows.length} 条进行中拼单`
         : '暂无拼单，可发起新拼单',
     date: activity.date ?? top?.date ?? '',
     location: activity.location ?? top?.location ?? meta,
@@ -52,13 +59,18 @@ export function buildActivityBrowseCard(
 
 export function buildActivityBrowseText(
   activityName: string,
-  openCount: number,
+  browseCount: number,
+  joinableCount = browseCount,
 ): string {
-  if (openCount > 0) {
+  if (browseCount > 0) {
+    const countLine =
+      joinableCount > 0
+        ? `当前有 ${browseCount} 条进行中的拼单，其中 ${joinableCount} 条可加入，点击下方卡片进入活动拼单页。`
+        : `当前有 ${browseCount} 条进行中的拼单（含你发起的），点击下方卡片查看。`;
     return [
       `已为你找到「${activityName}」的拼单 🎵`,
       '',
-      `当前有 ${openCount} 条可加入，点击下方卡片进入活动拼单页。`,
+      countLine,
     ].join('\n');
   }
 

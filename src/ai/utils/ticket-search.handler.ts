@@ -5,6 +5,7 @@ import {
   parseTicketSearchParams,
   type TicketSearchParams,
 } from './ticket-search.util';
+import { formatSlotPrice } from './ticket-price.util';
 
 type TicketRow = {
   _id?: unknown;
@@ -14,6 +15,19 @@ type TicketRow = {
   skuCode?: string;
   seatOrSlot?: Record<string, unknown>;
 };
+
+export interface TicketSearchReplyResult {
+  text: string;
+  joinableTicketIds: string[];
+  activityId?: string;
+  activityKeyword?: string;
+  type?: 'sell' | 'buy';
+}
+
+function ticketRowId(row: TicketRow): string | undefined {
+  if (row._id == null) return undefined;
+  return String(row._id);
+}
 
 async function resolveActivityCode(
   params: TicketSearchParams,
@@ -47,7 +61,7 @@ function formatTicketRows(
     .map((row, index) => {
       const slot = row.seatOrSlot ?? {};
       const type = slot.type === 'buy' ? '收票' : '出票';
-      const price = slot.price != null ? `¥${slot.price}` : '价格面议';
+      const price = formatSlotPrice(slot);
       const qty = slot.quantity != null ? `${slot.quantity}张` : '';
       const event = activityNames.get(row.activityId ?? '') ?? row.activityId ?? '未知活动';
       const seller = row.userName?.trim() || row.userId || '用户';
@@ -64,7 +78,7 @@ export async function buildTicketSearchResponse(
     ticketService: TicketService;
     activityService: ActivityService;
   },
-): Promise<string | null> {
+): Promise<TicketSearchReplyResult | null> {
   if (!isTicketSearchQuery(input)) {
     return null;
   }
@@ -94,13 +108,24 @@ export async function buildTicketSearchResponse(
         ? '收票'
         : '出票/收票';
 
-  return [
-    `已为你搜索「${scopeLabel}」相关${typeLabel}挂单 🎫`,
-    '',
-    formatTicketRows(rows, activityNames),
-    '',
-    rows.length
-      ? '看中的可以告诉我序号，或说「我要出票 / 收票」继续操作。'
-      : '你可以换个活动名再查，或直接说出票/收票需求，我来帮你发布。',
-  ].join('\n');
+  const joinableTicketIds = rows
+    .slice(0, 8)
+    .map(ticketRowId)
+    .filter((id): id is string => Boolean(id));
+
+  return {
+    joinableTicketIds,
+    activityId: code,
+    activityKeyword: name ?? params.activityKeyword,
+    type: params.type,
+    text: [
+      `已为你搜索「${scopeLabel}」相关${typeLabel}挂单 🎫`,
+      '',
+      formatTicketRows(rows, activityNames),
+      '',
+      rows.length
+        ? '看中的可以告诉我序号，或说「我要出票 / 收票」继续操作。'
+        : '你可以换个活动名再查，或直接说出票/收票需求，我来帮你发布。',
+    ].join('\n'),
+  };
 }

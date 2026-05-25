@@ -66,6 +66,7 @@ export class AiService {
 
     let assistantReply = '';
     let ticketId: string | undefined;
+    let ticketCard: TicketCreatedCardDto | undefined;
     let pindanCard: PindanJoinCardDto | undefined;
     let conversationState = this.agenticReplyService.resolveConversationState(
       stored.conversationState,
@@ -90,15 +91,16 @@ export class AiService {
 
       assistantReply = reply.text;
       pindanCard = reply.pindanCard;
+      ticketCard = reply.ticketCard;
       conversationState = reply.nextState;
 
-      for (const char of reply.text) {
-        yield { type: 'delta', content: char };
+      if (reply.text) {
+        yield { type: 'delta', content: reply.text };
       }
 
-      const ticketCard = ticketId
-        ? await this.buildTicketCard(ticketId)
-        : undefined;
+      if (!ticketCard && ticketId) {
+        ticketCard = await this.buildTicketCard(ticketId);
+      }
 
       const messageId = await this.chatService.saveTurn({
         sessionId,

@@ -16,6 +16,7 @@ import { TicketListingService } from './ticket/ticket-listing.service';
 import { RagModule } from './rag/rag.module';
 import { FindBuddyPindanCreateService } from './pindan/find-buddy-pindan-create.service';
 import {
+  FindBuddyCollectHandler,
   PackagePickHandler,
   PindanCreateHandler,
   PindanJoinHandler,
@@ -23,6 +24,7 @@ import {
   StructuredReplyHandler,
   TicketListingHandler,
   TicketSearchHandler,
+  TicketSelectHandler,
 } from './handlers';
 
 @Module({
@@ -47,11 +49,13 @@ import {
     FindBuddyPindanCreateService,
     QuickReplyHandler,
     PindanJoinHandler,
+    FindBuddyCollectHandler,
     PackagePickHandler,
     PindanCreateHandler,
     TicketListingHandler,
     StructuredReplyHandler,
     TicketSearchHandler,
+    TicketSelectHandler,
   ],
 })
 export class AiModule {}

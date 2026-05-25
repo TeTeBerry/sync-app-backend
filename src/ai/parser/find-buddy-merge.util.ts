@@ -208,6 +208,7 @@ function isZhuhaiHotelPackageContext(state: FindBuddyState): boolean {
 export function isLockedPackageFlow(fb: FindBuddyState): boolean {
   return (
     (fb.phase === 'pick_package' && (fb.packageOptions?.length ?? 0) >= 2) ||
+    fb.phase === 'collect_create_pindan' ||
     fb.phase === 'confirm_create_pindan'
   );
 }
@@ -331,6 +332,9 @@ export function mergeFindBuddyState(params: {
     hotelName: pickField('hotelName', vision, rule, llm, base),
     location: pickField('location', vision, rule, llm, base),
     budget: pickField('budget', vision, rule, llm, base),
+    budgetMin: pickField('budgetMin', vision, rule, llm, base),
+    budgetMax: pickField('budgetMax', vision, rule, llm, base),
+    budgetScope: pickField('budgetScope', vision, rule, llm, base),
     packagePrice: pickField('packagePrice', vision, rule, llm, base),
     transportNote: pickField('transportNote', vision, rule, llm, base),
   };

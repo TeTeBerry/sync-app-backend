@@ -16,16 +16,20 @@ import {
   absorbUserTicketMessage,
   isTicketConfirmMessage,
   isTicketDraftComplete,
+  isSkuOnlyMessage,
   resolveActivityId,
   type TicketDraft,
 } from '../utils/ticket-draft.parser';
+import { mergeActivityCreateSlots } from '../utils/find-buddy-activity-create.util';
 import { detectUserIntent, isExactQuickReply } from '../utils/user-intent';
+import { isTicketSearchQuery } from '../utils/ticket-search.util';
 import {
   createIdleState,
   type ConversationState,
   type FindBuddyPhase,
   type FindBuddyState,
   type TicketListingPhase,
+  type TicketSearchState,
 } from './conversation-state.types';
 
 export function startFindBuddyFlow(
@@ -65,8 +69,118 @@ export function startTicketListingFlow(
   };
 }
 
+export function startTicketSearchFlow(
+  joinableTicketIds: string[] = [],
+  context?: Pick<TicketSearchState, 'activityId' | 'activityKeyword' | 'type'>,
+): ConversationState {
+  return {
+    version: 1,
+    flow: 'ticket_search',
+    ticketSearch: {
+      phase: 'browse',
+      joinableTicketIds,
+      ...context,
+    },
+  };
+}
+
 export function resetToIdle(): ConversationState {
   return createIdleState();
+}
+
+function transferTicketDraftForListingType(
+  state: ConversationState,
+  listingType: 'sell' | 'buy',
+): TicketDraft | undefined {
+  const prev = state.ticketListing?.draft;
+  if (!prev) return undefined;
+
+  return {
+    activityId: prev.activityId,
+    activityKeyword: prev.activityKeyword,
+    eventDate: prev.eventDate,
+    skuCode: prev.skuCode,
+    quantity: prev.quantity,
+    price: prev.price,
+    priceMax: prev.priceMax,
+    contact: prev.contact,
+    type: listingType,
+  };
+}
+
+function mergeSharedSlotsIntoTicketDraft(
+  state: ConversationState,
+  draft?: TicketDraft,
+): TicketDraft | undefined {
+  const merged: TicketDraft = { ...(draft ?? {}) };
+
+  const findBuddy = state.findBuddy;
+  if (findBuddy) {
+    merged.activityId = merged.activityId ?? findBuddy.activityId;
+    merged.activityKeyword = merged.activityKeyword ?? findBuddy.activityKeyword;
+    merged.eventDate = merged.eventDate ?? findBuddy.eventDate;
+  }
+
+  const ticketSearch = state.ticketSearch;
+  if (ticketSearch) {
+    merged.activityId = merged.activityId ?? ticketSearch.activityId;
+    merged.activityKeyword =
+      merged.activityKeyword ?? ticketSearch.activityKeyword;
+  }
+
+  return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+function mergeSharedSlotsIntoFindBuddy(
+  state: ConversationState,
+  next: ConversationState,
+): ConversationState {
+  if (!next.findBuddy) return next;
+
+  const prevFindBuddy = state.findBuddy;
+  const ticketDraft = state.ticketListing?.draft;
+  const ticketSearch = state.ticketSearch;
+
+  return {
+    ...next,
+    findBuddy: {
+      ...next.findBuddy,
+      activityId:
+        next.findBuddy.activityId ??
+        prevFindBuddy?.activityId ??
+        ticketDraft?.activityId ??
+        ticketSearch?.activityId,
+      activityKeyword:
+        next.findBuddy.activityKeyword ??
+        prevFindBuddy?.activityKeyword ??
+        ticketDraft?.activityKeyword ??
+        ticketSearch?.activityKeyword,
+      eventDate:
+        next.findBuddy.eventDate ??
+        prevFindBuddy?.eventDate ??
+        ticketDraft?.eventDate,
+    },
+  };
+}
+
+function startTicketListingFromIntent(
+  state: ConversationState,
+  listingType: 'sell' | 'buy',
+): ConversationState {
+  if (
+    state.flow === 'ticket_listing' &&
+    state.ticketListing?.listingType === listingType
+  ) {
+    return state;
+  }
+
+  const baseDraft =
+    state.flow === 'ticket_listing'
+      ? transferTicketDraftForListingType(state, listingType)
+      : undefined;
+
+  const draft = mergeSharedSlotsIntoTicketDraft(state, baseDraft);
+  return startTicketListingFlow(listingType, draft);
 }
 
 export function isFindBuddyFlow(state: ConversationState): boolean {
@@ -75,6 +189,10 @@ export function isFindBuddyFlow(state: ConversationState): boolean {
 
 export function isTicketListingFlow(state: ConversationState): boolean {
   return state.flow === 'ticket_listing' && Boolean(state.ticketListing);
+}
+
+export function isTicketSearchFlow(state: ConversationState): boolean {
+  return state.flow === 'ticket_search' && Boolean(state.ticketSearch);
 }
 
 /** 快捷回复 / 显式换话题时切换流程 */
@@ -106,16 +224,44 @@ export function applyFlowSwitch(
     return null;
   }
 
-  if (!isExactQuickReply(input)) {
-    if (intent === 'find_buddy') return startFindBuddyFlow('pick_activity');
-    if (intent === 'sell_ticket') return startTicketListingFlow('sell');
-    if (intent === 'buy_ticket') return startTicketListingFlow('buy');
+  if (
+    state.flow === 'ticket_search' &&
+    state.ticketSearch &&
+    intent === 'search_ticket' &&
+    isTicketSearchQuery(input)
+  ) {
     return null;
   }
 
-  if (intent === 'find_buddy') return startFindBuddyFlow('pick_activity');
-  if (intent === 'sell_ticket') return startTicketListingFlow('sell');
-  if (intent === 'buy_ticket') return startTicketListingFlow('buy');
+  if (!isExactQuickReply(input)) {
+    if (intent === 'find_buddy') {
+      if (state.flow === 'find_buddy') return null;
+      return mergeSharedSlotsIntoFindBuddy(
+        state,
+        startFindBuddyFlow('pick_activity'),
+      );
+    }
+    if (intent === 'sell_ticket') {
+      return startTicketListingFromIntent(state, 'sell');
+    }
+    if (intent === 'buy_ticket') {
+      return startTicketListingFromIntent(state, 'buy');
+    }
+    return null;
+  }
+
+  if (intent === 'find_buddy') {
+    return mergeSharedSlotsIntoFindBuddy(
+      state,
+      startFindBuddyFlow('pick_activity'),
+    );
+  }
+  if (intent === 'sell_ticket') {
+    return startTicketListingFromIntent(state, 'sell');
+  }
+  if (intent === 'buy_ticket') {
+    return startTicketListingFromIntent(state, 'buy');
+  }
   if (intent === 'near_events') return resetToIdle();
   return null;
 }
@@ -171,6 +317,7 @@ export async function applyFindBuddyInput(
 
   if (
     isPackagePickPhase ||
+    findBuddy.phase === 'collect_create_pindan' ||
     findBuddy.phase === 'confirm_create_pindan' ||
     isPackageSelectionInput
   ) {
@@ -273,6 +420,30 @@ export function setFindBuddyJoinableIds(
   };
 }
 
+export function setTicketSearchJoinableIds(
+  state: ConversationState,
+  joinableTicketIds: string[],
+  context?: Pick<TicketSearchState, 'activityId' | 'activityKeyword' | 'type'>,
+): ConversationState {
+  if (!state.ticketSearch) {
+    return startTicketSearchFlow(joinableTicketIds, context);
+  }
+
+  return {
+    ...state,
+    flow: 'ticket_search',
+    ticketSearch: {
+      ...state.ticketSearch,
+      phase: 'browse',
+      joinableTicketIds,
+      activityId: context?.activityId ?? state.ticketSearch.activityId,
+      activityKeyword:
+        context?.activityKeyword ?? state.ticketSearch.activityKeyword,
+      type: context?.type ?? state.ticketSearch.type,
+    },
+  };
+}
+
 export function mergeFindBuddyFacts(
   state: ConversationState,
   messages: ChatMessageDto[],
@@ -283,6 +454,13 @@ export function mergeFindBuddyFacts(
   const trimmed = input.trim();
   if (parseActivityPickerIndex(trimmed) || isActivityKeywordInput(trimmed)) {
     return state;
+  }
+
+  if (state.findBuddy.phase === 'collect_create_pindan') {
+    return {
+      ...state,
+      findBuddy: mergeActivityCreateSlots(state.findBuddy, input),
+    };
   }
 
   const ctx = parseConversationContext(messages, input);

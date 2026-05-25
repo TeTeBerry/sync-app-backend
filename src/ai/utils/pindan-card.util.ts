@@ -1,4 +1,5 @@
 import { PindanJoinCardDto } from '../dto/chat.dto';
+import { formatBudgetRangeLabel } from './find-buddy-activity-create.util';
 
 type PindanDoc = {
   legacyId?: number;
@@ -10,6 +11,8 @@ type PindanDoc = {
   location?: string;
   price?: number;
   originalPrice?: number;
+  budgetMin?: number;
+  budgetMax?: number;
   joined?: number;
   total?: number;
   activityId?: string;
@@ -18,11 +21,29 @@ type PindanDoc = {
   memberUserIds?: string[];
 };
 
+function budgetRangeFromDoc(pindan: PindanDoc): string | undefined {
+  if (
+    pindan.budgetMin == null &&
+    pindan.budgetMax == null &&
+    (pindan.price == null || pindan.price <= 0)
+  ) {
+    return undefined;
+  }
+  return formatBudgetRangeLabel({
+    phase: 'browse_pindan',
+    joinablePindanIds: [],
+    budgetMin: pindan.budgetMin,
+    budgetMax: pindan.budgetMax,
+    budget: pindan.price,
+  });
+}
+
 export function buildPindanCardFromDoc(
   pindan: PindanDoc,
   options: {
     userId?: string;
     activityLegacyId?: number;
+    budgetRangeLabel?: string;
   } = {},
 ): PindanJoinCardDto {
   const category =
@@ -42,6 +63,8 @@ export function buildPindanCardFromDoc(
   );
 
   const pricePerPerson = pindan.price ?? 0;
+  const budgetRangeLabel =
+    options.budgetRangeLabel ?? budgetRangeFromDoc(pindan);
 
   return {
     legacyId: pindan.legacyId ?? 0,
@@ -54,6 +77,9 @@ export function buildPindanCardFromDoc(
     location: pindan.location ?? '',
     price: pricePerPerson,
     pricePerPerson,
+    budgetMin: pindan.budgetMin,
+    budgetMax: pindan.budgetMax,
+    budgetRangeLabel,
     activityId: pindan.activityId,
     userJoined,
     isOwner,

@@ -1,4 +1,5 @@
 import type { FindBuddyState } from '../conversation/conversation-state.types';
+import { resolvePerPersonBudget } from './find-buddy-activity-create.util';
 
 /** 从套餐/房型描述推断拼单人数上限（如仅大床/双床 → 2 人） */
 export function inferPackageGroupSize(fb: FindBuddyState): number {
@@ -42,7 +43,11 @@ export function buildPindanPricePerPerson(
   if (fb.packagePrice && groupSize > 0) {
     return Math.round(fb.packagePrice / groupSize);
   }
-  if (fb.budget && fb.budget > 0) return fb.budget;
+  const resolved = resolvePerPersonBudget(fb, groupSize);
+  if (resolved.budgetMin != null && resolved.budgetMax != null) {
+    return Math.round((resolved.budgetMin + resolved.budgetMax) / 2);
+  }
+  if (resolved.budget && resolved.budget > 0) return resolved.budget;
   return 0;
 }
 

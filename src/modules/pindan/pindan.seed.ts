@@ -268,4 +268,26 @@ export const PINDAN_SEED: Array<{
     tags: ['夜间接送', '准时准点', '空调车'],
     rating: 4.6,
   },
+  {
+    legacyId: 14,
+    type: 'package',
+    activityLegacyId: 6,
+    activityId: 'vac-zhuhai',
+    title: 'VAC 珠海·希尔顿机酒套餐',
+    subtitle: 'Vision & Colour · 3天2晚联合拼',
+    image:
+      'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=80',
+    price: 1280,
+    originalPrice: 3200,
+    date: '04/18-19',
+    location: '珠海',
+    joined: 1,
+    total: 4,
+    tags: ['酒店+机票', '希尔顿', '3天2晚'],
+    rating: 4.8,
+    includes: [
+      { kind: 'hotel', title: '珠海希尔顿海景房', detail: '2晚·含早餐' },
+      { kind: 'transport', title: '往返机票拼', detail: '04/18 出发' },
+    ],
+  },
 ];

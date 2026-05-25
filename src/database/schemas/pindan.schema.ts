@@ -64,6 +64,14 @@ export class Pindan {
   @Prop({ default: 0 })
   originalPrice?: number;
 
+  /** 人均预算区间下限（元/人） */
+  @Prop()
+  budgetMin?: number;
+
+  /** 人均预算区间上限（元/人） */
+  @Prop()
+  budgetMax?: number;
+
   @Prop()
   date?: string;
 

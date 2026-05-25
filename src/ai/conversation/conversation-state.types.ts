@@ -3,12 +3,17 @@ import type { TicketDraftMeta } from '../parser/slot-meta.types';
 
 export const CONVERSATION_STATE_VERSION = 1;
 
-export type ConversationFlow = 'idle' | 'find_buddy' | 'ticket_listing';
+export type ConversationFlow =
+  | 'idle'
+  | 'find_buddy'
+  | 'ticket_listing'
+  | 'ticket_search';
 
 export type FindBuddyPhase =
   | 'pick_activity'
   | 'pick_package'
   | 'browse_pindan'
+  | 'collect_create_pindan'
   | 'confirm_create_pindan';
 
 /** 套餐海报上的可选套餐（如 VAC 3天2晚 / 4天3晚） */
@@ -20,7 +25,18 @@ export interface FindBuddyPackageOption {
   duration?: string;
 }
 
-export type TicketListingPhase = 'collect' | 'confirm';
+export type TicketListingPhase = 'collect' | 'confirm' | 'browse_matches';
+
+export type TicketSearchPhase = 'browse' | 'selected';
+
+export interface TicketSearchState {
+  phase: TicketSearchPhase;
+  /** 与搜索结果序号对应的 Mongo ticket _id 列表 */
+  joinableTicketIds: string[];
+  activityId?: string;
+  activityKeyword?: string;
+  type?: 'sell' | 'buy';
+}
 
 export interface FindBuddyState {
   phase: FindBuddyPhase;
@@ -37,8 +53,14 @@ export interface FindBuddyState {
   hotelName?: string;
   /** 目的地/酒店地址 */
   location?: string;
-  /** 人均预算（元/人） */
+  /** 人均预算；若 budgetScope=total 则为整单预算，展示/落库前按人数折算 */
   budget?: number;
+  /** 预算区间下限；含义由 budgetScope 决定 */
+  budgetMin?: number;
+  /** 预算区间上限；含义由 budgetScope 决定 */
+  budgetMax?: number;
+  /** total=整单预算（如 1000-1200）；per_person=人均（如 人均500） */
+  budgetScope?: 'total' | 'per_person';
   /** 套餐/订单总价（元） */
   packagePrice?: number;
   /** 交通/穿梭巴士说明（来自套餐图） */
@@ -54,6 +76,8 @@ export interface TicketListingState {
   phase: TicketListingPhase;
   draft: TicketDraft;
   draftMeta?: TicketDraftMeta;
+  /** 确认前搜到的反向挂单 _id，与回复序号对应 */
+  matchTicketIds?: string[];
 }
 
 /** 会话级结构化状态（持久化到 MongoDB） */
@@ -62,6 +86,9 @@ export interface ConversationState {
   flow: ConversationFlow;
   findBuddy?: FindBuddyState;
   ticketListing?: TicketListingState;
+  ticketSearch?: TicketSearchState;
+  /** 空闲态上传图片后，门票/找搭子 OCR 均有一定置信度时的消歧标记 */
+  pendingImageDisambiguation?: boolean;
 }
 
 export function createIdleState(): ConversationState {

@@ -13,6 +13,12 @@ import {
 } from '../utils/find-buddy-reply.util';
 import { buildPindanCardFromDoc } from '../utils/pindan-card.util';
 import {
+  formatBudgetRangeLabel,
+  inferActivityPackageGroupSize,
+  isActivityOnlyCreateContext,
+  resolvePerPersonBudget,
+} from '../utils/find-buddy-activity-create.util';
+import {
   buildPindanCardSubtitle,
   buildPindanPricePerPerson,
   buildPindanRemark,
@@ -48,7 +54,15 @@ function inferPindanType(fb: FindBuddyState): PindanType {
 function buildPindanTitle(fb: FindBuddyState, activityName: string): string {
   if (fb.packageName?.trim()) return fb.packageName.trim();
   if (fb.hotelName?.trim()) return `${fb.hotelName.trim()}拼房`;
+  if (isActivityOnlyCreateContext(fb)) return `${activityName}套餐拼单`;
   return `${activityName}拼单`;
+}
+
+function resolveGroupSize(fb: FindBuddyState): number {
+  if (isActivityOnlyCreateContext(fb)) {
+    return inferActivityPackageGroupSize(fb);
+  }
+  return inferPackageGroupSize(fb);
 }
 
 @Injectable()
@@ -108,8 +122,10 @@ export class FindBuddyPindanCreateService {
     userId?: string,
   ): CreatePindanInput {
     const activityName = activity.name ?? activity.code ?? '活动';
-    const groupSize = inferPackageGroupSize(fb);
+    const groupSize = resolveGroupSize(fb);
     const pricePerPerson = buildPindanPricePerPerson(fb, groupSize);
+    const perPersonBudget = resolvePerPersonBudget(fb, groupSize);
+    const activityOnly = isActivityOnlyCreateContext(fb);
 
     return {
       title: buildPindanTitle(fb, activityName),
@@ -121,6 +137,8 @@ export class FindBuddyPindanCreateService {
       leaderUserId: userId ?? 'anonymous',
       price: pricePerPerson,
       originalPrice: fb.packagePrice,
+      budgetMin: activityOnly ? perPersonBudget.budgetMin : undefined,
+      budgetMax: activityOnly ? perPersonBudget.budgetMax : undefined,
       date: formatActivityDate(fb.eventDate) ?? activity.date,
       location: fb.location ?? fb.city ?? activity.location,
       total: groupSize,
@@ -139,7 +157,7 @@ export class FindBuddyPindanCreateService {
     const fb = params.state.findBuddy!;
     const activity = await this.ensureActivity(fb, params.matchedActivity);
     const activityName = activity.name ?? activity.code ?? '活动';
-    const groupSize = inferPackageGroupSize(fb);
+    const groupSize = resolveGroupSize(fb);
 
     const created = await this.pindanService.create(
       this.buildCreateInput(
@@ -181,6 +199,9 @@ export class FindBuddyPindanCreateService {
     const pindanCard = buildPindanCardFromDoc(created, {
       userId: params.userId,
       activityLegacyId: activity.legacyId,
+      budgetRangeLabel: isActivityOnlyCreateContext(fb)
+        ? formatBudgetRangeLabel(fb, groupSize)
+        : undefined,
     });
 
     return {

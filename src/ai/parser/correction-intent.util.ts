@@ -12,6 +12,10 @@ const FIELD_CORRECTION_RES: Record<TicketDraftField, RegExp[]> = {
   eventDate: [/(?:演出日期|日期)\s*(?:是|为|改成|改为)/i],
   skuCode: [/票种\s*(?:是|为|改成|改为)/i, /^ga$|^vip$/i],
   quantity: [/数量\s*(?:是|为|改成|改为)/i, /(\d+)\s*张/i],
+  priceMax: [
+    /(?:价格|单价|售价|预算).*(?:改成|改为|修改为)/,
+    /\d+\s*(?:-|~|到|至)\s*\d+/,
+  ],
   price: [
     /(?:价格|单价|售价|预算)\s*(?:是|为|改成|改为)/i,
     /(?:价格|单价|售价|预算)\s*[:：]?\s*\d+/i,

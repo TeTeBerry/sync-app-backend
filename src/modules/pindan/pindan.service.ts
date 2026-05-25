@@ -19,6 +19,8 @@ export interface CreatePindanInput {
   image?: string;
   price?: number;
   originalPrice?: number;
+  budgetMin?: number;
+  budgetMax?: number;
   date?: string;
   location?: string;
   total?: number;
@@ -73,6 +75,11 @@ export class PindanService implements OnModuleInit {
 
   findByLegacyId(legacyId: number) {
     return this.pindanModel.findOne({ legacyId }).lean();
+  }
+
+  findByLegacyIds(legacyIds: number[]) {
+    if (legacyIds.length === 0) return Promise.resolve([]);
+    return this.pindanModel.find({ legacyId: { $in: legacyIds } }).lean();
   }
 
   findByLeaderUserId(userId: string) {
@@ -236,6 +243,8 @@ export class PindanService implements OnModuleInit {
       image: input.image,
       price: input.price ?? 0,
       originalPrice: input.originalPrice ?? 0,
+      budgetMin: input.budgetMin,
+      budgetMax: input.budgetMax,
       date: input.date,
       location: input.location,
       joined: 1,

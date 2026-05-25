@@ -10,6 +10,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { HomeModule } from './modules/home/home.module';
 import { AiModule } from './ai/ai.module';
+import { NotificationModule } from './modules/notification/notification.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { AiModule } from './ai/ai.module';
     ProfileModule,
     HomeModule,
     AiModule,
+    NotificationModule,
   ],
 })
 export class AppModule {}

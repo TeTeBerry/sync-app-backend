@@ -18,6 +18,7 @@ export type TicketDraftField = keyof Pick<
   | 'skuCode'
   | 'quantity'
   | 'price'
+  | 'priceMax'
   | 'contact'
 >;
 
@@ -30,5 +31,6 @@ export const TICKET_DRAFT_FIELDS: TicketDraftField[] = [
   'skuCode',
   'quantity',
   'price',
+  'priceMax',
   'contact',
 ];

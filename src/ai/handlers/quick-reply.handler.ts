@@ -60,7 +60,7 @@ export class QuickReplyHandler implements ReplyHandler {
     if (!text) return null;
 
     const nextState =
-      applyFlowSwitch({ version: 1, flow: 'idle' }, ctx.input) ?? ctx.state;
+      applyFlowSwitch(ctx.state, ctx.input) ?? ctx.state;
     return { text, nextState };
   }
 }

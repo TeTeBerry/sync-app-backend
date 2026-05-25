@@ -92,7 +92,7 @@ export function isFindBuddyThread(messages: ChatMessageDto[]): boolean {
   for (const message of messages) {
     if (message.role !== 'user') continue;
 
-    if (/我要出票|我有票要出|我要收票|收票|卖票/.test(message.content)) {
+    if (/我要出票|我有票要出|我要收票|^出票$|^收票$|卖票/.test(message.content)) {
       active = false;
       continue;
     }
@@ -112,7 +112,7 @@ export function isTicketListingThread(messages: ChatMessageDto[]): boolean {
   return messages.some(
     message =>
       message.role === 'user' &&
-      /我有票要出|我要出票|我要收票|收票|卖票/.test(message.content),
+      /我有票要出|我要出票|我要收票|^出票$|^收票$|卖票/.test(message.content),
   );
 }
 
