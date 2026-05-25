@@ -31,6 +31,7 @@ export class TicketController {
       contact: string;
       userId?: string;
       userName?: string;
+      displayEventName?: string;
     },
   ) {
     return this.ticketService.createListing(body);

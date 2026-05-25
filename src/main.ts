@@ -6,6 +6,7 @@ import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.enableShutdownHooks();
 
   // 跨域（支持流式、支持凭证、最稳定）
   app.enableCors({
@@ -38,8 +39,15 @@ async function bootstrap() {
     console.log(`✅ AI流式接口: POST http://localhost:${port}/api/ai/chat`);
     console.log(`📦 MongoDB: ${mongoUri.replace(/\/\/.*@/, '//***@')}`);
   } catch (error) {
-    console.error('❌ 服务启动失败:', (error as Error).message);
-    console.error('提示: 先运行 npm run infra:up 或 npm run dev:all 启动 MongoDB');
+    const message = (error as Error).message ?? String(error);
+    if (message.includes('EADDRINUSE')) {
+      console.error(`❌ 端口 ${port} 已被占用（可能有多个 start:dev 在跑）`);
+      console.error('请先执行: npm run stop:dev');
+      console.error('并确保只保留一个后端终端窗口');
+    } else {
+      console.error('❌ 服务启动失败:', message);
+      console.error('提示: 先运行 npm run infra:up 或 npm run dev:all 启动 MongoDB');
+    }
     process.exit(1);
   }
 }

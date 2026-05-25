@@ -9,6 +9,12 @@ export function initSseResponse(res: Response): void {
   res.flushHeaders?.();
 }
 
+function flushSse(res: Response): void {
+  const maybeFlush = (res as Response & { flush?: () => void }).flush;
+  maybeFlush?.();
+}
+
 export function writeSseEvent(res: Response, event: AiStreamEvent): void {
   res.write(`data: ${JSON.stringify(event)}\n\n`);
+  flushSse(res);
 }

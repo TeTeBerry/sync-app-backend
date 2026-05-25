@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ActivityService } from '../activity/activity.service';
 import { PindanService } from '../pindan/pindan.service';
 import { TicketService } from '../ticket/ticket.service';
+import { mapTicketsToListingUi } from '../ticket/ticket-listing.mapper';
 
 @Injectable()
 export class HomeService {
@@ -37,35 +38,7 @@ export class HomeService {
     }));
 
     const hotPins = await this.buildHotPins(activities);
-    const ticketListings = tickets.map((ticket, index) => {
-      const slot = (ticket.seatOrSlot ?? {}) as {
-        type?: string;
-        quantity?: number;
-        price?: number;
-      };
-      const type = slot.type === 'buy' ? 'buy' : 'sell';
-      const price = Number(slot.price ?? (type === 'sell' ? 880 : 560));
-      const createdAt = (ticket as { createdAt?: string | Date }).createdAt;
-
-      return {
-        id: ticket._id,
-        type,
-        event: activityNameMap.get(ticket.activityId ?? '') ?? ticket.activityId,
-        seat: `${ticket.skuCode ?? 'GA'} · ${slot.quantity ?? 1}张`,
-        price,
-        originalPrice: type === 'sell' ? Math.round(price * 1.35) : 0,
-        seller: ticket.userId ?? '用户',
-        avatar: [
-          'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=60&q=80',
-          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&q=80',
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&q=80',
-        ][index % 3],
-        tag: type === 'sell' ? '在售' : '求购',
-        tone: type === 'sell' ? 'primary' : 'secondary',
-        time: createdAt ? this.formatRelativeTime(createdAt) : '',
-        verified: true,
-      };
-    });
+    const ticketListings = mapTicketsToListingUi(tickets, activityNameMap);
 
     return {
       heat: {
@@ -79,13 +52,6 @@ export class HomeService {
       hotPins,
       ticketListings,
     };
-  }
-
-  private formatRelativeTime(iso: string | Date): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const hours = Math.max(1, Math.floor(diff / (1000 * 60 * 60)));
-    if (hours < 24) return `${hours}小时前`;
-    return `${Math.floor(hours / 24)}天前`;
   }
 
   private async buildHotPins(

@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import type { ConversationState } from '../../ai/conversation/conversation-state.types';
 
 export type ChatDocument = Chat & Document;
 
@@ -10,6 +11,9 @@ export class Chat {
 
   @Prop()
   userId?: string;
+
+  @Prop({ type: Object, default: null })
+  conversationState?: ConversationState | null;
 
   @Prop([Object])
   history: Array<{ role: string; content: string }>;

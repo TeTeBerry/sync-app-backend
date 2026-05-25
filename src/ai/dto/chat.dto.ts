@@ -43,6 +43,18 @@ export interface TicketCreatedCardDto {
   eventDate?: string;
 }
 
+export interface PindanJoinCardDto {
+  legacyId: number;
+  activityLegacyId?: number;
+  category: 'package' | 'hotel' | 'transport';
+  title: string;
+  subtitle?: string;
+  date: string;
+  location: string;
+  price: number;
+  activityId?: string;
+}
+
 export type AiStreamEvent =
   | { type: 'delta'; content: string }
   | {
@@ -51,5 +63,6 @@ export type AiStreamEvent =
       sessionId?: string;
       ticketId?: string;
       ticketCard?: TicketCreatedCardDto;
+      pindanCard?: PindanJoinCardDto;
     }
   | { type: 'error'; message: string };

@@ -2,7 +2,6 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Chroma } from '@langchain/community/vectorstores/chroma';
 import { AlibabaTongyiEmbeddings } from '@langchain/community/embeddings/alibaba_tongyi';
-import { ChromaClient } from 'chromadb';
 import { KNOWLEDGE_DOCUMENTS } from './knowledge.seed';
 
 @Injectable()
@@ -56,16 +55,16 @@ export class ChromaService implements OnModuleInit {
       modelName: 'text-embedding-v2',
     });
 
-    const chromaUrl = this.config.get<string>('chroma.url');
-    const chromaPath = this.config.get<string>('chroma.path');
+    const chromaUrl = this.config.get<string>('chroma.url')?.trim();
     const collectionName = this.config.get<string>('chroma.collection');
 
-    const args = chromaUrl
-      ? { url: chromaUrl, collectionName }
-      : {
-          index: new ChromaClient({ path: chromaPath }),
-          collectionName,
-        };
+    if (!chromaUrl) {
+      throw new Error(
+        'CHROMA_URL not set (optional — run npm run infra:chroma and set CHROMA_URL=http://localhost:8000)',
+      );
+    }
+
+    const args = { url: chromaUrl, collectionName };
 
     this.vectorStore = await Chroma.fromExistingCollection(embeddings, args).catch(
       () => Chroma.fromDocuments([], embeddings, args),

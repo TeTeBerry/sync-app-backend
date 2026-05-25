@@ -97,7 +97,10 @@ export class PindanService implements OnModuleInit {
     type?: PindanType;
     keyword?: string;
   }) {
-    const query: Record<string, unknown> = { status: 'open' };
+    const query: Record<string, unknown> = {
+      status: 'open',
+      legacyId: { $exists: true },
+    };
 
     if (filters.activityId) {
       query.activityId = filters.activityId.toLowerCase();
@@ -127,6 +130,53 @@ export class PindanService implements OnModuleInit {
       activityId: resolved?.activityId,
       activityLegacyId: resolved?.activityLegacyId,
     });
+  }
+
+  /** 按活动 code/名称/标题 搜索拼单，避免仅 activityId 精确匹配漏结果 */
+  async searchForActivity(activityRef: string) {
+    const ref = activityRef.trim();
+    if (!ref) return this.search({});
+
+    const resolved = this.activityService.resolveActivityRef(ref);
+    const activity =
+      (resolved?.activityId
+        ? await this.activityService.findByCode(resolved.activityId)
+        : null) ?? (await this.activityService.matchActivity(ref));
+
+    const code = activity?.code ?? resolved?.activityId?.toLowerCase();
+    const legacyId = activity?.legacyId ?? resolved?.activityLegacyId;
+    const keywords = new Set<string>();
+
+    if (code) keywords.add(code);
+    if (ref.length >= 2) keywords.add(ref.toLowerCase());
+    for (const alias of activity?.alias ?? []) {
+      if (alias?.trim()) keywords.add(alias.trim());
+    }
+    if (activity?.name?.trim()) keywords.add(activity.name.trim());
+
+    const orConditions: Record<string, unknown>[] = [];
+    if (code) {
+      orConditions.push({ activityId: code });
+    }
+    if (legacyId != null) {
+      orConditions.push({ activityLegacyId: legacyId });
+    }
+    for (const kw of keywords) {
+      if (kw.length < 2) continue;
+      const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      orConditions.push({ title: { $regex: escaped, $options: 'i' } });
+      orConditions.push({ subtitle: { $regex: escaped, $options: 'i' } });
+    }
+
+    if (!orConditions.length) {
+      return this.search({ keyword: ref });
+    }
+
+    return this.pindanModel
+      .find({ status: 'open', legacyId: { $exists: true }, $or: orConditions })
+      .sort({ legacyId: 1 })
+      .limit(50)
+      .lean();
   }
 
   async create(input: CreatePindanInput) {

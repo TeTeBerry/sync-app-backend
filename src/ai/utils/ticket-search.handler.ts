@@ -1,6 +1,5 @@
 import { ActivityService } from '../../modules/activity/activity.service';
 import { TicketService } from '../../modules/ticket/ticket.service';
-import { createTicketTool } from '../functions/ticket.tool';
 import {
   isTicketSearchQuery,
   parseTicketSearchParams,
@@ -73,26 +72,13 @@ export async function buildTicketSearchResponse(
   const params = parseTicketSearchParams(input);
   const { code, name } = await resolveActivityCode(params, services.activityService);
 
-  const [searchTool] = createTicketTool(
-    services.ticketService,
-    services.activityService,
-  );
-
-  const raw = await searchTool.invoke({
+  let rows: TicketRow[] = await services.ticketService.searchListings({
     activityId: code,
     type: params.type,
   });
 
-  let rows: TicketRow[] = [];
-  if (typeof raw === 'string' && raw.startsWith('[')) {
-    rows = JSON.parse(raw) as TicketRow[];
-  }
-
   if (!rows.length && code) {
-    const fallbackRaw = await searchTool.invoke({ type: params.type });
-    if (typeof fallbackRaw === 'string' && fallbackRaw.startsWith('[')) {
-      rows = JSON.parse(fallbackRaw) as TicketRow[];
-    }
+    rows = await services.ticketService.searchListings({ type: params.type });
   }
 
   const activities = await services.activityService.findAll();

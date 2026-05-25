@@ -13,6 +13,7 @@ export interface TicketListingInput {
   price: number;
   eventDate: string;
   contact: string;
+  displayEventName?: string;
 }
 
 @Injectable()
@@ -107,6 +108,7 @@ export class TicketService implements OnModuleInit {
         price: input.price,
         eventDate: input.eventDate,
         contact: input.contact,
+        displayEventName: input.displayEventName,
       },
     });
 

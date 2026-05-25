@@ -1,79 +1,96 @@
 import { Injectable } from '@nestjs/common';
-import { AgentService } from './agent/agent.service';
 import { ActivityService } from '../modules/activity/activity.service';
 import { ChatService } from '../modules/chat/chat.service';
 import { TicketService } from '../modules/ticket/ticket.service';
-import { LlmService } from './llm/llm.service';
 import {
   AiStreamEvent,
   ChatRequestDto,
+  PindanJoinCardDto,
   TicketCreatedCardDto,
 } from './dto/chat.dto';
+import { DeterministicReplyService } from './orchestration/deterministic-reply.service';
+
+export const LLM_CONTEXT_TURNS = 6;
 
 @Injectable()
 export class AiService {
   constructor(
-    private readonly agent: AgentService,
     private readonly chatService: ChatService,
-    private readonly llm: LlmService,
     private readonly ticketService: TicketService,
     private readonly activityService: ActivityService,
+    private readonly agenticReplyService: DeterministicReplyService,
   ) {}
 
   async *streamChat(dto: ChatRequestDto): AsyncGenerator<AiStreamEvent> {
     const sessionId = this.chatService.resolveSessionId(dto.sessionId);
     const stored = await this.chatService.getSession(sessionId);
-    const messages = this.chatService.mergeChatHistory(
+    const fullMessages = this.chatService.mergeChatHistory(
       stored.history,
       dto.messages ?? [],
     );
 
-    if (!messages.length) {
+    if (!fullMessages.length) {
       yield { type: 'error', message: 'messages 不能为空' };
       return;
     }
 
-    const lastMessage = messages[messages.length - 1];
+    const lastMessage = fullMessages[fullMessages.length - 1];
     if (lastMessage.role !== 'user') {
       yield { type: 'error', message: '最后一条消息必须是用户消息' };
       return;
     }
 
-    if (!this.llm.enabled) {
-      yield {
-        type: 'error',
-        message: '未配置 QWEN_API_KEY / DASHSCOPE_API_KEY，无法调用 AI',
-      };
-      return;
-    }
-
+    const lastInput = lastMessage.content;
     let assistantReply = '';
     let ticketId: string | undefined;
+    let pindanCard: PindanJoinCardDto | undefined;
+    let conversationState = this.agenticReplyService.resolveConversationState(
+      stored.conversationState,
+      fullMessages.slice(0, -1),
+    );
 
     try {
-      for await (const token of this.agent.streamChat(messages, {
-        userId: dto.userId,
-        userName: dto.userName,
-        onTicketCreated: id => {
-          ticketId = id;
+      const reply = await this.agenticReplyService.resolve(
+        fullMessages,
+        lastInput,
+        {
+          userId: dto.userId,
+          userName: dto.userName,
+          onTicketCreated: id => {
+            ticketId = id;
+          },
         },
-      })) {
-        assistantReply += token;
-        yield { type: 'delta', content: token };
+        conversationState,
+      );
+
+      assistantReply = reply.text;
+      pindanCard = reply.pindanCard;
+      conversationState = reply.nextState;
+
+      for (const char of reply.text) {
+        yield { type: 'delta', content: char };
       }
 
       const messageId = await this.chatService.saveTurn({
         sessionId,
         userId: dto.userId,
-        messages,
+        messages: fullMessages,
         assistantReply,
+        conversationState,
       });
 
       const ticketCard = ticketId
         ? await this.buildTicketCard(ticketId)
         : undefined;
 
-      yield { type: 'done', messageId, sessionId, ticketId, ticketCard };
+      yield {
+        type: 'done',
+        messageId,
+        sessionId,
+        ticketId,
+        ticketCard,
+        pindanCard,
+      };
     } catch (error) {
       yield {
         type: 'error',
@@ -95,11 +112,19 @@ export class AiService {
     const slot = (ticket.seatOrSlot ?? {}) as Record<string, unknown>;
     const type = slot.type === 'buy' ? 'buy' : 'sell';
     const quantity = Number(slot.quantity ?? 1);
+    const displayEventName =
+      typeof slot.displayEventName === 'string'
+        ? slot.displayEventName
+        : undefined;
 
     return {
       id: ticketId,
       type,
-      event: activity?.name ?? ticket.activityId ?? '未知活动',
+      event:
+        displayEventName ??
+        activity?.name ??
+        ticket.activityId ??
+        '未知活动',
       seat: `${ticket.skuCode ?? 'GA'} · ${quantity}张`,
       price: Number(slot.price ?? 0),
       eventDate: slot.eventDate ? String(slot.eventDate) : undefined,

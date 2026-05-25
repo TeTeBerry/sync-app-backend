@@ -26,7 +26,7 @@ export function detectUserIntent(input: string): UserIntent {
   if (text === QUICK_REPLIES.find_buddy || /找搭子|找伙伴|匹配搭子|组局/.test(text)) {
     return 'find_buddy';
   }
-  if (text === QUICK_REPLIES.sell_ticket || /有票要出|我要出票|卖票|转票/.test(text)) {
+  if (text === QUICK_REPLIES.sell_ticket || /有票要出|卖票|转票/.test(text)) {
     return 'sell_ticket';
   }
   if (text === QUICK_REPLIES.buy_ticket || /收票|求购/.test(text)) {
@@ -42,6 +42,17 @@ export function detectUserIntent(input: string): UserIntent {
 export function isExactQuickReply(input: string): boolean {
   const text = input.trim();
   return Object.values(QUICK_REPLIES).some(reply => reply && reply === text);
+}
+
+export function isQuickReplyIntent(input: string): boolean {
+  if (isExactQuickReply(input)) return true;
+  const intent = detectUserIntent(input);
+  return (
+    intent === 'find_buddy' ||
+    intent === 'sell_ticket' ||
+    intent === 'buy_ticket' ||
+    intent === 'near_events'
+  );
 }
 
 export function buildIntentGuidance(intent: UserIntent): string {
