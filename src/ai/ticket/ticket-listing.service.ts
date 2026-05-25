@@ -9,6 +9,7 @@ import {
   formatTicketActivityDisplayName,
   type TicketDraft,
 } from '../utils/ticket-draft.parser';
+import type { TicketDraftMeta } from '../parser/slot-meta.types';
 import type { ReplyContext } from '../handlers/reply-handler.types';
 
 export interface TicketListingProcessResult {
@@ -42,36 +43,79 @@ export class TicketListingService {
     return formatTicketActivityDisplayName(draft, catalog?.name);
   }
 
-  buildKnownLines(draft: TicketDraft, activityName: string): string[] {
+  buildKnownLines(
+    draft: TicketDraft,
+    activityName: string,
+    draftMeta?: TicketDraftMeta,
+  ): string[] {
     const lines: string[] = [];
-    if (activityName) lines.push(`· 活动：${activityName}`);
-    if (draft.eventDate) lines.push(`· 演出日期：${draft.eventDate}`);
+    if (activityName && activityName !== '未知活动') {
+      lines.push(`· 活动：${activityName}`);
+    }
+    if (draft.eventDate) {
+      const auto =
+        draftMeta?.eventDate?.source === 'knowledge' ||
+        draftMeta?.eventDate?.source === 'catalog';
+      lines.push(
+        `· 演出日期：${draft.eventDate}${auto ? '（已从活动库自动匹配，可修改）' : ''}`,
+      );
+    }
     if (draft.skuCode) lines.push(`· 票种：${draft.skuCode}`);
     if (draft.quantity) lines.push(`· 数量：${draft.quantity} 张`);
     if (draft.price) {
       const label = draft.type === 'buy' ? '预算单价' : '单价';
       lines.push(`· ${label}：¥${draft.price}/张`);
     }
-    if (draft.contact) lines.push(`· 联系方式：${draft.contact}`);
+    if (draft.contact) {
+      const fromAccount = draftMeta?.contact?.source === 'account';
+      lines.push(
+        `· 联系方式：${draft.contact}${fromAccount ? '（已使用账号手机，可修改）' : ''}`,
+      );
+    }
     return lines;
   }
 
-  buildRecap(draft: TicketDraft, activityName: string): string {
+  buildRecap(
+    draft: TicketDraft,
+    activityName: string,
+    draftMeta?: TicketDraftMeta,
+  ): string {
     const typeLabel = draft.type === 'buy' ? '收票' : '出票';
     return [
       `请确认以下${typeLabel}信息：`,
       '',
-      ...this.buildKnownLines(draft, activityName),
+      ...this.buildKnownLines(draft, activityName, draftMeta),
       '',
-      '信息无误请回复「确认」，我将立即发布到「门票出/收」。',
+      '如需修改，可直接说「日期改成 2026-12-01」「单价800」「手机联系」等；确认请回复「确认」。',
     ].join('\n');
   }
 
-  buildCollectingReply(draft: TicketDraft, activityName: string): string {
+  buildCollectingReply(
+    draft: TicketDraft,
+    activityName: string,
+    draftMeta?: TicketDraftMeta,
+    fromImage = false,
+  ): string {
     const missing = missingTicketDraftFields(draft);
-    const known = this.buildKnownLines(draft, activityName);
+    const known = this.buildKnownLines(draft, activityName, draftMeta);
+    const visionHint =
+      draftMeta &&
+      Object.values(draftMeta).some(meta => meta?.source === 'vision')
+        ? '（部分字段已从图片识别，请核对）\n\n'
+        : fromImage
+          ? '（已收到图片，识别结果如下，请核对并补充）\n\n'
+          : '';
 
     if (!known.length) {
+      if (fromImage) {
+        return [
+          '已收到门票图片，但未能自动识别出足够信息。',
+          '',
+          draft.type === 'buy'
+            ? '请继续告诉我活动、日期、票种、数量、预算单价和联系方式。'
+            : '请继续告诉我活动、日期、票种、数量、单价和联系方式。',
+        ].join('\n');
+      }
       return draft.type === 'buy'
         ? '好的，请继续告诉我活动、日期、票种、数量、预算单价和联系方式。'
         : '好的，请继续告诉我活动、日期、票种、数量、单价和联系方式。';
@@ -80,6 +124,7 @@ export class TicketListingService {
     return [
       '已记录：',
       '',
+      visionHint,
       ...known,
       '',
       `还缺：${missing.join('、')}。请继续补充。`,
@@ -101,16 +146,23 @@ export class TicketListingService {
     draft: TicketDraft,
     context: TicketCreateContext = {},
   ): Promise<{ text: string; ticketId?: string }> {
-    const activityRef = draft.activityKeyword ?? draft.activityId!;
-    const activity =
-      (await this.activityService.matchActivity(activityRef)) ??
-      (draft.activityId
-        ? await this.activityService.findByCode(draft.activityId)
-        : null);
+    const activityRef = draft.activityKeyword ?? draft.activityId;
+    if (!activityRef?.trim()) {
+      return {
+        text: '挂单创建失败：缺少活动名称，请补充后再确认。',
+      };
+    }
+
+    const activity = await this.activityService.resolveOrCreateActivity({
+      activityRef,
+      activityId: draft.activityId,
+      activityKeyword: draft.activityKeyword,
+      eventDate: draft.eventDate,
+    });
 
     if (!activity?.code) {
       return {
-        text: `挂单创建失败：未找到活动「${activityRef}」，请提供更准确的活动名称。`,
+        text: `挂单创建失败：无法创建活动「${activityRef}」，请稍后重试。`,
       };
     }
 
@@ -144,7 +196,9 @@ export class TicketListingService {
   }
 
   async processListingFlow(ctx: ReplyContext): Promise<TicketListingProcessResult> {
-    const draft = ctx.state.ticketListing!.draft;
+    const listing = ctx.state.ticketListing!;
+    const draft = listing.draft;
+    const draftMeta = listing.draftMeta;
     const activityName = await this.resolveActivityName(draft);
 
     if (isTicketConfirmMessage(ctx.input)) {
@@ -166,13 +220,24 @@ export class TicketListingService {
 
     if (isTicketDraftComplete(draft)) {
       return {
-        text: this.buildRecap(draft, activityName),
-        nextState: ctx.state,
+        text: this.buildRecap(draft, activityName, draftMeta),
+        nextState: {
+          ...ctx.state,
+          ticketListing: {
+            ...listing,
+            phase: 'confirm',
+          },
+        },
       };
     }
 
     return {
-      text: this.buildCollectingReply(draft, activityName),
+      text: this.buildCollectingReply(
+        draft,
+        activityName,
+        draftMeta,
+        Boolean(ctx.image?.trim()),
+      ),
       nextState: ctx.state,
     };
   }

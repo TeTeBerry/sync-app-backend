@@ -1,6 +1,7 @@
 import {
   normalizeActivityInput,
   resolveActivityId,
+  shouldTreatNumberAsYearNotPrice,
   type TicketDraft,
 } from '../utils/ticket-draft.parser';
 import { isFieldCorrection } from './correction-intent.util';
@@ -20,11 +21,8 @@ const VALID_ACTIVITY_IDS = new Set([
   's2o',
   'ultra',
   'tomorrowland',
+  'vac-zhuhai',
 ]);
-
-function isLikelyYear(value: number): boolean {
-  return value >= 1900 && value <= 2100;
-}
 
 function normalizeDate(raw?: string | null): string | undefined {
   if (!raw?.trim()) return undefined;
@@ -70,7 +68,13 @@ export function sanitizeLlmTicketPatch(
     patch.quantity = Math.floor(llm.quantity);
   }
 
-  if (llm.price != null && llm.price > 0 && !isLikelyYear(llm.price)) {
+  if (
+    llm.price != null &&
+    llm.price > 0 &&
+    !shouldTreatNumberAsYearNotPrice(llm.price, llm.eventDate ?? '', {
+      eventDate: llm.eventDate ?? undefined,
+    })
+  ) {
     patch.price = llm.price;
   }
 
@@ -100,15 +104,24 @@ function buildCandidate(
   return { value, meta };
 }
 
+const SOURCE_PRIORITY: Record<SlotSource, number> = {
+  vision: 4,
+  rule: 3,
+  account: 3,
+  llm: 2,
+  knowledge: 2,
+  catalog: 2,
+  rag: 2,
+};
+
 function pickBestCandidate(candidates: SlotCandidate[]): SlotCandidate | null {
   if (!candidates.length) return null;
   return candidates.reduce((best, current) => {
     if (current.meta.confidence > best.meta.confidence) return current;
-    if (
-      current.meta.confidence === best.meta.confidence &&
-      current.meta.source === 'rule'
-    ) {
-      return current;
+    if (current.meta.confidence === best.meta.confidence) {
+      const currentPriority = SOURCE_PRIORITY[current.meta.source] ?? 0;
+      const bestPriority = SOURCE_PRIORITY[best.meta.source] ?? 0;
+      if (currentPriority > bestPriority) return current;
     }
     return best;
   });
@@ -130,18 +143,27 @@ function resolveField(params: {
   field: TicketDraftField;
   baseValue: TicketDraft[TicketDraftField] | undefined;
   baseMeta?: FieldMeta;
+  visionCandidate: SlotCandidate | null;
   ruleCandidate: SlotCandidate | null;
   llmCandidate: SlotCandidate | null;
   correctionFields: Set<TicketDraftField>;
 }): { value: TicketDraft[TicketDraftField] | undefined; meta?: FieldMeta } {
-  const { field, baseValue, baseMeta, ruleCandidate, llmCandidate, correctionFields } =
-    params;
+  const {
+    field,
+    baseValue,
+    baseMeta,
+    visionCandidate,
+    ruleCandidate,
+    llmCandidate,
+    correctionFields,
+  } = params;
   const isCorrection = isFieldCorrection(field, correctionFields);
 
   if (isCorrection) {
     const corrected =
       (ruleCandidate?.meta.corrected ? ruleCandidate : null) ??
       ruleCandidate ??
+      visionCandidate ??
       llmCandidate;
     if (corrected) {
       return {
@@ -156,8 +178,33 @@ function resolveField(params: {
   }
 
   const candidates: SlotCandidate[] = [];
+  if (visionCandidate) candidates.push(visionCandidate);
   if (ruleCandidate) candidates.push(ruleCandidate);
   if (llmCandidate) candidates.push(llmCandidate);
+
+  if (
+    visionCandidate &&
+    ruleCandidate &&
+    valuesEqual(field, visionCandidate.value, ruleCandidate.value)
+  ) {
+    const agreed: SlotCandidate = {
+      value: visionCandidate.value,
+      meta: boostAgreementMeta(ruleCandidate.meta, visionCandidate.meta)!,
+    };
+    if (baseValue == null || baseValue === '') {
+      return { value: agreed.value, meta: agreed.meta };
+    }
+    if (valuesEqual(field, baseValue, agreed.value)) {
+      return {
+        value: baseValue,
+        meta: pickStrongerMeta(baseMeta, agreed.meta),
+      };
+    }
+    if (!baseMeta || agreed.meta.confidence >= baseMeta.confidence) {
+      return { value: agreed.value, meta: agreed.meta };
+    }
+    return { value: baseValue, meta: baseMeta };
+  }
 
   if (
     ruleCandidate &&
@@ -208,7 +255,11 @@ function resolveField(params: {
   }
 
   if (baseMeta && best.meta.confidence === baseMeta.confidence) {
-    if (best.meta.source === 'rule' && baseMeta.source === 'llm') {
+    const bestPriority = SOURCE_PRIORITY[best.meta.source] ?? 0;
+    const basePriority = baseMeta.source
+      ? SOURCE_PRIORITY[baseMeta.source] ?? 0
+      : 0;
+    if (bestPriority > basePriority) {
       return { value: best.value, meta: best.meta };
     }
   }
@@ -219,6 +270,8 @@ function resolveField(params: {
 export interface MergeTicketSlotsParams {
   baseDraft: TicketDraft;
   baseMeta?: TicketDraftMeta;
+  visionPatch?: Partial<TicketDraft>;
+  visionMeta?: TicketDraftMeta;
   rulePatch: Partial<TicketDraft>;
   ruleMeta: TicketDraftMeta;
   llmPatch: Partial<TicketDraft>;
@@ -242,6 +295,11 @@ export function mergeTicketSlots(params: MergeTicketSlotsParams): MergeTicketSlo
       field,
       baseValue: params.baseDraft[field],
       baseMeta: params.baseMeta?.[field],
+      visionCandidate: buildCandidate(
+        field,
+        params.visionPatch?.[field],
+        params.visionMeta?.[field],
+      ),
       ruleCandidate: buildCandidate(field, params.rulePatch[field], params.ruleMeta[field]),
       llmCandidate: buildCandidate(field, params.llmPatch[field], params.llmMeta[field]),
       correctionFields: params.correctionFields,
@@ -267,11 +325,6 @@ export function mergeTicketSlots(params: MergeTicketSlotsParams): MergeTicketSlo
         confidence: 0.85,
       };
     }
-  }
-
-  if (draft.price != null && isLikelyYear(draft.price)) {
-    delete draft.price;
-    delete meta.price;
   }
 
   return { draft, meta };
@@ -328,6 +381,37 @@ export function mergeFindBuddyFromLlm(
 
   if (!next.city && llm.city?.trim()) {
     next.city = llm.city.trim().slice(0, 32);
+  }
+
+  if (!next.packageName && llm.packageName?.trim()) {
+    next.packageName = llm.packageName.trim().slice(0, 64);
+  }
+
+  if (!next.hotelName && llm.hotelName?.trim()) {
+    next.hotelName = llm.hotelName.trim().slice(0, 64);
+  }
+
+  if (!next.location && llm.location?.trim()) {
+    next.location = llm.location.trim().slice(0, 64);
+  }
+
+  if (!next.budget && llm.budget != null && llm.budget > 0 && llm.priceUnit === 'per_person') {
+    next.budget = llm.budget;
+  }
+
+  if (!next.packagePrice && llm.packagePrice != null && llm.packagePrice > 0) {
+    next.packagePrice = llm.packagePrice;
+  } else if (
+    !next.packagePrice &&
+    llm.budget != null &&
+    llm.budget > 0 &&
+    llm.priceUnit !== 'per_person'
+  ) {
+    next.packagePrice = llm.budget;
+  }
+
+  if (!next.transportNote && llm.transportNote?.trim()) {
+    next.transportNote = llm.transportNote.trim().slice(0, 120);
   }
 
   return next;

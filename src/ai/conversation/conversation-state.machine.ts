@@ -6,6 +6,13 @@ import {
 } from '../utils/conversation-context.parser';
 import { parseActivityPickerIndex } from '../utils/activity-reply.util';
 import {
+  applyFindBuddyActivityCorrection,
+  isFindBuddyRestartRequest,
+  parseExcludedActivityRefs,
+  parsePositiveActivityInput,
+} from '../utils/find-buddy-correction.util';
+import { parsePackageSelection } from '../utils/find-buddy-package.util';
+import {
   absorbUserTicketMessage,
   isTicketConfirmMessage,
   isTicketDraftComplete,
@@ -75,15 +82,37 @@ export function applyFlowSwitch(
   state: ConversationState,
   input: string,
 ): ConversationState | null {
+  if (isFindBuddyRestartRequest(input)) {
+    return startFindBuddyFlow('pick_activity');
+  }
+
+  const intent = detectUserIntent(input);
+
+  if (
+    state.flow === 'find_buddy' &&
+    state.findBuddy &&
+    intent === 'find_buddy'
+  ) {
+    return null;
+  }
+
+  if (
+    state.flow === 'ticket_listing' &&
+    state.ticketListing &&
+    ((intent === 'sell_ticket' &&
+      state.ticketListing.listingType === 'sell') ||
+      (intent === 'buy_ticket' && state.ticketListing.listingType === 'buy'))
+  ) {
+    return null;
+  }
+
   if (!isExactQuickReply(input)) {
-    const intent = detectUserIntent(input);
     if (intent === 'find_buddy') return startFindBuddyFlow('pick_activity');
     if (intent === 'sell_ticket') return startTicketListingFlow('sell');
     if (intent === 'buy_ticket') return startTicketListingFlow('buy');
     return null;
   }
 
-  const intent = detectUserIntent(input);
   if (intent === 'find_buddy') return startFindBuddyFlow('pick_activity');
   if (intent === 'sell_ticket') return startTicketListingFlow('sell');
   if (intent === 'buy_ticket') return startTicketListingFlow('buy');
@@ -128,13 +157,48 @@ export async function applyFindBuddyInput(
   input: string,
   activityService: ActivityService,
 ): Promise<ConversationState> {
-  if (!state.findBuddy || state.findBuddy.phase !== 'pick_activity') {
+  if (!state.findBuddy) return state;
+
+  const findBuddy = applyFindBuddyActivityCorrection(state.findBuddy, input);
+  const positiveActivity = parsePositiveActivityInput(input);
+
+  const packageOptions = findBuddy.packageOptions ?? [];
+  const isPackagePickPhase =
+    findBuddy.phase === 'pick_package' && packageOptions.length >= 2;
+  const isPackageSelectionInput =
+    isPackagePickPhase &&
+    parsePackageSelection(input, packageOptions) != null;
+
+  if (
+    isPackagePickPhase ||
+    findBuddy.phase === 'confirm_create_pindan' ||
+    isPackageSelectionInput
+  ) {
+    return { ...state, findBuddy };
+  }
+
+  if (
+    findBuddy.phase !== 'pick_activity' &&
+    !positiveActivity &&
+    !parseActivityPickerIndex(input)
+  ) {
+    if (findBuddy !== state.findBuddy) {
+      return { ...state, findBuddy };
+    }
     return state;
   }
 
   const ctx = parseConversationContext(messages, input);
-  let activityId = ctx.activityId;
-  let activityKeyword = ctx.activityKeyword;
+  const ignoreHistoricalActivity =
+    parseExcludedActivityRefs(input).length > 0 ||
+    isFindBuddyRestartRequest(input);
+
+  let activityId = findBuddy.activityId;
+  let activityKeyword = findBuddy.activityKeyword;
+  if (!ignoreHistoricalActivity) {
+    activityId = activityId ?? ctx.activityId;
+    activityKeyword = activityKeyword ?? ctx.activityKeyword;
+  }
 
   const pickerIndex = parseActivityPickerIndex(input);
   if (pickerIndex) {
@@ -144,11 +208,15 @@ export async function applyFindBuddyInput(
       activityId = picked.code;
       activityKeyword = picked.name;
     }
+  } else if (positiveActivity) {
+    const activity = await activityService.matchActivity(positiveActivity);
+    activityId = activity?.code ?? resolveActivityId(positiveActivity);
+    activityKeyword = positiveActivity;
   } else if (isActivityKeywordInput(input)) {
     const activity = await activityService.matchActivity(input.trim());
     activityId = activity?.code ?? resolveActivityId(input.trim());
     activityKeyword = input.trim();
-  } else {
+  } else if (!activityId) {
     const resolved = resolveActivityId(input.trim());
     if (resolved && input.trim().length <= 24) {
       activityId = resolved;
@@ -156,24 +224,37 @@ export async function applyFindBuddyInput(
     }
   }
 
-  if (!activityId && !activityKeyword) {
-    return state;
+  if (!activityId && activityKeyword) {
+    const activity = await activityService.matchActivity(activityKeyword);
+    activityId = activity?.code ?? resolveActivityId(activityKeyword);
   }
 
-  const findBuddy: FindBuddyState = {
-    ...state.findBuddy,
+  if (!activityId && !activityKeyword) {
+    return {
+      ...state,
+      findBuddy: {
+        ...findBuddy,
+        eventDate: ctx.eventDate ?? findBuddy.eventDate,
+        peopleCount: ctx.peopleCount ?? findBuddy.peopleCount,
+        city: ctx.city ?? findBuddy.city,
+      },
+    };
+  }
+
+  const nextFindBuddy: FindBuddyState = {
+    ...findBuddy,
     phase: 'browse_pindan',
     activityId,
     activityKeyword,
     joinablePindanIds: [],
-    eventDate: ctx.eventDate ?? state.findBuddy.eventDate,
-    peopleCount: ctx.peopleCount ?? state.findBuddy.peopleCount,
-    city: ctx.city ?? state.findBuddy.city,
+    eventDate: ctx.eventDate ?? findBuddy.eventDate,
+    peopleCount: ctx.peopleCount ?? findBuddy.peopleCount,
+    city: ctx.city ?? findBuddy.city,
   };
 
   return {
     ...state,
-    findBuddy,
+    findBuddy: nextFindBuddy,
   };
 }
 
@@ -212,6 +293,14 @@ export function mergeFindBuddyFacts(
       eventDate: ctx.eventDate ?? state.findBuddy.eventDate,
       peopleCount: ctx.peopleCount ?? state.findBuddy.peopleCount,
       city: ctx.city ?? state.findBuddy.city,
+      packageName: state.findBuddy.packageName,
+      hotelName: state.findBuddy.hotelName,
+      location: state.findBuddy.location,
+      budget: ctx.budget ?? state.findBuddy.budget,
+      packagePrice: state.findBuddy.packagePrice,
+      transportNote: state.findBuddy.transportNote,
+      packageOptions: state.findBuddy.packageOptions,
+      selectedPackageIndex: state.findBuddy.selectedPackageIndex,
     },
   };
 }

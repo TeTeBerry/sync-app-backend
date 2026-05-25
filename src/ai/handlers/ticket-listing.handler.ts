@@ -15,7 +15,7 @@ export class TicketListingHandler implements ReplyHandler {
 
   canHandle(ctx: ReplyContext): boolean {
     if (!isTicketListingFlow(ctx.state)) return false;
-    if (isExactQuickReply(ctx.input)) return false;
+    if (isExactQuickReply(ctx.input) && !ctx.image?.trim()) return false;
     if (isTicketSearchQuery(ctx.input)) return false;
     return true;
   }

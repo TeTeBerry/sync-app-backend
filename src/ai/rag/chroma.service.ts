@@ -1,85 +1,136 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Chroma } from '@langchain/community/vectorstores/chroma';
-import { AlibabaTongyiEmbeddings } from '@langchain/community/embeddings/alibaba_tongyi';
+import { ChromaClient, Collection } from 'chromadb';
+import { Document } from '@langchain/core/documents';
 import { KNOWLEDGE_DOCUMENTS } from './knowledge.seed';
 
 @Injectable()
 export class ChromaService implements OnModuleInit {
   private readonly logger = new Logger(ChromaService.name);
-  private vectorStore: Chroma | null = null;
-  private readonly enabled: boolean;
+  private client?: ChromaClient;
+  private collection?: Collection;
+  private enabled = false;
 
-  constructor(private readonly config: ConfigService) {
-    const apiKey = this.config.get<string>('llm.apiKey');
-    this.enabled = Boolean(apiKey && apiKey !== 'MISSING_API_KEY');
+  constructor(private readonly config: ConfigService) {}
+
+  async onModuleInit() {
+    await this.initClient();
+    await this.seedIfEmpty();
   }
 
-  async onModuleInit(): Promise<void> {
-    if (!this.enabled) {
-      this.logger.warn('LLM API key missing — RAG vector store disabled');
-      return;
-    }
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+
+  private async initClient(): Promise<void> {
+    const url = this.config.get<string>('chroma.url')?.trim();
+    const path = this.config.get<string>('chroma.path')?.trim() ?? './chroma_data';
+    const collectionName =
+      this.config.get<string>('chroma.collection') ?? 'sync_knowledge';
 
     try {
-      await this.initVectorStore();
-      await this.seedIfEmpty();
-    } catch (error) {
-      this.logger.warn(
-        `Chroma init failed (RAG disabled): ${(error as Error).message}`,
+      this.client = url
+        ? new ChromaClient({ path: url })
+        : new ChromaClient({ path });
+
+      this.collection = await this.client.getOrCreateCollection({
+        name: collectionName,
+        metadata: { source: 'sync-app-backend' },
+      });
+      this.enabled = true;
+      this.logger.log(
+        `Chroma connected (${url || path}), collection="${collectionName}"`,
       );
-      this.vectorStore = null;
+    } catch (error) {
+      this.enabled = false;
+      this.logger.warn(
+        `Chroma unavailable, RAG disabled: ${(error as Error).message}`,
+      );
     }
   }
 
-  isReady(): boolean {
-    return this.vectorStore !== null;
+  private docId(doc: Document, index: number): string {
+    const code = doc.metadata?.code;
+    const topic = doc.metadata?.topic ?? 'general';
+    return code ? `${topic}:${code}` : `${topic}:${index}`;
   }
 
-  async query(question: string, k = 3): Promise<string> {
-    if (!this.vectorStore || !question.trim()) {
-      return '';
-    }
+  async seedIfEmpty(): Promise<void> {
+    if (!this.collection) return;
 
-    const docs = await this.vectorStore.similaritySearch(question, k);
-    if (!docs.length) {
-      return '';
-    }
+    try {
+      const count = await this.collection.count();
+      if (count > 0) return;
 
-    return docs.map(doc => doc.pageContent).join('\n\n');
+      await this.upsertDocuments(KNOWLEDGE_DOCUMENTS);
+      this.logger.log(`Seeded ${KNOWLEDGE_DOCUMENTS.length} knowledge documents`);
+    } catch (error) {
+      this.logger.warn(`Chroma seed skipped: ${(error as Error).message}`);
+    }
   }
 
-  private async initVectorStore(): Promise<void> {
-    const embeddings = new AlibabaTongyiEmbeddings({
-      apiKey: this.config.get<string>('llm.apiKey'),
-      modelName: 'text-embedding-v2',
+  async upsertDocuments(docs: Document[]): Promise<void> {
+    if (!this.collection || !docs.length) return;
+
+    const ids = docs.map((doc, index) => this.docId(doc, index));
+    const documents = docs.map(doc => doc.pageContent);
+    const metadatas = docs.map(doc => ({
+      topic: String(doc.metadata?.topic ?? 'general'),
+      code: doc.metadata?.code ? String(doc.metadata.code) : '',
+    }));
+
+    await this.collection.upsert({ ids, documents, metadatas });
+  }
+
+  async upsertActivityKnowledge(input: {
+    code: string;
+    name: string;
+    alias?: string[];
+    date?: string;
+    location?: string;
+  }): Promise<void> {
+    const aliasText = input.alias?.length
+      ? `别名：${input.alias.join('、')}。`
+      : '';
+    const dateText = input.date ? `档期：${input.date}。` : '';
+    const locationText = input.location ? `地点：${input.location}。` : '';
+
+    const doc = new Document({
+      pageContent: `${input.name}（${input.code}）${dateText}${locationText}${aliasText}`.trim(),
+      metadata: { topic: 'activity', code: input.code },
     });
 
-    const chromaUrl = this.config.get<string>('chroma.url')?.trim();
-    const collectionName = this.config.get<string>('chroma.collection');
-
-    if (!chromaUrl) {
-      throw new Error(
-        'CHROMA_URL not set (optional — run npm run infra:chroma and set CHROMA_URL=http://localhost:8000)',
-      );
-    }
-
-    const args = { url: chromaUrl, collectionName };
-
-    this.vectorStore = await Chroma.fromExistingCollection(embeddings, args).catch(
-      () => Chroma.fromDocuments([], embeddings, args),
-    );
-
-    this.logger.log(`Chroma ready (collection=${collectionName})`);
+    await this.upsertDocuments([doc]);
   }
 
-  private async seedIfEmpty(): Promise<void> {
-    if (!this.vectorStore) return;
+  async query(text: string, n = 3): Promise<Document[]> {
+    if (!this.collection || !text.trim()) return [];
 
-    const existing = await this.vectorStore.similaritySearch('EDC', 1);
-    if (existing.length) return;
+    try {
+      const result = await this.collection.query({
+        queryTexts: [text.trim()],
+        nResults: n,
+      });
 
-    await this.vectorStore.addDocuments(KNOWLEDGE_DOCUMENTS);
-    this.logger.log(`Seeded ${KNOWLEDGE_DOCUMENTS.length} knowledge documents`);
+      const docs: Document[] = [];
+      const documents = result.documents?.[0] ?? [];
+      const metadatas = result.metadatas?.[0] ?? [];
+
+      for (let index = 0; index < documents.length; index += 1) {
+        const pageContent = documents[index];
+        if (!pageContent) continue;
+        docs.push(
+          new Document({
+            pageContent,
+            metadata: metadatas[index] ?? {},
+          }),
+        );
+      }
+
+      return docs;
+    } catch (error) {
+      this.logger.warn(`Chroma query failed: ${(error as Error).message}`);
+      return [];
+    }
   }
 }

@@ -3,6 +3,8 @@ import {
   detectCorrectionFields,
   shouldOverrideField,
 } from '../parser/correction-intent.util';
+import { resolveFestivalBrand } from '../rag/festival-brand.util';
+import { resolveUserContactInput } from './user-contact.util';
 
 export interface TicketDraft {
   activityId?: string;
@@ -164,6 +166,43 @@ function isLikelyYear(value: number): boolean {
   return value >= 1900 && value <= 2100;
 }
 
+/** 1900–2100 仅在日期/活动届次语境下视为年份，否则可当作票价（如 2000 元） */
+export function shouldTreatNumberAsYearNotPrice(
+  value: number,
+  text: string,
+  draft?: Partial<TicketDraft>,
+): boolean {
+  if (value < 1900 || value > 2100) return false;
+
+  const trimmed = text.trim();
+  const dateMatch = trimmed.match(/(\d{4})[.\-/年](\d{1,2})[.\-/月](\d{1,2})/);
+  if (dateMatch && Number(dateMatch[1]) === value) return true;
+  if (new RegExp(`\\b${value}\\b\\s*年`).test(trimmed)) return true;
+
+  if (
+    isActivityOnlyMessage(trimmed) &&
+    !hasExplicitPriceSignal(trimmed) &&
+    !/(?:手机|微信|电话|联系方式|联系)/.test(trimmed)
+  ) {
+    return true;
+  }
+
+  const collecting = Boolean(
+    draft?.eventDate || draft?.activityId || draft?.quantity || draft?.skuCode,
+  );
+  if (collecting && /[,，]/.test(trimmed) && /\d/.test(trimmed)) {
+    return false;
+  }
+  if (collecting && /(?:手机|微信|电话|元)/.test(trimmed)) {
+    return false;
+  }
+  if (collecting && /^\d{3,5}$/.test(trimmed)) {
+    return false;
+  }
+
+  return false;
+}
+
 /** 去掉「是/对/就是」等前缀，合并 ed c → edc */
 export function normalizeActivityInput(text: string): string {
   let trimmed = text.trim();
@@ -174,10 +213,10 @@ export function normalizeActivityInput(text: string): string {
     const yearMatch = trimmed.match(/\b(20\d{2})\b/);
     return yearMatch ? `EDC ${yearMatch[1]}` : 'EDC';
   }
-  if (/泰国|thailand|泰國|曼谷|pattaya|芭提雅/.test(trimmed) && /edc|电音节/.test(compact)) {
+  if (/泰国|thailand|泰國|曼谷|pattaya|芭提雅/.test(trimmed) && hasExplicitEdcMention(trimmed)) {
     return 'EDC Thailand';
   }
-  if (/中国|china|阳澄湖|苏州/.test(trimmed) && /edc|电音节/.test(compact)) {
+  if (/中国|china|阳澄湖|苏州/.test(trimmed) && hasExplicitEdcMention(trimmed)) {
     return 'EDC China';
   }
 
@@ -249,25 +288,27 @@ function parseStandaloneSku(text: string): string | undefined {
   return undefined;
 }
 
-function parseContact(text: string): string | undefined {
-  const phoneMatch = text.match(/1\d{10}/);
-  if (phoneMatch) return phoneMatch[0];
-
-  const wechatIdMatch = text.match(/微信\s*[:：]?\s*([a-zA-Z0-9][a-zA-Z0-9_-]{2,})/);
-  if (wechatIdMatch) return wechatIdMatch[1];
-
-  if (/微信联系|微信沟通|加微信|^微信$|vx联系|wx联系/i.test(text)) {
-    return '微信联系';
-  }
-  if (/电话联系|手机联系|电话沟通/i.test(text)) {
-    return '电话联系';
-  }
-
-  return undefined;
+function parseContact(text: string, accountPhone?: string): string | undefined {
+  return (
+    resolveUserContactInput(text, accountPhone) ??
+    undefined
+  );
 }
 
 function inferPrice(text: string, draft: TicketDraft): number | undefined {
-  let working = text
+  const comboPriceMatch = text.match(/^(\d{2,5})\s*[,，]/);
+  if (comboPriceMatch) {
+    const comboPrice = Number(comboPriceMatch[1]);
+    if (
+      comboPrice >= 50 &&
+      comboPrice <= 99999 &&
+      !shouldTreatNumberAsYearNotPrice(comboPrice, text, draft)
+    ) {
+      return comboPrice;
+    }
+  }
+
+  const working = text
     .replace(/(\d{4})[.\-/年](\d{1,2})[.\-/月](\d{1,2})/g, ' ')
     .replace(/1\d{10}/g, ' ')
     .replace(/(\d+)\s*张/g, ' ');
@@ -280,7 +321,7 @@ function inferPrice(text: string, draft: TicketDraft): number | undefined {
     const match = working.match(pattern);
     if (match) {
       const price = Number(match[1]);
-      if (!isLikelyYear(price)) return price;
+      if (!shouldTreatNumberAsYearNotPrice(price, text, draft)) return price;
     }
   }
 
@@ -289,7 +330,7 @@ function inferPrice(text: string, draft: TicketDraft): number | undefined {
   let match: RegExpExecArray | null;
   while ((match = re.exec(working)) !== null) {
     const value = Number(match[1]);
-    if (value >= 50 && value <= 99999 && !isLikelyYear(value)) {
+    if (value >= 50 && value <= 99999 && !shouldTreatNumberAsYearNotPrice(value, text, draft)) {
       nums.push(value);
     }
   }
@@ -341,8 +382,10 @@ function isActivityOnlyMessage(text: string): boolean {
   return normalized.length <= 32;
 }
 
-function clearMistakenYearPrice(draft: TicketDraft): void {
-  if (draft.price != null && isLikelyYear(draft.price)) {
+function clearMistakenYearPrice(draft: TicketDraft, text?: string): void {
+  if (draft.price == null) return;
+  if (text && !shouldTreatNumberAsYearNotPrice(draft.price, text, draft)) return;
+  if (isLikelyYear(draft.price)) {
     delete draft.price;
   }
 }
@@ -357,21 +400,72 @@ function normalizeSku(raw: string): string {
   return text.replace(/\s+/g, '').slice(0, 20);
 }
 
-/** 区分 EDC 泰国 vs EDC China 等 */
+/** 图片/文本中是否明确出现 EDC（不含泛称「电音节」） */
+export function hasExplicitEdcMention(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  const compact = compactText(text);
+  if (!lower && !compact) return false;
+  if (compact === 'ed' || compact === 'edc' || compact.startsWith('edc')) {
+    return true;
+  }
+  if (/\bed\s*c\b/i.test(text)) return true;
+  if (/edcchina|edcthailand|edc中国|edc泰国/.test(compact)) return true;
+  return false;
+}
+
+function resolveEdcActivityId(text: string): string | undefined {
+  if (!hasExplicitEdcMention(text)) return undefined;
+
+  const lower = text.toLowerCase().trim();
+  const compact = compactText(text);
+
+  if (
+    /泰国|thailand|泰國|曼谷|pattaya|芭提雅/.test(lower) ||
+    /edcthailand|edc泰国/.test(compact)
+  ) {
+    return 'edc-thailand';
+  }
+
+  if (
+    /中国|china|阳澄湖|苏州/.test(lower) ||
+    /edcchina|edc中国/.test(compact)
+  ) {
+    return 'edc';
+  }
+
+  if (compact === 'ed' || compact === 'edc') {
+    return 'edc';
+  }
+
+  return undefined;
+}
+
+/** 区分 VAC 珠海 vs 其他电音节 */
+export function isVacActivityContext(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  const compact = compactText(text);
+  return (
+    /\bvac\b|vision|colour|color|soundscape/.test(compact + lower) ||
+    (/珠海|zhuhai|希尔顿|hilton/.test(lower) &&
+      /vac|vision|colour|电音节|音乐节|soundscape/.test(compact + lower))
+  );
+}
+
+/** 将活动关键词映射到平台 activity code；无明确匹配时返回 undefined */
 export function resolveActivityId(text: string): string | undefined {
   const lower = text.toLowerCase().trim();
   const compact = compactText(text);
   if (!lower && !compact) return undefined;
 
-  if (/edc|电音节/.test(compact) || compact === 'ed') {
-    if (/泰国|thailand|泰國|曼谷|pattaya|芭提雅/.test(lower)) {
-      return 'edc-thailand';
-    }
-    if (/中国|china|阳澄湖|苏州/.test(lower)) {
-      return 'edc';
-    }
-    return 'edc';
+  if (isVacActivityContext(text)) {
+    return 'vac-zhuhai';
   }
+
+  const edcId = resolveEdcActivityId(text);
+  if (edcId) return edcId;
+
+  const festival = resolveFestivalBrand(text);
+  if (festival) return festival.brand.code;
 
   if (/s2o|泼水/.test(compact)) return 's2o';
   if (/ultra/.test(compact)) return 'ultra';
@@ -380,7 +474,11 @@ export function resolveActivityId(text: string): string | undefined {
   return undefined;
 }
 
-export function absorbUserTicketMessage(text: string, draft: TicketDraft): void {
+export function absorbUserTicketMessage(
+  text: string,
+  draft: TicketDraft,
+  accountPhone?: string,
+): void {
   const trimmed = text.trim();
   if (!trimmed) return;
   const correctionFields = detectCorrectionFields(trimmed);
@@ -449,7 +547,7 @@ export function absorbUserTicketMessage(text: string, draft: TicketDraft): void 
   );
   if (explicitPriceMatch) {
     const price = Number(explicitPriceMatch[1]);
-    if (!isLikelyYear(price)) {
+    if (!shouldTreatNumberAsYearNotPrice(price, trimmed, draft)) {
       draft.price = price;
     }
   } else if (shouldOverrideField('price', correctionFields) || !draft.price) {
@@ -460,13 +558,13 @@ export function absorbUserTicketMessage(text: string, draft: TicketDraft): void 
   }
 
   if (shouldOverrideField('contact', correctionFields) || !draft.contact) {
-    const contact = parseContact(trimmed);
+    const contact = parseContact(trimmed, accountPhone);
     if (contact) {
       draft.contact = contact;
     }
   }
 
-  clearMistakenYearPrice(draft);
+  clearMistakenYearPrice(draft, trimmed);
 }
 
 function fillMissingFromRecap(
@@ -508,9 +606,14 @@ export function parseTicketDraft(messages: ChatMessageDto[]): TicketDraft {
   return draft;
 }
 
+/** 活动名称：catalog id 或用户/图片识别的 keyword 均视为已填写 */
+export function hasTicketActivityName(draft: Partial<TicketDraft>): boolean {
+  return Boolean(draft.activityId?.trim() || draft.activityKeyword?.trim());
+}
+
 export function isTicketDraftComplete(draft: TicketDraft): boolean {
   return Boolean(
-    draft.activityId &&
+    hasTicketActivityName(draft) &&
       draft.eventDate &&
       draft.skuCode &&
       draft.quantity &&
@@ -524,7 +627,7 @@ export function isTicketDraftComplete(draft: TicketDraft): boolean {
 
 export function missingTicketDraftFields(draft: TicketDraft): string[] {
   const missing: string[] = [];
-  if (!draft.activityId) missing.push('活动名称');
+  if (!hasTicketActivityName(draft)) missing.push('活动名称');
   if (!draft.eventDate) missing.push('演出日期');
   if (!draft.skuCode) missing.push('票种');
   if (!draft.quantity) missing.push('数量');

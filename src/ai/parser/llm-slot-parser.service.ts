@@ -61,7 +61,11 @@ export class LlmSlotParserService {
       '你是找搭子流程的信息抽取器。',
       '只输出 JSON，不要其他文字。',
       '用户未说的字段为 null，禁止编造。',
-      'activityId 只能是 edc / edc-thailand / s2o / ultra / tomorrowland 或 null。',
+      'activityId 只能是 edc / edc-thailand / s2o / ultra / tomorrowland / vac-zhuhai 或 null；默认 null，禁止因「电音节」等泛称推断 edc。',
+      '仅当用户或图片明确出现 EDC / EDC China / EDC Thailand 时才可填 edc / edc-thailand。',
+      'eventDate 格式 YYYY-MM-DD；peopleCount 为人数；city 为出发城市。',
+      'packageName/hotelName/location/packagePrice/transportNote 仅在明确出现时可填，否则 null。',
+      'budget 仅当明确人均时填写；酒店套餐标价填 packagePrice + priceUnit=total。',
       `平台活动：${catalog}`,
     ].join('\n');
 

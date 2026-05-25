@@ -23,7 +23,7 @@ export function detectUserIntent(input: string): UserIntent {
   if (isTicketSearchQuery(text)) {
     return 'search_ticket';
   }
-  if (text === QUICK_REPLIES.find_buddy || /找搭子|找伙伴|匹配搭子|组局/.test(text)) {
+  if (text === QUICK_REPLIES.find_buddy || /找.*搭子|找伙伴|匹配搭子|组局/.test(text)) {
     return 'find_buddy';
   }
   if (text === QUICK_REPLIES.sell_ticket || /有票要出|卖票|转票/.test(text)) {

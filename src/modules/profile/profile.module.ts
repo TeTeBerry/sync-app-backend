@@ -4,6 +4,7 @@ import {
   PindanJoin,
   PindanJoinSchema,
 } from '../../database/schemas/pindan-join.schema';
+import { ActivityModule } from '../activity/activity.module';
 import { PindanModule } from '../pindan/pindan.module';
 import { TicketModule } from '../ticket/ticket.module';
 import { ProfileController } from './profile.controller';
@@ -11,6 +12,7 @@ import { ProfileService } from './profile.service';
 
 @Module({
   imports: [
+    ActivityModule,
     forwardRef(() => PindanModule),
     TicketModule,
     MongooseModule.forFeature([

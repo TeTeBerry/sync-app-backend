@@ -2,7 +2,7 @@ import { ActivityService } from '../../modules/activity/activity.service';
 import { PindanService } from '../../modules/pindan/pindan.service';
 import { ProfileService } from '../../modules/profile/profile.service';
 import { detectUserIntent } from './user-intent';
-import { buildActivityPickerPrompt, formatActivityPickerLines } from './activity-reply.util';
+import { buildActivityPickerPrompt, formatActivityPickerLines, ACTIVITY_PICKER_PROMPT } from './activity-reply.util';
 
 export async function buildQuickReplyResponse(
   input: string,
@@ -17,15 +17,25 @@ export async function buildQuickReplyResponse(
   const { activityService } = services;
 
   switch (intent) {
-    case 'find_buddy':
-      return buildActivityPickerPrompt(
-        activityService,
+    case 'find_buddy': {
+      const activities = await activityService.findAll();
+      return [
         '好的，我来帮你找同行搭子 🎵',
-      );
+        '',
+        '你可以直接告诉我活动、日期、人数和出发城市，也可以上传套餐/酒店订单截图，我会自动识别并匹配拼单。',
+        '',
+        ACTIVITY_PICKER_PROMPT,
+        formatActivityPickerLines(activities),
+        '',
+        '直接回复活动名（如 EDC、S2O），或上传订单截图让我帮你填信息。',
+      ].join('\n');
+    }
 
     case 'sell_ticket':
       return [
         '好的，我来帮你出票 🎟️',
+        '',
+        '你可以直接回复门票信息，也可以上传门票/购票截图，我会自动识别活动、日期、票种等字段。',
         '',
         '请依次告诉我：',
         '1. 活动名称（如 EDC China、EDC 泰国）',
@@ -33,7 +43,7 @@ export async function buildQuickReplyResponse(
         '3. 票种（单日票 / 双日票 / VIP 等）',
         '4. 出售数量',
         '5. 单价（元/张）',
-        '6. 联系方式（微信或手机号）',
+        '6. 联系方式（微信或手机号；回复「手机」可用账号手机）',
         '',
         '信息齐全后我会复述请你确认，确认后立即发布到「门票出/收」。',
       ].join('\n');
@@ -42,13 +52,15 @@ export async function buildQuickReplyResponse(
       return [
         '好的，我来帮你发布收票/求购 🎫',
         '',
+        '你可以直接回复求购信息，也可以上传参考截图，我会尽量识别活动、日期、票种等字段。',
+        '',
         '请依次告诉我：',
         '1. 活动名称（如 EDC China、EDC 泰国）',
         '2. 演出日期',
         '3. 票种（单日票 / 双日票 / VIP 等）',
         '4. 求购数量',
         '5. 预算单价（元/张）',
-        '6. 联系方式（微信或手机号）',
+        '6. 联系方式（微信或手机号；回复「手机」可用账号手机）',
         '',
         '信息齐全后我会复述请你确认，确认后立即发布到「门票出/收」。',
       ].join('\n');

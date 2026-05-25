@@ -98,6 +98,22 @@ export function buildLlmFieldMeta(
   return meta;
 }
 
+export function buildVisionFieldMeta(
+  patch: Partial<TicketDraft>,
+): TicketDraftMeta {
+  const meta: TicketDraftMeta = {};
+
+  for (const field of TICKET_DRAFT_FIELDS) {
+    if (patch[field] == null) continue;
+    meta[field] = {
+      source: 'vision',
+      confidence: 0.97,
+    };
+  }
+
+  return meta;
+}
+
 export function pickStrongerMeta(a?: FieldMeta, b?: FieldMeta): FieldMeta | undefined {
   if (!a) return b;
   if (!b) return a;

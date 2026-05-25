@@ -32,6 +32,9 @@ export class Pindan {
   @Prop()
   subtitle?: string;
 
+  @Prop()
+  remark?: string;
+
   @Prop({ required: true, default: 'hotel' })
   type: PindanType;
 

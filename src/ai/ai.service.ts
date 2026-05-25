@@ -9,6 +9,7 @@ import {
   TicketCreatedCardDto,
 } from './dto/chat.dto';
 import { DeterministicReplyService } from './orchestration/deterministic-reply.service';
+import { decodeBase64Payload, ImageTooLargeError } from './utils/image-base64.util';
 
 export const LLM_CONTEXT_TURNS = 6;
 
@@ -40,7 +41,29 @@ export class AiService {
       return;
     }
 
-    const lastInput = lastMessage.content;
+    const lastInput = lastMessage.content ?? '';
+    if (!lastInput.trim() && !dto.image?.trim()) {
+      yield { type: 'error', message: 'messages 不能为空' };
+      return;
+    }
+
+    if (dto.image?.trim()) {
+      try {
+        decodeBase64Payload(dto.image);
+      } catch (error) {
+        yield {
+          type: 'error',
+          message:
+            error instanceof ImageTooLargeError
+              ? error.message
+              : error instanceof Error
+                ? error.message
+                : '图片格式无效',
+        };
+        return;
+      }
+    }
+
     let assistantReply = '';
     let ticketId: string | undefined;
     let pindanCard: PindanJoinCardDto | undefined;
@@ -56,6 +79,8 @@ export class AiService {
         {
           userId: dto.userId,
           userName: dto.userName,
+          userPhone: dto.userPhone,
+          image: dto.image,
           onTicketCreated: id => {
             ticketId = id;
           },
@@ -71,17 +96,19 @@ export class AiService {
         yield { type: 'delta', content: char };
       }
 
+      const ticketCard = ticketId
+        ? await this.buildTicketCard(ticketId)
+        : undefined;
+
       const messageId = await this.chatService.saveTurn({
         sessionId,
         userId: dto.userId,
         messages: fullMessages,
         assistantReply,
         conversationState,
+        pindanCard,
+        ticketCard,
       });
-
-      const ticketCard = ticketId
-        ? await this.buildTicketCard(ticketId)
-        : undefined;
 
       yield {
         type: 'done',

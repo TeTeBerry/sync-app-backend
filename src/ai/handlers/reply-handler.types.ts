@@ -14,6 +14,8 @@ export interface ReplyContext {
   state: ConversationState;
   userId?: string;
   userName?: string;
+  userPhone?: string;
+  image?: string;
   onTicketCreated?: (ticketId: string) => void;
 }
 

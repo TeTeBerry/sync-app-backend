@@ -2,11 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { ChatMessageDto } from '../dto/chat.dto';
 import type { ConversationState } from '../conversation';
 import { ConversationStateService } from './conversation-state.service';
-import { QuickReplyHandler } from '../handlers/quick-reply.handler';
-import { PindanJoinHandler } from '../handlers/pindan-join.handler';
-import { TicketListingHandler } from '../handlers/ticket-listing.handler';
-import { StructuredReplyHandler } from '../handlers/structured-reply.handler';
-import { TicketSearchHandler } from '../handlers/ticket-search.handler';
+import {
+  PackagePickHandler,
+  PindanCreateHandler,
+  PindanJoinHandler,
+  QuickReplyHandler,
+  StructuredReplyHandler,
+  TicketListingHandler,
+  TicketSearchHandler,
+} from '../handlers';
 import {
   type DeterministicReplyResult,
   type ReplyContext,
@@ -16,6 +20,8 @@ import {
 export interface DeterministicReplyContext {
   userId?: string;
   userName?: string;
+  userPhone?: string;
+  image?: string;
   onTicketCreated?: (ticketId: string) => void;
 }
 
@@ -27,6 +33,8 @@ export class DeterministicReplyService {
     private readonly conversationStateService: ConversationStateService,
     quickReplyHandler: QuickReplyHandler,
     pindanJoinHandler: PindanJoinHandler,
+    packagePickHandler: PackagePickHandler,
+    pindanCreateHandler: PindanCreateHandler,
     ticketListingHandler: TicketListingHandler,
     structuredReplyHandler: StructuredReplyHandler,
     ticketSearchHandler: TicketSearchHandler,
@@ -34,6 +42,8 @@ export class DeterministicReplyService {
     this.handlers = [
       quickReplyHandler,
       pindanJoinHandler,
+      packagePickHandler,
+      pindanCreateHandler,
       ticketListingHandler,
       structuredReplyHandler,
       ticketSearchHandler,
@@ -58,6 +68,8 @@ export class DeterministicReplyService {
       conversationState,
       messages,
       input,
+      context.userPhone,
+      context.image,
     );
 
     const replyContext: ReplyContext = {
@@ -66,6 +78,8 @@ export class DeterministicReplyService {
       state,
       userId: context.userId,
       userName: context.userName,
+      userPhone: context.userPhone,
+      image: context.image,
       onTicketCreated: context.onTicketCreated,
     };
 

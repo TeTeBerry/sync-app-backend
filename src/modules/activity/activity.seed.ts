@@ -64,4 +64,26 @@ export const ACTIVITY_SEED = [
     attendees: 180,
     pinCount: 15,
   },
+  {
+    legacyId: 6,
+    code: 'vac-zhuhai',
+    name: 'VAC 珠海电音节',
+    alias: [
+      'vac',
+      'vac珠海',
+      '珠海vac',
+      'vision & colour',
+      'vision and colour',
+      'vision colour',
+      '珠海电音节',
+      '希尔顿vac',
+    ],
+    date: '04/18-19',
+    location: '珠海',
+    image:
+      'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&q=80',
+    hot: false,
+    attendees: 96,
+    pinCount: 6,
+  },
 ];

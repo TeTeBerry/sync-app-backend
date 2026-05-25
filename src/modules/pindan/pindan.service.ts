@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
@@ -24,6 +24,18 @@ export interface CreatePindanInput {
   total?: number;
   tags?: string[];
   remark?: string;
+}
+
+export interface UpdatePindanInput {
+  title?: string;
+  subtitle?: string;
+  remark?: string;
+  price?: number;
+  originalPrice?: number;
+  date?: string;
+  location?: string;
+  total?: number;
+  leaderUserId?: string;
 }
 
 @Injectable()
@@ -61,6 +73,13 @@ export class PindanService implements OnModuleInit {
 
   findByLegacyId(legacyId: number) {
     return this.pindanModel.findOne({ legacyId }).lean();
+  }
+
+  findByLeaderUserId(userId: string) {
+    return this.pindanModel
+      .find({ leaderUserId: userId, status: 'open', legacyId: { $exists: true } })
+      .sort({ createdAt: -1, legacyId: -1 })
+      .lean();
   }
 
   async addMember(legacyId: number, userId: string) {
@@ -115,7 +134,19 @@ export class PindanService implements OnModuleInit {
       query.title = { $regex: filters.keyword, $options: 'i' };
     }
 
-    return this.pindanModel.find(query).sort({ legacyId: 1 }).limit(50).lean();
+    return this.pindanModel
+      .find(query)
+      .sort({ createdAt: -1, legacyId: -1 })
+      .limit(50)
+      .lean();
+  }
+
+  async findRecentOpen(limit = 4) {
+    return this.pindanModel
+      .find({ status: 'open', legacyId: { $exists: true } })
+      .sort({ createdAt: -1, legacyId: -1 })
+      .limit(limit)
+      .lean();
   }
 
   async searchFromQuery(params: {
@@ -174,7 +205,7 @@ export class PindanService implements OnModuleInit {
 
     return this.pindanModel
       .find({ status: 'open', legacyId: { $exists: true }, $or: orConditions })
-      .sort({ legacyId: 1 })
+      .sort({ createdAt: -1, legacyId: -1 })
       .limit(50)
       .lean();
   }
@@ -182,7 +213,7 @@ export class PindanService implements OnModuleInit {
   async create(input: CreatePindanInput) {
     const legacyId = await this.nextLegacyId();
     let activityId = input.activityId;
-    let activityLegacyId = input.activityLegacyId;
+    const activityLegacyId = input.activityLegacyId;
 
     if (activityLegacyId != null) {
       const activity = await this.activityService.findByLegacyId(
@@ -194,12 +225,13 @@ export class PindanService implements OnModuleInit {
     const doc = await this.pindanModel.create({
       legacyId,
       title: input.title,
-      subtitle: input.subtitle ?? input.remark,
+      subtitle: input.subtitle,
+      remark: input.remark,
       type: input.type,
       activityId,
       activityLegacyId,
       leaderUserId: input.leaderUserId ?? 'anonymous',
-      memberUserIds: [],
+      memberUserIds: input.leaderUserId ? [input.leaderUserId] : [],
       status: 'open',
       image: input.image,
       price: input.price ?? 0,
@@ -214,6 +246,55 @@ export class PindanService implements OnModuleInit {
     });
 
     return doc.toObject();
+  }
+
+  async update(
+    legacyId: number,
+    input: UpdatePindanInput,
+    leaderUserId?: string,
+  ) {
+    const pindan = await this.findByLegacyId(legacyId);
+    if (!pindan) {
+      throw new NotFoundException('拼单不存在');
+    }
+    if (leaderUserId && pindan.leaderUserId && pindan.leaderUserId !== leaderUserId) {
+      throw new BadRequestException('仅发起人可修改拼单');
+    }
+
+    const patch: Record<string, unknown> = {};
+    if (input.title?.trim()) patch.title = input.title.trim();
+    if (input.subtitle !== undefined) patch.subtitle = input.subtitle;
+    if (input.remark !== undefined) patch.remark = input.remark;
+    if (input.price != null) patch.price = input.price;
+    if (input.originalPrice != null) patch.originalPrice = input.originalPrice;
+    if (input.date !== undefined) patch.date = input.date;
+    if (input.location !== undefined) patch.location = input.location;
+    if (input.total != null && input.total >= 2) patch.total = input.total;
+
+    const updated = await this.pindanModel
+      .findOneAndUpdate({ legacyId }, { $set: patch }, { new: true })
+      .lean();
+    return updated;
+  }
+
+  async remove(legacyId: number, leaderUserId?: string) {
+    const pindan = await this.findByLegacyId(legacyId);
+    if (!pindan) {
+      throw new NotFoundException('拼单不存在');
+    }
+    if (
+      leaderUserId &&
+      pindan.leaderUserId &&
+      pindan.leaderUserId !== leaderUserId
+    ) {
+      throw new BadRequestException('仅发起人可删除拼单');
+    }
+
+    await this.pindanModel.findOneAndUpdate(
+      { legacyId },
+      { $set: { status: 'cancelled' } },
+    );
+    return { ok: true as const };
   }
 
   async countOpen() {

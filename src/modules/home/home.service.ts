@@ -3,6 +3,19 @@ import { ActivityService } from '../activity/activity.service';
 import { PindanService } from '../pindan/pindan.service';
 import { TicketService } from '../ticket/ticket.service';
 import { mapTicketsToListingUi } from '../ticket/ticket-listing.mapper';
+import type { PindanType } from '../../database/schemas/pindan.schema';
+
+const PIN_CATEGORY_LABEL: Record<PindanType, string> = {
+  package: '套餐拼',
+  hotel: '酒店拼',
+  transport: '交通拼',
+};
+
+const PIN_CATEGORY_TONE: Record<PindanType, 'primary' | 'amber' | 'cyan'> = {
+  package: 'primary',
+  hotel: 'amber',
+  transport: 'cyan',
+};
 
 @Injectable()
 export class HomeService {
@@ -61,37 +74,38 @@ export class HomeService {
       activities.map(item => [item.legacyId, item.name]),
     );
 
-    const hotRank = [
-      { legacyId: 1, badge: '🔥 最热', category: '套餐拼', tone: 'primary', pinType: 'package', pinItemId: 3 },
-      { legacyId: 2, badge: '⚡ 急拼', category: '酒店拼', tone: 'amber', pinType: 'hotel', pinItemId: 5 },
-      { legacyId: 3, badge: '🎉 新开', category: '酒店拼', tone: 'amber', pinType: 'hotel', pinItemId: 4 },
-      { legacyId: 4, badge: '🏆 大神局', category: '交通拼', tone: 'cyan', pinType: 'transport', pinItemId: 12 },
-    ] as const;
+    const recentPins = await this.pindanService.findRecentOpen(4);
 
-    const hotPins = await Promise.all(
-      hotRank.map(async (meta, index) => {
-        const activity = activities.find(item => item.legacyId === meta.legacyId);
-        if (!activity) return null;
-
-        const rows = await this.pindanService.search({
-          activityLegacyId: activity.legacyId,
-        });
-        const top = rows[0];
+    return recentPins
+      .map((pin, index) => {
+        const pinType = (pin.type ?? 'hotel') as PindanType;
+        const activityLegacyId = pin.activityLegacyId;
+        const activityName =
+          (activityLegacyId != null
+            ? activityMap.get(activityLegacyId)
+            : undefined) ?? pin.title;
+        const joined = pin.joined ?? 1;
+        const total = pin.total ?? 4;
+        const spotsLeft = Math.max(0, total - joined);
+        const badge =
+          index === 0
+            ? '🎉 新开'
+            : spotsLeft <= 1
+              ? '⚡ 急拼'
+              : '🔥 热拼';
 
         return {
-          id: activity.legacyId,
+          id: activityLegacyId ?? pin.legacyId ?? index + 1,
           rank: index + 1,
-          title: activityMap.get(activity.legacyId) ?? activity.name,
-          badge: meta.badge,
-          category: meta.category,
-          categoryTone: meta.tone,
-          people: top?.joined ?? activity.attendees ?? 0,
-          pinType: top?.type ?? meta.pinType,
-          pinItemId: top?.legacyId ?? meta.pinItemId,
+          title: activityName,
+          badge,
+          category: PIN_CATEGORY_LABEL[pinType],
+          categoryTone: PIN_CATEGORY_TONE[pinType],
+          people: joined,
+          pinType,
+          pinItemId: pin.legacyId ?? 0,
         };
-      }),
-    );
-
-    return hotPins.filter(Boolean);
+      })
+      .filter(item => item.pinItemId > 0);
   }
 }

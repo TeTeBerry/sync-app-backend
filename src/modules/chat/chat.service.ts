@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
-import { ChatMessageDto } from '../../ai/dto/chat.dto';
+import {
+  ChatMessageDto,
+  PindanJoinCardDto,
+  TicketCreatedCardDto,
+} from '../../ai/dto/chat.dto';
 import {
   createIdleState,
   type ConversationState,
@@ -31,8 +35,27 @@ export class ChatService {
     return sessionId?.trim() || uuidv4();
   }
 
+  private normalizePindanCard(raw: unknown): PindanJoinCardDto | undefined {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const card = raw as PindanJoinCardDto;
+    if (typeof card.legacyId !== 'number' || !card.title) return undefined;
+    return card;
+  }
+
+  private normalizeTicketCard(raw: unknown): TicketCreatedCardDto | undefined {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const card = raw as TicketCreatedCardDto;
+    if (typeof card.id !== 'string' || !card.event) return undefined;
+    return card;
+  }
+
   private normalizeMessage(
-    message?: { role?: string; content?: string } | null,
+    message?: {
+      role?: string;
+      content?: string;
+      pindanCard?: unknown;
+      ticketCard?: unknown;
+    } | null,
   ): ChatMessageDto | null {
     if (!message?.content?.trim()) return null;
     if (
@@ -42,10 +65,17 @@ export class ChatService {
     ) {
       return null;
     }
-    return {
+    const normalized: ChatMessageDto = {
       role: message.role,
       content: message.content.trim(),
     };
+    if (message.role === 'assistant') {
+      const pindanCard = this.normalizePindanCard(message.pindanCard);
+      const ticketCard = this.normalizeTicketCard(message.ticketCard);
+      if (pindanCard) normalized.pindanCard = pindanCard;
+      if (ticketCard) normalized.ticketCard = ticketCard;
+    }
+    return normalized;
   }
 
   private normalizeHistory(
@@ -183,13 +213,23 @@ export class ChatService {
     messages: ChatMessageDto[];
     assistantReply: string;
     conversationState?: ConversationState;
+    pindanCard?: PindanJoinCardDto;
+    ticketCard?: TicketCreatedCardDto;
   }): Promise<string> {
     const messageId = uuidv4();
     const stored = await this.getSession(params.sessionId);
     const merged = this.mergeChatHistory(stored.history, params.messages);
     const reply = params.assistantReply.trim();
     const history = reply
-      ? [...merged, { role: 'assistant' as const, content: reply }]
+      ? [
+          ...merged,
+          {
+            role: 'assistant' as const,
+            content: reply,
+            ...(params.pindanCard ? { pindanCard: params.pindanCard } : {}),
+            ...(params.ticketCard ? { ticketCard: params.ticketCard } : {}),
+          },
+        ]
       : merged;
 
     await this.chatModel.findOneAndUpdate(

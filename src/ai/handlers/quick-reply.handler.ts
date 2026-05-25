@@ -4,7 +4,9 @@ import { ActivityService } from '../../modules/activity/activity.service';
 import { PindanService } from '../../modules/pindan/pindan.service';
 import { ProfileService } from '../../modules/profile/profile.service';
 import { buildQuickReplyResponse } from '../utils/quick-reply.handler';
-import { isQuickReplyIntent } from '../utils/user-intent';
+import { isQuickReplyIntent, detectUserIntent } from '../utils/user-intent';
+import { isFindBuddyFlow, isTicketListingFlow } from '../conversation';
+import { isFindBuddyRestartRequest } from '../utils/find-buddy-correction.util';
 import type {
   DeterministicReplyResult,
   ReplyContext,
@@ -20,7 +22,29 @@ export class QuickReplyHandler implements ReplyHandler {
   ) {}
 
   canHandle(ctx: ReplyContext): boolean {
-    return isQuickReplyIntent(ctx.input);
+    if (ctx.image?.trim()) return false;
+    if (!isQuickReplyIntent(ctx.input)) return false;
+
+    const intent = detectUserIntent(ctx.input);
+    if (
+      isFindBuddyFlow(ctx.state) &&
+      intent === 'find_buddy' &&
+      !isFindBuddyRestartRequest(ctx.input)
+    ) {
+      return false;
+    }
+    if (
+      isTicketListingFlow(ctx.state) &&
+      ctx.state.ticketListing &&
+      ((intent === 'sell_ticket' &&
+        ctx.state.ticketListing.listingType === 'sell') ||
+        (intent === 'buy_ticket' &&
+          ctx.state.ticketListing.listingType === 'buy'))
+    ) {
+      return false;
+    }
+
+    return true;
   }
 
   async handle(ctx: ReplyContext): Promise<DeterministicReplyResult | null> {

@@ -13,6 +13,12 @@ export class ChatMessageDto {
 
   @IsString()
   content: string;
+
+  /** 助手消息附带的拼单卡片（持久化供会话恢复） */
+  pindanCard?: PindanJoinCardDto;
+
+  /** 助手消息附带的门票卡片（持久化供会话恢复） */
+  ticketCard?: TicketCreatedCardDto;
 }
 
 export class ChatRequestDto {
@@ -32,6 +38,15 @@ export class ChatRequestDto {
   @IsOptional()
   @IsString()
   userName?: string;
+
+  @IsOptional()
+  @IsString()
+  userPhone?: string;
+
+  /** 当前轮次上传的门票图片（data URL 或 base64），需 <10MB */
+  @IsOptional()
+  @IsString()
+  image?: string;
 }
 
 export interface TicketCreatedCardDto {
@@ -49,10 +64,17 @@ export interface PindanJoinCardDto {
   category: 'package' | 'hotel' | 'transport';
   title: string;
   subtitle?: string;
+  remark?: string;
   date: string;
   location: string;
+  /** 人均费用（元/人） */
   price: number;
+  pricePerPerson?: number;
   activityId?: string;
+  userJoined?: boolean;
+  isOwner?: boolean;
+  joined?: number;
+  total?: number;
 }
 
 export type AiStreamEvent =

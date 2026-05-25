@@ -1,11 +1,15 @@
 import { NestFactory } from '@nestjs/core';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filter/http-exception.filter';
 import { TransformInterceptor } from './common/interceptor/transform.interceptor';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  // AI 聊天上传门票截图（Base64）需放宽 JSON 体积限制
+  app.use(json({ limit: '12mb' }));
+  app.use(urlencoded({ extended: true, limit: '12mb' }));
   app.enableShutdownHooks();
 
   // 跨域（支持流式、支持凭证、最稳定）

@@ -1,4 +1,9 @@
+import type { FindBuddyState } from '../conversation/conversation-state.types';
 import { PindanJoinCardDto } from '../dto/chat.dto';
+import {
+  buildPindanPricePerPerson,
+  inferPackageGroupSize,
+} from './find-buddy-pindan-create.util';
 import type { ReplyPindanRow } from './pindan-reply.util';
 
 type ActivityRow = {
@@ -12,6 +17,7 @@ type ActivityRow = {
 export function buildActivityBrowseCard(
   activity: ActivityRow,
   openRows: ReplyPindanRow[],
+  fb?: FindBuddyState,
 ): PindanJoinCardDto {
   const top = openRows[0];
   const category =
@@ -20,6 +26,12 @@ export function buildActivityBrowseCard(
       : 'package';
 
   const meta = [activity.date, activity.location].filter(Boolean).join(' · ');
+
+  let pricePerPerson = top?.price ?? 0;
+  if (fb && (fb.packagePrice || fb.budget) && pricePerPerson <= 0) {
+    const groupSize = inferPackageGroupSize(fb);
+    pricePerPerson = buildPindanPricePerPerson(fb, groupSize);
+  }
 
   return {
     legacyId: top?.legacyId ?? activity.legacyId ?? 0,
@@ -32,7 +44,8 @@ export function buildActivityBrowseCard(
         : '暂无拼单，可发起新拼单',
     date: activity.date ?? top?.date ?? '',
     location: activity.location ?? top?.location ?? meta,
-    price: top?.price ?? 0,
+    price: pricePerPerson,
+    pricePerPerson,
     activityId: activity.code,
   };
 }

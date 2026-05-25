@@ -1,4 +1,5 @@
 import { ChatMessageDto } from '../dto/chat.dto';
+import type { FindBuddyState } from '../conversation/conversation-state.types';
 import {
   isFindBuddyFlow,
   isTicketListingFlow,
@@ -14,6 +15,19 @@ import {
   buildActivityBrowseCard,
   buildActivityBrowseText,
 } from './activity-pindan-card.util';
+import {
+  buildFindBuddyBrowseReply,
+  buildFindBuddyCollectingReply,
+  buildFindBuddyCreatePindanPrompt,
+  buildFindBuddyExclusionReply,
+  getMissingFindBuddyFields,
+} from './find-buddy-reply.util';
+import {
+  formatExcludedActivityLabel,
+  isFindBuddyRestartRequest,
+  parseExcludedActivityRefs,
+  parsePositiveActivityInput,
+} from './find-buddy-correction.util';
 import {
   buildActivityPickerPrompt,
   parseActivityPickerIndex,
@@ -94,6 +108,20 @@ function buildFindBuddyGuidance(
   return lines.join('\n');
 }
 
+function shouldAttachBrowseCard(
+  fb: FindBuddyState,
+  openRows: ReplyPindanRow[],
+  fromImage: boolean,
+): boolean {
+  if (fb.phase === 'confirm_create_pindan' || fb.phase === 'pick_package') {
+    return false;
+  }
+  if (fromImage && openRows.length === 0) {
+    return false;
+  }
+  return true;
+}
+
 function shouldHandleStructuredReply(
   state: ConversationState,
   messages: ChatMessageDto[],
@@ -121,16 +149,41 @@ async function resolveFindBuddyActivity(
 ) {
   const fb = state.findBuddy!;
   const trimmed = input.trim();
+  const excludedRefs = parseExcludedActivityRefs(trimmed);
 
-  if (fb.activityId) {
-    const byCode = await activityService.findByCode(fb.activityId);
-    if (byCode) return byCode;
+  const lockedPackageFlow =
+    (fb.phase === 'pick_package' && (fb.packageOptions?.length ?? 0) >= 2) ||
+    fb.phase === 'confirm_create_pindan';
+
+  if (lockedPackageFlow) {
+    if (fb.activityId) {
+      const byCode = await activityService.findByCode(fb.activityId);
+      if (byCode) return byCode;
+    }
+    if (fb.activityKeyword) {
+      return activityService.matchActivity(fb.activityKeyword);
+    }
+    return null;
   }
 
   const pickerIndex = parseActivityPickerIndex(trimmed);
   if (pickerIndex) {
     const activities = await activityService.findAll();
     return activities[pickerIndex - 1] ?? null;
+  }
+
+  const positiveActivity = parsePositiveActivityInput(trimmed);
+  if (positiveActivity) {
+    return activityService.matchActivity(positiveActivity);
+  }
+
+  if (excludedRefs.length) {
+    return null;
+  }
+
+  if (fb.activityId) {
+    const byCode = await activityService.findByCode(fb.activityId);
+    if (byCode) return byCode;
   }
 
   if (isActivityKeywordInput(trimmed)) {
@@ -151,63 +204,77 @@ async function buildFindBuddyStructuredReply(
     activityService: ActivityService;
     profileService: ProfileService;
   },
-  context: { userId?: string },
+  context: { userId?: string; image?: string },
   state: ConversationState,
 ): Promise<StructuredReplyResult> {
   const fb = state.findBuddy ?? startFindBuddyFlow('pick_activity').findBuddy!;
+  const fromImage = Boolean(context.image?.trim());
+  const excludedRefs = parseExcludedActivityRefs(input);
 
-  if (fb.phase === 'pick_activity') {
-    const activity = await resolveFindBuddyActivity(state, input, services.activityService);
-    if (!activity?.code) {
-      return {
-        text: await buildActivityPickerPrompt(
-          services.activityService,
-          '好的，我先确认一下你想参加的活动 🎵',
-        ),
-        nextState: startFindBuddyFlow('pick_activity'),
-      };
-    }
-
-    const pindanRows = await loadPindanRowsForReply(
-      await services.pindanService.searchForActivity(activity.code),
-      {
-        pindanService: services.pindanService,
-        profileService: services.profileService,
-      },
-      context.userId,
-    );
-    const openRows = pindanRows.filter(row => !row.userJoined);
-    const joinableIds = openRows
-      .map(row => row.legacyId)
-      .filter((id): id is number => id != null);
-
-    let nextState = setFindBuddyJoinableIds(state, joinableIds);
-    nextState = {
-      ...nextState,
-      findBuddy: {
-        ...nextState.findBuddy!,
-        phase: 'browse_pindan',
-        activityId: activity.code,
-        activityKeyword: activity.name,
-        joinablePindanIds: joinableIds,
-      },
-    };
-
+  if (isFindBuddyRestartRequest(input)) {
     return {
-      text: buildActivityBrowseText(activity.name ?? activity.code, openRows.length),
-      pindanCard: buildActivityBrowseCard(activity, openRows),
-      nextState,
+      text: await buildActivityPickerPrompt(
+        services.activityService,
+        '好的，我们重新开始找搭子 🎵',
+      ),
+      nextState: startFindBuddyFlow('pick_activity'),
     };
   }
 
   const activity = await resolveFindBuddyActivity(state, input, services.activityService);
+
   if (!activity?.code) {
+    if (excludedRefs.length) {
+      const collecting = buildFindBuddyCollectingReply(fb, undefined, fromImage);
+      return {
+        text: [
+          buildFindBuddyExclusionReply(formatExcludedActivityLabel(excludedRefs)),
+          '',
+          collecting,
+        ].join('\n'),
+        nextState: {
+          ...state,
+          flow: 'find_buddy',
+          findBuddy: { ...fb, phase: 'pick_activity' },
+        },
+      };
+    }
+
+    if (
+      fromImage &&
+      (fb.activityKeyword || fb.packageName || fb.hotelName) &&
+      (fb.eventDate || fb.city || fb.packagePrice)
+    ) {
+      const label = fb.activityKeyword ?? fb.packageName ?? '未命名活动';
+      return {
+        text: buildFindBuddyCreatePindanPrompt(
+          { ...fb, activityKeyword: label },
+          label,
+        ),
+        nextState: {
+          ...state,
+          flow: 'find_buddy',
+          findBuddy: {
+            ...fb,
+            activityKeyword: label,
+            phase: 'confirm_create_pindan',
+          },
+        },
+      };
+    }
+
+    const collecting = buildFindBuddyCollectingReply(
+      fb,
+      undefined,
+      fromImage,
+    );
     return {
-      text: await buildActivityPickerPrompt(
-        services.activityService,
-        '请告诉我你想参加的活动名称或序号 🎵',
-      ),
-      nextState: state,
+      text: collecting,
+      nextState: {
+        ...state,
+        flow: 'find_buddy',
+        findBuddy: { ...fb, phase: 'pick_activity' },
+      },
     };
   }
 
@@ -224,22 +291,66 @@ async function buildFindBuddyStructuredReply(
     .map(row => row.legacyId)
     .filter((id): id is number => id != null);
 
+  const activityName = activity.name ?? activity.code;
+  const missing = getMissingFindBuddyFields({
+    ...fb,
+    activityId: activity.code,
+    activityKeyword: activityName,
+  });
+
+  let nextState = setFindBuddyJoinableIds(state, joinableIds);
+  nextState = {
+    ...nextState,
+    findBuddy: {
+      ...nextState.findBuddy!,
+      phase: openRows.length === 0 ? 'confirm_create_pindan' : 'browse_pindan',
+      activityId: activity.code,
+      activityKeyword: activityName,
+      joinablePindanIds: joinableIds,
+    },
+  };
+
+  if (fb.phase === 'pick_activity' && missing.length > 0 && !fromImage) {
+    const mergedFb = {
+      ...fb,
+      activityId: activity.code,
+      activityKeyword: activityName,
+    };
+    return {
+      text: [
+        buildFindBuddyCollectingReply(mergedFb, activityName, false),
+        '',
+        buildFindBuddyBrowseReply(activityName, openRows.length, fb, false),
+      ].join('\n'),
+      pindanCard: shouldAttachBrowseCard(mergedFb, openRows, false)
+        ? buildActivityBrowseCard(activity, openRows, mergedFb)
+        : undefined,
+      nextState,
+    };
+  }
+
+  const mergedFb = {
+    ...fb,
+    activityId: activity.code,
+    activityKeyword: activityName,
+  };
+  const attachCard = shouldAttachBrowseCard(
+    nextState.findBuddy ?? mergedFb,
+    openRows,
+    fromImage,
+  );
+
   return {
-    text: buildActivityBrowseText(activity.name ?? activity.code, openRows.length),
-    pindanCard: buildActivityBrowseCard(activity, openRows),
-    nextState: setFindBuddyJoinableIds(
-      {
-        ...state,
-        findBuddy: {
-          ...state.findBuddy!,
-          activityId: activity.code,
-          activityKeyword: activity.name,
-          phase: 'browse_pindan',
-          joinablePindanIds: joinableIds,
-        },
-      },
-      joinableIds,
+    text: buildFindBuddyBrowseReply(
+      activityName,
+      openRows.length,
+      mergedFb,
+      fromImage,
     ),
+    pindanCard: attachCard
+      ? buildActivityBrowseCard(activity, openRows, mergedFb)
+      : undefined,
+    nextState,
   };
 }
 
@@ -252,21 +363,28 @@ export async function buildStructuredReply(
     ticketService: TicketService;
     profileService: ProfileService;
   },
-  context: { userId?: string } = {},
+  context: { userId?: string; image?: string } = {},
   state: ConversationState,
 ): Promise<StructuredReplyResult | null> {
   if (!shouldHandleStructuredReply(state, messages, input)) {
     return null;
   }
 
-  if (isCreatePindanRequest(input)) {
+  if (isCreatePindanRequest(input) && isFindBuddyFlow(state) && state.findBuddy) {
+    const fb = state.findBuddy;
+    const activityName =
+      fb.activityKeyword ??
+      (fb.activityId ? (await services.activityService.findByCode(fb.activityId))?.name : undefined) ??
+      fb.activityId;
     return {
-      text: [
-        '发起新拼单请点顶部「创建拼单」标签，选择酒店/交通等类型后填写发布即可。',
-        '',
-        '填写活动、日期和人数后，我会继续帮你匹配合适的同行伙伴。',
-      ].join('\n'),
-      nextState: state,
+      text: buildFindBuddyCreatePindanPrompt(fb, activityName),
+      nextState: {
+        ...state,
+        findBuddy: {
+          ...fb,
+          phase: 'confirm_create_pindan',
+        },
+      },
     };
   }
 

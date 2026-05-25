@@ -1,6 +1,6 @@
 import type { TicketDraft } from '../utils/ticket-draft.parser';
 
-export type SlotSource = 'rule' | 'llm';
+export type SlotSource = 'rule' | 'llm' | 'vision' | 'knowledge' | 'catalog' | 'rag' | 'account';
 
 export interface FieldMeta {
   source: SlotSource;

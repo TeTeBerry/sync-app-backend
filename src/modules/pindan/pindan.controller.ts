@@ -1,7 +1,7 @@
-import { Body, Controller, Delete, Get, Inject, Param, ParseIntPipe, Post, Query, forwardRef } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, ParseIntPipe, Patch, Post, Query, forwardRef } from '@nestjs/common';
 import { PindanType } from '../../database/schemas/pindan.schema';
 import { ProfileService } from '../profile/profile.service';
-import { CreatePindanInput, PindanService } from './pindan.service';
+import { CreatePindanInput, PindanService, UpdatePindanInput } from './pindan.service';
 
 @Controller('pindan')
 export class PindanController {
@@ -44,5 +44,22 @@ export class PindanController {
   @Post()
   create(@Body() body: CreatePindanInput) {
     return this.pindanService.create(body);
+  }
+
+  @Patch(':legacyId')
+  update(
+    @Param('legacyId', ParseIntPipe) legacyId: number,
+    @Body() body: UpdatePindanInput & { userId?: string },
+  ) {
+    const { userId, ...patch } = body;
+    return this.pindanService.update(legacyId, patch, userId);
+  }
+
+  @Delete(':legacyId')
+  remove(
+    @Param('legacyId', ParseIntPipe) legacyId: number,
+    @Query('userId') userId?: string,
+  ) {
+    return this.pindanService.remove(legacyId, userId);
   }
 }

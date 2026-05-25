@@ -18,7 +18,7 @@ export interface ConversationContext {
 }
 
 const ACTIVITY_KEYWORD_RE =
-  /^(edc|edc\s*泰国|edc\s*thailand|s2o|ultra|tomorrowland|tmw|电音节)$/i;
+  /^(edc|edc\s*泰国|edc\s*thailand|s2o|ultra|tomorrowland|tmw|vac|vac\s*珠海|珠海\s*vac|电音节)$/i;
 
 const CITY_NAMES = [
   '上海',
@@ -29,6 +29,7 @@ const CITY_NAMES = [
   '成都',
   '三亚',
   '苏州',
+  '珠海',
   '南京',
   '武汉',
   '重庆',
