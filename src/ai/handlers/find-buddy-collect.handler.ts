@@ -10,6 +10,7 @@ import {
   buildFindBuddyCreatePindanPrompt,
 } from '../utils/find-buddy-reply.util';
 import type {
+  AgentStateProgression,
   DeterministicReplyResult,
   ReplyContext,
   ReplyHandler,
@@ -19,13 +20,28 @@ import type {
 export class FindBuddyCollectHandler implements ReplyHandler {
   constructor(private readonly activityService: ActivityService) {}
 
+  getPlannedToolCalls() {
+    return [{ tool: 'findBuddy.collectCreateSlots', args: { mode: 'incremental' } }];
+  }
+
+  getStateProgression(ctx: ReplyContext): AgentStateProgression {
+    const phase = ctx.state.findBuddy?.phase ?? 'collect_create_pindan';
+    return {
+      flow: 'find_buddy',
+      phase,
+      summary: '收集搭子拼单创建所需字段',
+    };
+  }
+
   canHandle(ctx: ReplyContext): boolean {
     const fb = ctx.state.findBuddy;
     return Boolean(isFindBuddyFlow(ctx.state) && fb?.phase === 'collect_create_pindan');
   }
 
   async handle(ctx: ReplyContext): Promise<DeterministicReplyResult | null> {
-    const fb = ctx.state.findBuddy!;
+    const fb = ctx.state.findBuddy;
+    if (!fb) return null;
+
     const merged = mergeActivityCreateSlots(fb, ctx.input);
     const activityName =
       merged.activityKeyword ??

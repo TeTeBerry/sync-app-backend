@@ -27,8 +27,10 @@ export class PackagePickHandler implements ReplyHandler {
   }
 
   async handle(ctx: ReplyContext): Promise<DeterministicReplyResult | null> {
-    const fb = ctx.state.findBuddy!;
-    const options = fb.packageOptions!;
+    const fb = ctx.state.findBuddy;
+    if (!fb) return null;
+    const options = fb.packageOptions;
+    if (!options || options.length < 2) return null;
 
     const selectedIndex = parsePackageSelection(ctx.input, options);
     if (selectedIndex == null) {

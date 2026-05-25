@@ -1,5 +1,4 @@
 import { ChatMessageDto } from '../dto/chat.dto';
-import { ActivityService } from '../../modules/activity/activity.service';
 
 export const ACTIVITY_PICKER_PROMPT = '你想参加哪个活动？';
 
@@ -36,7 +35,6 @@ export function findAssistantBeforeIndex(
   return undefined;
 }
 
-/** 上一条助手消息在问活动，且用户正在用序号/活动名回复 */
 export function isAwaitingActivitySelection(messages: ChatMessageDto[]): boolean {
   const lastUser = messages[messages.length - 1];
   if (lastUser?.role !== 'user') return false;
@@ -50,7 +48,6 @@ export function isAwaitingActivitySelection(messages: ChatMessageDto[]): boolean
   return parseActivityPickerIndex(input) != null;
 }
 
-/** 上一条助手消息展示了可加入的拼单列表 */
 export function isAwaitingPindanSelection(messages: ChatMessageDto[]): boolean {
   if (messages.length < 2) return false;
 
@@ -88,19 +85,4 @@ export function formatActivityPickerLines(
       return `${index + 1}. ${row.name ?? '活动'}${meta ? ` — ${meta}` : ''}${hot}`;
     })
     .join('\n');
-}
-
-export async function buildActivityPickerPrompt(
-  activityService: ActivityService,
-  intro: string,
-): Promise<string> {
-  const activities = await activityService.findAll();
-  return [
-    intro,
-    '',
-    ACTIVITY_PICKER_PROMPT,
-    formatActivityPickerLines(activities),
-    '',
-    '直接回复活动名（如 EDC、S2O），我会帮你看可加入的拼单，或协助发起新拼单。',
-  ].join('\n');
 }

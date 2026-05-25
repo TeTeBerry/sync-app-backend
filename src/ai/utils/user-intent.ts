@@ -36,7 +36,7 @@ export function detectUserIntent(input: string): UserIntent {
   if (
     text === QUICK_REPLIES.buy_ticket ||
     /^收票$/.test(text) ||
-    /求购|想买/.test(text)
+    /我要收票|收票|求购|想买|买票/.test(text)
   ) {
     return 'buy_ticket';
   }

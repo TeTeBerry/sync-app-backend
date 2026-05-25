@@ -13,6 +13,28 @@ import { decodeBase64Payload, ImageTooLargeError } from './utils/image-base64.ut
 
 export const LLM_CONTEXT_TURNS = 6;
 
+function mapAiErrorToUserMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+
+  const isVisionPathError =
+    /multimodal|vision|image|qwen-vl|图片|图像/i.test(raw) &&
+    /InternalError|InvalidParameter|dashscope|qwen/i.test(raw);
+
+  if (isVisionPathError) {
+    return '图片解析暂时有点忙，请稍后重试，或先用文字描述票务信息。';
+  }
+
+  if (/timeout|timed out|ETIMEDOUT|network|fetch failed/i.test(raw)) {
+    return '网络有点不稳定，请稍后再试一次。';
+  }
+
+  if (/rate limit|too many requests|429/i.test(raw)) {
+    return '当前请求较多，请稍后再试。';
+  }
+
+  return 'AI 对话失败，请稍后重试';
+}
+
 @Injectable()
 export class AiService {
   constructor(
@@ -123,8 +145,7 @@ export class AiService {
     } catch (error) {
       yield {
         type: 'error',
-        message:
-          error instanceof Error ? error.message : 'AI 对话失败，请稍后重试',
+        message: mapAiErrorToUserMessage(error),
       };
     }
   }

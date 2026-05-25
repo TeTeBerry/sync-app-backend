@@ -189,7 +189,7 @@ function resolveField(params: {
   ) {
     const agreed: SlotCandidate = {
       value: visionCandidate.value,
-      meta: boostAgreementMeta(ruleCandidate.meta, visionCandidate.meta)!,
+      meta: boostAgreementMeta(ruleCandidate.meta, visionCandidate.meta) ?? ruleCandidate.meta,
     };
     if (baseValue == null || baseValue === '') {
       return { value: agreed.value, meta: agreed.meta };
@@ -213,7 +213,7 @@ function resolveField(params: {
   ) {
     const agreed: SlotCandidate = {
       value: ruleCandidate.value,
-      meta: boostAgreementMeta(ruleCandidate.meta, llmCandidate.meta)!,
+      meta: boostAgreementMeta(ruleCandidate.meta, llmCandidate.meta) ?? ruleCandidate.meta,
     };
     if (baseValue == null || baseValue === '') {
       return { value: agreed.value, meta: agreed.meta };

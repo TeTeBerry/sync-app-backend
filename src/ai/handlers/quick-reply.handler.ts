@@ -5,6 +5,7 @@ import { PindanService } from '../../modules/pindan/pindan.service';
 import { ProfileService } from '../../modules/profile/profile.service';
 import { buildQuickReplyResponse } from '../utils/quick-reply.handler';
 import { isQuickReplyIntent, detectUserIntent } from '../utils/user-intent';
+import { composeReply } from '../utils/reply-text.util';
 import { isFindBuddyFlow, isTicketListingFlow } from '../conversation';
 import { isFindBuddyRestartRequest } from '../utils/find-buddy-correction.util';
 import type {

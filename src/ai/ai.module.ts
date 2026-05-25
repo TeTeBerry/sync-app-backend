@@ -9,6 +9,8 @@ import { ProfileModule } from '../modules/profile/profile.module';
 import { ChatModule } from '../modules/chat/chat.module';
 import { ConversationStateService } from './orchestration/conversation-state.service';
 import { DeterministicReplyService } from './orchestration/deterministic-reply.service';
+import { AgentRuntimeService } from './orchestration/agent-runtime.service';
+import { AgentToolsService } from './orchestration/agent-tools.service';
 import { FindBuddyImageParserService } from './parser/find-buddy-image-parser.service';
 import { LlmSlotParserService } from './parser/llm-slot-parser.service';
 import { TicketImageParserService } from './parser/ticket-image-parser.service';
@@ -44,6 +46,8 @@ import {
     FindBuddyImageParserService,
     TicketImageParserService,
     ConversationStateService,
+    AgentToolsService,
+    AgentRuntimeService,
     DeterministicReplyService,
     TicketListingService,
     FindBuddyPindanCreateService,

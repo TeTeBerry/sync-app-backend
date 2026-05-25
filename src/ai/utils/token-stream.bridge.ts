@@ -9,7 +9,8 @@ export class TokenStreamBridge {
     if (this.closed) return;
 
     if (this.waiters.length) {
-      const resolve = this.waiters.shift()!;
+      const resolve = this.waiters.shift();
+      if (!resolve) return;
       resolve(token);
       return;
     }
@@ -39,7 +40,10 @@ export class TokenStreamBridge {
       }
 
       if (this.queue.length) {
-        yield this.queue.shift()!;
+        const next = this.queue.shift();
+        if (next != null) {
+          yield next;
+        }
         continue;
       }
 

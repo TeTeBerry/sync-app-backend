@@ -1,4 +1,5 @@
 import type { FindBuddyState } from '../conversation/conversation-state.types';
+import { composeReply } from './reply-text.util';
 import {
   formatBudgetRangeLabel,
   getMissingActivityCreateFields,
@@ -80,7 +81,7 @@ export function buildFindBuddyCollectingReply(
   }
 
   if (missing.length) {
-    return [
+    return composeReply([
       '已记录你的出行信息：',
       '',
       visionHint,
@@ -89,15 +90,10 @@ export function buildFindBuddyCollectingReply(
       `还缺：${missing.join('、')}。补充后我会为你匹配拼单。`,
       '',
       '也可直接回复活动名，或点顶部「创建拼单」发起新拼单。',
-    ].join('\n');
+    ]);
   }
 
-  return [
-    '已记录你的出行信息：',
-    '',
-    visionHint,
-    ...known,
-  ].join('\n');
+  return composeReply(['已记录你的出行信息：', '', visionHint, ...known]);
 }
 
 export function buildFindBuddyExclusionReply(excludedLabel: string): string {

@@ -154,7 +154,13 @@ export class FindBuddyPindanCreateService {
     pindanCard?: PindanJoinCardDto;
     nextState: ConversationState;
   }> {
-    const fb = params.state.findBuddy!;
+    const fb = params.state.findBuddy;
+    if (!fb) {
+      return {
+        text: '会话状态异常，请重新发起拼单。',
+        nextState: params.state,
+      };
+    }
     const activity = await this.ensureActivity(fb, params.matchedActivity);
     const activityName = activity.name ?? activity.code ?? '活动';
     const groupSize = resolveGroupSize(fb);

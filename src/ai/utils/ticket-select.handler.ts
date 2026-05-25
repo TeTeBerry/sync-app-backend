@@ -165,7 +165,7 @@ export async function buildTicketSelectReply(
       ...state,
       flow: 'ticket_search',
       ticketSearch: {
-        ...state.ticketSearch!,
+        ...(state.ticketSearch ?? { joinableTicketIds: [] }),
         phase: 'selected',
       },
     },

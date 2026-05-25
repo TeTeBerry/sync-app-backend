@@ -186,7 +186,8 @@ export class ConversationStateService {
       return applyTicketListingInput(state, input);
     }
 
-    const listing = state.ticketListing!;
+    const listing = state.ticketListing;
+    if (!listing) return state;
     const baseDraft: TicketDraft = {
       ...listing.draft,
       type: listing.listingType,

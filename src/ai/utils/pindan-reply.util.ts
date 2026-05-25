@@ -104,9 +104,11 @@ export async function loadPindanRowsForReply(
 
   for (const legacyId of joinedIds) {
     if (rowsMap.has(legacyId)) {
-      const mapped = rowsMap.get(legacyId)!;
-      mapped.userJoined = true;
-      mapped.isOwner = ownerIds.has(legacyId);
+      const mapped = rowsMap.get(legacyId);
+      if (mapped) {
+        mapped.userJoined = true;
+        mapped.isOwner = ownerIds.has(legacyId);
+      }
       continue;
     }
 

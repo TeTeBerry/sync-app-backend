@@ -120,7 +120,7 @@ export function parsePackageSelection(
     const option = options[i];
     const blobs = [option.packageName, option.duration]
       .filter(Boolean)
-      .map(value => value!.replace(/\s+/g, ''));
+      .map(value => value.replace(/\s+/g, ''));
     if (blobs.some(blob => blob && normalizedInput.includes(blob))) {
       return i;
     }

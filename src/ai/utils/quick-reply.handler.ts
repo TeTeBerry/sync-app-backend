@@ -2,7 +2,11 @@ import { ActivityService } from '../../modules/activity/activity.service';
 import { PindanService } from '../../modules/pindan/pindan.service';
 import { ProfileService } from '../../modules/profile/profile.service';
 import { detectUserIntent } from './user-intent';
-import { buildActivityPickerPrompt, formatActivityPickerLines, ACTIVITY_PICKER_PROMPT } from './activity-reply.util';
+import {
+  formatActivityPickerLines,
+  ACTIVITY_PICKER_PROMPT,
+} from './activity-reply.util';
+import { composeReply } from './reply-text.util';
 
 export async function buildQuickReplyResponse(
   input: string,
@@ -19,7 +23,7 @@ export async function buildQuickReplyResponse(
   switch (intent) {
     case 'find_buddy': {
       const activities = await activityService.findAll();
-      return [
+      return composeReply([
         '好的，我来帮你找同行搭子 🎵',
         '',
         '你可以直接告诉我活动、日期、人数和出发城市，也可以上传套餐/酒店订单截图，我会自动识别并匹配拼单。',
@@ -28,11 +32,11 @@ export async function buildQuickReplyResponse(
         formatActivityPickerLines(activities),
         '',
         '直接回复活动名（如 EDC、S2O），或上传订单截图让我帮你填信息。',
-      ].join('\n');
+      ]);
     }
 
     case 'sell_ticket':
-      return [
+      return composeReply([
         '好的，我来帮你出票 🎟️',
         '',
         '你可以直接回复门票信息，也可以上传门票/购票截图，我会自动识别活动、日期、票种等字段。',
@@ -46,10 +50,10 @@ export async function buildQuickReplyResponse(
         '6. 联系方式（微信或手机号；回复「手机」可用账号手机）',
         '',
         '信息齐全后我会复述请你确认，确认后立即发布到「门票出/收」。',
-      ].join('\n');
+      ]);
 
     case 'buy_ticket':
-      return [
+      return composeReply([
         '好的，我来帮你发布收票/求购 🎫',
         '',
         '你可以直接回复求购信息，也可以上传参考截图，我会尽量识别活动、日期、票种等字段。',
@@ -63,17 +67,17 @@ export async function buildQuickReplyResponse(
         '6. 联系方式（微信或手机号；回复「手机」可用账号手机）',
         '',
         '信息齐全后我会复述请你确认，确认后立即发布到「门票出/收」。',
-      ].join('\n');
+      ]);
 
     case 'near_events': {
       const activities = await activityService.findAll();
-      return [
+      return composeReply([
         '这些是平台近期热门活动 📅',
         '',
         formatActivityPickerLines(activities),
         '',
         '你对哪个活动感兴趣？我可以帮你找搭子、拼单，或协助出票/收票。',
-      ].join('\n');
+      ]);
     }
 
     default:

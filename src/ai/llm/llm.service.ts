@@ -47,7 +47,7 @@ export class LlmService {
 
     this.llm = new ChatAlibabaTongyi({
       alibabaApiKey: this.apiKey || 'MISSING_API_KEY',
-      model: this.config.get<string>('llm.model') ?? 'qwen-turbo',
+      model: this.config.get<string>('llm.model') ?? 'qwen-max',
       streaming: true,
       temperature: 0.1,
     });
@@ -85,34 +85,51 @@ export class LlmService {
     if (!this.visionEnabled) return null;
 
     try {
-      const response = await fetch(MULTIMODAL_API_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
+      const buildPayload = (includeResultFormat: boolean) => ({
+        model: this.vlModel,
+        input: {
+          messages: [
+            { role: 'system', content: [{ text: system }] },
+            {
+              role: 'user',
+              content: [{ image: imageDataUrl }, { text: userText }],
+            },
+          ],
         },
-        body: JSON.stringify({
-          model: this.vlModel,
-          input: {
-            messages: [
-              { role: 'system', content: [{ text: system }] },
-              {
-                role: 'user',
-                content: [
-                  { image: imageDataUrl },
-                  { text: userText },
-                ],
-              },
-            ],
-          },
-          parameters: {
-            temperature: 0.1,
-            result_format: 'message',
-          },
-        }),
+        parameters: includeResultFormat
+          ? {
+              temperature: 0.1,
+              result_format: 'message',
+            }
+          : {
+              temperature: 0.1,
+            },
       });
 
-      const data = (await response.json()) as DashScopeMultimodalResponse;
+      const doRequest = (includeResultFormat: boolean) =>
+        fetch(MULTIMODAL_API_URL, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(buildPayload(includeResultFormat)),
+        });
+
+      let response = await doRequest(true);
+      let data = (await response.json()) as DashScopeMultimodalResponse;
+
+      const unsupportedResultFormat =
+        !response.ok && /result_format/i.test(String(data.message ?? ''));
+
+      if (unsupportedResultFormat) {
+        this.logger.warn(
+          'Vision model does not support result_format, retrying without it',
+        );
+        response = await doRequest(false);
+        data = (await response.json()) as DashScopeMultimodalResponse;
+      }
+
       if (!response.ok || data.code) {
         throw new Error(data.message ?? `VL 请求失败 (${response.status})`);
       }

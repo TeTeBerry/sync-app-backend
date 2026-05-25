@@ -16,6 +16,7 @@ import {
   type TicketDraft,
 } from '../utils/ticket-draft.parser';
 import { formatPriceLabel, formatSlotPrice } from '../utils/ticket-price.util';
+import { composeReply } from '../utils/reply-text.util';
 import type { TicketDraftMeta } from '../parser/slot-meta.types';
 import type { ReplyContext } from '../handlers/reply-handler.types';
 
@@ -122,13 +123,13 @@ export class TicketListingService {
     draftMeta?: TicketDraftMeta,
   ): string {
     const typeLabel = draft.type === 'buy' ? '收票' : '出票';
-    return [
+    return composeReply([
       `请确认以下${typeLabel}信息：`,
       '',
       ...this.buildKnownLines(draft, activityName, draftMeta),
       '',
       '如需修改，可直接说「日期改成 2026-12-01」「单价800-1000」「手机联系」等；确认请回复「确认」。',
-    ].join('\n');
+    ]);
   }
 
   buildCollectingReply(
@@ -166,25 +167,25 @@ export class TicketListingService {
         : `好的，请继续告诉我活动、日期、票种、数量、单价${contactHint}。`;
     }
 
-    return [
+    return composeReply([
       '已记录：',
       '',
       visionHint,
       ...known,
       '',
       `还缺：${missing.join('、')}。请继续补充。`,
-    ].join('\n');
+    ]);
   }
 
   buildSuccessReply(draft: TicketDraft, activityName: string): string {
     const typeLabel = draft.type === 'buy' ? '收票' : '出票';
-    return [
+    return composeReply([
       `已为您发布${typeLabel}挂单 🎉`,
       '',
       ...this.buildKnownLines(draft, activityName),
       '',
       '可在「门票出/收」查看；点击聊天卡片也可跳转。',
-    ].join('\n');
+    ]);
   }
 
   private formatMatchRows(
@@ -220,12 +221,11 @@ export class TicketListingService {
     activityName: string,
     activityNames: Map<string, string>,
   ): string {
-    const oppositeLabel = draft.type === 'buy' ? '出票' : '收票';
     const myLabel = draft.type === 'buy' ? '收票' : '出票';
-    const formatted = this.formatMatchRows(rows, activityNames, oppositeLabel);
+    const formatted = this.formatMatchRows(rows, activityNames, draft.type === 'buy' ? '出票' : '收票');
 
     return [
-      `在发布你的${myLabel}需求前，为你找到了 ${rows.length} 条可能匹配的${oppositeLabel}挂单 🎫`,
+      `在发布你的${myLabel}需求前，为你找到了 ${rows.length} 条可能匹配的${draft.type === 'buy' ? '出票' : '收票'}挂单 🎫`,
       '',
       formatted,
       '',

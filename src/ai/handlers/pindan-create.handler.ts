@@ -7,6 +7,7 @@ import {
   isPindanCreateDeclineMessage,
 } from '../utils/find-buddy-pindan-intent.util';
 import type {
+  AgentStateProgression,
   DeterministicReplyResult,
   ReplyContext,
   ReplyHandler,
@@ -14,6 +15,23 @@ import type {
 
 @Injectable()
 export class PindanCreateHandler implements ReplyHandler {
+  getPlannedToolCalls(ctx: ReplyContext) {
+    const fb = ctx.state.findBuddy;
+    if (!fb) return [];
+    if (fb.phase === 'confirm_create_pindan') {
+      return [{ tool: 'findBuddy.createPindan', args: { phase: fb.phase } }];
+    }
+    return [{ tool: 'findBuddy.collectCreateSlots', args: { phase: fb.phase } }];
+  }
+
+  getStateProgression(ctx: ReplyContext): AgentStateProgression {
+    return {
+      flow: 'find_buddy',
+      phase: ctx.state.findBuddy?.phase,
+      summary: '搭子拼单创建确认与提交',
+    };
+  }
+
   constructor(
     private readonly findBuddyPindanCreateService: FindBuddyPindanCreateService,
     private readonly activityService: ActivityService,
@@ -26,7 +44,8 @@ export class PindanCreateHandler implements ReplyHandler {
   }
 
   async handle(ctx: ReplyContext): Promise<DeterministicReplyResult | null> {
-    const fb = ctx.state.findBuddy!;
+    const fb = ctx.state.findBuddy;
+    if (!fb) return null;
 
     if (isPindanCreateDeclineMessage(ctx.input)) {
       const activityName =
