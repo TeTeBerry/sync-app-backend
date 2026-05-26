@@ -1,5 +1,5 @@
 import { ActivityService } from '../../modules/activity/activity.service';
-import { detectUserIntent } from './user-intent';
+import { detectUserIntent } from '../intent/user-intent';
 import {
   formatActivityPickerLines,
   ACTIVITY_PICKER_PROMPT,
@@ -32,7 +32,7 @@ export async function buildQuickReplyResponse(
         ACTIVITY_PICKER_PROMPT,
         formatActivityPickerLines(activities),
         '',
-        '直接回复活动名（如 EDC、Ultra），告诉我日期、人数和出发城市即可。',
+        '直接回复活动名（如 EDC、Ultra），告诉我出行时间、人数和性别偏好即可。',
       ]);
     }
 

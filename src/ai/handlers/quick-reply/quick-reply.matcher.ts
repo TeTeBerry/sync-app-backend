@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { isQuickReplyIntent } from '../../utils/user-intent';
+import { isQuickReplyIntent } from '../../intent/user-intent';
 import type { ReplyContext, ReplyMatcher } from '../../handler-pipeline/handler-pipeline.types';
 
 @Injectable()

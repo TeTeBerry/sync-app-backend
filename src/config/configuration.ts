@@ -35,6 +35,29 @@ export default () => ({
     postsCollection: process.env.CHROMA_POSTS_COLLECTION ?? 'sync_posts',
     profilesCollection:
       process.env.CHROMA_PROFILES_COLLECTION ?? 'sync_user_profiles',
+    circuit: {
+      failureThreshold: parseInt(
+        cleanEnv(process.env.CHROMA_CIRCUIT_FAILURE_THRESHOLD, '3'),
+        10,
+      ),
+      cooldownMs: parseInt(
+        cleanEnv(process.env.CHROMA_CIRCUIT_COOLDOWN_MS, '30000'),
+        10,
+      ),
+    },
+  },
+
+  ai: {
+    rateLimit: {
+      maxRequests: parseInt(
+        cleanEnv(process.env.AI_RATE_LIMIT_MAX, '30'),
+        10,
+      ),
+      windowMs: parseInt(
+        cleanEnv(process.env.AI_RATE_LIMIT_WINDOW_MS, String(5 * 60 * 1000)),
+        10,
+      ),
+    },
   },
 
   redis: {

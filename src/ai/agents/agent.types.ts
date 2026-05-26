@@ -41,6 +41,12 @@ export interface MatchedPostItem {
   postId: string;
   snippet: string;
   distance?: number;
+  matchReason?: string;
+}
+
+export interface MatchAgentResult {
+  items: MatchedPostItem[];
+  degraded?: boolean;
 }
 
 export interface AgentParseInput {
@@ -57,7 +63,7 @@ export interface UserMatchProfile {
   budgetLevel?: string;
 }
 
-import type { MatchRankingWeights } from '../utils/match-ranking.util';
+import type { MatchRankingWeights } from '../match/match-ranking.util';
 
 export interface MatchAgentInput {
   query: string;
@@ -67,6 +73,11 @@ export interface MatchAgentInput {
   userId?: string;
   profile?: UserMatchProfile;
   rankingWeights?: MatchRankingWeights;
+}
+
+export interface RiskAssessOptions {
+  /** Skip LLM moderation when rules and duplicate checks pass (shortcut confirm path). */
+  rulesOnly?: boolean;
 }
 
 export interface RiskAgentInput {

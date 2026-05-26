@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Patch, Query } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 
 @Controller('notifications')
@@ -20,8 +20,18 @@ export class NotificationController {
     return this.notificationService.markAllRead(userId);
   }
 
+  @Delete()
+  clearAll(@Query('userId') userId?: string) {
+    return this.notificationService.clearAll(userId);
+  }
+
   @Patch(':id/read')
   markRead(@Param('id') id: string, @Query('userId') userId?: string) {
     return this.notificationService.markRead(id, userId);
+  }
+
+  @Delete(':id')
+  deleteOne(@Param('id') id: string, @Query('userId') userId?: string) {
+    return this.notificationService.deleteOne(id, userId);
   }
 }

@@ -11,8 +11,12 @@ import { HandlerModule } from './handlers/handler.module';
 import { OrchestrationModule } from './orchestration/orchestration.module';
 import { ParserModule } from './parser/parser.module';
 import { AgentsModule } from './agents/agents.module';
-import { PostIntentService } from './post-intent.service';
+import { PostAgentAdaptersModule } from './adapters/post-agent-adapters.module';
+import { BuddyModule } from './buddy/buddy.module';
 import { IntentRouterModule } from './intent/intent-router.module';
+import { AiRateLimitService } from './ai-rate-limit.service';
+import { AiTurnPipeline } from './orchestration/ai-turn.pipeline';
+import { AiSseBuilder } from './presentation/ai-sse.builder';
 
 @Module({
   imports: [
@@ -27,8 +31,9 @@ import { IntentRouterModule } from './intent/intent-router.module';
     ParserModule,
     AgentsModule,
     IntentRouterModule,
+    BuddyModule,
   ],
   controllers: [AiController],
-  providers: [AiService, PostIntentService],
+  providers: [AiService, AiRateLimitService, AiTurnPipeline, AiSseBuilder],
 })
 export class AiModule {}

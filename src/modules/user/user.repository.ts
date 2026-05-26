@@ -40,6 +40,14 @@ export class UserRepository implements IUserRepository {
       )
       .lean();
   }
+
+  async findByExternalIds(externalIds: string[]): Promise<UserRecord[]> {
+    if (!externalIds.length) return [];
+    return this.model
+      .find({ externalId: { $in: externalIds } })
+      .select('externalId privacyLevel')
+      .lean();
+  }
 }
 
 export { DEFAULT_PROFILE_EXTERNAL_ID };

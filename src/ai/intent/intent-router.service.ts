@@ -1,13 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ActivityService } from '../../modules/activity/activity.service';
 import { LlmService } from '../llm/llm.service';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
 import {
   formatActivityCatalogDayLabels,
   inferBuddySearchHintKind,
-} from '../utils/zone-buddy-search.util';
+} from '../match/zone-buddy-search.util';
 import type { ResolvedChatIntent } from './chat-intent.types';
 import { resolveChatIntentFastPath } from './intent-router.rules';
+import { logAiTurn } from '../utils/log-ai-turn.util';
 import {
   buildIntentRouterSystemPrompt,
   buildIntentRouterUserPrompt,
@@ -19,6 +20,8 @@ export interface IntentRouterInput {
   input: string;
   activityLegacyId?: number;
   image?: string;
+  sessionId?: string;
+  requestId?: string;
 }
 
 interface LlmIntentRouteResult {
@@ -26,28 +29,94 @@ interface LlmIntentRouteResult {
   searchHint?: string;
 }
 
+interface CachedIntentEntry {
+  result: ResolvedChatIntent;
+  expiresAt: number;
+}
+
+const INTENT_CACHE_TTL_MS = 30_000;
+
 @Injectable()
 export class IntentRouterService {
+  private readonly logger = new Logger(IntentRouterService.name);
+  private readonly intentCache = new Map<string, CachedIntentEntry>();
+
   constructor(
     private readonly llmService: LlmService,
     private readonly activityService: ActivityService,
   ) {}
 
   async resolve(params: IntentRouterInput): Promise<ResolvedChatIntent> {
+    const startedAt = Date.now();
     const trimmed = params.input.trim();
+    const cacheKey = this.buildCacheKey(params.sessionId, trimmed);
+
+    if (cacheKey) {
+      const cached = this.intentCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        const result = cached.result;
+        this.logIntentResolve(params, result, Date.now() - startedAt);
+        return result;
+      }
+      if (cached) {
+        this.intentCache.delete(cacheKey);
+      }
+    }
+
     const activityMeta = await this.loadActivityMeta(params.activityLegacyId);
 
     const ruleHit = resolveChatIntentFastPath(trimmed, params);
-    if (ruleHit) return ruleHit;
+    if (ruleHit) {
+      this.storeCache(cacheKey, ruleHit);
+      this.logIntentResolve(params, ruleHit, Date.now() - startedAt);
+      return ruleHit;
+    }
 
     const llmHit = await this.resolveByLlm(
       params.messages,
       trimmed,
       activityMeta,
     );
-    if (llmHit) return llmHit;
+    if (llmHit) {
+      this.storeCache(cacheKey, llmHit);
+      this.logIntentResolve(params, llmHit, Date.now() - startedAt);
+      return llmHit;
+    }
 
-    return { kind: 'legacy_cascade', source: 'default' };
+    const fallback: ResolvedChatIntent = { kind: 'create_post', source: 'default' };
+    this.storeCache(cacheKey, fallback);
+    this.logIntentResolve(params, fallback, Date.now() - startedAt);
+    return fallback;
+  }
+
+  private buildCacheKey(sessionId?: string, input?: string): string | null {
+    const sid = sessionId?.trim();
+    const text = input?.trim();
+    if (!sid || !text) return null;
+    return `${sid}:${text}`;
+  }
+
+  private storeCache(key: string | null, result: ResolvedChatIntent): void {
+    if (!key) return;
+    this.intentCache.set(key, {
+      result,
+      expiresAt: Date.now() + INTENT_CACHE_TTL_MS,
+    });
+  }
+
+  private logIntentResolve(
+    params: IntentRouterInput,
+    result: ResolvedChatIntent,
+    latencyMs: number,
+  ): void {
+    logAiTurn(this.logger, {
+      event: 'intent_router',
+      requestId: params.requestId ?? 'unknown',
+      sessionId: params.sessionId ?? 'unknown',
+      intent: result.kind,
+      intentSource: result.source,
+      ms_intent: latencyMs,
+    });
   }
 
   private async loadActivityMeta(
@@ -103,7 +172,11 @@ export class IntentRouterService {
       };
     }
 
-    if (intent === 'create_post') {
+    if (
+      intent === 'create_post' ||
+      intent === 'legacy_cascade' ||
+      intent === 'chitchat'
+    ) {
       return { kind: 'create_post', source: 'llm' };
     }
 
@@ -111,6 +184,6 @@ export class IntentRouterService {
       return { kind: 'quick_reply', source: 'llm' };
     }
 
-    return { kind: 'legacy_cascade', source: 'llm' };
+    return { kind: 'create_post', source: 'llm' };
   }
 }

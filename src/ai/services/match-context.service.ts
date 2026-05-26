@@ -1,22 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import {
-  PostApplication,
-  PostApplicationDocument,
-} from '../../database/schemas/post-application.schema';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
-import {
-  UserBlock,
-  UserBlockDocument,
-} from '../../database/schemas/user-block.schema';
 import { User, UserDocument } from '../../database/schemas/user.schema';
+import { UserBlockService } from '../../modules/user/user-block.service';
 import type { PostMatchResult } from '../rag/chroma.service';
 import {
   MatchFilterContext,
   RankablePostCandidate,
   UserMatchProfile,
-} from '../utils/match-ranking.util';
+} from '../match/match-ranking.util';
 import { UserService } from '../../modules/user/user.service';
 
 @Injectable()
@@ -24,13 +17,10 @@ export class MatchContextService {
   constructor(
     @InjectModel(Post.name)
     private readonly postModel: Model<PostDocument>,
-    @InjectModel(PostApplication.name)
-    private readonly applicationModel: Model<PostApplicationDocument>,
-    @InjectModel(UserBlock.name)
-    private readonly blockModel: Model<UserBlockDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
     private readonly userService: UserService,
+    private readonly userBlockService: UserBlockService,
   ) {}
 
   buildExcludeUserIds(context: MatchFilterContext): string[] {
@@ -65,8 +55,8 @@ export class MatchContextService {
     }
 
     const [blockedUserIds, buddyUserIds] = await Promise.all([
-      this.loadBlockedUserIds(requesterUserId),
-      this.loadBuddyUserIds(requesterUserId),
+      this.userBlockService.getBlockExclusionSet(requesterUserId),
+      this.userBlockService.loadBuddyUserIds(requesterUserId),
     ]);
 
     return {
@@ -148,52 +138,4 @@ export class MatchContextService {
     }
   }
 
-  private async loadBlockedUserIds(userId: string): Promise<Set<string>> {
-    const rows = await this.blockModel
-      .find({ userId })
-      .select('blockedUserId')
-      .lean();
-
-    return new Set(rows.map(row => row.blockedUserId).filter(Boolean));
-  }
-
-  private async loadBuddyUserIds(userId: string): Promise<Set<string>> {
-    const buddyIds = new Set<string>();
-
-    const acceptedApplications = await this.applicationModel
-      .find({ userId, status: 'accepted' })
-      .select('postId')
-      .lean();
-
-    const appliedPostIds = acceptedApplications.map(row => row.postId).filter(Boolean);
-    if (appliedPostIds.length) {
-      const posts = await this.postModel
-        .find({ _id: { $in: appliedPostIds } })
-        .select('userId')
-        .lean();
-
-      for (const post of posts) {
-        if (post.userId) buddyIds.add(post.userId);
-      }
-    }
-
-    const ownedPosts = await this.postModel
-      .find({ userId })
-      .select('_id')
-      .lean();
-
-    const ownedPostIds = ownedPosts.map(post => String(post._id));
-    if (ownedPostIds.length) {
-      const acceptedOnOwnedPosts = await this.applicationModel
-        .find({ postId: { $in: ownedPostIds }, status: 'accepted' })
-        .select('userId')
-        .lean();
-
-      for (const application of acceptedOnOwnedPosts) {
-        if (application.userId) buddyIds.add(application.userId);
-      }
-    }
-
-    return buddyIds;
-  }
 }

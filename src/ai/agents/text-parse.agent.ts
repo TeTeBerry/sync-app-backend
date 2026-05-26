@@ -6,7 +6,7 @@ import {
   isShortContextReply,
   parseConversationContext,
   type ConversationContext,
-} from '../utils/conversation-context.parser';
+} from '../conversation/conversation-context.parser';
 import type { ChatMessageDto } from '../presentation/chat-message.dto';
 import type { AgentParseInput, ParsedPostDraft } from './agent.types';
 
@@ -98,6 +98,7 @@ function buildMergedDescription(
   if (ctx.peopleCount) detailParts.push(`${ctx.peopleCount} 人同行`);
   if (ctx.city) detailParts.push(`从 ${ctx.city} 出发`);
   if (ctx.budget) detailParts.push(`预算约 ¥${ctx.budget}/人`);
+  if (ctx.genderPreference) detailParts.push(ctx.genderPreference);
 
   if (leadParts.length && detailParts.length) {
     return `${leadParts[0]}，${detailParts.join('，')}`;

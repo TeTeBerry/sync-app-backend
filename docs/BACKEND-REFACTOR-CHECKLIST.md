@@ -186,3 +186,33 @@
 - 单体 NestJS + 全局 Guard 即可；不必先拆微服务。
 - Chroma / Redis 不可用时不阻断主流程。
 - 保留 `GET /profile` BFF；登录后只改身份来源。
+
+---
+
+## AI 工程优化（P0–P3，2025-05）
+
+| 阶段 | 主题 | 状态 |
+|------|------|------|
+| P0 | 会话状态机 + BuddyModule use cases + Post 端口 | ✅ |
+| P1 | Intent 规则快路径 / 缓存 / recommend gate / profile dedupe / Chroma breaker | ✅ |
+| P2 | 并行路径 / async Chroma upsert / rate limit / message_complete SSE / 集成测试 / timing logs | ✅ |
+| P3 | 测试金字塔 / requestId 日志 / health / PostWriteService / orchestration README | ✅ |
+| P4 | JWT / 微信登录 / ActivityRegistration 物理迁入 / PartnerModule rename | ⬜ 延后 |
+
+### P3 验收 ✅
+
+- [x] `IntentRouterService` 集成测试（规则 + mock LLM + 缓存）
+- [x] `AiService` recommend_gate → decline → pending_confirmation 测试
+- [x] `PostWriteService`：Chroma upsert 失败不阻断 create
+- [x] `GET /api/health` → `{ mongodb, redis, chroma }`
+- [x] `logAiTurn` + `X-Request-Id` 贯穿 AI 日志
+- [x] `PostWriteService` 应用层；`PostService` 薄门面
+- [x] 前端 `useAiChatStream` 消费 `message_complete`
+
+### 仍延后（P4+）
+
+- [ ] `AuthModule` / JWT / `POST /auth/*`
+- [ ] `PartnerModule` 目录 rename（可选）
+- [ ] `ALL_AGENT_TOOLS` 注册进 `AgentRuntimeService`（发帖非必须）
+- [ ] E2E：发帖 → 点赞
+- [ ] 微服务拆分

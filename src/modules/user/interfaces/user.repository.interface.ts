@@ -21,6 +21,7 @@ export interface IUserRepository {
     externalId: string,
     data: Partial<UserDocument>,
   ): Promise<UserRecord | null>;
+  findByExternalIds(externalIds: string[]): Promise<UserRecord[]>;
 }
 
 export const USER_REPOSITORY = Symbol('USER_REPOSITORY');

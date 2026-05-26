@@ -13,35 +13,33 @@ import {
   isDemoOwnerClient,
   isResourceOwnedByClient,
 } from '../../common/utils/demo-owner.util';
-import {
-  PostApplication,
-  PostApplicationDocument,
-} from '../../database/schemas/post-application.schema';
-import {
-  PostComment,
-  PostCommentDocument,
-} from '../../database/schemas/post-comment.schema';
-import {
-  PostLike,
-  PostLikeDocument,
-} from '../../database/schemas/post-like.schema';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
 import { ActivityService } from '../activity/activity.service';
-import { NoticeAgent } from '../../ai/agents/notice.agent';
+import {
+  IPostNotificationPort,
+  POST_NOTIFICATION_PORT,
+} from './ports/post-notification.port';
+import { canViewPersonalInfo } from '../../common/utils/privacy.util';
+import { UserBlockService } from '../user/user-block.service';
 import { UserService } from '../user/user.service';
 import { ChromaService } from '../../ai/rag/chroma.service';
-import { RiskAgent } from '../../ai/agents/risk.agent';
 import type { PostStatus } from '../../database/schemas/post.schema';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PostMapper } from './post.mapper';
-import { POST_SEED } from './post.seed';
+import {
+  POST_SEED,
+  STORM_ACTIVITY_LEGACY_ID,
+  STORM_DEMO_POST_SEED,
+} from './post.seed';
 import {
   IPostRepository,
   POST_REPOSITORY,
   PostQueryFilter,
   PostRecord,
 } from './interfaces/post.repository.interface';
+import { PostWriteService } from './application/post-write.service';
+import { PostInteractionService } from './post-interaction.service';
 
 function resolveOwnerFilter(
   userId?: string,
@@ -68,23 +66,50 @@ export class PostService implements OnModuleInit {
     private readonly repository: IPostRepository,
     @InjectModel(Post.name)
     private readonly postModel: Model<PostDocument>,
-    @InjectModel(PostLike.name)
-    private readonly likeModel: Model<PostLikeDocument>,
-    @InjectModel(PostApplication.name)
-    private readonly applicationModel: Model<PostApplicationDocument>,
-    @InjectModel(PostComment.name)
-    private readonly commentModel: Model<PostCommentDocument>,
     private readonly userService: UserService,
+    private readonly userBlockService: UserBlockService,
     private readonly activityService: ActivityService,
     private readonly chromaService: ChromaService,
-    private readonly noticeAgent: NoticeAgent,
-    private readonly riskAgent: RiskAgent,
+    @Inject(POST_NOTIFICATION_PORT)
+    private readonly postNotification: IPostNotificationPort,
+    private readonly postWriteService: PostWriteService,
+    private readonly postInteraction: PostInteractionService,
   ) {}
 
   async onModuleInit() {
     const count = await this.postModel.estimatedDocumentCount();
     if (count === 0) {
       const inserted = await this.postModel.insertMany(POST_SEED);
+      await this.syncPostEmbeddings(inserted);
+    }
+    await this.ensureStormDemoPosts();
+  }
+
+  /** 已有库时补全风暴电音节招募帖，便于测 AI 搭子推荐卡片 */
+  private async ensureStormDemoPosts(): Promise<void> {
+    const recruitingCount = await this.postModel.countDocuments({
+      activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+      status: 'recruiting',
+    });
+    if (recruitingCount >= 10) {
+      return;
+    }
+
+    const inserted: PostDocument[] = [];
+
+    for (const seed of STORM_DEMO_POST_SEED) {
+      const exists = await this.postModel.exists({
+        activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+        userId: seed.userId,
+        body: seed.body,
+      });
+      if (exists) continue;
+
+      const doc = await this.postModel.create(seed);
+      inserted.push(doc);
+    }
+
+    if (inserted.length) {
       await this.syncPostEmbeddings(inserted);
     }
   }
@@ -135,17 +160,65 @@ export class PostService implements OnModuleInit {
     actorUserId: string,
     postIds: string[],
   ): Promise<Set<string>> {
-    if (!postIds.length) return new Set();
-
-    const rows = await this.likeModel
-      .find({ userId: actorUserId, postId: { $in: postIds } })
-      .select('postId')
-      .lean();
-
-    return new Set(rows.map(row => row.postId));
+    return this.postInteraction.findLikedPostIds(actorUserId, postIds);
   }
 
-  private async mapPostsWithLiked<T>(
+  private async filterPostsForViewer(
+    posts: PostRecord[],
+    userId?: string,
+    authorName?: string,
+  ): Promise<PostRecord[]> {
+    const actorUserId = resolveActorUserId(userId, authorName);
+    const excluded = await this.userBlockService.getBlockExclusionSet(actorUserId);
+    if (!excluded.size) return posts;
+    return posts.filter(post => !excluded.has(post.userId));
+  }
+
+  private async applyPrivacyToFeedItems<T extends {
+    userId?: string;
+    location?: string;
+    name?: string;
+    handle?: string;
+  }>(
+    items: T[],
+    viewerUserId: string,
+    buddyUserIds: Set<string>,
+  ): Promise<T[]> {
+    const authorIds = [
+      ...new Set(items.map(item => item.userId).filter(Boolean) as string[]),
+    ];
+    if (!authorIds.length) return items;
+
+    const privacyMap = await this.userService.findPrivacyLevelsByExternalIds(
+      authorIds,
+    );
+
+    return items.map(item => {
+      const authorId = item.userId?.trim();
+      if (!authorId || authorId === viewerUserId) return item;
+
+      const canView = canViewPersonalInfo(
+        privacyMap.get(authorId),
+        false,
+        buddyUserIds.has(authorId),
+      );
+      if (canView) return item;
+
+      return {
+        ...item,
+        location: '',
+        name: '用户',
+        handle: '@user',
+      };
+    });
+  }
+
+  private async mapPostsWithLiked<T extends {
+    userId?: string;
+    location?: string;
+    name?: string;
+    handle?: string;
+  }>(
     posts: PostRecord[],
     mapper: (post: PostRecord, liked: boolean) => T,
     userId?: string,
@@ -154,12 +227,16 @@ export class PostService implements OnModuleInit {
     if (!posts.length) return [];
 
     const actorUserId = resolveActorUserId(userId, authorName);
-    const postIds = posts.map(post => String(post._id));
+    const visiblePosts = await this.filterPostsForViewer(posts, userId, authorName);
+    const postIds = visiblePosts.map(post => String(post._id));
     const likedIds = await this.findLikedPostIds(actorUserId, postIds);
+    const buddyUserIds = await this.userBlockService.loadBuddyUserIds(actorUserId);
 
-    return posts.map(post =>
+    const mapped = visiblePosts.map(post =>
       mapper(post, likedIds.has(String(post._id))),
     );
+
+    return this.applyPrivacyToFeedItems(mapped, actorUserId, buddyUserIds);
   }
 
   async listPopular(limit = 20, userId?: string, authorName?: string) {
@@ -203,6 +280,10 @@ export class PostService implements OnModuleInit {
       .then(rows => rows.map(PostMapper.toProfileItem));
   }
 
+  async findPostById(id: string): Promise<PostRecord | null> {
+    return this.repository.findById(id);
+  }
+
   async findOwnerRecruitingPostForActivity(
     activityLegacyId: number,
     userId?: string,
@@ -232,76 +313,7 @@ export class PostService implements OnModuleInit {
     authorName?: string,
     options?: { skipRiskCheck?: boolean },
   ) {
-    const profile = await this.userService.resolveProfile(userId, authorName);
-    const ownerUserId = resolveActorUserId(userId, authorName);
-    const activity =
-      dto.activityLegacyId != null
-        ? await this.activityService.findByLegacyId(dto.activityLegacyId)
-        : null;
-
-    const eventTitle =
-      dto.eventTitle?.trim() ||
-      activity?.name ||
-      '组队帖';
-
-    let status: PostStatus = 'recruiting';
-    let bodyToSave = dto.body.trim();
-    let rejectionReason: string | undefined;
-
-    if (!options?.skipRiskCheck) {
-      const risk = await this.riskAgent.assess({
-        body: bodyToSave,
-        userId,
-        activityLegacyId: dto.activityLegacyId ?? activity?.legacyId,
-      });
-      if (!risk.publishable) {
-        status = 'hidden';
-        rejectionReason = risk.reason;
-      } else if (risk.sanitizedBody) {
-        bodyToSave = risk.sanitizedBody;
-      }
-    }
-
-    const created = await this.repository.create({
-      userId: ownerUserId,
-      authorName: profile?.name ?? authorName?.trim() ?? 'Zara Chen',
-      authorHandle: profile?.handle,
-      authorAvatar: profile?.avatar,
-      activityLegacyId: dto.activityLegacyId ?? activity?.legacyId,
-      eventTitle,
-      location: dto.location?.trim() || profile?.location || activity?.location,
-      body: bodyToSave,
-      tags: dto.tags ?? [],
-      status,
-      likes: 0,
-      comments: 0,
-    });
-
-    const postId = String(created._id);
-
-    if (status === 'hidden') {
-      void this.noticeAgent.notifyPostHidden(
-        ownerUserId,
-        postId,
-        created.activityLegacyId,
-        rejectionReason,
-      );
-      return PostMapper.toEventDetailItem(created);
-    }
-
-    void this.chromaService.syncPostEmbeddingStatus({
-      postId,
-      userId: ownerUserId,
-      body: created.body,
-      eventTitle: created.eventTitle,
-      tags: created.tags,
-      location: created.location,
-      activityCode: activity?.code,
-      activityLegacyId: created.activityLegacyId,
-      status,
-    });
-
-    return PostMapper.toEventDetailItem(created);
+    return this.postWriteService.createPost(dto, userId, authorName, options);
   }
 
   async hidePostForViolation(
@@ -321,7 +333,7 @@ export class PostService implements OnModuleInit {
     }
 
     void this.chromaService.deprecatePostEmbedding(postId);
-    void this.noticeAgent.notifyPostHidden(
+    void this.postNotification.notifyPostHidden(
       post.userId,
       postId,
       post.activityLegacyId,
@@ -365,239 +377,51 @@ export class PostService implements OnModuleInit {
       throw new NotFoundException('帖子不存在');
     }
 
-    void this.syncPostEmbeddingForRecord(updated);
+    this.postWriteService.scheduleEmbeddingSyncForRecord(updated);
 
     return PostMapper.toProfileItem(updated);
   }
 
-  async acceptPostApplication(
+  acceptPostApplication(
     postId: string,
     applicantUserId: string,
     ownerUserId?: string,
     ownerAuthorName?: string,
-  ): Promise<{ ok: true }> {
-    const post = await this.repository.findById(postId);
-    if (!post) {
-      throw new NotFoundException('帖子不存在');
-    }
-
-    if (
-      ownerUserId != null &&
-      !isResourceOwnedByClient(
-        { userId: post.userId, authorName: post.authorName },
-        ownerUserId,
-        ownerAuthorName,
-      )
-    ) {
-      throw new ForbiddenException('无权处理该帖子的申请');
-    }
-
-    const application = await this.applicationModel
-      .findOne({ postId, userId: applicantUserId.trim() })
-      .lean();
-    if (!application) {
-      throw new NotFoundException('申请不存在');
-    }
-
-    await this.applicationModel.updateOne(
-      { postId, userId: applicantUserId.trim() },
-      { status: 'accepted' },
+  ) {
+    return this.postInteraction.acceptPostApplication(
+      postId,
+      applicantUserId,
+      ownerUserId,
+      ownerAuthorName,
     );
-
-    const updated = await this.repository.updateById(postId, {
-      status: 'completed',
-    });
-
-    if (updated) {
-      void this.syncPostEmbeddingForRecord(updated);
-    } else {
-      void this.chromaService.deprecatePostEmbedding(postId);
-    }
-
-    return { ok: true };
   }
 
-  async likePost(id: string, userId?: string, authorName?: string) {
-    const post = await this.repository.findById(id);
-    if (!post) {
-      throw new NotFoundException('帖子不存在');
-    }
-
-    const actorUserId = resolveActorUserId(userId, authorName);
-    const existing = await this.likeModel
-      .findOne({ userId: actorUserId, postId: id })
-      .lean();
-
-    if (existing) {
-      await this.likeModel.deleteOne({ userId: actorUserId, postId: id });
-      const updated =
-        (await this.repository.incrementCounter(id, 'likes', -1)) ?? post;
-      return PostMapper.toEventDetailItem(updated, false);
-    }
-
-    try {
-      await this.likeModel.create({ userId: actorUserId, postId: id });
-    } catch {
-      return PostMapper.toEventDetailItem(post, true);
-    }
-
-    const updated =
-      (await this.repository.incrementCounter(id, 'likes')) ?? post;
-    void this.noticeAgent.notifyLike(post, id, actorUserId, authorName);
-    return PostMapper.toEventDetailItem(updated, true);
+  likePost(id: string, userId?: string, authorName?: string) {
+    return this.postInteraction.likePost(id, userId, authorName);
   }
 
-  async applyToPost(id: string, userId?: string, authorName?: string) {
-    const post = await this.repository.findById(id);
-    if (!post) {
-      throw new NotFoundException('帖子不存在');
-    }
-
-    const actorUserId = resolveActorUserId(userId, authorName);
-    if (
-      isResourceOwnedByClient(
-        { userId: post.userId, authorName: post.authorName },
-        userId,
-        authorName,
-      )
-    ) {
-      throw new BadRequestException('不能申请加入自己的帖子');
-    }
-
-    const existing = await this.applicationModel
-      .findOne({ userId: actorUserId, postId: id })
-      .lean();
-    if (existing) {
-      return { ok: true as const, alreadyApplied: true };
-    }
-
-    try {
-      await this.applicationModel.create({
-        userId: actorUserId,
-        authorName: authorName?.trim(),
-        postId: id,
-        status: 'pending',
-      });
-    } catch (error) {
-      if ((error as { code?: number }).code === 11000) {
-        return { ok: true as const, alreadyApplied: true };
-      }
-      throw error;
-    }
-
-    void this.noticeAgent.notifyApplication(post, id, actorUserId, authorName);
-
-    return { ok: true as const, alreadyApplied: false };
+  applyToPost(id: string, userId?: string, authorName?: string) {
+    return this.postInteraction.applyToPost(id, userId, authorName);
   }
 
-  async listComments(id: string) {
-    const post = await this.repository.findById(id);
-    if (!post) {
-      throw new NotFoundException('帖子不存在');
-    }
-    if (post.status === 'hidden') {
-      throw new NotFoundException('帖子不存在');
-    }
-
-    const comments = await this.commentModel
-      .find({
-        postId: id,
-        $or: [{ parentCommentId: { $exists: false } }, { parentCommentId: null }],
-      })
-      .sort({ createdAt: 1 })
-      .lean();
-
-    const items = await Promise.all(
-      comments.map(async (comment) => {
-        const profile = await this.userService.resolveProfile(
-          comment.userId,
-          comment.authorName,
-        );
-        return PostMapper.toCommentItem({
-          ...comment,
-          authorAvatar: profile?.avatar,
-        });
-      }),
-    );
-
-    return items;
+  listComments(id: string) {
+    return this.postInteraction.listComments(id);
   }
 
-  async addComment(
+  addComment(
     id: string,
     body: string,
     userId?: string,
     authorName?: string,
     parentCommentId?: string,
   ) {
-    const post = await this.repository.findById(id);
-    if (!post) {
-      throw new NotFoundException('帖子不存在');
-    }
-    if (post.status === 'hidden') {
-      throw new NotFoundException('帖子不存在');
-    }
-
-    const trimmed = body.trim();
-    if (!trimmed) {
-      throw new BadRequestException('评论内容不能为空');
-    }
-
-    const risk = await this.riskAgent.assessComment({
-      body: trimmed,
-      userId,
-      postId: id,
-    });
-    if (!risk.publishable) {
-      throw new BadRequestException(risk.reason?.trim() || '评论未通过审核');
-    }
-
-    const finalBody = risk.sanitizedBody ?? trimmed;
-
-    const actorUserId = resolveActorUserId(userId, authorName);
-    const trimmedParentId = parentCommentId?.trim();
-    let parentComment: { _id?: unknown; userId: string; postId: string } | null = null;
-
-    if (trimmedParentId) {
-      parentComment = await this.commentModel.findById(trimmedParentId).lean();
-      if (!parentComment || parentComment.postId !== id) {
-        throw new BadRequestException('回复的评论不存在');
-      }
-    }
-
-    await this.commentModel.create({
-      userId: actorUserId,
-      authorName: authorName?.trim(),
-      postId: id,
-      parentCommentId: trimmedParentId,
-      body: finalBody,
-    });
-
-    const updated =
-      (await this.repository.incrementCounter(id, 'comments')) ?? post;
-    const preview =
-      finalBody.length > 40 ? `${finalBody.slice(0, 40)}…` : finalBody;
-
-    void this.noticeAgent.notifyComment(
-      post,
+    return this.postInteraction.addComment(
       id,
-      actorUserId,
+      body,
+      userId,
       authorName,
-      preview,
+      parentCommentId,
     );
-
-    if (parentComment) {
-      void this.noticeAgent.notifyCommentReply(
-        post,
-        id,
-        parentComment,
-        actorUserId,
-        authorName,
-        preview,
-      );
-    }
-
-    return PostMapper.toEventDetailItem(updated);
   }
 
   async deleteOwnedPost(id: string, userId?: string, authorName?: string) {
@@ -622,10 +446,8 @@ export class PostService implements OnModuleInit {
     }
 
     await Promise.all([
-      this.likeModel.deleteMany({ postId: id }),
-      this.applicationModel.deleteMany({ postId: id }),
-      this.commentModel.deleteMany({ postId: id }),
-      this.chromaService.deprecatePostEmbedding(id),
+      this.postInteraction.deleteInteractionsForPost(id),
+      Promise.resolve(this.postWriteService.deprecateEmbedding(id)),
     ]);
 
     return { ok: true as const };

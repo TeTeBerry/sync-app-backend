@@ -13,6 +13,7 @@ const PROD_ALLOWED_HEADERS = [
   'Authorization',
   'Accept',
   'X-Activity-Id',
+  'X-Request-Id',
 ];
 
 function resolveCorsOrigin():

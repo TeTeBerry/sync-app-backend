@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import {
   Notification,
   NotificationDocument,
+  NotificationInteractionType,
   NotificationMeta,
   NotificationType,
 } from '../../database/schemas/notification.schema';
@@ -167,5 +168,56 @@ export class NotificationService {
       { $set: { read: true } },
     );
     return { ok: true };
+  }
+
+  async deleteOne(id: string, userId?: string): Promise<{ ok: true }> {
+    const uid = resolveUserId(userId);
+    const result = await this.notificationModel.deleteOne({ _id: id, userId: uid });
+    if (result.deletedCount === 0) {
+      throw new NotFoundException('通知不存在');
+    }
+    return { ok: true };
+  }
+
+  async clearAll(userId?: string): Promise<{ ok: true }> {
+    const uid = resolveUserId(userId);
+    await this.notificationModel.deleteMany({ userId: uid });
+    return { ok: true };
+  }
+
+  async hasRecentByMeta(
+    userId: string,
+    metaType: NotificationInteractionType,
+    options?: {
+      activityLegacyId?: number;
+      postId?: string;
+      actorUserId?: string;
+      sinceMs?: number;
+    },
+  ): Promise<boolean> {
+    const uid = resolveUserId(userId);
+    if (uid === 'anonymous') return false;
+
+    const sinceMs = options?.sinceMs ?? 24 * 60 * 60 * 1000;
+    const since = new Date(Date.now() - sinceMs);
+
+    const filter: Record<string, unknown> = {
+      userId: uid,
+      'meta.type': metaType,
+      createdAt: { $gte: since },
+    };
+
+    if (options?.activityLegacyId != null) {
+      filter['meta.activityLegacyId'] = options.activityLegacyId;
+    }
+    if (options?.postId?.trim()) {
+      filter['meta.postId'] = options.postId.trim();
+    }
+    if (options?.actorUserId?.trim()) {
+      filter['meta.actorUserId'] = options.actorUserId.trim();
+    }
+
+    const count = await this.notificationModel.countDocuments(filter);
+    return count > 0;
   }
 }

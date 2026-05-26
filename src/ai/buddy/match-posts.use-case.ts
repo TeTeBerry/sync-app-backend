@@ -1,0 +1,172 @@
+import { Injectable } from '@nestjs/common';
+import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
+import { MatchAgent, NoticeAgent, UserProfileAgent } from '../agents';
+import type { UserProfileSyncResult } from '../agents/user-profile.agent';
+import type { ConversationState } from '../conversation';
+import type { BuddySearchHintPayload } from '../intent/chat-intent.types';
+import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { parseConversationContext } from '../conversation/conversation-context.parser';
+import {
+  buildZoneMatchEmptyReply,
+  buildZoneMatchFoundReply,
+  inferBuddySearchHintKind,
+  buildBuddySearchQuery,
+} from '../match/zone-buddy-search.util';
+import { BuddyContextService } from './buddy-context.service';
+import type { PostIntentMatchResult } from './buddy.types';
+
+export interface PreResolvedActivity {
+  legacyId?: number;
+  name?: string;
+  code?: string;
+  date?: string;
+}
+
+export interface MatchPostsFromChatParams {
+  messages: ChatMessageDto[];
+  input: string;
+  activityLegacyId?: number;
+  userId?: string;
+  buddySearchHint?: BuddySearchHintPayload;
+  fromIntentRouter?: boolean;
+  profileSync?: UserProfileSyncResult | null;
+  /** When caller already resolved activity (e.g. recommend-before-create), skip duplicate lookup. */
+  preResolvedActivity?: PreResolvedActivity | null;
+}
+
+@Injectable()
+export class MatchPostsFromChatUseCase {
+  constructor(
+    private readonly matchAgent: MatchAgent,
+    private readonly userProfileAgent: UserProfileAgent,
+    private readonly noticeAgent: NoticeAgent,
+    private readonly buddyContext: BuddyContextService,
+  ) {}
+
+  async execute(params: MatchPostsFromChatParams): Promise<PostIntentMatchResult | null> {
+    const {
+      messages,
+      input,
+      activityLegacyId,
+      userId,
+      buddySearchHint,
+      fromIntentRouter,
+      profileSync,
+    } = params;
+    const trimmed = input.trim();
+
+    if (!trimmed) return null;
+
+    if (
+      !fromIntentRouter &&
+      !buddySearchHint &&
+      !this.buddyContext.isMatchExistingPostsIntent(trimmed)
+    ) {
+      return null;
+    }
+
+    const ctx = parseConversationContext(messages, trimmed);
+
+    // Profile sync and activity lookup are independent — run in parallel when possible.
+    const [resolvedProfileSync, resolvedActivity] = await Promise.all([
+      profileSync ??
+        this.userProfileAgent.syncProfileFromChat({
+          messages,
+          input: trimmed,
+          userId,
+        }),
+      params.preResolvedActivity != null
+        ? Promise.resolve(params.preResolvedActivity)
+        : this.buddyContext.resolveActivity(ctx, activityLegacyId),
+    ]);
+    if (!resolvedActivity?.legacyId) {
+      return null;
+    }
+
+    const hintDisplay = buddySearchHint?.displayLabel?.trim() || trimmed;
+    const hintKind =
+      buddySearchHint?.kind ?? inferBuddySearchHintKind(hintDisplay);
+
+    const matchQuery = buildBuddySearchQuery({
+      userInput: trimmed,
+      searchHint: buddySearchHint?.displayLabel,
+      activityDate: resolvedActivity.date,
+      activityName: resolvedActivity.name,
+    });
+
+    const isStructuredSearch = Boolean(
+      fromIntentRouter || buddySearchHint?.displayLabel,
+    );
+
+    const matchResult = await this.matchAgent.match({
+      query: matchQuery,
+      activityCode: resolvedActivity.code ?? '',
+      activityLegacyId: resolvedActivity.legacyId,
+      limit: 5,
+      userId,
+      profile: resolvedProfileSync?.profile,
+      rankingWeights: resolvedProfileSync?.weights,
+    });
+
+    const matches = matchResult.items;
+    const activityLabel = resolvedActivity.name ?? '活动';
+
+    if (!matches.length) {
+      return {
+        matches: [],
+        postCards: [],
+        activityLabel,
+        degraded: matchResult.degraded,
+        replyText: isStructuredSearch
+          ? buildZoneMatchEmptyReply(activityLabel, hintDisplay, hintKind)
+          : [
+              `暂未找到「${activityLabel}」相关的组队帖。`,
+              '',
+              '你可以直接告诉我出行需求，我帮你发一条组队帖。',
+            ].join('\n'),
+      };
+    }
+
+    const postCards = await this.buddyContext.buildRecommendedPostCards(
+      matches,
+      resolvedActivity.legacyId,
+    );
+
+    const lines = matches.map(
+      (match, index) => `${index + 1}. ${match.snippet}`,
+    );
+
+    void this.noticeAgent.notifyMatchRecommendation(
+      params.userId,
+      resolvedActivity.legacyId,
+      activityLabel,
+      matches.map(match => match.postId),
+      matches.length,
+    );
+
+    return {
+      matches: matches.map(match => ({
+        postId: match.postId,
+        snippet: match.snippet,
+        matchReason: match.matchReason,
+      })),
+      postCards,
+      activityLabel,
+      degraded: matchResult.degraded,
+      replyText: isStructuredSearch
+        ? buildZoneMatchFoundReply(
+            activityLabel,
+            hintDisplay,
+            lines,
+            hintKind,
+          )
+        : [
+            `在「${activityLabel}」下找到 ${matches.length} 条相近组队帖：`,
+            '',
+            ...lines,
+            '',
+            '可在活动详情页查看帖子并申请加入。',
+          ].join('\n'),
+    };
+  }
+}

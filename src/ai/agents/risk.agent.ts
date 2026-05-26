@@ -4,11 +4,11 @@ import {
   decodeBase64Payload,
   toDataUrl,
 } from '../utils/image-base64.util';
-import { matchRiskRules } from '../utils/risk-rules.util';
+import { matchRiskRules } from '../risk/risk-rules.util';
 import {
   buildPublishableBody,
   desensitizePrivacy,
-} from '../utils/risk-sanitize.util';
+} from '../risk/risk-sanitize.util';
 import {
   IPostRepository,
   POST_REPOSITORY,
@@ -25,6 +25,7 @@ import {
 import type {
   RiskAgentInput,
   RiskAssessment,
+  RiskAssessOptions,
   RiskCommentInput,
   RiskImageInput,
 } from './agent.types';
@@ -57,7 +58,10 @@ export class RiskAgent {
     private readonly postRepository: IPostRepository,
   ) {}
 
-  async assess(input: RiskAgentInput): Promise<RiskAssessment> {
+  async assess(
+    input: RiskAgentInput,
+    options?: RiskAssessOptions,
+  ): Promise<RiskAssessment> {
     const body = input.body.trim();
     const ruleMatch = matchRiskRules(body);
     if (ruleMatch) return fromRuleMatch(ruleMatch);
@@ -91,6 +95,13 @@ export class RiskAgent {
         reason: '你已发布过相同内容的组队帖，请勿重复刷屏或抄袭',
         violationType: 'duplicate',
         severity: 'medium',
+      };
+    }
+
+    if (options?.rulesOnly) {
+      return {
+        publishable: true,
+        sanitizedBody: buildPublishableBody(body),
       };
     }
 

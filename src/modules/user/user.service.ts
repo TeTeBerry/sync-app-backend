@@ -29,6 +29,7 @@ export interface UserMeDto {
   budgetLevel?: string;
   likeMate?: boolean;
   notificationsEnabled?: boolean;
+  privacyLevel?: 'public' | 'friends' | 'private';
 }
 
 const DEMO_PROFILE = {
@@ -44,6 +45,7 @@ const DEMO_PROFILE = {
   budgetLevel: 'medium',
   likeMate: true,
   notificationsEnabled: true,
+  privacyLevel: 'public' as const,
 };
 
 @Injectable()
@@ -102,7 +104,26 @@ export class UserService implements OnModuleInit {
       likeMate: record.likeMate ?? DEMO_PROFILE.likeMate,
       notificationsEnabled:
         record.notificationsEnabled ?? DEMO_PROFILE.notificationsEnabled,
+      privacyLevel: record.privacyLevel ?? DEMO_PROFILE.privacyLevel,
     };
+  }
+
+  async findPrivacyLevelsByExternalIds(
+    externalIds: string[],
+  ): Promise<Map<string, 'public' | 'friends' | 'private'>> {
+    const unique = [...new Set(externalIds.filter(Boolean))];
+    if (!unique.length) return new Map();
+
+    const rows = await this.repository.findByExternalIds(unique);
+    const map = new Map<string, 'public' | 'friends' | 'private'>();
+    for (const row of rows) {
+      if (!row.externalId) continue;
+      map.set(
+        row.externalId,
+        row.privacyLevel ?? DEMO_PROFILE.privacyLevel,
+      );
+    }
+    return map;
   }
 
   async isNotificationsEnabled(

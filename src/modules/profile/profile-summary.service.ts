@@ -7,6 +7,8 @@ import {
 } from '../../database/schemas/activity-registration.schema';
 import { ActivityService } from '../activity/activity.service';
 import { PostService } from '../post/post.service';
+import { canViewPersonalInfo } from '../../common/utils/privacy.util';
+import { UserBlockService } from '../user/user-block.service';
 import { UserService } from '../user/user.service';
 import { resolveProfileActivityStatus, compareActivityDateDesc } from '../../common/utils/activity-date.util';
 import { ACTIVITY_REGISTRATION_SEED } from './activity-registration.seed';
@@ -61,6 +63,7 @@ export class ProfileSummaryService implements OnModuleInit {
     private readonly activityService: ActivityService,
     private readonly postService: PostService,
     private readonly userService: UserService,
+    private readonly userBlockService: UserBlockService,
   ) {}
 
   async onModuleInit() {
@@ -77,21 +80,43 @@ export class ProfileSummaryService implements OnModuleInit {
   async getSummary(
     userId?: string,
     authorName?: string,
+    viewerUserId?: string,
+    viewerAuthorName?: string,
   ): Promise<ProfileSummaryDto> {
     const filter = resolveOwnerFilter(userId, authorName);
-    const [profile, events, likes, posts, completedPosts] = await Promise.all([
-      this.userService.resolveProfile(userId, authorName),
-      this.registrationRepository.countByOwner(filter),
-      this.postService.sumLikesByOwner(userId, authorName),
-      this.postService.countByOwner(userId, authorName),
-      this.postService.countCompletedByOwner(userId, authorName),
-    ]);
+    const ownerExternalId = filter.userId ?? userId?.trim();
+    const viewerId = viewerUserId?.trim() || ownerExternalId;
+    const isOwner =
+      !viewerId ||
+      !ownerExternalId ||
+      viewerId === ownerExternalId;
+
+    const [profile, events, likes, posts, completedPosts, buddyUserIds] =
+      await Promise.all([
+        this.userService.resolveProfile(userId, authorName),
+        this.registrationRepository.countByOwner(filter),
+        this.postService.sumLikesByOwner(userId, authorName),
+        this.postService.countByOwner(userId, authorName),
+        this.postService.countCompletedByOwner(userId, authorName),
+        viewerId
+          ? this.userBlockService.loadBuddyUserIds(viewerId)
+          : Promise.resolve(new Set<string>()),
+      ]);
+
+    const privacyLevel =
+      (profile as { privacyLevel?: 'public' | 'friends' | 'private' })
+        ?.privacyLevel ?? 'public';
+    const canView = canViewPersonalInfo(
+      privacyLevel,
+      isOwner,
+      Boolean(ownerExternalId && buddyUserIds.has(ownerExternalId)),
+    );
 
     return {
       name: profile?.name ?? 'Zara Chen',
       handle: profile?.handle ?? '@zara',
-      location: profile?.location ?? '上海',
-      bio: profile?.bio ?? '电音爱好者',
+      location: canView ? profile?.location ?? '上海' : '',
+      bio: canView ? profile?.bio ?? '电音爱好者' : '',
       avatar:
         profile?.avatar ??
         'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',

@@ -37,6 +37,9 @@ export class User {
 
   @Prop({ default: true })
   notificationsEnabled: boolean;
+
+  @Prop({ default: 'public', enum: ['public', 'friends', 'private'] })
+  privacyLevel: 'public' | 'friends' | 'private';
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

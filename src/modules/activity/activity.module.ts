@@ -1,6 +1,7 @@
 // src/modules/activity/activity.module.ts
 import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { AgentsModule } from '../../ai/agents/agents.module';
 import { ChromaModule } from '../../ai/rag/chroma.module';
 import { ParserModule } from '../../ai/parser/parser.module';
 import { RedisModule } from '../../redis/redis.module';
@@ -17,6 +18,7 @@ import { ActivityService } from './activity.service';
 @Module({
   imports: [
     forwardRef(() => ProfileModule),
+    forwardRef(() => AgentsModule),
     NotificationModule,
     ChromaModule,
     ParserModule,

@@ -146,3 +146,162 @@ export const POST_SEED = [
     createdAt: new Date('2026-04-20'),
   },
 ];
+
+/** 风暴电音节（legacyId=4）额外 demo 帖，用于 AI 搭子推荐卡片 / Chroma 匹配测试 */
+export const STORM_ACTIVITY_LEGACY_ID = 4;
+
+export const STORM_DEMO_POST_SEED = [
+  {
+    userId: 'demo-luna',
+    authorName: 'Luna',
+    authorHandle: '@luna_storm',
+    authorAvatar:
+      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&q=80&fit=crop&crop=face',
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+    eventTitle: '风暴电音节 深圳站',
+    location: '上海',
+    body:
+      '6月13日场 13号A区 内场票已出，上海出发求拼车到深圳，2人女生，可拼住宿～',
+    tags: ['#13号A区', '#拼车', '#拼住宿', '#女生优先'],
+    status: 'recruiting',
+    likes: 52,
+    comments: 9,
+    createdAt: new Date(Date.now() - 45 * 60_000),
+  },
+  {
+    userId: 'demo-ryan',
+    authorName: 'Ryan',
+    authorHandle: '@ryan_edm',
+    authorAvatar:
+      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&q=80&fit=crop&crop=face',
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+    eventTitle: '风暴电音节 深圳站',
+    location: '广州',
+    body:
+      '风暴 STORM 深圳站 6月14日，B区看台，3缺1男生，广州拼车出发，有人吗？',
+    tags: ['#组队', '#B区', '#6月14日'],
+    status: 'recruiting',
+    likes: 41,
+    comments: 7,
+    createdAt: new Date(Date.now() - 90 * 60_000),
+  },
+  {
+    userId: 'demo-mia',
+    authorName: 'Mia',
+    authorHandle: '@mia_rave',
+    authorAvatar:
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&q=80&fit=crop&crop=face',
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+    eventTitle: '风暴电音节 深圳站',
+    location: '深圳',
+    body:
+      '13号 A区 有没有人一起进场？本地土著带路，可分享检票口和接驳攻略，求搭子同行。',
+    tags: ['#13号A区', '#搭子', '#深圳'],
+    status: 'recruiting',
+    likes: 36,
+    comments: 11,
+    createdAt: new Date(Date.now() - 3 * 60 * 60_000),
+  },
+  {
+    userId: 'demo-alex',
+    authorName: 'Alex',
+    authorHandle: '@alex_underground',
+    authorAvatar:
+      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=120&q=80&fit=crop&crop=face',
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+    eventTitle: '风暴电音节 深圳站',
+    location: '东莞',
+    body:
+      '6月13-14 连刷两场 STORM，已订会展中心附近酒店，求2人拼房，男生女生都可聊。',
+    tags: ['#拼住宿', '#6月13日', '#6月14日'],
+    status: 'recruiting',
+    likes: 28,
+    comments: 4,
+    createdAt: new Date(Date.now() - 5 * 60 * 60_000),
+  },
+  {
+    userId: 'demo-sam',
+    authorName: 'Sam',
+    authorHandle: '@sam_beats',
+    authorAvatar:
+      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&q=80&fit=crop&crop=face',
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+    eventTitle: '风暴电音节 深圳站',
+    location: '深圳',
+    body:
+      '13号A 区附近集合，预售票在手，缺1个会拍照的搭子，主舞台前排区域～',
+    tags: ['#13号A区', '#组队'],
+    status: 'recruiting',
+    likes: 22,
+    comments: 5,
+    createdAt: new Date(Date.now() - 8 * 60 * 60_000),
+  },
+  {
+    userId: 'demo-jade',
+    authorName: 'Jade',
+    authorHandle: '@jade_storm',
+    authorAvatar:
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&q=80&fit=crop&crop=face',
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+    eventTitle: '风暴电音节 深圳站',
+    location: '杭州',
+    body:
+      '杭州飞深圳，6月13日风暴电音节，女生优先结伴，可AA拼酒店和打车，佛系不熬夜。',
+    tags: ['#女生优先', '#拼住宿', '#6月13日'],
+    status: 'recruiting',
+    likes: 19,
+    comments: 3,
+    createdAt: new Date(Date.now() - 12 * 60 * 60_000),
+  },
+  {
+    userId: 'demo-leo',
+    authorName: 'Leo',
+    authorHandle: '@leo_edm',
+    authorAvatar:
+      'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=120&q=80&fit=crop&crop=face',
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+    eventTitle: '风暴电音节 深圳站',
+    location: '深圳',
+    body:
+      'A区 6月13日场，2人组队缺1，已熟悉场馆动线，欢迎 STORMer 私聊结伴（平台内沟通即可）。',
+    tags: ['#A区', '#6月13日', '#缺1人'],
+    status: 'recruiting',
+    likes: 15,
+    comments: 2,
+    createdAt: new Date(Date.now() - 18 * 60 * 60_000),
+  },
+  {
+    userId: 'demo-kai',
+    authorName: 'Kai',
+    authorHandle: '@kai_rave',
+    authorAvatar:
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&q=80&fit=crop&crop=face',
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+    eventTitle: '风暴电音节 深圳站',
+    location: '北京',
+    body:
+      '北京出发深圳 STORM，6月14日场，求同行搭子一起看压轴，可拼车可拼票区附近酒店。',
+    tags: ['#拼车', '#6月14日', '#搭子'],
+    status: 'recruiting',
+    likes: 14,
+    comments: 1,
+    createdAt: new Date(Date.now() - 24 * 60 * 60_000),
+  },
+  {
+    userId: 'demo-nova-storm',
+    authorName: 'Nova',
+    authorHandle: '@nova_storm',
+    authorAvatar:
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&q=80&fit=crop&crop=face',
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+    eventTitle: '风暴电音节 深圳站',
+    location: '深圳',
+    body:
+      '有没有 13号 搭子？第一次来风暴电音节，想找人带一下换票区和储物柜流程，女生更好。',
+    tags: ['#13号', '#新手友好', '#女生优先'],
+    status: 'recruiting',
+    likes: 33,
+    comments: 8,
+    createdAt: new Date(Date.now() - 6 * 60 * 60_000),
+  },
+];

@@ -22,14 +22,21 @@ AppModule
     ├── AgentsModule         # 四 Agent
     ├── OrchestrationModule  # 状态机 / Handler 管道
     ├── RagModule / ChromaModule
-    └── PostIntentService    # 发帖 / 匹配编排
+    └── BuddyModule             # 发帖 / 匹配编排（use cases + PostIntentService 门面）
+        ├── recommend-before-create.use-case.ts
+        ├── match-posts.use-case.ts
+        └── create-post-from-chat.use-case.ts
+    ├── orchestration/          # AiTurnPipeline（单轮编排）+ legacy AgentRuntime（仅 DeterministicReply）
+    ├── presentation/           # AiSseBuilder（SSE 事件组装）
+    ├── gate/ match/ publish/ risk/ intent/  # 原 ai/utils 按域拆分
+    ├── PostAgentAdaptersModule # PostModule ↔ AgentsModule 端口适配
 ```
 
 | 目标模块 | 代码路径 | 状态 |
 |----------|----------|------|
 | User | `modules/user/` | `GET/PATCH /users/me`（Query 身份）✅ |
 | Activity | `modules/activity/` | 列表 / 匹配 / 详情 / 报名 ✅ |
-| Partner | `modules/post/` | 帖子 CRUD + 互动 ✅ |
+| Partner | `modules/post/` | 帖子 CRUD + `PostInteractionService`（赞/评/申请）✅ |
 | AiAssistant | `ai/` + `modules/chat/` | SSE + Agent ✅ |
 | BFF | `home/`、`profile/` | 聚合读 ✅ |
 
@@ -37,26 +44,49 @@ AppModule
 
 ## AI 对话流程
 
-`POST /api/ai/chat`（SSE）由 `AiService.streamChat` 处理：
+`POST /api/ai/chat`（SSE）由 `AiService.streamChat` 处理；单轮逻辑在 `AiTurnPipeline`，SSE 事件由 `AiSseBuilder` 组装：
 
 ```
 用户消息
-  → IntentRouterService.resolve（规则快路径优先，未命中再 qwen-turbo 意图 JSON）
-       → search_posts：仅 tryMatchPostsFromChat（如 13号A，不调发帖 TextParse）
-       → create_post：仅 tryCreatePostFromChat
-       → quick_reply：仅 DeterministicReply（快捷按钮）
-       → legacy_cascade：原顺序 发帖 → 匹配 → 规则对话
-  → PostIntentService.tryCreatePostFromChat
-       → ImageParseAgent | TextParseAgent
-       → 活动详情快捷标签（如「组队队友」）+ activityLegacyId：先 delta 展示草稿并等待用户回复「确认发布」
-       → RiskAgent
-       → PostService.createPost（成功则 SSE post_created + delta）
-       → 拒绝则 delta（「组队帖暂未发布 ⚠️」+ 原因）
-  → 否则 PostIntentService.tryMatchPostsFromChat
-       → MatchAgent（Chroma sync_posts，按活动过滤）
-  → 否则 DeterministicReplyService（规则 Handler + 状态机，非自由 ChatGPT）
-  → ChatService.saveTurn
+  → AiService：校验、限流、会话合并
+  → AiTurnPipeline.runTurn
+       → IntentRouterService.resolve（规则快路径优先，未命中再 qwen-turbo 意图 JSON）
+       → syncProfileOnce（search/create 路径各一次）
+       → search_posts：collectMatchOnly
+       → create_post / legacy_cascade：collectBuddyIntentFlow（recommend gate → 发帖）
+       → quick_reply：collectDeterministicOnly
+  → AiSseBuilder：post_created / post_recommendations / conversation_patch / suggested_replies 等
+  → AiService：message_complete、ChatService.saveTurn、done
 ```
+
+### P2 性能与成本（已实现）
+
+| 项 | 实现 |
+|----|------|
+| 并行 | `create-post`：TextParse/ImageParse ∥ resolveActivity；`match-posts`：profile sync ∥ activity lookup；recommend 传 `preResolvedActivity` |
+| 风控成本 | 快捷「确认发布」：`RiskAgent.assess(..., { rulesOnly: true })`，规则+重复通过后跳过 Qwen-Max |
+| Chroma 写 | `PostWriteService.scheduleEmbeddingUpsert` 异步 + 失败 warn；删帖仍 deprecate |
+| 限流 | `AiRateLimitService` Redis INCR 或内存 fallback；`config.ai.rateLimit`（默认 30 次 / 5 分钟 / userId∥sessionId） |
+| Chroma circuit | `config.chroma.circuit`（failureThreshold、cooldownMs）→ `ChromaService` |
+| SSE | `delta` + `message_complete` + `done` |
+| 可观测 | `logAiTurn`：`ms_intent` / `ms_match` / `ms_buddy` / `ms_total`；create-post：`ms_parse` / `ms_risk` |
+
+### 会话状态机（ConversationState）
+
+结构化状态持久化在 MongoDB `chat.conversationState`，SSE 在状态变更时推送 `conversation_patch`：
+
+| flow | 含义 | 附加字段 |
+|------|------|----------|
+| `idle` | 默认 | — |
+| `recommend_gate` | 已展示搭子推荐，等待用户决定 | `gate.activityLegacyId`, `gate.shownPostIds`, `gate.empty` |
+| `publish_confirm` | 草稿待发，等待「确认发布」 | `publishDraft.activityLegacyId`, `publishDraft.draftBody` |
+| `clarify_buddy` | 缺槽位，等待补充出行信息 | — |
+
+旧会话无 `conversationState` 时，从助手消息内 marker（`【先推荐搭子】` / `【发布确认】`）bootstrap 一次。gate / publish 检测优先读 persisted state，marker 仅作向后兼容。
+
+### PostModule 端口（解耦 AgentsModule）
+
+`PostService` 依赖 `POST_MODERATION_PORT` / `POST_NOTIFICATION_PORT`，由 `PostAgentAdaptersModule`（`RiskAgent` / `NoticeAgent` 适配）注入。`PostModule` 不再直接 import `AgentsModule`；`AgentsModule` 仅依赖 `PostRepositoryModule`（`POST_REPOSITORY`）。
 
 ### 四 Agent（`src/ai/agents/`）
 
@@ -67,7 +97,17 @@ AppModule
 | MatchAgent | Chroma `queryPostsByActivity` | 活动内向量检索 |
 | RiskAgent | 规则 + Qwen-Max + 重复帖检测 | spam / 重复 / 严重违规 |
 
-发帖 Agent 经 `PostIntentService` 编排；`ALL_AGENT_TOOLS = []`，**未**接入 `AgentRuntimeService` 工具链。
+发帖 Agent 经 `PostIntentService` 编排；`ALL_AGENT_TOOLS = []`，**未**接入 `AgentRuntimeService` 工具链（DeterministicReply 仍用 Handler 管道 + 空工具列表，非 LLM tool-calling）。详见 `src/ai/orchestration/README.md`。
+
+### P3 工程优化（2025-05）
+
+| 项 | 实现 |
+|----|------|
+| 测试金字塔 | `IntentRouterService` / `AiService` recommend_gate 流 / `PostWriteService` Chroma 降级 |
+| 可观测性 | `X-Request-Id` + `logAiTurn` 结构化日志；`GET /api/health` 报告 mongodb / redis / chroma |
+| 编排澄清 | `orchestration/legacy/` 下 `AgentRuntimeService` / `AgentToolsService`（发帖走 Buddy use cases；DeterministicReply 仍用） |
+| Post 互动 | `PostInteractionService`（赞/评/申请）；`PostWriteService`（写帖 + Chroma） |
+| SSE | `message_complete` 事件（完整回复，前端可跳过打字机） |
 
 ---
 
@@ -98,7 +138,15 @@ AppModule
 ## 待办（非阻塞 H5 demo）
 
 - P0：Dev / 微信登录 + JWT
+- P1（AI 优化，已实现）：Intent 规则快路径 + resolve 日志/缓存；`legacy_cascade` 与 `create_post` 合并；推荐门控空结果 + `suggested_replies` SSE；单轮 `syncProfileFromChat`；匹配 `matchReason` + Chroma 降级/circuit breaker；有图仍走 proactive recommend
+- P2（AI 优化，已实现）：关键路径 `Promise.all`（parse∥resolveActivity、profile∥match）；快捷确认发帖 `RiskAgent.rulesOnly` 跳过 LLM；REST/AI 发帖 Chroma upsert 异步 + 失败日志；AI Redis/内存限流 30/5min；SSE `message_complete`；结构化 turn 日志（`ms_intent`/`ms_match`/`ms_buddy`/`ms_total`）；`AgentRuntimeService` 工具链仍为空（发帖走 Buddy use cases）
 - P1：Registration 物理迁入 ActivityModule（可选；逻辑在 `ActivityRegistrationService`）
 - P5：通知 meta 深链、Partner 目录可选 rename
 
 对照清单：`docs/BACKEND-REFACTOR-CHECKLIST.md`
+
+---
+
+## 测试
+
+单元测试集中在 `test/unit/`（目录与 `src/` 域对应），共享 mock 在 `test/mocks/`。运行 `npm test`；E2E 见 `test/app.e2e-spec.ts` 与 `npm run test:e2e`。说明见 `test/README.md`。

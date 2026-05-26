@@ -1,4 +1,4 @@
-import type { BuddySearchHintKind } from '../utils/zone-buddy-search.util';
+import type { BuddySearchHintKind } from '../match/zone-buddy-search.util';
 
 /** 路由后的顶层意图（决定 AiService 走哪条主链） */
 export type ChatIntentKind =

@@ -13,21 +13,21 @@ import {
   PostLikeSchema,
 } from '../../database/schemas/post-like.schema';
 import { Post, PostSchema } from '../../database/schemas/post.schema';
-import { AgentsModule } from '../../ai/agents/agents.module';
 import { ChromaModule } from '../../ai/rag/chroma.module';
 import { ActivityModule } from '../activity/activity.module';
 import { NotificationModule } from '../notification/notification.module';
 import { UserModule } from '../user/user.module';
-import { POST_REPOSITORY } from './interfaces/post.repository.interface';
+import { PostWriteService } from './application/post-write.service';
 import { PostController } from './post.controller';
-import { PostRepository } from './post.repository';
+import { PostRepositoryModule } from './post-repository.module';
 import { PostService } from './post.service';
+import { PostInteractionService } from './post-interaction.service';
 
 @Module({
   imports: [
     UserModule,
     forwardRef(() => ActivityModule),
-    forwardRef(() => AgentsModule),
+    PostRepositoryModule,
     NotificationModule,
     ChromaModule,
     MongooseModule.forFeature([
@@ -38,11 +38,7 @@ import { PostService } from './post.service';
     ]),
   ],
   controllers: [PostController],
-  providers: [
-    PostRepository,
-    { provide: POST_REPOSITORY, useExisting: PostRepository },
-    PostService,
-  ],
-  exports: [PostService, POST_REPOSITORY],
+  providers: [PostWriteService, PostInteractionService, PostService],
+  exports: [PostService, PostWriteService, PostInteractionService, PostRepositoryModule],
 })
 export class PostModule {}

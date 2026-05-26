@@ -7,11 +7,11 @@ export function buildScopedFindBuddyReply(activityName: string): string {
     `好的，我来帮你在「${activityName}」找同行伙伴 🎵`,
     '',
     '请告诉我：',
-    '· 出行日期',
-    '· 同行人数',
-    '· 出发城市',
+    '· 出行时间',
+    '· 人数',
+    '· 性别偏好',
     '',
-    '也可以直接补充预算、住宿偏好等需求。',
+    '也可以直接补充出发城市、预算、住宿偏好等需求。',
   ].join('\n');
 }
 

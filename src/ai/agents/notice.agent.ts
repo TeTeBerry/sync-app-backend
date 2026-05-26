@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import type { NotificationInteractionType } from '../../database/schemas/notification.schema';
+import type {
+  NotificationCategory,
+  NotificationInteractionType,
+  NotificationMeta,
+} from '../../database/schemas/notification.schema';
 import { NotificationService } from '../../modules/notification/notification.service';
 import type { NotificationTemplateKey } from '../../modules/notification/notification-templates.util';
 import { UserService } from '../../modules/user/user.service';
@@ -10,6 +14,24 @@ export interface NoticeInteractionCopy {
   templateKey: NotificationTemplateKey;
   templateParams: Record<string, string>;
 }
+
+export interface NoticeDispatchInput {
+  userId: string;
+  category: NotificationCategory;
+  templateKey: NotificationTemplateKey;
+  templateParams?: Record<string, string>;
+  meta?: NotificationMeta;
+  /** Skip duplicate check when false (default true for interaction pushes). */
+  dedupe?: {
+    metaType: NotificationInteractionType;
+    activityLegacyId?: number;
+    postId?: string;
+    actorUserId?: string;
+    sinceMs?: number;
+  };
+}
+
+const MATCH_RECOMMENDATION_DEDUPE_MS = 6 * 60 * 60 * 1000;
 
 @Injectable()
 export class NoticeAgent {
@@ -63,12 +85,9 @@ export class NoticeAgent {
       return;
     }
 
-    if (!(await this.shouldNotify(parentUserId))) {
-      return;
-    }
-
-    await this.notificationService.createFromTemplate({
+    await this.dispatch({
       userId: parentUserId,
+      category: 'comment',
       templateKey: 'commentReply',
       templateParams: {
         actor: actorName?.trim() || '有人',
@@ -81,6 +100,12 @@ export class NoticeAgent {
         actorUserId,
         actorUserName: actorName?.trim(),
         parentCommentId: String(parentComment._id),
+      },
+      dedupe: {
+        metaType: 'comment_reply',
+        postId,
+        actorUserId,
+        sinceMs: 60 * 60 * 1000,
       },
     });
   }
@@ -112,13 +137,10 @@ export class NoticeAgent {
     const uid = userId?.trim();
     if (!uid) return;
 
-    if (!(await this.shouldNotify(uid))) {
-      return;
-    }
-
     const reasonText = this.buildRejectionReasonSummary(reason);
-    await this.notificationService.createFromTemplate({
+    await this.dispatch({
       userId: uid,
+      category: 'system',
       templateKey: 'postRejected',
       templateParams: { reason: reasonText },
       meta: {
@@ -138,13 +160,10 @@ export class NoticeAgent {
     const uid = userId?.trim();
     if (!uid) return;
 
-    if (!(await this.shouldNotify(uid))) {
-      return;
-    }
-
     const reasonText = this.buildHiddenReasonSummary(reason);
-    await this.notificationService.createFromTemplate({
+    await this.dispatch({
       userId: uid,
+      category: 'system',
       templateKey: 'postHidden',
       templateParams: { reason: reasonText },
       meta: {
@@ -166,12 +185,9 @@ export class NoticeAgent {
     const uid = userId?.trim();
     if (!uid || count === 0) return;
 
-    if (!(await this.shouldNotify(uid))) {
-      return;
-    }
-
-    await this.notificationService.createFromTemplate({
+    await this.dispatch({
       userId: uid,
+      category: 'buddy_recommend',
       templateKey: 'matchRecommendation',
       templateParams: {
         activityName,
@@ -182,6 +198,78 @@ export class NoticeAgent {
         type: 'match_recommendation',
         matchPostIds,
         postId: matchPostIds[0],
+      },
+      dedupe: {
+        metaType: 'match_recommendation',
+        activityLegacyId,
+        sinceMs: MATCH_RECOMMENDATION_DEDUPE_MS,
+      },
+    });
+  }
+
+  async notifyActivityUpdate(
+    userIds: string[],
+    activityLegacyId: number,
+    activityName: string,
+    changeSummary: string,
+  ): Promise<void> {
+    const recipients = [...new Set(userIds.map(id => id.trim()).filter(Boolean))];
+    if (!recipients.length) return;
+
+    await Promise.all(
+      recipients.map(userId =>
+        this.dispatch({
+          userId,
+          category: 'system',
+          templateKey: 'activityUpdate',
+          templateParams: {
+            activityName,
+            changeSummary,
+          },
+          meta: {
+            activityLegacyId,
+            type: 'activity_update',
+          },
+        }),
+      ),
+    );
+  }
+
+  /**
+   * Central entry for all push notifications.
+   * Respects user notification settings and optional deduplication.
+   */
+  async dispatch(input: NoticeDispatchInput): Promise<void> {
+    const userId = input.userId?.trim();
+    if (!userId) return;
+
+    if (!(await this.shouldNotify(userId))) {
+      return;
+    }
+
+    if (input.dedupe) {
+      const isDuplicate = await this.notificationService.hasRecentByMeta(
+        userId,
+        input.dedupe.metaType,
+        {
+          activityLegacyId: input.dedupe.activityLegacyId,
+          postId: input.dedupe.postId,
+          actorUserId: input.dedupe.actorUserId,
+          sinceMs: input.dedupe.sinceMs,
+        },
+      );
+      if (isDuplicate) {
+        return;
+      }
+    }
+
+    await this.notificationService.createFromTemplate({
+      userId,
+      templateKey: input.templateKey,
+      templateParams: input.templateParams ?? {},
+      meta: {
+        ...input.meta,
+        category: input.category,
       },
     });
   }
@@ -213,12 +301,12 @@ export class NoticeAgent {
       return;
     }
 
-    if (!(await this.shouldNotify(ownerUserId))) {
-      return;
-    }
+    const category: NotificationCategory =
+      interactionType === 'like' ? 'like' : 'comment';
 
-    await this.notificationService.createFromTemplate({
+    await this.dispatch({
       userId: ownerUserId,
+      category,
       templateKey: copy.templateKey,
       templateParams: copy.templateParams,
       meta: {

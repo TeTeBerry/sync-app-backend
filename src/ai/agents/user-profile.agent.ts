@@ -6,12 +6,12 @@ import {
   buildKnownFactsSummary,
   isFindBuddyThread,
   parseConversationContext,
-} from '../utils/conversation-context.parser';
+} from '../conversation/conversation-context.parser';
 import {
   DEFAULT_MATCH_RANKING_WEIGHTS,
   MatchRankingWeights,
   UserMatchProfile,
-} from '../utils/match-ranking.util';
+} from '../match/match-ranking.util';
 import type { UserMatchProfile as AgentUserMatchProfile } from './agent.types';
 
 interface LlmProfileExtract {

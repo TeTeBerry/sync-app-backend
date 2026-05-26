@@ -3,6 +3,14 @@ import { Document } from 'mongoose';
 
 export type NotificationType = 'general' | 'interaction' | 'system' | 'match';
 
+/** High-level push category for NoticeAgent routing and client grouping. */
+export type NotificationCategory =
+  | 'comment'
+  | 'like'
+  | 'buddy_recommend'
+  | 'system'
+  | 'general';
+
 /** Deep-link hint for partner interactions (like / comment / application). */
 export type NotificationInteractionType =
   | 'like'
@@ -16,6 +24,8 @@ export type NotificationInteractionType =
   | 'match_recommendation';
 
 export interface NotificationMeta {
+  /** NoticeAgent category (comment / like / buddy_recommend / system). */
+  category?: NotificationCategory;
   /** Target activity for event-detail navigation. */
   activityLegacyId?: number;
   /** Target post within the activity feed. */

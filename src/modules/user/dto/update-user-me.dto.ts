@@ -1,4 +1,11 @@
-import { IsArray, IsBoolean, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class UpdateUserMeDto {
   @IsOptional()
@@ -43,4 +50,8 @@ export class UpdateUserMeDto {
   @IsOptional()
   @IsBoolean()
   notificationsEnabled?: boolean;
+
+  @IsOptional()
+  @IsIn(['public', 'friends', 'private'])
+  privacyLevel?: 'public' | 'friends' | 'private';
 }

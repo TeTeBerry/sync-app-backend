@@ -17,8 +17,7 @@ import {
   extractLocationFromEventName,
   resolveFestivalBrand,
 } from '../../ai/rag/festival-brand.util';
-import { NotificationService } from '../notification/notification.service';
-import { buildNotificationFromTemplate } from '../notification/notification-templates.util';
+import { NoticeAgent } from '../../ai/agents/notice.agent';
 import { ActivityRegistrationService } from '../profile/activity-registration.service';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ACTIVITY_SEED } from './activity.seed';
@@ -62,7 +61,7 @@ export class ActivityService implements OnModuleInit {
   constructor(
     @InjectModel(Activity.name) private model: Model<ActivityDocument>,
     @Optional() private readonly chromaService?: ChromaService,
-    @Optional() private readonly notificationService?: NotificationService,
+    @Optional() private readonly noticeAgent?: NoticeAgent,
     @Optional()
     @Inject(forwardRef(() => ActivityRegistrationService))
     private readonly registrationService?: ActivityRegistrationService,
@@ -390,7 +389,7 @@ export class ActivityService implements OnModuleInit {
     activity: Activity,
     changeSummary: string,
   ): Promise<void> {
-    if (!this.notificationService || !this.registrationService) {
+    if (!this.noticeAgent || !this.registrationService) {
       return;
     }
 
@@ -399,27 +398,11 @@ export class ActivityService implements OnModuleInit {
     );
     if (!userIds.length) return;
 
-    await this.notificationService.createMany(
-      userIds.map(userId => {
-        const built = buildNotificationFromTemplate(
-          'activityUpdate',
-          {
-            activityName: activity.name,
-            changeSummary,
-          },
-          {
-            activityLegacyId: activity.legacyId,
-            type: 'activity_update',
-          },
-        );
-        return {
-          userId,
-          type: built.type,
-          title: built.title,
-          body: built.body,
-          meta: built.meta,
-        };
-      }),
+    void this.noticeAgent.notifyActivityUpdate(
+      userIds,
+      activity.legacyId,
+      activity.name,
+      changeSummary,
     );
   }
 }

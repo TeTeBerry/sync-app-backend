@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
 import type { ConversationState } from '../conversation';
 import { ConversationStateService } from './conversation-state.service';
-import { AgentRuntimeService } from './agent-runtime.service';
+import { AgentRuntimeService } from './legacy/agent-runtime.service';
 import {
   type DeterministicReplyResult,
   type ReplyContext,

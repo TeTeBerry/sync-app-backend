@@ -5,6 +5,11 @@ import { shouldHandleStructuredReply } from '../../utils/structured-reply.handle
 @Injectable()
 export class StructuredReplyMatcher implements ReplyMatcher {
   matches(ctx: ReplyContext): boolean {
-    return shouldHandleStructuredReply(ctx.state, ctx.messages, ctx.input);
+    return shouldHandleStructuredReply(
+      ctx.state,
+      ctx.messages,
+      ctx.input,
+      ctx.activityLegacyId,
+    );
   }
 }

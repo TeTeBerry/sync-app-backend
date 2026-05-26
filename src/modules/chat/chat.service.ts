@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatMessageDto } from '../../ai/presentation/chat-message.dto';
 import {
+  CONVERSATION_STATE_VERSION,
   createIdleState,
   type ConversationState,
 } from '../../ai/conversation';
@@ -141,8 +142,10 @@ export class ChatService {
       return createIdleState();
     }
     return {
-      version: state.version ?? 1,
+      version: state.version ?? CONVERSATION_STATE_VERSION,
       flow: state.flow,
+      ...(state.gate ? { gate: state.gate } : {}),
+      ...(state.publishDraft ? { publishDraft: state.publishDraft } : {}),
     };
   }
 
@@ -154,6 +157,10 @@ export class ChatService {
       history: this.normalizeHistory(doc?.history),
       conversationState: this.normalizeConversationState(doc?.conversationState),
     };
+  }
+
+  async clearSession(sessionId: string): Promise<void> {
+    await this.chatModel.deleteOne({ sessionId });
   }
 
   async saveConversationState(

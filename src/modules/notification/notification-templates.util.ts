@@ -1,4 +1,5 @@
 import type {
+  NotificationCategory,
   NotificationMeta,
   NotificationType,
 } from '../../database/schemas/notification.schema';
@@ -12,6 +13,20 @@ export type NotificationTemplateKey =
   | 'postHidden'
   | 'activityUpdate'
   | 'matchRecommendation';
+
+export const NOTIFICATION_CATEGORY_BY_TEMPLATE: Record<
+  NotificationTemplateKey,
+  NotificationCategory
+> = {
+  like: 'like',
+  comment: 'comment',
+  commentReply: 'comment',
+  application: 'general',
+  postRejected: 'system',
+  postHidden: 'system',
+  activityUpdate: 'system',
+  matchRecommendation: 'buddy_recommend',
+};
 
 const TEMPLATE_DEFAULTS: Record<
   NotificationTemplateKey,
@@ -86,6 +101,7 @@ export function buildNotificationFromTemplate(
     body: renderTemplate(defaults.body, resolvedParams),
     meta: {
       ...meta,
+      category: meta.category ?? NOTIFICATION_CATEGORY_BY_TEMPLATE[templateKey],
       templateKey: `notifications.types.${templateKey}`,
       templateParams: resolvedParams,
     },

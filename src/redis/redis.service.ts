@@ -147,4 +147,22 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`Redis set failed (${key}): ${(error as Error).message}`);
     }
   }
+
+  /** Fixed-window counter; returns null when Redis unavailable (caller should fallback). */
+  async incrementRateLimit(key: string, windowSec: number): Promise<number | null> {
+    if (!this.client || !this.enabled) return null;
+
+    try {
+      const count = await this.client.incr(key);
+      if (count === 1) {
+        await this.client.expire(key, windowSec);
+      }
+      return count;
+    } catch (error) {
+      this.logger.warn(
+        `Redis rate limit incr failed (${key}): ${(error as Error).message}`,
+      );
+      return null;
+    }
+  }
 }

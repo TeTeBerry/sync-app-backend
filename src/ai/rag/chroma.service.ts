@@ -48,6 +48,11 @@ export interface PostMatchResult {
   userId?: string;
 }
 
+export interface PostMatchQueryResult {
+  matches: PostMatchResult[];
+  degraded?: boolean;
+}
+
 @Injectable()
 export class ChromaService implements OnModuleInit {
   private readonly logger = new Logger(ChromaService.name);
@@ -56,8 +61,18 @@ export class ChromaService implements OnModuleInit {
   private postsCollection?: Collection;
   private profilesCollection?: Collection;
   private enabled = false;
+  private consecutiveFailures = 0;
+  private circuitOpenUntil = 0;
+  private circuitBreakerLogged = false;
+  private readonly circuitFailureThreshold: number;
+  private readonly circuitOpenMs: number;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly config: ConfigService) {
+    this.circuitFailureThreshold =
+      config.get<number>('chroma.circuit.failureThreshold') ?? 3;
+    this.circuitOpenMs =
+      config.get<number>('chroma.circuit.cooldownMs') ?? 30_000;
+  }
 
   async onModuleInit() {
     await this.initClient();
@@ -66,6 +81,40 @@ export class ChromaService implements OnModuleInit {
 
   isEnabled(): boolean {
     return this.enabled;
+  }
+
+  isCircuitOpen(): boolean {
+    if (this.circuitOpenUntil > 0 && Date.now() >= this.circuitOpenUntil) {
+      this.consecutiveFailures = 0;
+      this.circuitOpenUntil = 0;
+      this.circuitBreakerLogged = false;
+    }
+    return Date.now() < this.circuitOpenUntil;
+  }
+
+  private recordQuerySuccess(): void {
+    this.consecutiveFailures = 0;
+    this.circuitOpenUntil = 0;
+    this.circuitBreakerLogged = false;
+  }
+
+  private recordQueryFailure(): void {
+    this.consecutiveFailures += 1;
+    if (this.consecutiveFailures < this.circuitFailureThreshold) {
+      return;
+    }
+
+    this.circuitOpenUntil = Date.now() + this.circuitOpenMs;
+    if (!this.circuitBreakerLogged) {
+      this.logger.warn(
+        `Chroma circuit breaker open for ${this.circuitOpenMs / 1000}s after ${this.consecutiveFailures} consecutive failures`,
+      );
+      this.circuitBreakerLogged = true;
+    }
+  }
+
+  private isVectorSearchUnavailable(): boolean {
+    return !this.enabled || !this.postsCollection || this.isCircuitOpen();
   }
 
   /** Chroma JS 客户端的 path 必须是 HTTP 基址，不能是本地目录 */
@@ -405,14 +454,23 @@ export class ChromaService implements OnModuleInit {
   async queryPostsForMatch(
     text: string,
     options: PostMatchQueryOptions = {},
-  ): Promise<PostMatchResult[]> {
-    if (!this.postsCollection || !text.trim()) return [];
+  ): Promise<PostMatchQueryResult> {
+    if (!text.trim()) {
+      return { matches: [] };
+    }
+
+    if (this.isVectorSearchUnavailable()) {
+      return {
+        matches: [],
+        degraded: !this.enabled || this.isCircuitOpen(),
+      };
+    }
 
     const n = options.n ?? 5;
     const where = this.buildRecruitingPostWhere(options);
 
     try {
-      const result = await this.postsCollection.query({
+      const result = await this.postsCollection!.query({
         queryTexts: [text.trim()],
         nResults: n,
         ...(where ? { where } : {}),
@@ -422,13 +480,17 @@ export class ChromaService implements OnModuleInit {
 
       const profileUserId = options.profileUserId?.trim();
       if (!profileUserId || !matches.length) {
-        return matches;
+        this.recordQuerySuccess();
+        return { matches };
       }
 
       const profileText = await this.getUserProfileQueryText(profileUserId);
-      if (!profileText) return matches;
+      if (!profileText) {
+        this.recordQuerySuccess();
+        return { matches };
+      }
 
-      const profileResult = await this.postsCollection.query({
+      const profileResult = await this.postsCollection!.query({
         queryTexts: [profileText],
         nResults: n,
         ...(where ? { where } : {}),
@@ -448,15 +510,19 @@ export class ChromaService implements OnModuleInit {
         profileDistances.set(postId, profileDists[index] ?? 0);
       }
 
-      return matches.map(match => ({
-        ...match,
-        profileDistance: profileDistances.get(match.postId),
-      }));
+      this.recordQuerySuccess();
+      return {
+        matches: matches.map(match => ({
+          ...match,
+          profileDistance: profileDistances.get(match.postId),
+        })),
+      };
     } catch (error) {
+      this.recordQueryFailure();
       this.logger.warn(
         `Chroma post match query failed: ${(error as Error).message}`,
       );
-      return [];
+      return { matches: [], degraded: true };
     }
   }
 
@@ -467,11 +533,12 @@ export class ChromaService implements OnModuleInit {
     activityLegacyId?: number,
     n = 5,
   ): Promise<PostMatchResult[]> {
-    return this.queryPostsForMatch(text, {
+    const result = await this.queryPostsForMatch(text, {
       activityCode,
       activityLegacyId,
       n,
     });
+    return result.matches;
   }
 
   async query(text: string, n = 3): Promise<Document[]> {
