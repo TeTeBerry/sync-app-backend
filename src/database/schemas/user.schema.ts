@@ -5,6 +5,24 @@ export type UserDocument = User & Document;
 
 @Schema({ timestamps: true })
 export class User {
+  @Prop({ unique: true, sparse: true, index: true })
+  externalId?: string;
+
+  @Prop()
+  name: string;
+
+  @Prop()
+  handle: string;
+
+  @Prop()
+  location: string;
+
+  @Prop()
+  bio: string;
+
+  @Prop()
+  avatar: string;
+
   @Prop()
   city: string;
 

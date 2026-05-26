@@ -11,6 +11,7 @@ import { ProfileModule } from './modules/profile/profile.module';
 import { HomeModule } from './modules/home/home.module';
 import { AiModule } from './ai/ai.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { PostModule } from './modules/post/post.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { NotificationModule } from './modules/notification/notification.module';
     HomeModule,
     AiModule,
     NotificationModule,
+    PostModule,
   ],
 })
 export class AppModule {}
