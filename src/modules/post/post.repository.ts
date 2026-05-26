@@ -123,4 +123,29 @@ export class PostRepository implements IPostRepository {
     const existing = await this.model.findOne(query).select('_id').lean();
     return Boolean(existing);
   }
+
+  async existsOwnerRecruitingPostForActivity(
+    userId: string,
+    activityLegacyId: number,
+  ): Promise<boolean> {
+    const existing = await this.model
+      .findOne({ userId, activityLegacyId, status: 'recruiting' })
+      .select('_id')
+      .lean();
+    return Boolean(existing);
+  }
+
+  async findOwnerRecruitingPostForActivity(
+    filter: PostQueryFilter,
+    activityLegacyId: number,
+  ): Promise<PostRecord | null> {
+    return this.model
+      .findOne({
+        ...buildOwnerFilter(filter),
+        activityLegacyId,
+        status: 'recruiting',
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+  }
 }

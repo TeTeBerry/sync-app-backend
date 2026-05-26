@@ -12,6 +12,16 @@ export const AI_SHORTCUT_TAGS = [
   '拼房同行',
 ] as const;
 
+/** 展示文案别名 → 标准快捷标签（与前端 aiShortcutTags 对齐） */
+export const AI_SHORTCUT_TAG_ALIASES: Record<string, (typeof AI_SHORTCUT_TAGS)[number]> = {
+  帮我dd: '组队队友',
+};
+
+export function normalizeAiShortcutInput(input: string): string {
+  const text = input.trim();
+  return AI_SHORTCUT_TAG_ALIASES[text] ?? text;
+}
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -98,6 +108,6 @@ export function isResourceOwnedByClient(
 }
 
 export function isAiShortcutTag(input: string): boolean {
-  const text = input.trim();
+  const text = normalizeAiShortcutInput(input);
   return (AI_SHORTCUT_TAGS as readonly string[]).includes(text);
 }

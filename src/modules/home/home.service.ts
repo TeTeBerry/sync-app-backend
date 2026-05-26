@@ -1,16 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { RedisService } from '../../redis/redis.service';
 import { ActivityService } from '../activity/activity.service';
+import { ActivityRegistrationService } from '../profile/activity-registration.service';
 
 @Injectable()
 export class HomeService {
   constructor(
     private readonly activityService: ActivityService,
+    private readonly registrationService: ActivityRegistrationService,
     private readonly redisService: RedisService,
   ) {}
 
-  async getSummary() {
-    const activities = await this.activityService.findAll();
+  async getSummary(userId?: string, authorName?: string) {
+    const [activities, registeredLegacyIds] = await Promise.all([
+      this.activityService.findAll(),
+      this.registrationService.listRegisteredLegacyIds(userId, authorName),
+    ]);
 
     const signupEvents = activities.map(item => ({
       id: item.legacyId,
@@ -21,7 +26,7 @@ export class HomeService {
       category: item.hot ? '户外电音' : 'EDM节',
       hot: Boolean(item.hot),
       attendees: item.attendees ?? 0,
-      going: false,
+      going: registeredLegacyIds.has(item.legacyId),
     }));
 
     const totalAttendees = activities.reduce(

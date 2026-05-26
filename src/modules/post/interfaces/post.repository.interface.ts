@@ -34,6 +34,14 @@ export interface IPostRepository {
     body: string,
     activityLegacyId?: number,
   ): Promise<boolean>;
+  existsOwnerRecruitingPostForActivity(
+    userId: string,
+    activityLegacyId: number,
+  ): Promise<boolean>;
+  findOwnerRecruitingPostForActivity(
+    filter: PostQueryFilter,
+    activityLegacyId: number,
+  ): Promise<PostRecord | null>;
 }
 
 export const POST_REPOSITORY = Symbol('POST_REPOSITORY');

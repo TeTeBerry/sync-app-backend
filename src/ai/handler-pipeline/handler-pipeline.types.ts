@@ -32,6 +32,8 @@ export interface ReplyContext {
   userName?: string;
   userPhone?: string;
   image?: string;
+  /** When set, chat is scoped to this activity (e.g. opened from event detail). */
+  activityLegacyId?: number;
   plannedToolCalls?: AgentToolCall[];
   toolResults?: AgentToolResultSnapshot[];
 }

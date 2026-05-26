@@ -70,6 +70,7 @@ function buildMergedDescription(
   parsed: LlmTextParseResult,
   ctx: ConversationContext,
   input: string,
+  boundActivityLegacyId?: number,
 ): string {
   const llmDesc = parsed.description?.trim() || parsed.body?.trim() || '';
   const trimmedInput = input.trim();
@@ -78,7 +79,7 @@ function buildMergedDescription(
     llmDesc &&
     llmDesc.length > 8 &&
     !isShortContextReply(llmDesc) &&
-    getMissingBuddyFields(ctx).length === 0
+    getMissingBuddyFields(ctx, boundActivityLegacyId).length === 0
   ) {
     return llmDesc;
   }
@@ -128,7 +129,7 @@ function resolveReady(
   if (!hasActivity) return false;
 
   if (Boolean(parsed.ready)) return true;
-  return getMissingBuddyFields(ctx).length === 0;
+  return getMissingBuddyFields(ctx, activityLegacyId).length === 0;
 }
 
 @Injectable()
@@ -145,7 +146,7 @@ export class TextParseAgent {
     const trimmedInput = input.input.trim();
     const ctx = parseConversationContext(input.messages, trimmedInput);
     const knownFacts = buildKnownFactsSummary(ctx);
-    const missingFields = getMissingBuddyFields(ctx);
+    const missingFields = getMissingBuddyFields(ctx, input.activityLegacyId);
     const history = formatConversationHistory(input.messages);
 
     const userPrompt = [
@@ -178,7 +179,12 @@ export class TextParseAgent {
     const location = parsed.location?.trim() || ctx.city;
     const activityLegacyId =
       parsed.activityLegacyId ?? input.activityLegacyId;
-    const description = buildMergedDescription(parsed, ctx, trimmedInput);
+    const description = buildMergedDescription(
+      parsed,
+      ctx,
+      trimmedInput,
+      activityLegacyId,
+    );
     const body = description;
     const ready = resolveReady(
       parsed,

@@ -13,6 +13,7 @@ export interface DeterministicReplyContext {
   userName?: string;
   userPhone?: string;
   image?: string;
+  activityLegacyId?: number;
 }
 
 @Injectable()
@@ -52,6 +53,7 @@ export class DeterministicReplyService {
       userName: context.userName,
       userPhone: context.userPhone,
       image: context.image,
+      activityLegacyId: context.activityLegacyId,
     };
 
     const runtimeResult = await this.agentRuntime.run(replyContext);

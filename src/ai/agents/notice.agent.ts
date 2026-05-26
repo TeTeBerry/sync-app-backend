@@ -235,6 +235,8 @@ export class NoticeAgent {
     const normalized = reason?.trim() ?? '';
     const reasonHints: Record<string, string> = {
       '内容疑似重复字符 spam': '内容格式异常，请用自然语言重新描述组队需求。',
+      '你已在此活动发布过组队帖':
+        '你在此活动已有招募中的组队帖。请打开「我的」→ 我的帖子编辑，或在活动详情页查看。',
       '你已发布过相同内容的组队帖':
         '你已经发布过相同内容的帖子，可在个人主页或活动详情页查看。',
       '内容疑似黄牛倒票或加价引流':

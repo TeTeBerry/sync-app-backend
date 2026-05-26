@@ -3,6 +3,7 @@ import { detectUserIntent } from './user-intent';
 import {
   formatActivityPickerLines,
   ACTIVITY_PICKER_PROMPT,
+  buildScopedFindBuddyReply,
 } from './activity-reply.util';
 import { composeReply } from './reply-text.util';
 
@@ -11,12 +12,19 @@ export async function buildQuickReplyResponse(
   services: {
     activityService: ActivityService;
   },
+  activityLegacyId?: number,
 ): Promise<string | null> {
   const intent = detectUserIntent(input);
   const { activityService } = services;
 
   switch (intent) {
     case 'find_buddy': {
+      if (activityLegacyId != null) {
+        const activity = await activityService.findByLegacyId(activityLegacyId);
+        const activityName = activity?.name ?? '该活动';
+        return buildScopedFindBuddyReply(activityName);
+      }
+
       const activities = await activityService.findAll();
       return composeReply([
         '好的，我来帮你找同行伙伴 🎵',

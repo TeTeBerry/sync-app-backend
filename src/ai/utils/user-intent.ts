@@ -31,6 +31,7 @@ export function detectUserIntent(input: string): UserIntent {
 
 export function isExactQuickReply(input: string): boolean {
   const text = input.trim();
+  if (text === '帮我dd') return true;
   return Object.values(QUICK_REPLIES).some(reply => reply && reply === text);
 }
 

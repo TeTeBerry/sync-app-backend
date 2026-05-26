@@ -203,6 +203,29 @@ export class PostService implements OnModuleInit {
       .then(rows => rows.map(PostMapper.toProfileItem));
   }
 
+  async findOwnerRecruitingPostForActivity(
+    activityLegacyId: number,
+    userId?: string,
+    authorName?: string,
+  ): Promise<{
+    id: string;
+    body: string;
+    eventTitle?: string;
+    activityLegacyId?: number;
+  } | null> {
+    const record = await this.repository.findOwnerRecruitingPostForActivity(
+      resolveOwnerFilter(userId, authorName),
+      activityLegacyId,
+    );
+    if (!record) return null;
+    return {
+      id: String(record._id),
+      body: record.body ?? '',
+      eventTitle: record.eventTitle,
+      activityLegacyId: record.activityLegacyId,
+    };
+  }
+
   async createPost(
     dto: CreatePostDto,
     userId?: string,
@@ -403,7 +426,10 @@ export class PostService implements OnModuleInit {
       .lean();
 
     if (existing) {
-      return PostMapper.toEventDetailItem(post, true);
+      await this.likeModel.deleteOne({ userId: actorUserId, postId: id });
+      const updated =
+        (await this.repository.incrementCounter(id, 'likes', -1)) ?? post;
+      return PostMapper.toEventDetailItem(updated, false);
     }
 
     try {

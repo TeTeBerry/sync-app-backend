@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { isAiShortcutTag } from '../common/utils/demo-owner.util';
+import {
+  isAiShortcutTag,
+  normalizeAiShortcutInput,
+} from '../common/utils/demo-owner.util';
 import { ActivityService } from '../modules/activity/activity.service';
 import { CreatePostDto } from '../modules/post/dto/create-post.dto';
 import { PostService } from '../modules/post/post.service';
@@ -20,6 +23,23 @@ import {
   parseConversationContext,
   type ConversationContext,
 } from './utils/conversation-context.parser';
+import {
+  buildExistingPostGuidanceReply,
+  isExplicitReplacePostIntent,
+  isSupplementDetailInput,
+} from './utils/existing-post-guidance.util';
+import {
+  buildZoneBuddySearchQuery,
+  buildZoneMatchEmptyReply,
+  buildZoneMatchFoundReply,
+  isZoneBuddySearchIntent,
+  parseZoneBuddySearchLabel,
+} from './utils/zone-buddy-search.util';
+import {
+  buildPublishConfirmReply,
+  isAwaitingPublishConfirmation,
+  isPublishConfirmIntent,
+} from './utils/publish-confirm.util';
 import {
   detectUserIntent,
   isExactQuickReply,
@@ -44,9 +64,24 @@ export interface PostIntentRejectedResult {
   replyText: string;
 }
 
+export interface PostIntentPendingConfirmationResult {
+  kind: 'pending_confirmation';
+  replyText: string;
+  activityLegacyId?: number;
+}
+
+export interface PostIntentExistingPostResult {
+  kind: 'existing_post';
+  replyText: string;
+  postId: string;
+  activityLegacyId?: number;
+}
+
 export type PostIntentCreateAttempt =
   | PostIntentCreateResult
   | PostIntentRejectedResult
+  | PostIntentPendingConfirmationResult
+  | PostIntentExistingPostResult
   | null;
 
 export interface PostIntentMatchResult {
@@ -79,6 +114,10 @@ export class PostIntentService {
       params;
     const trimmedInput = input.trim();
 
+    if (isZoneBuddySearchIntent(trimmedInput)) {
+      return null;
+    }
+
     if (!this.shouldAttemptPostCreation(messages, trimmedInput, activityLegacyId)) {
       return null;
     }
@@ -110,14 +149,77 @@ export class PostIntentService {
 
     const isShortcutWithActivity =
       isAiShortcutTag(trimmedInput) && activityLegacyId != null;
+    const publishConfirmReady =
+      isAwaitingPublishConfirmation(messages) &&
+      isPublishConfirmIntent(trimmedInput);
 
-    const missing = getMissingBuddyFields(ctx);
+    if (resolvedActivity?.legacyId && !isExplicitReplacePostIntent(trimmedInput)) {
+      const existingPost =
+        await this.postService.findOwnerRecruitingPostForActivity(
+          resolvedActivity.legacyId,
+          userId,
+          userName,
+        );
+      if (existingPost) {
+        const supplement =
+          isSupplementDetailInput(trimmedInput) ||
+          (isShortContextReply(trimmedInput) &&
+            !isZoneBuddySearchIntent(trimmedInput))
+            ? trimmedInput
+            : undefined;
+        const shouldGuideExisting =
+          !isZoneBuddySearchIntent(trimmedInput) &&
+          (isShortcutWithActivity ||
+            publishConfirmReady ||
+            supplement != null ||
+            isFindBuddyThread(messages) ||
+            detectUserIntent(trimmedInput) === 'find_buddy');
+
+        if (shouldGuideExisting) {
+          const activityLabel =
+            resolvedActivity.name ?? existingPost.eventTitle ?? '活动';
+          return {
+            kind: 'existing_post',
+            postId: existingPost.id,
+            activityLegacyId: resolvedActivity.legacyId,
+            replyText: buildExistingPostGuidanceReply({
+              activityLabel,
+              postBody: existingPost.body,
+              supplement,
+            }),
+          };
+        }
+      }
+    }
+
+    const missing = getMissingBuddyFields(ctx, activityLegacyId);
     const hasActivity = Boolean(resolvedActivity?.legacyId);
     const allBuddyFieldsPresent = missing.length === 0;
     const llmReady = parsed?.ready === true && Boolean(parsed.body?.trim());
 
+    if (isShortcutWithActivity && hasActivity && !publishConfirmReady) {
+      const draftBody = await this.buildPostBody({
+        ctx,
+        input: trimmedInput,
+        activityName: resolvedActivity?.name,
+        parsedBody: parsed?.body,
+        messages,
+        activityLegacyId: resolvedActivity?.legacyId,
+      });
+
+      return {
+        kind: 'pending_confirmation',
+        activityLegacyId: resolvedActivity?.legacyId,
+        replyText: buildPublishConfirmReply({
+          activityLabel: resolvedActivity?.name ?? '活动',
+          draftBody,
+          shortcutTag: normalizeAiShortcutInput(trimmedInput),
+        }),
+      };
+    }
+
     const canCreate =
-      isShortcutWithActivity ||
+      publishConfirmReady ||
       llmReady ||
       (isFindBuddyThread(messages) &&
         hasActivity &&
@@ -205,7 +307,12 @@ export class PostIntentService {
     const { messages, input, activityLegacyId, userId } = params;
     const trimmed = input.trim();
 
-    if (!trimmed || !this.isMatchExistingPostsIntent(trimmed)) {
+    const zoneLabel = parseZoneBuddySearchLabel(trimmed);
+    const isZoneSearch = isZoneBuddySearchIntent(trimmed);
+    if (
+      !trimmed ||
+      (!this.isMatchExistingPostsIntent(trimmed) && !isZoneSearch)
+    ) {
       return null;
     }
 
@@ -221,8 +328,12 @@ export class PostIntentService {
       return null;
     }
 
+    const matchQuery = isZoneSearch
+      ? buildZoneBuddySearchQuery(trimmed)
+      : trimmed;
+
     const matches = await this.matchAgent.match({
-      query: trimmed,
+      query: matchQuery,
       activityCode: resolvedActivity.code ?? '',
       activityLegacyId: resolvedActivity.legacyId,
       limit: 5,
@@ -232,15 +343,18 @@ export class PostIntentService {
     });
 
     const activityLabel = resolvedActivity.name ?? '活动';
+    const zoneDisplay = zoneLabel ?? trimmed;
 
     if (!matches.length) {
       return {
         matches: [],
-        replyText: [
-          `暂未找到「${activityLabel}」相关的组队帖。`,
-          '',
-          '你可以直接告诉我出行需求，我帮你发一条组队帖。',
-        ].join('\n'),
+        replyText: isZoneSearch
+          ? buildZoneMatchEmptyReply(activityLabel, zoneDisplay)
+          : [
+              `暂未找到「${activityLabel}」相关的组队帖。`,
+              '',
+              '你可以直接告诉我出行需求，我帮你发一条组队帖。',
+            ].join('\n'),
       };
     }
 
@@ -261,13 +375,15 @@ export class PostIntentService {
         postId: match.postId,
         snippet: match.snippet,
       })),
-      replyText: [
-        `在「${activityLabel}」下找到 ${matches.length} 条相近组队帖：`,
-        '',
-        ...lines,
-        '',
-        '可在活动详情页查看帖子并申请加入。',
-      ].join('\n'),
+      replyText: isZoneSearch
+        ? buildZoneMatchFoundReply(activityLabel, zoneDisplay, lines)
+        : [
+            `在「${activityLabel}」下找到 ${matches.length} 条相近组队帖：`,
+            '',
+            ...lines,
+            '',
+            '可在活动详情页查看帖子并申请加入。',
+          ].join('\n'),
     };
   }
 
@@ -296,6 +412,7 @@ export class PostIntentService {
 
     const userTurns = messages.filter(message => message.role === 'user').length;
     if (
+      activityLegacyId == null &&
       isQuickReplyIntent(input) &&
       detectUserIntent(input) === 'find_buddy' &&
       userTurns <= 1
@@ -369,7 +486,7 @@ export class PostIntentService {
 
     const parts: string[] = [];
     if (isAiShortcutTag(input)) {
-      parts.push(input);
+      parts.push(normalizeAiShortcutInput(input));
     } else if (input && !isShortContextReply(input) && !isExactQuickReply(input)) {
       parts.push(input);
     }
@@ -410,6 +527,8 @@ export class PostIntentService {
 
     const reasonHints: Record<string, string> = {
       '内容疑似重复字符 spam': '内容格式异常，请用自然语言重新描述组队需求。',
+      '你已在此活动发布过组队帖':
+        '你在此活动已有招募中的组队帖。请打开「我的」→ 我的帖子编辑，或在活动详情页查看；若要重发请说「重新发帖」。',
       '你已发布过相同内容的组队帖':
         '你已经发布过相同内容的帖子，可在个人主页或活动详情页查看。',
       '内容疑似黄牛倒票或加价引流':
@@ -430,7 +549,7 @@ export class PostIntentService {
   private resolveTags(input: string, llmTags?: string[]): string[] {
     const tags = new Set<string>();
     if (isAiShortcutTag(input)) {
-      tags.add(input);
+      tags.add(normalizeAiShortcutInput(input));
     }
     for (const tag of llmTags ?? []) {
       const trimmed = tag.trim();

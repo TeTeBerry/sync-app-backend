@@ -43,6 +43,7 @@ AppModule
 用户消息
   → PostIntentService.tryCreatePostFromChat
        → ImageParseAgent | TextParseAgent
+       → 活动详情快捷标签（如「组队队友」）+ activityLegacyId：先 delta 展示草稿并等待用户回复「确认发布」
        → RiskAgent
        → PostService.createPost（成功则 SSE post_created + delta）
        → 拒绝则 delta（「组队帖暂未发布 ⚠️」+ 原因）

@@ -133,6 +133,15 @@ export class ActivityRegistrationService {
     return this.registrationRepository.findRegisteredUserIds(activityLegacyId);
   }
 
+  async listRegisteredLegacyIds(
+    userId?: string,
+    authorName?: string,
+  ): Promise<Set<number>> {
+    const filter = resolveOwnerFilter(userId, authorName);
+    const registrations = await this.registrationRepository.findByOwner(filter);
+    return new Set(registrations.map(registration => registration.activityLegacyId));
+  }
+
   async unregister(
     legacyId: number,
     userId?: string,

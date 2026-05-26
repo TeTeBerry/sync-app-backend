@@ -5,6 +5,65 @@ import { HttpExceptionFilter } from './common/filter/http-exception.filter';
 import { TransformInterceptor } from './common/interceptor/transform.interceptor';
 import { ValidationPipe } from '@nestjs/common';
 
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+/** Headers the H5 client may send (REST + AI SSE preflight). */
+const PROD_ALLOWED_HEADERS = [
+  'Content-Type',
+  'Authorization',
+  'Accept',
+  'X-Activity-Id',
+];
+
+function resolveCorsOrigin():
+  | boolean
+  | string[]
+  | ((
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => void) {
+  const configured = process.env.CORS_ORIGINS?.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  if (configured?.length) {
+    if (configured.length === 1 && configured[0] === '*') {
+      return true;
+    }
+    return configured;
+  }
+
+  if (IS_PRODUCTION) {
+    return false;
+  }
+
+  // Dev: reflect any Origin (localhost any port, 127.0.0.1, LAN IP for phone testing)
+  return true;
+}
+
+function resolveCorsOptions(): {
+  origin: ReturnType<typeof resolveCorsOrigin>;
+  credentials: boolean;
+  methods: string[];
+  allowedHeaders?: string[];
+} {
+  const options = {
+    origin: resolveCorsOrigin(),
+    credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  };
+
+  // Dev: omit allowedHeaders so cors echoes Access-Control-Request-Headers
+  if (!IS_PRODUCTION) {
+    return options;
+  }
+
+  return {
+    ...options,
+    allowedHeaders: PROD_ALLOWED_HEADERS,
+  };
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   // AI 聊天上传门票截图（Base64）需放宽 JSON 体积限制
@@ -12,12 +71,8 @@ async function bootstrap() {
   app.use(urlencoded({ extended: true, limit: '12mb' }));
   app.enableShutdownHooks();
 
-  // 跨域（支持流式、支持凭证、最稳定）
-  app.enableCors({
-    origin: true,
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  });
+  const corsOptions = resolveCorsOptions();
+  app.enableCors(corsOptions);
 
   // 全局路由前缀
   app.setGlobalPrefix('api');
@@ -42,6 +97,11 @@ async function bootstrap() {
     console.log(`🚀 API: http://localhost:${port}/api`);
     console.log(`✅ AI流式接口: POST http://localhost:${port}/api/ai/chat`);
     console.log(`📦 MongoDB: ${mongoUri.replace(/\/\/.*@/, '//***@')}`);
+    if (IS_PRODUCTION && !process.env.CORS_ORIGINS) {
+      console.warn('⚠️  CORS disabled: set CORS_ORIGINS in production');
+    } else if (!IS_PRODUCTION) {
+      console.log('🌐 CORS: dev mode (reflect origin, echo preflight headers)');
+    }
   } catch (error) {
     const message = (error as Error).message ?? String(error);
     if (message.includes('EADDRINUSE')) {

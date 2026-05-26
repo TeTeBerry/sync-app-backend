@@ -101,7 +101,18 @@ export class AiService {
         };
         assistantReply = postAttempt.replyText;
         yield { type: 'delta', content: postAttempt.replyText };
-      } else if (postAttempt?.kind === 'rejected') {
+      } else if (postAttempt?.kind === 'existing_post') {
+        yield {
+          type: 'existing_post',
+          postId: postAttempt.postId,
+          activityLegacyId: postAttempt.activityLegacyId,
+        };
+        assistantReply = postAttempt.replyText;
+        yield { type: 'delta', content: postAttempt.replyText };
+      } else if (
+        postAttempt?.kind === 'rejected' ||
+        postAttempt?.kind === 'pending_confirmation'
+      ) {
         assistantReply = postAttempt.replyText;
         yield { type: 'delta', content: postAttempt.replyText };
       } else {
@@ -124,6 +135,7 @@ export class AiService {
               userName: dto.userName,
               userPhone: dto.userPhone,
               image: dto.image,
+              activityLegacyId: dto.activityLegacyId,
             },
             conversationState,
           );

@@ -108,6 +108,7 @@ export class PostMapper {
       likes: post.likes ?? 0,
       comments: post.comments ?? 0,
       date: formatDateLabel(post.createdAt),
+      activityLegacyId: post.activityLegacyId,
     };
   }
 }

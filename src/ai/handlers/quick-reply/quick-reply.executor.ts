@@ -8,9 +8,13 @@ export class QuickReplyExecutor implements ReplyExecutor {
   constructor(private readonly activityService: ActivityService) {}
 
   async execute(ctx: ReplyContext) {
-    const text = await buildQuickReplyResponse(ctx.input, {
-      activityService: this.activityService,
-    });
+    const text = await buildQuickReplyResponse(
+      ctx.input,
+      {
+        activityService: this.activityService,
+      },
+      ctx.activityLegacyId,
+    );
     if (!text) return null;
 
     return { text, nextState: ctx.state };

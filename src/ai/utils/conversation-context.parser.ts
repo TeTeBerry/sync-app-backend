@@ -97,6 +97,7 @@ export function isFindBuddyThread(messages: ChatMessageDto[]): boolean {
       message.content.trim() === '帮我找搭子' ||
       message.content.trim() === '帮我结伴' ||
       message.content.trim() === '帮我组队' ||
+      message.content.trim() === '帮我dd' ||
       /找搭子|找同行|帮我结伴|帮我组队|结伴|组队/.test(message.content)
     ) {
       active = true;
@@ -146,9 +147,17 @@ export function parseConversationContext(
   return ctx;
 }
 
-export function getMissingBuddyFields(ctx: ConversationContext): string[] {
+export function getMissingBuddyFields(
+  ctx: ConversationContext,
+  boundActivityLegacyId?: number,
+): string[] {
   const missing: string[] = [];
-  if (!ctx.activityId && !ctx.activityKeyword && !ctx.activityPickerIndex) {
+  if (
+    boundActivityLegacyId == null &&
+    !ctx.activityId &&
+    !ctx.activityKeyword &&
+    !ctx.activityPickerIndex
+  ) {
     missing.push('活动名称');
   }
   if (!ctx.eventDate) missing.push('出行日期');
