@@ -4,6 +4,8 @@ export type ViolationType =
   | 'scalper'
   | 'traffic_diversion'
   | 'abuse'
+  | 'illegal'
+  | 'off_topic'
   | 'general';
 
 export type RiskSeverity = 'low' | 'medium' | 'high';
@@ -26,6 +28,8 @@ const TRAFFIC_DIVERSION_PATTERN =
 const WECHAT_VARIANT_PATTERN =
   /\b(?:vx|wx|wxid)\b|微\s*信|威信|薇信|➕我|加好友/i;
 
+const URL_PATTERN = /https?:\/\/[^\s]+|www\.[^\s]+/i;
+
 export function matchRiskRules(text: string): RuleMatchResult | null {
   const normalized = text.trim();
   if (!normalized) return null;
@@ -33,7 +37,7 @@ export function matchRiskRules(text: string): RuleMatchResult | null {
   if (SPAM_PATTERN.test(normalized)) {
     return {
       publishable: false,
-      reason: '内容疑似重复字符 spam',
+      reason: '内容疑似重复字符灌水',
       violationType: 'spam',
       severity: 'medium',
     };
@@ -42,7 +46,7 @@ export function matchRiskRules(text: string): RuleMatchResult | null {
   if (SCALPER_PATTERN.test(normalized)) {
     return {
       publishable: false,
-      reason: '内容疑似黄牛倒票或加价引流',
+      reason: '内容疑似黄牛倒票或私下票务交易',
       violationType: 'scalper',
       severity: 'high',
     };
@@ -54,9 +58,18 @@ export function matchRiskRules(text: string): RuleMatchResult | null {
   ) {
     return {
       publishable: false,
-      reason: '内容疑似站外引流（如微信导流）',
+      reason: '内容疑似站外私聊或恶意引流',
       violationType: 'traffic_diversion',
       severity: 'high',
+    };
+  }
+
+  if (URL_PATTERN.test(normalized)) {
+    return {
+      publishable: false,
+      reason: '内容含外部链接，暂不允许发布',
+      violationType: 'spam',
+      severity: 'medium',
     };
   }
 

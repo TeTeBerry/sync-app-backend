@@ -21,6 +21,8 @@ export type ViolationType =
   | 'scalper'
   | 'traffic_diversion'
   | 'abuse'
+  | 'illegal'
+  | 'off_topic'
   | 'general';
 
 export type RiskSeverity = 'low' | 'medium' | 'high';

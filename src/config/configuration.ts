@@ -23,7 +23,7 @@ export default () => ({
         process.env.ALIBABA_API_KEY ??
         process.env.DASHSCOPE_API_KEY,
     ),
-    model: cleanEnv(process.env.QWEN_MODEL, 'qwen-max'),
+    model: cleanEnv(process.env.QWEN_MODEL, 'qwen-turbo'),
     vlModel: cleanEnv(process.env.QWEN_VL_MODEL, 'qwen-vl-plus'),
   },
 

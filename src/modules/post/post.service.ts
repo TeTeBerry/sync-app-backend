@@ -245,17 +245,20 @@ export class PostService implements OnModuleInit {
       '组队帖';
 
     let status: PostStatus = 'recruiting';
+    let bodyToSave = dto.body.trim();
     let rejectionReason: string | undefined;
 
     if (!options?.skipRiskCheck) {
       const risk = await this.riskAgent.assess({
-        body: dto.body.trim(),
+        body: bodyToSave,
         userId,
         activityLegacyId: dto.activityLegacyId ?? activity?.legacyId,
       });
       if (!risk.publishable) {
         status = 'hidden';
         rejectionReason = risk.reason;
+      } else if (risk.sanitizedBody) {
+        bodyToSave = risk.sanitizedBody;
       }
     }
 
@@ -267,7 +270,7 @@ export class PostService implements OnModuleInit {
       activityLegacyId: dto.activityLegacyId ?? activity?.legacyId,
       eventTitle,
       location: dto.location?.trim() || profile?.location || activity?.location,
-      body: dto.body.trim(),
+      body: bodyToSave,
       tags: dto.tags ?? [],
       status,
       likes: 0,

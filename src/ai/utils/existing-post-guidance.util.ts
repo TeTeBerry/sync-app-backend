@@ -4,13 +4,14 @@ export function isExplicitReplacePostIntent(input: string): boolean {
   return /重新发帖|再发一条|换一条|重新发|新发一条/.test(text);
 }
 
-import { isZoneBuddySearchIntent } from './zone-buddy-search.util';
-
 /** 发帖正文补充（人数、预算等），不含「某区有没有搭子」类搜索 */
 export function isSupplementDetailInput(input: string): boolean {
   const text = input.trim();
   if (!text || text.length > 40) return false;
-  if (isZoneBuddySearchIntent(text)) return false;
+  if (/(有人吗|有没有人|有没有\s*搭子)/.test(text)) return false;
+  if (/(\d{1,2})\s*号\s*([A-Za-z])?\s*区?/.test(text) && text.length <= 28) {
+    return false;
+  }
   if (/^\d+\s*人$/.test(text)) return true;
   if (/^\d+\s*个?$/.test(text)) return true;
   if (/^\d{3,5}$/.test(text)) return true;

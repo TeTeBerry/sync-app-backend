@@ -6,10 +6,22 @@ import {
 } from '../utils/image-base64.util';
 import { matchRiskRules } from '../utils/risk-rules.util';
 import {
+  buildPublishableBody,
+  desensitizePrivacy,
+} from '../utils/risk-sanitize.util';
+import {
   IPostRepository,
   POST_REPOSITORY,
 } from '../../modules/post/interfaces/post.repository.interface';
 import { resolveActorUserId } from '../utils/actor-user.util';
+import {
+  buildCommentRiskSystemPrompt,
+  buildCommentRiskUserPrompt,
+  buildImageRiskSystemPrompt,
+  buildImageRiskUserPrompt,
+  buildPostRiskSystemPrompt,
+  buildPostRiskUserPrompt,
+} from './risk.prompt';
 import type {
   RiskAgentInput,
   RiskAssessment,
@@ -21,26 +33,8 @@ interface LlmRiskResult {
   publishable?: boolean;
   reason?: string;
   violationType?: string;
+  content?: string;
 }
-
-const RISK_SYSTEM = [
-  '你是 RiskAgent，审核组队帖/评论是否可发布。',
-  '只输出 JSON：{ "publishable": boolean, "reason": "违规原因", "violationType": "spam|scalper|traffic_diversion|abuse|general" }',
-  '拒绝：色情暴力、诈骗引流、辱骂、明显 spam。',
-  '重点拒绝：黄牛倒票/加价/代抢/出票、微信/vx/wx 导流、私聊引流、二维码推广。',
-].join('\n');
-
-const COMMENT_RISK_SYSTEM = [
-  '你是 RiskAgent，审核组队帖评论是否可发布。',
-  '只输出 JSON：{ "publishable": boolean, "reason": "违规原因", "violationType": "spam|scalper|traffic_diversion|abuse|general" }',
-  '拒绝：广告引流、黄牛倒票、微信导流、辱骂、spam。',
-].join('\n');
-
-const IMAGE_RISK_SYSTEM = [
-  '你是 RiskAgent，审核组队相关图片是否可发布。',
-  '只输出 JSON：{ "publishable": boolean, "reason": "违规原因", "violationType": "spam|scalper|traffic_diversion|abuse|general" }',
-  '拒绝：二维码/微信/站外引流、黄牛倒票广告、色情暴力、诈骗信息。',
-].join('\n');
 
 function fromRuleMatch(
   match: NonNullable<ReturnType<typeof matchRiskRules>>,
@@ -64,7 +58,8 @@ export class RiskAgent {
   ) {}
 
   async assess(input: RiskAgentInput): Promise<RiskAssessment> {
-    const ruleMatch = matchRiskRules(input.body);
+    const body = input.body.trim();
+    const ruleMatch = matchRiskRules(body);
     if (ruleMatch) return fromRuleMatch(ruleMatch);
 
     const actorUserId = resolveActorUserId(input.userId);
@@ -78,7 +73,7 @@ export class RiskAgent {
       if (hasRecruitingPost) {
         return {
           publishable: false,
-          reason: '你已在此活动发布过组队帖',
+          reason: '你已在此活动发布过组队帖，请勿重复刷屏',
           violationType: 'duplicate',
           severity: 'medium',
         };
@@ -87,45 +82,29 @@ export class RiskAgent {
 
     const isDuplicate = await this.postRepository.existsDuplicateBody(
       actorUserId,
-      input.body.trim(),
+      body,
       input.activityLegacyId,
     );
     if (isDuplicate) {
       return {
         publishable: false,
-        reason: '你已发布过相同内容的组队帖',
+        reason: '你已发布过相同内容的组队帖，请勿重复刷屏或抄袭',
         violationType: 'duplicate',
         severity: 'medium',
       };
     }
 
-    const llmResult = await this.llmService.invokeJson<LlmRiskResult>(
-      RISK_SYSTEM,
-      `待审核帖子正文:\n${input.body}`,
-    );
-
-    if (llmResult?.publishable === false) {
-      return {
-        publishable: false,
-        reason: llmResult.reason?.trim() || '内容未通过审核',
-        violationType: this.normalizeViolationType(llmResult.violationType),
-        severity: 'medium',
-      };
-    }
-
-    return {
-      publishable: true,
-      sanitizedBody: input.body.trim(),
-    };
+    return this.resolvePostAssessment(body);
   }
 
   async assessComment(input: RiskCommentInput): Promise<RiskAssessment> {
-    const ruleMatch = matchRiskRules(input.body);
+    const body = input.body.trim();
+    const ruleMatch = matchRiskRules(body);
     if (ruleMatch) return fromRuleMatch(ruleMatch);
 
     const llmResult = await this.llmService.invokeJson<LlmRiskResult>(
-      COMMENT_RISK_SYSTEM,
-      `待审核评论:\n${input.body}`,
+      buildCommentRiskSystemPrompt(),
+      buildCommentRiskUserPrompt(body),
     );
 
     if (llmResult?.publishable === false) {
@@ -137,14 +116,18 @@ export class RiskAgent {
       };
     }
 
+    const sanitizedBody =
+      llmResult?.content?.trim() || desensitizePrivacy(body);
+
     return {
       publishable: true,
-      sanitizedBody: input.body.trim(),
+      sanitizedBody,
     };
   }
 
   async assessImage(input: RiskImageInput): Promise<RiskAssessment> {
-    const combinedText = [input.body, input.image ? '[含图片]' : '']
+    const body = input.body.trim();
+    const combinedText = [body, input.image ? '[含图片]' : '']
       .filter(Boolean)
       .join('\n');
     const ruleMatch = matchRiskRules(combinedText);
@@ -166,10 +149,8 @@ export class RiskAgent {
     const dataUrl = toDataUrl(mimeType, base64);
 
     const llmResult = await this.llmService.invokeVisionJson<LlmRiskResult>(
-      IMAGE_RISK_SYSTEM,
-      input.body.trim()
-        ? `用户说明:\n${input.body.trim()}`
-        : '请审核图片是否含二维码、微信导流或黄牛广告',
+      buildImageRiskSystemPrompt(),
+      buildImageRiskUserPrompt(body),
       dataUrl,
     );
 
@@ -182,9 +163,31 @@ export class RiskAgent {
       };
     }
 
+    const sanitizedBody = textRisk.sanitizedBody ?? buildPublishableBody(body);
     return {
       publishable: true,
-      sanitizedBody: input.body.trim(),
+      sanitizedBody,
+    };
+  }
+
+  private async resolvePostAssessment(body: string): Promise<RiskAssessment> {
+    const llmResult = await this.llmService.invokeJson<LlmRiskResult>(
+      buildPostRiskSystemPrompt(),
+      buildPostRiskUserPrompt(body),
+    );
+
+    if (llmResult?.publishable === false) {
+      return {
+        publishable: false,
+        reason: llmResult.reason?.trim() || '内容未通过审核',
+        violationType: this.normalizeViolationType(llmResult.violationType),
+        severity: 'medium',
+      };
+    }
+
+    return {
+      publishable: true,
+      sanitizedBody: buildPublishableBody(body, llmResult?.content),
     };
   }
 
@@ -198,6 +201,8 @@ export class RiskAgent {
       normalized === 'scalper' ||
       normalized === 'traffic_diversion' ||
       normalized === 'abuse' ||
+      normalized === 'illegal' ||
+      normalized === 'off_topic' ||
       normalized === 'general'
     ) {
       return normalized;

@@ -24,6 +24,12 @@ describe('matchRiskRules', () => {
     expect(matchRiskRules('私聊引流')?.violationType).toBe('traffic_diversion');
   });
 
+  it('detects external links', () => {
+    expect(matchRiskRules('点击 https://example.com 购买')?.violationType).toBe(
+      'spam',
+    );
+  });
+
   it('allows normal buddy posts', () => {
     expect(matchRiskRules('找周杰伦演唱会同行，上海出发')).toBeNull();
   });

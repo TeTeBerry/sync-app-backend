@@ -41,6 +41,11 @@ AppModule
 
 ```
 用户消息
+  → IntentRouterService.resolve（规则快路径优先，未命中再 qwen-turbo 意图 JSON）
+       → search_posts：仅 tryMatchPostsFromChat（如 13号A，不调发帖 TextParse）
+       → create_post：仅 tryCreatePostFromChat
+       → quick_reply：仅 DeterministicReply（快捷按钮）
+       → legacy_cascade：原顺序 发帖 → 匹配 → 规则对话
   → PostIntentService.tryCreatePostFromChat
        → ImageParseAgent | TextParseAgent
        → 活动详情快捷标签（如「组队队友」）+ activityLegacyId：先 delta 展示草稿并等待用户回复「确认发布」

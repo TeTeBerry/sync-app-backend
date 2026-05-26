@@ -48,7 +48,7 @@ npm run start:dev
 | `MONGODB_URI` | MongoDB 连接串 |
 | `REDIS_URL` | Redis（空则跳过，热度用 Mongo 兜底） |
 | `QWEN_API_KEY` | 通义 API Key（或 `DASHSCOPE_API_KEY`） |
-| `QWEN_MODEL` | 文本模型，默认 `qwen-max` |
+| `QWEN_MODEL` | 文本模型，默认 `qwen-turbo` |
 | `QWEN_VL_MODEL` | 视觉模型，默认 `qwen-vl-plus` |
 | `CHROMA_PATH` | Chroma 本地目录，默认 `./chroma_data` |
 | `CHROMA_COLLECTION` | 活动知识库，默认 `sync_knowledge` |

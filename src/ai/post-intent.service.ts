@@ -28,12 +28,12 @@ import {
   isExplicitReplacePostIntent,
   isSupplementDetailInput,
 } from './utils/existing-post-guidance.util';
+import type { BuddySearchHintPayload } from './intent/chat-intent.types';
 import {
-  buildZoneBuddySearchQuery,
+  buildBuddySearchQuery,
   buildZoneMatchEmptyReply,
   buildZoneMatchFoundReply,
-  isZoneBuddySearchIntent,
-  parseZoneBuddySearchLabel,
+  inferBuddySearchHintKind,
 } from './utils/zone-buddy-search.util';
 import {
   buildPublishConfirmReply,
@@ -50,6 +50,7 @@ interface ResolvedActivity {
   legacyId?: number;
   name?: string;
   code?: string;
+  date?: string;
 }
 
 export interface PostIntentCreateResult {
@@ -114,10 +115,6 @@ export class PostIntentService {
       params;
     const trimmedInput = input.trim();
 
-    if (isZoneBuddySearchIntent(trimmedInput)) {
-      return null;
-    }
-
     if (!this.shouldAttemptPostCreation(messages, trimmedInput, activityLegacyId)) {
       return null;
     }
@@ -163,12 +160,10 @@ export class PostIntentService {
       if (existingPost) {
         const supplement =
           isSupplementDetailInput(trimmedInput) ||
-          (isShortContextReply(trimmedInput) &&
-            !isZoneBuddySearchIntent(trimmedInput))
+          isShortContextReply(trimmedInput)
             ? trimmedInput
             : undefined;
         const shouldGuideExisting =
-          !isZoneBuddySearchIntent(trimmedInput) &&
           (isShortcutWithActivity ||
             publishConfirmReady ||
             supplement != null ||
@@ -303,15 +298,20 @@ export class PostIntentService {
     input: string;
     activityLegacyId?: number;
     userId?: string;
+    buddySearchHint?: BuddySearchHintPayload;
+    /** Intent Router 已判定为 search_posts */
+    fromIntentRouter?: boolean;
   }): Promise<PostIntentMatchResult | null> {
-    const { messages, input, activityLegacyId, userId } = params;
+    const { messages, input, activityLegacyId, userId, buddySearchHint, fromIntentRouter } =
+      params;
     const trimmed = input.trim();
 
-    const zoneLabel = parseZoneBuddySearchLabel(trimmed);
-    const isZoneSearch = isZoneBuddySearchIntent(trimmed);
+    if (!trimmed) return null;
+
     if (
-      !trimmed ||
-      (!this.isMatchExistingPostsIntent(trimmed) && !isZoneSearch)
+      !fromIntentRouter &&
+      !buddySearchHint &&
+      !this.isMatchExistingPostsIntent(trimmed)
     ) {
       return null;
     }
@@ -328,9 +328,22 @@ export class PostIntentService {
       return null;
     }
 
-    const matchQuery = isZoneSearch
-      ? buildZoneBuddySearchQuery(trimmed)
-      : trimmed;
+    const hintDisplay =
+      buddySearchHint?.displayLabel?.trim() || trimmed;
+    const hintKind =
+      buddySearchHint?.kind ??
+      inferBuddySearchHintKind(hintDisplay);
+
+    const matchQuery = buildBuddySearchQuery({
+      userInput: trimmed,
+      searchHint: buddySearchHint?.displayLabel,
+      activityDate: resolvedActivity.date,
+      activityName: resolvedActivity.name,
+    });
+
+    const isStructuredSearch = Boolean(
+      fromIntentRouter || buddySearchHint?.displayLabel,
+    );
 
     const matches = await this.matchAgent.match({
       query: matchQuery,
@@ -343,13 +356,12 @@ export class PostIntentService {
     });
 
     const activityLabel = resolvedActivity.name ?? '活动';
-    const zoneDisplay = zoneLabel ?? trimmed;
 
     if (!matches.length) {
       return {
         matches: [],
-        replyText: isZoneSearch
-          ? buildZoneMatchEmptyReply(activityLabel, zoneDisplay)
+        replyText: isStructuredSearch
+          ? buildZoneMatchEmptyReply(activityLabel, hintDisplay, hintKind)
           : [
               `暂未找到「${activityLabel}」相关的组队帖。`,
               '',
@@ -375,8 +387,13 @@ export class PostIntentService {
         postId: match.postId,
         snippet: match.snippet,
       })),
-      replyText: isZoneSearch
-        ? buildZoneMatchFoundReply(activityLabel, zoneDisplay, lines)
+      replyText: isStructuredSearch
+        ? buildZoneMatchFoundReply(
+            activityLabel,
+            hintDisplay,
+            lines,
+            hintKind,
+          )
         : [
             `在「${activityLabel}」下找到 ${matches.length} 条相近组队帖：`,
             '',
@@ -435,6 +452,7 @@ export class PostIntentService {
           legacyId: activity.legacyId,
           name: activity.name,
           code: activity.code,
+          date: activity.date,
         };
       }
     }
@@ -447,6 +465,7 @@ export class PostIntentService {
           legacyId: picked.legacyId,
           name: picked.name,
           code: picked.code,
+          date: picked.date,
         };
       }
     }
@@ -463,6 +482,7 @@ export class PostIntentService {
           legacyId: matched.legacyId,
           name: matched.name,
           code: matched.code,
+          date: matched.date,
         };
       }
     }

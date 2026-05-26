@@ -12,6 +12,7 @@ import { OrchestrationModule } from './orchestration/orchestration.module';
 import { ParserModule } from './parser/parser.module';
 import { AgentsModule } from './agents/agents.module';
 import { PostIntentService } from './post-intent.service';
+import { IntentRouterModule } from './intent/intent-router.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { PostIntentService } from './post-intent.service';
     OrchestrationModule,
     ParserModule,
     AgentsModule,
+    IntentRouterModule,
   ],
   controllers: [AiController],
   providers: [AiService, PostIntentService],

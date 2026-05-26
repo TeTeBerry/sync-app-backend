@@ -47,7 +47,7 @@ export class LlmService {
 
     this.llm = new ChatAlibabaTongyi({
       alibabaApiKey: this.apiKey || 'MISSING_API_KEY',
-      model: this.config.get<string>('llm.model') ?? 'qwen-max',
+      model: this.config.get<string>('llm.model') ?? 'qwen-turbo',
       streaming: true,
       temperature: 0.1,
     });
