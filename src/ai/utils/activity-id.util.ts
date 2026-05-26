@@ -42,8 +42,7 @@ export function resolveActivityId(text: string): string | undefined {
   const festival = resolveFestivalBrand(text);
   if (festival) return festival.brand.code;
 
-  if (/ultra/.test(compact)) return 'ultra';
-  if (/tomorrowland|tmw|预热/.test(compact)) return 'tomorrowland';
+  if (/tomorrowland|tmw/.test(compact)) return 'tomorrowland';
 
   return undefined;
 }

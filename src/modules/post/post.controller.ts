@@ -18,9 +18,25 @@ export class PostController {
   constructor(private readonly postService: PostService) {}
 
   @Get('popular')
-  listPopular(@Query('limit') limit?: string) {
+  listPopular(
+    @Query('limit') limit?: string,
+    @Query('userId') userId?: string,
+    @Query('authorName') authorName?: string,
+  ) {
     const parsed = limit ? Number(limit) : 20;
-    return this.postService.listPopular(Number.isNaN(parsed) ? 20 : parsed);
+    return this.postService.listPopular(
+      Number.isNaN(parsed) ? 20 : parsed,
+      userId,
+      authorName,
+    );
+  }
+
+  @Get('all')
+  listAll(
+    @Query('userId') userId?: string,
+    @Query('authorName') authorName?: string,
+  ) {
+    return this.postService.listAll(userId, authorName);
   }
 
   @Get()
@@ -32,7 +48,7 @@ export class PostController {
     if (activityLegacyId) {
       const id = Number(activityLegacyId);
       if (!Number.isNaN(id)) {
-        return this.postService.listByActivity(id);
+        return this.postService.listByActivity(id, userId, authorName);
       }
     }
     return this.postService.listByOwner(userId, authorName);
@@ -63,6 +79,11 @@ export class PostController {
     @Query('authorName') authorName?: string,
   ) {
     return this.postService.applyToPost(id, userId, authorName);
+  }
+
+  @Get(':id/comments')
+  listComments(@Param('id') id: string) {
+    return this.postService.listComments(id);
   }
 
   @Post(':id/comments')

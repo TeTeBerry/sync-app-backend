@@ -16,9 +16,6 @@ export class ActivityRegistration {
 
   @Prop({ default: 'registered' })
   status: 'registered';
-
-  @Prop({ default: 0 })
-  price: number;
 }
 
 export const ActivityRegistrationSchema = SchemaFactory.createForClass(

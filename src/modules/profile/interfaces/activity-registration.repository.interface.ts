@@ -14,7 +14,6 @@ export interface CreateActivityRegistrationInput {
   authorName?: string;
   activityLegacyId: number;
   status: 'registered';
-  price?: number;
 }
 
 export interface IActivityRegistrationRepository {

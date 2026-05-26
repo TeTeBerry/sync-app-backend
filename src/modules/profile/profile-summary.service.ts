@@ -8,6 +8,7 @@ import {
 import { ActivityService } from '../activity/activity.service';
 import { PostService } from '../post/post.service';
 import { UserService } from '../user/user.service';
+import { resolveProfileActivityStatus, compareActivityDateDesc } from '../../common/utils/activity-date.util';
 import { ACTIVITY_REGISTRATION_SEED } from './activity-registration.seed';
 import {
   ACTIVITY_REGISTRATION_REPOSITORY,
@@ -46,9 +47,8 @@ export interface ProfileActivityItemDto {
   title: string;
   date: string;
   location: string;
-  price: number;
   image: string;
-  status: 'registered';
+  status: 'registered' | 'attended';
 }
 
 @Injectable()
@@ -118,19 +118,20 @@ export class ProfileSummaryService implements OnModuleInit {
         const activity = await this.activityService.findByLegacyId(
           registration.activityLegacyId,
         );
+        const title = activity?.name ?? `活动 ${registration.activityLegacyId}`;
+        const date = activity?.date ?? '';
         return {
           id: String(registration.activityLegacyId),
-          title: activity?.name ?? `活动 ${registration.activityLegacyId}`,
-          date: activity?.date ?? '',
+          title,
+          date,
           location: activity?.location ?? '',
-          price: registration.price ?? 0,
           image: activity?.image ?? '',
-          status: 'registered' as const,
+          status: resolveProfileActivityStatus(date, title),
         };
       }),
     );
 
-    return items;
+    return items.sort(compareActivityDateDesc);
   }
 
   listPosts(userId?: string, authorName?: string) {

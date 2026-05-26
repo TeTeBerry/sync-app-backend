@@ -14,6 +14,7 @@ export type PostRecord = PostDocument & {
 
 export interface IPostRepository {
   findPopular(limit: number): Promise<PostRecord[]>;
+  findAll(): Promise<PostRecord[]>;
   findByActivityLegacyId(activityLegacyId: number): Promise<PostRecord[]>;
   findByOwner(filter: PostQueryFilter): Promise<PostRecord[]>;
   findById(id: string): Promise<PostRecord | null>;

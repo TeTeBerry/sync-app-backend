@@ -38,19 +38,29 @@ export const FESTIVAL_BRANDS: FestivalBrand[] = [
     aliases: ['ultra europe', 'ultra european', '欧洲ultra'],
   },
   {
-    code: 'ultra',
-    name: 'Ultra',
-    aliases: ['ultra chengdu', 'ultra 成都', 'ultra china', 'ultra'],
-  },
-  {
     code: 'tomorrowland',
     name: 'Tomorrowland',
-    aliases: ['tomorrowland', 'tmw', '明日世界'],
+    aliases: [
+      'tomorrowland',
+      'tomorrowland thailand',
+      'tml泰国',
+      'tmw',
+      '明日世界',
+      '芭提雅',
+      'pattaya',
+    ],
   },
   {
     code: 'storm',
     name: '风暴电音节',
-    aliases: ['风暴', 'storm', '口味王风暴', '风暴电音节'],
+    aliases: [
+      '风暴',
+      'storm',
+      '口味王风暴',
+      '风暴电音节',
+      'ultra 成都',
+      'ultra chengdu',
+    ],
   },
   {
     code: 'ade',

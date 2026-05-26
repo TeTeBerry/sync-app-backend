@@ -108,7 +108,6 @@ export class ActivityRegistrationService {
         authorName: actorName,
         activityLegacyId: legacyId,
         status: 'registered',
-        price: 0,
       });
     } catch (error) {
       const code = (error as { code?: number })?.code;

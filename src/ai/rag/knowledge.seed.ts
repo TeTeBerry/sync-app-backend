@@ -1,40 +1,40 @@
 import { Document } from '@langchain/core/documents';
 
-/** 音乐节 FAQ，供 RAG 入库 */
+/** 音乐节 FAQ，供 RAG 入库（2026 年公开信息） */
 export const KNOWLEDGE_DOCUMENTS: Document[] = [
   new Document({
     pageContent:
-      'EDC China 电音节（edc）2025 年演出档期：2025-07-12 至 2025-07-13，地点苏州阳澄湖。别名：edc、edc中国、edc电音。',
+      'EDC China 电音节（edc）最近一届为 2025 年 3 月 22 日至 23 日，地点苏州阳澄湖半岛旅游度假区。别名：edc、edc中国、edc电音。2026 档期尚未官宣。',
     metadata: { topic: 'activity', code: 'edc' },
   }),
   new Document({
     pageContent:
-      'Ultra 成都（ultra）2025 年演出档期：2025-08-01 至 2025-08-03，地点成都。别名：ultra、ultra chengdu、ultra 成都、ultra china。',
-    metadata: { topic: 'activity', code: 'ultra' },
+      '风暴电音节 STORM 深圳站（storm）2026 年演出档期：2026-06-13 至 2026-06-14，地点深圳国际会展中心 17 号馆。别名：storm、风暴、百威风暴、口味王风暴。',
+    metadata: { topic: 'activity', code: 'storm' },
   }),
   new Document({
     pageContent:
-      'Ultra Europe 欧洲站（ultra-europe）通常在克罗地亚斯普利特举办，与国内 Ultra 成都 区分。别名：ultra europe、欧洲ultra。',
+      'Ultra Europe 欧洲站（ultra-europe）通常在克罗地亚斯普利特举办，与国内风暴/EDC 等品牌区分。别名：ultra europe、欧洲ultra。',
     metadata: { topic: 'activity', code: 'ultra-europe' },
   }),
   new Document({
     pageContent:
-      'EDC Thailand（edc-thailand）2025 年演出档期：2025-12-08，地点泰国。别名：edc thailand、edc泰国、泰国edc。与国内 EDC China 区分。',
+      'EDC Thailand（edc-thailand）2026 年演出档期：2026-12-18 至 2026-12-20，地点泰国普吉岛 Rhythm Park。别名：edc thailand、edc泰国、泰国edc。与国内 EDC China 区分。',
     metadata: { topic: 'activity', code: 'edc-thailand' },
   }),
   new Document({
     pageContent:
-      'Tomorrowland 预热派对（tomorrowland）2025 年档期：2025-06-18 至 2025-06-19，地点上海 CLUB SPACE。别名：tomorrowland、tmw、明日世界。',
+      'Tomorrowland Thailand 2026（tomorrowland）2026 年 12 月 11 日至 13 日，地点泰国芭提雅 Wisdom Valley。别名：tomorrowland、tml泰国、明日世界。',
     metadata: { topic: 'activity', code: 'tomorrowland' },
   }),
   new Document({
     pageContent:
-      'VAC 珠海电音节（vac-zhuhai，Vision & Colour / Heineken Soundscape）2025 年档期：2025-04-18 至 2025-04-19，地点珠海。别名：vac、vision & colour、珠海vac。',
+      '2026横琴VAC电音节（vac-zhuhai，喜力星电音呈现）2026 年 4 月 18 日至 19 日，地点横琴长隆度假区 5 号停车场，主题 Neo Zen。别名：vac、vision & colour、横琴vac、珠海vac。',
     metadata: { topic: 'activity', code: 'vac-zhuhai' },
   }),
   new Document({
     pageContent:
-      '风暴电音节（storm，口味王风暴）是国内大型电音节品牌，常见城市站包括深圳、上海等。别名：风暴、storm、口味王风暴、风暴电音节。',
+      '风暴电音节（storm，口味王风暴/百威风暴）是国内大型电音节品牌，2026 深圳站已官宣。别名：风暴、storm、风暴电音节。',
     metadata: { topic: 'activity', code: 'storm' },
   }),
   new Document({

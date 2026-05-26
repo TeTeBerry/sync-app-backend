@@ -126,4 +126,25 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       );
     }
   }
+
+  async getCacheValue(key: string): Promise<string | null> {
+    if (!this.client || !this.enabled) return null;
+
+    try {
+      return await this.client.get(key);
+    } catch (error) {
+      this.logger.warn(`Redis get failed (${key}): ${(error as Error).message}`);
+      return null;
+    }
+  }
+
+  async setCacheValue(key: string, value: string): Promise<void> {
+    if (!this.client || !this.enabled) return;
+
+    try {
+      await this.client.set(key, value);
+    } catch (error) {
+      this.logger.warn(`Redis set failed (${key}): ${(error as Error).message}`);
+    }
+  }
 }

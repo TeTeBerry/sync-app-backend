@@ -91,6 +91,7 @@ export class ActivityService implements OnModuleInit {
         { legacyId: 3 },
         { code: 'sync-live-sh' },
         { legacyId: 7 },
+        { code: 'ultra' },
       ],
     });
   }
@@ -331,6 +332,15 @@ export class ActivityService implements OnModuleInit {
     if (dto.location !== undefined) {
       patch.location = dto.location.trim() || undefined;
     }
+    if (dto.image !== undefined) {
+      patch.image = dto.image.trim() || undefined;
+    }
+    if (dto.hot !== undefined) {
+      patch.hot = dto.hot;
+    }
+    if (dto.attendees !== undefined) {
+      patch.attendees = dto.attendees;
+    }
 
     if (Object.keys(patch).length === 0) {
       return activity;
@@ -347,16 +357,12 @@ export class ActivityService implements OnModuleInit {
     const changeParts: string[] = [];
     if (patch.date !== undefined && patch.date !== activity.date) {
       changeParts.push(
-        patch.date
-          ? `日期已更新为 ${patch.date}`
-          : '日期信息已变更',
+        patch.date ? `日期已更新为 ${patch.date}` : '日期信息已变更',
       );
     }
     if (patch.location !== undefined && patch.location !== activity.location) {
       changeParts.push(
-        patch.location
-          ? `地点已更新为 ${patch.location}`
-          : '地点信息已变更',
+        patch.location ? `地点已更新为 ${patch.location}` : '地点信息已变更',
       );
     }
     if (patch.name && patch.name !== activity.name) {
@@ -366,6 +372,16 @@ export class ActivityService implements OnModuleInit {
     if (changeParts.length > 0) {
       void this.notifyActivityUpdate(updated, changeParts.join('，'));
     }
+
+    await this.chromaService
+      ?.upsertActivityKnowledge({
+        code: updated.code,
+        name: updated.name,
+        alias: updated.alias,
+        date: updated.date,
+        location: updated.location,
+      })
+      .catch(() => undefined);
 
     return updated;
   }

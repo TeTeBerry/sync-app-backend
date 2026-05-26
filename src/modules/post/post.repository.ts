@@ -27,6 +27,13 @@ export class PostRepository implements IPostRepository {
       .lean();
   }
 
+  async findAll(): Promise<PostRecord[]> {
+    return this.model
+      .find({ status: { $ne: 'hidden' } })
+      .sort({ createdAt: -1 })
+      .lean();
+  }
+
   async findByActivityLegacyId(
     activityLegacyId: number,
   ): Promise<PostRecord[]> {

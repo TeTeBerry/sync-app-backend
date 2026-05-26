@@ -1,16 +1,26 @@
-/** 2026 电音节 catalog（来源：各 festival 官网 / 官方票务与文旅发布） */
-export const ACTIVITY_SEED = [
+#!/usr/bin/env node
+/**
+ * Upsert 2026 festival catalog and remove retired mock festivals from MongoDB.
+ *
+ * Usage:
+ *   node scripts/sync-activity-catalog.mjs
+ *   MONGODB_URI=mongodb://127.0.0.1:27017/sync-ai node scripts/sync-activity-catalog.mjs
+ */
+
+import mongoose from 'mongoose';
+
+const uri =
+  process.env.MONGODB_URI ??
+  process.env.MONGO_URI ??
+  'mongodb://127.0.0.1:27017/sync-ai';
+
+/** Keep in sync with src/modules/activity/activity.seed.ts */
+const ACTIVITY_SEED = [
   {
     legacyId: 1,
     code: 'tomorrowland',
     name: 'Tomorrowland Thailand 2026',
-    alias: [
-      'tomorrowland',
-      'tomorrowland thailand',
-      'tml泰国',
-      '明日世界',
-      'tmw',
-    ],
+    alias: ['tomorrowland', 'tomorrowland thailand', 'tml泰国', '明日世界', 'tmw'],
     date: '12/11-13',
     location: '芭提雅 Wisdom Valley',
     image:
@@ -76,3 +86,43 @@ export const ACTIVITY_SEED = [
     attendees: 96,
   },
 ];
+
+const DEPRECATED_FILTER = {
+  $or: [
+    { code: 's2o' },
+    { legacyId: 3 },
+    { code: 'sync-live-sh' },
+    { legacyId: 7 },
+    { code: 'ultra' },
+  ],
+};
+
+async function main() {
+  await mongoose.connect(uri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
+
+  const activities = mongoose.connection.db.collection('activities');
+
+  for (const item of ACTIVITY_SEED) {
+    await activities.findOneAndUpdate(
+      { code: item.code },
+      { $set: item },
+      { upsert: true },
+    );
+  }
+
+  const removed = await activities.deleteMany(DEPRECATED_FILTER);
+
+  console.log('✅ Activity catalog synced');
+  console.log(`   upserted: ${ACTIVITY_SEED.length} festivals`);
+  console.log(`   removed deprecated: ${removed.deletedCount}`);
+
+  await mongoose.disconnect();
+}
+
+main().catch((error) => {
+  console.error('❌ Sync failed:', error.message ?? error);
+  process.exit(1);
+});

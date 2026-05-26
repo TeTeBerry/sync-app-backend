@@ -131,16 +131,69 @@ export class PostService implements OnModuleInit {
     });
   }
 
-  listPopular(limit = 20) {
-    return this.repository
-      .findPopular(limit)
-      .then(rows => rows.map(PostMapper.toHomeFeedItem));
+  private async findLikedPostIds(
+    actorUserId: string,
+    postIds: string[],
+  ): Promise<Set<string>> {
+    if (!postIds.length) return new Set();
+
+    const rows = await this.likeModel
+      .find({ userId: actorUserId, postId: { $in: postIds } })
+      .select('postId')
+      .lean();
+
+    return new Set(rows.map(row => row.postId));
   }
 
-  listByActivity(activityLegacyId: number) {
-    return this.repository
-      .findByActivityLegacyId(activityLegacyId)
-      .then(rows => rows.map(PostMapper.toEventDetailItem));
+  private async mapPostsWithLiked<T>(
+    posts: PostRecord[],
+    mapper: (post: PostRecord, liked: boolean) => T,
+    userId?: string,
+    authorName?: string,
+  ): Promise<T[]> {
+    if (!posts.length) return [];
+
+    const actorUserId = resolveActorUserId(userId, authorName);
+    const postIds = posts.map(post => String(post._id));
+    const likedIds = await this.findLikedPostIds(actorUserId, postIds);
+
+    return posts.map(post =>
+      mapper(post, likedIds.has(String(post._id))),
+    );
+  }
+
+  async listPopular(limit = 20, userId?: string, authorName?: string) {
+    const rows = await this.repository.findPopular(limit);
+    return this.mapPostsWithLiked(
+      rows,
+      PostMapper.toHomeFeedItem,
+      userId,
+      authorName,
+    );
+  }
+
+  async listAll(userId?: string, authorName?: string) {
+    const rows = await this.repository.findAll();
+    return this.mapPostsWithLiked(
+      rows,
+      PostMapper.toHomeFeedItem,
+      userId,
+      authorName,
+    );
+  }
+
+  async listByActivity(
+    activityLegacyId: number,
+    userId?: string,
+    authorName?: string,
+  ) {
+    const rows = await this.repository.findByActivityLegacyId(activityLegacyId);
+    return this.mapPostsWithLiked(
+      rows,
+      PostMapper.toEventDetailItem,
+      userId,
+      authorName,
+    );
   }
 
   listByOwner(userId?: string, authorName?: string) {
@@ -350,19 +403,19 @@ export class PostService implements OnModuleInit {
       .lean();
 
     if (existing) {
-      return PostMapper.toEventDetailItem(post);
+      return PostMapper.toEventDetailItem(post, true);
     }
 
     try {
       await this.likeModel.create({ userId: actorUserId, postId: id });
     } catch {
-      return PostMapper.toEventDetailItem(post);
+      return PostMapper.toEventDetailItem(post, true);
     }
 
     const updated =
       (await this.repository.incrementCounter(id, 'likes')) ?? post;
     void this.noticeAgent.notifyLike(post, id, actorUserId, authorName);
-    return PostMapper.toEventDetailItem(updated);
+    return PostMapper.toEventDetailItem(updated, true);
   }
 
   async applyToPost(id: string, userId?: string, authorName?: string) {
@@ -406,6 +459,39 @@ export class PostService implements OnModuleInit {
     void this.noticeAgent.notifyApplication(post, id, actorUserId, authorName);
 
     return { ok: true as const, alreadyApplied: false };
+  }
+
+  async listComments(id: string) {
+    const post = await this.repository.findById(id);
+    if (!post) {
+      throw new NotFoundException('帖子不存在');
+    }
+    if (post.status === 'hidden') {
+      throw new NotFoundException('帖子不存在');
+    }
+
+    const comments = await this.commentModel
+      .find({
+        postId: id,
+        $or: [{ parentCommentId: { $exists: false } }, { parentCommentId: null }],
+      })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const items = await Promise.all(
+      comments.map(async (comment) => {
+        const profile = await this.userService.resolveProfile(
+          comment.userId,
+          comment.authorName,
+        );
+        return PostMapper.toCommentItem({
+          ...comment,
+          authorAvatar: profile?.avatar,
+        });
+      }),
+    );
+
+    return items;
   }
 
   async addComment(

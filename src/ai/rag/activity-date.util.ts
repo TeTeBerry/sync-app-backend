@@ -1,4 +1,4 @@
-/** 从活动 catalog 日期串（如 07/12-13）推导 ISO 起始日 */
+/** 从活动 catalog 日期串（如 06/13-14）推导 ISO 起始日 */
 export function catalogDateToIso(
   catalogDate: string,
   yearHint?: string,
