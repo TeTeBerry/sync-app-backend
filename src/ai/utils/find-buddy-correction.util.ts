@@ -2,10 +2,10 @@ import type { FindBuddyState } from '../conversation/conversation-state.types';
 import { resolveActivityId } from './ticket-draft.parser';
 import { isActivityKeywordInput } from './conversation-context.parser';
 
-/** 用户想重新开始找搭子（应清空旧活动/拼单上下文） */
+/** 用户想重新开始结伴流程（应清空旧活动/拼单上下文） */
 export function isFindBuddyRestartRequest(input: string): boolean {
   const text = input.trim();
-  return /重新\s*(找|拼)\s*搭子|重新\s*拼|重新\s*匹配|换个?\s*搭子|重来一次?|重新\s*开始|重新来/.test(
+  return /重新\s*(找|拼)\s*(搭子|同行)|重新\s*拼|重新\s*匹配|换个?\s*(搭子|同行)|重来一次?|重新\s*开始|重新来|重新\s*结伴/.test(
     text,
   );
 }
@@ -76,7 +76,7 @@ export function clearFindBuddyActivity(fb: FindBuddyState): FindBuddyState {
   };
 }
 
-/** 处理「重新找搭子」「不去 EDC」等对当前活动的修正 */
+/** 处理「重新结伴」「不去 EDC」等对当前活动的修正 */
 export function applyFindBuddyActivityCorrection(
   fb: FindBuddyState,
   input: string,

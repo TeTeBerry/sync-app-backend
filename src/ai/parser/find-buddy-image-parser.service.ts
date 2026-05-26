@@ -16,7 +16,7 @@ export class FindBuddyImageParserService {
     return rows.map(item => `${item.code}=${item.name}`).join(', ');
   }
 
-  /** 千问 VL：从套餐/酒店订单截图抽取找搭子字段 */
+  /** 千问 VL：从套餐/酒店订单截图抽取结伴拼单字段 */
   async parseFindBuddyImage(
     image: string,
     userHint?: string,
@@ -26,7 +26,7 @@ export class FindBuddyImageParserService {
     const { mimeType, base64 } = decodeBase64Payload(image);
     const catalog = await this.activityCatalog();
     const system = [
-      '你是音乐节出行/拼单信息 OCR 抽取器。从用户上传的套餐订单、酒店订单、机酒套餐截图中提取找搭子所需字段。',
+      '你是音乐节出行/拼单信息 OCR 抽取器。从用户上传的套餐订单、酒店订单、机酒套餐截图中提取结伴拼单所需字段。',
       '严格规则：',
       '1. 只输出一个 JSON 对象，不要 markdown，不要解释。',
       '2. 仅提取图片中清晰可见的信息；看不见或不确定的字段必须为 null，禁止猜测或编造。',

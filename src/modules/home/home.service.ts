@@ -1,15 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { PINDAN_TYPE_LABEL } from '../../common/constants/pindan-labels';
 import { ActivityService } from '../activity/activity.service';
 import { PindanService } from '../pindan/pindan.service';
 import { TicketService } from '../ticket/ticket.service';
 import { mapTicketsToListingUi } from '../ticket/ticket-listing.mapper';
 import type { PindanType } from '../../database/schemas/pindan.schema';
 
-const PIN_CATEGORY_LABEL: Record<PindanType, string> = {
-  package: '套餐拼',
-  hotel: '酒店拼',
-  transport: '交通拼',
-};
+const PIN_CATEGORY_LABEL = PINDAN_TYPE_LABEL;
 
 const PIN_CATEGORY_TONE: Record<PindanType, 'primary' | 'amber' | 'cyan'> = {
   package: 'primary',

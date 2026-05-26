@@ -4,6 +4,7 @@ import {
   USER_REPOSITORY,
 } from './interfaces/user.repository.interface';
 import { DEFAULT_PROFILE_EXTERNAL_ID } from './user.repository';
+import { isDemoOwnerClient } from '../../common/utils/demo-owner.util';
 
 const DEMO_PROFILE = {
   externalId: DEFAULT_PROFILE_EXTERNAL_ID,
@@ -38,12 +39,17 @@ export class UserService implements OnModuleInit {
     return this.repository.findDefaultProfile();
   }
 
-  resolveProfile(userId?: string, authorName?: string) {
-    const uid = userId?.trim();
-    if (uid) {
-      return this.repository.findByExternalId(uid);
+  async resolveProfile(userId?: string, authorName?: string) {
+    if (isDemoOwnerClient(userId, authorName)) {
+      return this.repository.findDefaultProfile();
     }
-    void authorName;
+
+    const uid = userId?.trim();
+    if (uid && uid !== DEFAULT_PROFILE_EXTERNAL_ID) {
+      const found = await this.repository.findByExternalId(uid);
+      if (found) return found;
+    }
+
     return this.repository.findDefaultProfile();
   }
 }

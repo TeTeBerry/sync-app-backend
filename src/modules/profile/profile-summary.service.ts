@@ -89,10 +89,10 @@ export class ProfileSummaryService implements OnModuleInit {
         profile?.avatar ??
         'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
       stats: {
-        events: events || 4,
-        pinSuccess: pinSuccess || 8,
-        likes: likes || 156,
-        posts: posts || 4,
+        events,
+        pinSuccess,
+        likes,
+        posts,
       },
     };
   }

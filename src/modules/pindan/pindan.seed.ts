@@ -220,7 +220,7 @@ export const PINDAN_SEED: Array<{
     activityLegacyId: 4,
     activityId: 'ultra',
     title: '世博公园周边精品酒店',
-    subtitle: 'Ultra 专属 · 3晚连住拼房',
+    subtitle: 'Ultra 专属 · 3晚连住拼单',
     image:
       'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400&q=80',
     price: 480,

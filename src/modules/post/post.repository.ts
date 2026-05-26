@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
+import { buildOwnerMongoFilter } from '../../common/utils/demo-owner.util';
 import {
   IPostRepository,
   PostQueryFilter,
@@ -9,17 +10,7 @@ import {
 } from './interfaces/post.repository.interface';
 
 function buildOwnerFilter(filter: PostQueryFilter) {
-  const clauses: Record<string, unknown>[] = [];
-  if (filter.userId?.trim()) {
-    clauses.push({ userId: filter.userId.trim() });
-  }
-  if (filter.authorName?.trim()) {
-    clauses.push({ authorName: filter.authorName.trim() });
-  }
-  if (clauses.length === 0) {
-    return {};
-  }
-  return { $or: clauses };
+  return buildOwnerMongoFilter(filter.userId, filter.authorName);
 }
 
 @Injectable()

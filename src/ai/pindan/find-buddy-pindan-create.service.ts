@@ -53,7 +53,7 @@ function inferPindanType(fb: FindBuddyState): PindanType {
 
 function buildPindanTitle(fb: FindBuddyState, activityName: string): string {
   if (fb.packageName?.trim()) return fb.packageName.trim();
-  if (fb.hotelName?.trim()) return `${fb.hotelName.trim()}拼房`;
+  if (fb.hotelName?.trim()) return `${fb.hotelName.trim()}住宿拼单`;
   if (isActivityOnlyCreateContext(fb)) return `${activityName}套餐拼单`;
   return `${activityName}拼单`;
 }

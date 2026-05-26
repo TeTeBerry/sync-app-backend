@@ -1,0 +1,103 @@
+import { DEFAULT_PROFILE_EXTERNAL_ID } from '../../modules/user/user.repository';
+
+export const DEMO_OWNER_USER_ID = DEFAULT_PROFILE_EXTERNAL_ID;
+export const DEMO_OWNER_DISPLAY_NAME = 'Zara Chen';
+
+/** 活动详情页 AI 快捷标签（与前端 aiShortcutTags.ts 对齐） */
+export const AI_SHORTCUT_TAGS = [
+  '组队队友',
+  '住宿同行',
+  '拼车同行',
+  '拼套票',
+  '拼房同行',
+] as const;
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function authorNameMatches(stored: string, client?: string): boolean {
+  const author = stored.trim();
+  const name = client?.trim();
+  if (!name || !author) return false;
+  if (author === name) return true;
+  const clientFirst = name.split(/\s+/)[0] ?? '';
+  const authorFirst = author.split(/\s+/)[0] ?? '';
+  return (
+    clientFirst === authorFirst ||
+    name.startsWith(`${authorFirst} `) ||
+    author.startsWith(`${clientFirst} `)
+  );
+}
+
+/** 当前客户端是否对应演示账号（session id + 默认 Zara 昵称） */
+export function isDemoOwnerClient(userId?: string, authorName?: string): boolean {
+  const uid = userId?.trim();
+  if (uid === DEMO_OWNER_USER_ID) return true;
+  if (!uid && !authorName?.trim()) return true;
+  return authorNameMatches(DEMO_OWNER_DISPLAY_NAME, authorName ?? 'Zara');
+}
+
+/** Mongo 查询：演示账号或真实 userId / 昵称 */
+export function buildOwnerMongoFilter(
+  userId?: string,
+  authorName?: string,
+): Record<string, unknown> {
+  if (isDemoOwnerClient(userId, authorName)) {
+    const firstName = DEMO_OWNER_DISPLAY_NAME.split(/\s+/)[0] ?? 'Zara';
+    return {
+      $or: [
+        { userId: DEMO_OWNER_USER_ID },
+        { authorName: DEMO_OWNER_DISPLAY_NAME },
+        { authorName: 'Zara' },
+        { authorName: { $regex: `^${escapeRegex(firstName)}`, $options: 'i' } },
+      ],
+    };
+  }
+
+  const clauses: Record<string, unknown>[] = [];
+  const uid = userId?.trim();
+  const name = authorName?.trim();
+
+  if (uid) {
+    clauses.push({ userId: uid });
+  }
+  if (name) {
+    clauses.push({ authorName: name });
+    const first = name.split(/\s+/)[0];
+    if (first) {
+      clauses.push({
+        authorName: { $regex: `^${escapeRegex(first)}`, $options: 'i' },
+      });
+    }
+  }
+
+  if (clauses.length === 0) {
+    return {};
+  }
+  return { $or: clauses };
+}
+
+/** 帖子 / 拼单等资源是否属于当前请求用户 */
+export function isResourceOwnedByClient(
+  record: { userId?: string; authorName?: string },
+  userId?: string,
+  authorName?: string,
+): boolean {
+  const uid = userId?.trim();
+  const name = authorName?.trim();
+
+  if (uid && record.userId === uid) return true;
+  if (name && record.authorName && authorNameMatches(record.authorName, name)) {
+    return true;
+  }
+  if (isDemoOwnerClient(uid, name) && record.userId === DEMO_OWNER_USER_ID) {
+    return true;
+  }
+  return false;
+}
+
+export function isAiShortcutTag(input: string): boolean {
+  const text = input.trim();
+  return (AI_SHORTCUT_TAGS as readonly string[]).includes(text);
+}

@@ -5,6 +5,7 @@ import {
   ActivityRegistration,
   ActivityRegistrationDocument,
 } from '../../database/schemas/activity-registration.schema';
+import { buildOwnerMongoFilter } from '../../common/utils/demo-owner.util';
 import {
   ActivityRegistrationQueryFilter,
   ActivityRegistrationRecord,
@@ -12,17 +13,7 @@ import {
 } from './interfaces/activity-registration.repository.interface';
 
 function buildOwnerFilter(filter: ActivityRegistrationQueryFilter) {
-  const clauses: Record<string, unknown>[] = [];
-  if (filter.userId?.trim()) {
-    clauses.push({ userId: filter.userId.trim() });
-  }
-  if (filter.authorName?.trim()) {
-    clauses.push({ authorName: filter.authorName.trim() });
-  }
-  if (clauses.length === 0) {
-    return {};
-  }
-  return { $or: clauses };
+  return buildOwnerMongoFilter(filter.userId, filter.authorName);
 }
 
 @Injectable()

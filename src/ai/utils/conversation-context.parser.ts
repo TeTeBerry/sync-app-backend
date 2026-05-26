@@ -1,4 +1,5 @@
 import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import {
   ACTIVITY_PICKER_PROMPT,
   findAssistantBeforeIndex,
@@ -98,8 +99,10 @@ export function isFindBuddyThread(messages: ChatMessageDto[]): boolean {
     }
 
     if (
+      isAiShortcutTag(message.content.trim()) ||
       message.content.trim() === '帮我找搭子' ||
-      /找搭子|找同行/.test(message.content)
+      message.content.trim() === '帮我结伴' ||
+      /找搭子|找同行|帮我结伴|结伴/.test(message.content)
     ) {
       active = true;
     }

@@ -1,11 +1,8 @@
 import { ProfileService } from '../../modules/profile/profile.service';
 import { PindanService } from '../../modules/pindan/pindan.service';
+import { PINDAN_TYPE_LABEL } from '../../common/constants/pindan-labels';
 
-export const PINDAN_TYPE_LABEL: Record<string, string> = {
-  package: '套餐拼',
-  hotel: '酒店拼',
-  transport: '交通拼',
-};
+export { PINDAN_TYPE_LABEL };
 
 export type ReplyPindanRow = {
   legacyId?: number;

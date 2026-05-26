@@ -50,7 +50,7 @@ export class DeterministicReplyService {
         text: [
           '看起来像是门票截图或套餐/出行订单 📷',
           '',
-          '你想「出票/收票」还是「找搭子拼单」？直接告诉我即可。',
+          '你想「出票/收票」还是「结伴拼单」？直接告诉我即可。',
         ].join('\n'),
         nextState: { ...state, pendingImageDisambiguation: undefined },
       };

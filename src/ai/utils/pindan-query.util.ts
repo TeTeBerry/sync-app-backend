@@ -63,7 +63,7 @@ export async function resolveThreadPindanCandidates(
   return services.pindanService.searchFromQuery({});
 }
 
-/** 找搭子上下文可用的拼单列表（进行中 + 用户已加入） */
+/** 结伴流程上下文可用的拼单列表（进行中 + 用户已加入） */
 export async function resolveThreadPindanRows(
   messages: ChatMessageDto[],
   input: string,

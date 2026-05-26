@@ -24,7 +24,7 @@ export async function buildQuickReplyResponse(
     case 'find_buddy': {
       const activities = await activityService.findAll();
       return composeReply([
-        '好的，我来帮你找同行搭子 🎵',
+        '好的，我来帮你找同行伙伴 🎵',
         '',
         '你可以直接告诉我活动、日期、人数和出发城市，也可以上传套餐/酒店订单截图，我会自动识别并匹配拼单。',
         '',
@@ -76,7 +76,7 @@ export async function buildQuickReplyResponse(
         '',
         formatActivityPickerLines(activities),
         '',
-        '你对哪个活动感兴趣？我可以帮你找搭子、拼单，或协助出票/收票。',
+        '你对哪个活动感兴趣？我可以帮你结伴、拼单，或协助出票/收票。',
       ]);
     }
 

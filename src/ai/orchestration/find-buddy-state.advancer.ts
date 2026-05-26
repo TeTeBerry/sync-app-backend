@@ -13,7 +13,7 @@ import { applyFindBuddyActivityCorrection } from '../utils/find-buddy-correction
 import { LlmSlotParserService } from '../parser/llm-slot-parser.service';
 
 /**
- * 专门负责找搭子流程的状态推进
+ * 专门负责结伴流程的状态推进
  */
 @Injectable()
 export class FindBuddyStateAdvancer {

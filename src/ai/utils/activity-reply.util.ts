@@ -1,4 +1,5 @@
 import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { PINDAN_TYPE_LABEL_PATTERN } from '../../common/constants/pindan-labels';
 
 export const ACTIVITY_PICKER_PROMPT = '你想参加哪个活动？';
 
@@ -62,7 +63,7 @@ export function isAwaitingPindanSelection(messages: ChatMessageDto[]): boolean {
   }
 
   return (
-    /【(套餐拼|酒店拼|交通拼)】/.test(prevAssistant.content) ||
+    new RegExp(`【(${PINDAN_TYPE_LABEL_PATTERN})】`).test(prevAssistant.content) ||
     (/相关拼单】/.test(prevAssistant.content) &&
       /想加入已有拼单|回复序号/.test(prevAssistant.content))
   );

@@ -58,7 +58,7 @@ export class LlmSlotParserService {
 
     const catalog = await this.activityCatalog();
     const system = [
-      '你是找搭子流程的信息抽取器。',
+      '你是结伴拼单流程的信息抽取器。',
       '只输出 JSON，不要其他文字。',
       '用户未说的字段为 null，禁止编造。',
       'activityId 只能是 edc / edc-thailand / s2o / ultra / tomorrowland / vac-zhuhai 或 null；默认 null，禁止因「电音节」等泛称推断 edc。',

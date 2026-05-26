@@ -2,7 +2,7 @@
 export const POST_SEED = [
   {
     userId: 'demo-zara',
-    authorName: 'Zara',
+    authorName: 'Zara Chen',
     authorHandle: '@zara_edm',
     authorAvatar:
       'https://images.unsplash.com/photo-1534751516642-a1af1ef26a56?w=120&q=80&fit=crop&crop=face',
@@ -10,7 +10,7 @@ export const POST_SEED = [
     eventTitle: 'Tomorrowland China',
     location: '上海',
     body: '7月18日上海场，求组队！有同城的小伙伴吗？可以一起拼住宿，已有2人，还差1个女生～',
-    tags: ['#拼房', '#上海', '#女生优先'],
+    tags: ['#住宿', '#上海', '#女生优先'],
     status: 'recruiting',
     likes: 47,
     comments: 8,
@@ -66,7 +66,7 @@ export const POST_SEED = [
   },
   {
     userId: 'demo-zara',
-    authorName: 'Zara',
+    authorName: 'Zara Chen',
     authorHandle: '@zara_edm',
     authorAvatar:
       'https://images.unsplash.com/photo-1534751516642-a1af1ef26a56?w=120&q=80&fit=crop&crop=face',
@@ -74,7 +74,7 @@ export const POST_SEED = [
     eventTitle: 'Tomorrowland China',
     location: '上海',
     body: '7月18日上海场，求组队！已有2人，还差1个女生～可以一起拼住宿，凌晨场一起出行！',
-    tags: ['#拼房', '#上海', '#女生优先'],
+    tags: ['#住宿', '#上海', '#女生优先'],
     status: 'recruiting',
     likes: 47,
     comments: 2,
@@ -105,8 +105,8 @@ export const POST_SEED = [
     activityLegacyId: 1,
     eventTitle: 'Tomorrowland China',
     location: '上海',
-    body: 'TMR上海！求最后一个拼房名额，女生优先，已有2人～',
-    tags: ['#拼房', '#上海', '#女生'],
+    body: 'TMR上海！求最后一个住宿名额，女生优先，已有2人～',
+    tags: ['#住宿', '#上海', '#女生'],
     status: 'recruiting',
     likes: 12,
     comments: 1,
@@ -130,7 +130,7 @@ export const POST_SEED = [
   },
   {
     userId: 'demo-zara',
-    authorName: 'Zara',
+    authorName: 'Zara Chen',
     authorHandle: '@zara',
     authorAvatar:
       'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
@@ -146,7 +146,7 @@ export const POST_SEED = [
   },
   {
     userId: 'demo-zara',
-    authorName: 'Zara',
+    authorName: 'Zara Chen',
     authorHandle: '@zara',
     authorAvatar:
       'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
@@ -162,7 +162,7 @@ export const POST_SEED = [
   },
   {
     userId: 'demo-zara',
-    authorName: 'Zara',
+    authorName: 'Zara Chen',
     authorHandle: '@zara',
     authorAvatar:
       'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',

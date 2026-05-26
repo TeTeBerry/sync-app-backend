@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { isResourceOwnedByClient } from '../../common/utils/demo-owner.util';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
 import { PostMapper } from './post.mapper';
 import { POST_SEED } from './post.seed';
@@ -64,12 +65,11 @@ export class PostService implements OnModuleInit {
       throw new NotFoundException('帖子不存在');
     }
 
-    const uid = userId?.trim();
-    const name = authorName?.trim();
-    const isOwner =
-      (uid && post.userId === uid) ||
-      (name && post.authorName === name) ||
-      (name && post.authorName.startsWith(name.split(/\s+/)[0] ?? ''));
+    const isOwner = isResourceOwnedByClient(
+      { userId: post.userId, authorName: post.authorName },
+      userId,
+      authorName,
+    );
 
     if (!isOwner) {
       throw new ForbiddenException('无权删除该帖子');

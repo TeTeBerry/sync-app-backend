@@ -4,7 +4,7 @@ import { Document } from '@langchain/core/documents';
 export const KNOWLEDGE_DOCUMENTS: Document[] = [
   new Document({
     pageContent:
-      'EDC China 电音节（edc）2025 年演出档期：2025-07-12 至 2025-07-13，地点苏州阳澄湖。别名：edc、edc中国、edc电音。常见需求：门票转让、酒店拼房、上海/本地出发交通拼单。',
+      'EDC China 电音节（edc）2025 年演出档期：2025-07-12 至 2025-07-13，地点苏州阳澄湖。别名：edc、edc中国、edc电音。常见需求：门票转让、酒店拼单、上海/本地出发交通拼单。',
     metadata: { topic: 'activity', code: 'edc' },
   }),
   new Document({
@@ -79,7 +79,7 @@ export const KNOWLEDGE_DOCUMENTS: Document[] = [
   }),
   new Document({
     pageContent:
-      '拼单类型包括酒店拼房（hotel）与交通拼单（transport）。可说明出发地、日期、人数与预算，助手会检索开放中的拼单。',
+      '拼单类型包括酒店拼单（hotel）与交通拼单（transport）。可说明出发地、日期、人数与预算，助手会检索开放中的拼单。',
     metadata: { topic: 'pindan' },
   }),
   new Document({

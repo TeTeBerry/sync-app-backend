@@ -29,7 +29,7 @@ export class PindanCreateHandler implements ReplyHandler {
     return {
       flow: 'find_buddy' as ConversationFlow,
       phase: ctx.state.findBuddy?.phase,
-      summary: '搭子拼单创建确认与提交',
+      summary: '结伴拼单创建确认与提交',
     };
   }
 

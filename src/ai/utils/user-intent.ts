@@ -1,4 +1,5 @@
 import { isTicketSearchQuery } from './ticket-search.util';
+import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 
 export type UserIntent =
   | 'find_buddy'
@@ -9,7 +10,7 @@ export type UserIntent =
   | 'general';
 
 const QUICK_REPLIES: Record<UserIntent, string> = {
-  find_buddy: '帮我找搭子',
+  find_buddy: '帮我结伴',
   sell_ticket: '我有票要出',
   buy_ticket: '我要收票',
   near_events: '查最近活动',
@@ -23,7 +24,12 @@ export function detectUserIntent(input: string): UserIntent {
   if (isTicketSearchQuery(text)) {
     return 'search_ticket';
   }
-  if (text === QUICK_REPLIES.find_buddy || /找.*搭子|找伙伴|匹配搭子|组局/.test(text)) {
+  if (
+    isAiShortcutTag(text) ||
+    text === QUICK_REPLIES.find_buddy ||
+    text === '帮我找搭子' ||
+    /找.*搭子|找伙伴|匹配搭子|组局|帮我结伴|找同行|结伴/.test(text)
+  ) {
     return 'find_buddy';
   }
   if (
@@ -67,7 +73,7 @@ export function buildIntentGuidance(intent: UserIntent): string {
   switch (intent) {
     case 'find_buddy':
       return [
-        '【当前意图：找搭子】',
+        '【当前意图：结伴/找同行】',
         '帮用户匹配同行伙伴或推荐开放拼单（酒店/交通等），不是门票出/收挂单。',
         '优先调用 queryPindan；无明确活动时展示若干热门拼单。',
         '只追问：活动名称、出行日期、出发城市、同行人数。',
@@ -100,7 +106,7 @@ export function buildIntentGuidance(intent: UserIntent): string {
     default:
       return [
         '根据用户最新一条消息判断意图；切换话题时不要重复上一轮相同格式的追问。',
-        '找搭子/查活动/门票出收使用不同追问方式，勿混用模板。',
+        '结伴/找同行与查活动、门票出收使用不同追问方式，勿混用模板。',
         '平台门票仅支持出票与收票，没有拼门票功能。',
       ].join('\n');
   }

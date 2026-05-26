@@ -87,7 +87,7 @@ export interface ConversationState {
   findBuddy?: FindBuddyState;
   ticketListing?: TicketListingState;
   ticketSearch?: TicketSearchState;
-  /** 空闲态上传图片后，门票/找搭子 OCR 均有一定置信度时的消歧标记 */
+  /** 空闲态上传图片后，门票/结伴 OCR 均有一定置信度时的消歧标记 */
   pendingImageDisambiguation?: boolean;
 }
 
