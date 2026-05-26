@@ -1,20 +1,41 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-export type NotificationType =
-  | 'pindan_join_leader'
-  | 'pindan_join_member'
-  | 'ticket_match';
+export type NotificationType = 'general' | 'interaction' | 'system' | 'match';
+
+/** Deep-link hint for partner interactions (like / comment / application). */
+export type NotificationInteractionType =
+  | 'like'
+  | 'comment'
+  | 'comment_reply'
+  | 'application'
+  | 'activity'
+  | 'activity_update'
+  | 'post_rejected'
+  | 'post_hidden'
+  | 'match_recommendation';
 
 export interface NotificationMeta {
-  pindanLegacyId?: number;
-  ticketId?: string;
+  /** Target activity for event-detail navigation. */
+  activityLegacyId?: number;
+  /** Target post within the activity feed. */
+  postId?: string;
+  /** Partner interaction kind; drives client routing when present. */
+  type?: NotificationInteractionType;
+  /** @deprecated Prefer activityLegacyId (number). */
   activityId?: string;
   actorUserId?: string;
   actorUserName?: string;
-  pindanTitle?: string;
-  ticketType?: 'sell' | 'buy';
-  displayEventName?: string;
+  /** i18n template key, e.g. notifications.types.like */
+  templateKey?: string;
+  /** Interpolation params for client-side i18n rendering. */
+  templateParams?: Record<string, string>;
+  /** AI match recommendation post IDs. */
+  matchPostIds?: string[];
+  /** Post rejection reason summary. */
+  rejectionReason?: string;
+  /** Parent comment ID for reply notifications. */
+  parentCommentId?: string;
 }
 
 export type NotificationDocument = Notification & Document;

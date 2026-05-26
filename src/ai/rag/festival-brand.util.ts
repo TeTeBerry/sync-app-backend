@@ -40,17 +40,12 @@ export const FESTIVAL_BRANDS: FestivalBrand[] = [
   {
     code: 'ultra',
     name: 'Ultra',
-    aliases: ['ultra shanghai', 'ultra'],
+    aliases: ['ultra chengdu', 'ultra 成都', 'ultra china', 'ultra'],
   },
   {
     code: 'tomorrowland',
     name: 'Tomorrowland',
     aliases: ['tomorrowland', 'tmw', '明日世界'],
-  },
-  {
-    code: 's2o',
-    name: 'S2O',
-    aliases: ['s2o', '泼水'],
   },
   {
     code: 'storm',
@@ -168,7 +163,6 @@ export function extractLocationFromEventName(text: string): string | undefined {
     '广州',
     '珠海',
     '苏州',
-    '三亚',
     '成都',
     '杭州',
     '南京',

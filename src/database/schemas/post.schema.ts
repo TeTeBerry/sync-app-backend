@@ -3,7 +3,7 @@ import { Document } from 'mongoose';
 
 export type PostDocument = Post & Document;
 
-export type PostStatus = 'recruiting' | 'completed';
+export type PostStatus = 'recruiting' | 'completed' | 'hidden';
 
 @Schema({ timestamps: true })
 export class Post {

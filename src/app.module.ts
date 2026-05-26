@@ -2,9 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import configuration from './config/configuration';
+import { RedisModule } from './redis/redis.module';
 import { ActivityModule } from './modules/activity/activity.module';
-import { TicketModule } from './modules/ticket/ticket.module';
-import { PindanModule } from './modules/pindan/pindan.module';
 import { UserModule } from './modules/user/user.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { ProfileModule } from './modules/profile/profile.module';
@@ -31,9 +30,8 @@ import { PostModule } from './modules/post/post.module';
         retryDelay: 3000,
       }),
     }),
+    RedisModule,
     ActivityModule,
-    TicketModule,
-    PindanModule,
     UserModule,
     ChatModule,
     ProfileModule,

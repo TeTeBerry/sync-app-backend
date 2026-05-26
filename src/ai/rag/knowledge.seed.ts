@@ -1,30 +1,25 @@
 import { Document } from '@langchain/core/documents';
 
-/** 音乐节 / 拼单 / 票务 FAQ，供 RAG 入库 */
+/** 音乐节 FAQ，供 RAG 入库 */
 export const KNOWLEDGE_DOCUMENTS: Document[] = [
   new Document({
     pageContent:
-      'EDC China 电音节（edc）2025 年演出档期：2025-07-12 至 2025-07-13，地点苏州阳澄湖。别名：edc、edc中国、edc电音。常见需求：门票转让、酒店拼单、上海/本地出发交通拼单。',
+      'EDC China 电音节（edc）2025 年演出档期：2025-07-12 至 2025-07-13，地点苏州阳澄湖。别名：edc、edc中国、edc电音。',
     metadata: { topic: 'activity', code: 'edc' },
   }),
   new Document({
     pageContent:
-      'S2O 三亚泼水音乐节（s2o）2025 年演出档期：2025-06-28 至 2025-06-29，地点三亚海棠湾。别名：s2o、泼水节。热门拼单：三亚海景酒店、浦东/各地飞三亚机票、机场接驳。',
-    metadata: { topic: 'activity', code: 's2o' },
-  }),
-  new Document({
-    pageContent:
-      'Ultra 上海（ultra）2025 年演出档期：2025-08-01 至 2025-08-03，地点上海世博公园。别名：ultra、ultra shanghai。用户常咨询单日/通票、阵容、场馆交通与周边住宿。',
+      'Ultra 成都（ultra）2025 年演出档期：2025-08-01 至 2025-08-03，地点成都。别名：ultra、ultra chengdu、ultra 成都、ultra china。',
     metadata: { topic: 'activity', code: 'ultra' },
   }),
   new Document({
     pageContent:
-      'Ultra Europe 欧洲站（ultra-europe）通常在克罗地亚斯普利特举办，与国内 Ultra Shanghai 区分。别名：ultra europe、欧洲ultra。',
+      'Ultra Europe 欧洲站（ultra-europe）通常在克罗地亚斯普利特举办，与国内 Ultra 成都 区分。别名：ultra europe、欧洲ultra。',
     metadata: { topic: 'activity', code: 'ultra-europe' },
   }),
   new Document({
     pageContent:
-      'EDC Thailand（edc-thailand）2025 年演出档期：2025-12-08，地点泰国。别名：edc thailand、edc泰国、泰国edc。与国内 EDC China 区分，购票与拼单需确认届次。',
+      'EDC Thailand（edc-thailand）2025 年演出档期：2025-12-08，地点泰国。别名：edc thailand、edc泰国、泰国edc。与国内 EDC China 区分。',
     metadata: { topic: 'activity', code: 'edc-thailand' },
   }),
   new Document({
@@ -34,12 +29,12 @@ export const KNOWLEDGE_DOCUMENTS: Document[] = [
   }),
   new Document({
     pageContent:
-      'VAC 珠海电音节（vac-zhuhai，Vision & Colour / Heineken Soundscape）2025 年档期：2025-04-18 至 2025-04-19，地点珠海。别名：vac、vision & colour、珠海vac。常见套餐为珠海希尔顿 3天2晚机酒，套餐价为总价非人均；会场穿梭巴士通常另计（如 50 元/人/日、80 元/人/两日）。',
+      'VAC 珠海电音节（vac-zhuhai，Vision & Colour / Heineken Soundscape）2025 年档期：2025-04-18 至 2025-04-19，地点珠海。别名：vac、vision & colour、珠海vac。',
     metadata: { topic: 'activity', code: 'vac-zhuhai' },
   }),
   new Document({
     pageContent:
-      '风暴电音节（storm，口味王风暴）是国内大型电音节品牌，常见城市站包括深圳、上海等，活动名常含「风暴」「口味王风暴电音节」及年份、城市站后缀。别名：风暴、storm、口味王风暴、风暴电音节。',
+      '风暴电音节（storm，口味王风暴）是国内大型电音节品牌，常见城市站包括深圳、上海等。别名：风暴、storm、口味王风暴、风暴电音节。',
     metadata: { topic: 'activity', code: 'storm' },
   }),
   new Document({
@@ -74,17 +69,7 @@ export const KNOWLEDGE_DOCUMENTS: Document[] = [
   }),
   new Document({
     pageContent:
-      '出票流程：依次确认活动名称、演出日期、票种、数量、价格、联系方式（微信或手机号）；信息齐全后直接创建出售挂单，勿询问是否发布或同步拼单群。收票流程：确认活动、日期、票种、数量、预算与联系方式后直接创建求购挂单。若活动不在平台库中，系统会自动创建活动记录，无需提示「未找到活动」。',
-    metadata: { topic: 'ticket' },
-  }),
-  new Document({
-    pageContent:
-      '拼单类型包括酒店拼单（hotel）与交通拼单（transport）。可说明出发地、日期、人数与预算，助手会检索开放中的拼单。',
-    metadata: { topic: 'pindan' },
-  }),
-  new Document({
-    pageContent:
-      '平台支持 AI 匹配活动、查询拼单、协助出票收票。回答应简洁、可执行，并在需要时引导用户补充日期、人数、预算。',
+      '平台支持 AI 查询近期活动、了解电音节信息。回答应简洁、可执行，并在需要时引导用户补充日期、人数、出发城市。',
     metadata: { topic: 'assistant' },
   }),
 ];

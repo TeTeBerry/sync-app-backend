@@ -3,8 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatMessageDto } from '../../ai/presentation/chat-message.dto';
-import { PindanJoinCardView } from '../../ai/presentation/pindan-join-card.view';
-import { TicketCreatedCardView } from '../../ai/presentation/ticket-created-card.view';
 import {
   createIdleState,
   type ConversationState,
@@ -33,27 +31,8 @@ export class ChatService {
     return sessionId?.trim() || uuidv4();
   }
 
-  private normalizePindanCard(raw: unknown): PindanJoinCardView | undefined {
-    if (!raw || typeof raw !== 'object') return undefined;
-    const card = raw as PindanJoinCardView;
-    if (typeof card.legacyId !== 'number' || !card.title) return undefined;
-    return card;
-  }
-
-  private normalizeTicketCard(raw: unknown): TicketCreatedCardView | undefined {
-    if (!raw || typeof raw !== 'object') return undefined;
-    const card = raw as TicketCreatedCardView;
-    if (typeof card.id !== 'string' || !card.event) return undefined;
-    return card;
-  }
-
   private normalizeMessage(
-    message?: {
-      role?: string;
-      content?: string;
-      pindanCard?: unknown;
-      ticketCard?: unknown;
-    } | null,
+    message?: { role?: string; content?: string } | null,
   ): ChatMessageDto | null {
     if (!message?.content?.trim()) return null;
     if (
@@ -63,17 +42,10 @@ export class ChatService {
     ) {
       return null;
     }
-    const normalized: ChatMessageDto = {
+    return {
       role: message.role,
       content: message.content.trim(),
     };
-    if (message.role === 'assistant') {
-      const pindanCard = this.normalizePindanCard(message.pindanCard);
-      const ticketCard = this.normalizeTicketCard(message.ticketCard);
-      if (pindanCard) normalized.pindanCard = pindanCard;
-      if (ticketCard) normalized.ticketCard = ticketCard;
-    }
-    return normalized;
   }
 
   private normalizeHistory(
@@ -171,10 +143,6 @@ export class ChatService {
     return {
       version: state.version ?? 1,
       flow: state.flow,
-      findBuddy: state.findBuddy,
-      ticketListing: state.ticketListing,
-      ticketSearch: state.ticketSearch,
-      pendingImageDisambiguation: state.pendingImageDisambiguation,
     };
   }
 
@@ -210,8 +178,6 @@ export class ChatService {
     messages: ChatMessageDto[];
     assistantReply: string;
     conversationState?: ConversationState;
-    pindanCard?: PindanJoinCardView;
-    ticketCard?: TicketCreatedCardView;
   }): Promise<string> {
     const messageId = uuidv4();
     const stored = await this.getSession(params.sessionId);
@@ -223,8 +189,6 @@ export class ChatService {
           {
             role: 'assistant' as const,
             content: reply,
-            ...(params.pindanCard ? { pindanCard: params.pindanCard } : {}),
-            ...(params.ticketCard ? { ticketCard: params.ticketCard } : {}),
           },
         ]
       : merged;

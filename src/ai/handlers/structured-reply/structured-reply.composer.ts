@@ -7,7 +7,6 @@ export class StructuredReplyComposer implements ReplyComposer {
   compose(_ctx: ReplyContext, result: StructuredReplyResult): DeterministicReplyResult {
     return {
       text: result.text,
-      pindanCard: result.pindanCard,
       nextState: result.nextState,
     };
   }

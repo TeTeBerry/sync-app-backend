@@ -34,6 +34,9 @@ export class User {
 
   @Prop({ default: false })
   likeMate: boolean;
+
+  @Prop({ default: true })
+  notificationsEnabled: boolean;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

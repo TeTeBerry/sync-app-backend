@@ -7,12 +7,23 @@ import {
   NotificationMeta,
   NotificationType,
 } from '../../database/schemas/notification.schema';
+import {
+  buildNotificationFromTemplate,
+  type NotificationTemplateKey,
+} from './notification-templates.util';
 
 export interface CreateNotificationInput {
   userId: string;
   type: NotificationType;
   title: string;
   body: string;
+  meta?: NotificationMeta;
+}
+
+export interface CreateTemplateNotificationInput {
+  userId: string;
+  templateKey: NotificationTemplateKey;
+  templateParams?: Record<string, string>;
   meta?: NotificationMeta;
 }
 
@@ -63,6 +74,24 @@ export class NotificationService {
     @InjectModel(Notification.name)
     private readonly notificationModel: Model<NotificationDocument>,
   ) {}
+
+  async createFromTemplate(
+    input: CreateTemplateNotificationInput,
+  ): Promise<NotificationDto | null> {
+    const built = buildNotificationFromTemplate(
+      input.templateKey,
+      input.templateParams ?? {},
+      input.meta,
+    );
+
+    return this.createNotification({
+      userId: input.userId,
+      type: built.type,
+      title: built.title,
+      body: built.body,
+      meta: built.meta,
+    });
+  }
 
   async createNotification(
     input: CreateNotificationInput,

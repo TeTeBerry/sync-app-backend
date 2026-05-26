@@ -1,12 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { ActivityService } from '../modules/activity/activity.service';
 import { ChatService } from '../modules/chat/chat.service';
-import { TicketService } from '../modules/ticket/ticket.service';
 import { AiStreamEvent } from './presentation/ai-stream-event.view';
 import { ChatRequestDto } from './presentation/chat-request.dto';
-import { PindanJoinCardView } from './presentation/pindan-join-card.view';
-import { TicketCreatedCardView } from './presentation/ticket-created-card.view';
 import { DeterministicReplyService } from './orchestration/deterministic-reply.service';
+import { PostIntentService } from './post-intent.service';
+import { UserProfileAgent } from './agents/user-profile.agent';
 import {
   decodeBase64Payload,
   ImageTooLargeError,
@@ -16,14 +14,6 @@ export const LLM_CONTEXT_TURNS = 6;
 
 function mapAiErrorToUserMessage(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error ?? '');
-
-  const isVisionPathError =
-    /multimodal|vision|image|qwen-vl|图片|图像/i.test(raw) &&
-    /InternalError|InvalidParameter|dashscope|qwen/i.test(raw);
-
-  if (isVisionPathError) {
-    return '图片解析暂时有点忙，请稍后重试，或先用文字描述票务信息。';
-  }
 
   if (/timeout|timed out|ETIMEDOUT|network|fetch failed/i.test(raw)) {
     return '网络有点不稳定，请稍后再试一次。';
@@ -40,9 +30,9 @@ function mapAiErrorToUserMessage(error: unknown): string {
 export class AiService {
   constructor(
     private readonly chatService: ChatService,
-    private readonly ticketService: TicketService,
-    private readonly activityService: ActivityService,
     private readonly agenticReplyService: DeterministicReplyService,
+    private readonly postIntentService: PostIntentService,
+    private readonly userProfileAgent: UserProfileAgent,
   ) {}
 
   async *streamChat(dto: ChatRequestDto): AsyncGenerator<AiStreamEvent> {
@@ -88,41 +78,63 @@ export class AiService {
     }
 
     let assistantReply = '';
-    let ticketId: string | undefined;
-    let ticketCard: TicketCreatedCardView | undefined;
-    let pindanCard: PindanJoinCardView | undefined;
     let conversationState = this.agenticReplyService.resolveConversationState(
       stored.conversationState,
       fullMessages.slice(0, -1),
     );
 
     try {
-      const reply = await this.agenticReplyService.resolve(
-        fullMessages,
-        lastInput,
-        {
+      const postAttempt = await this.postIntentService.tryCreatePostFromChat({
+        messages: fullMessages,
+        input: lastInput,
+        userId: dto.userId,
+        userName: dto.userName,
+        activityLegacyId: dto.activityLegacyId,
+        image: dto.image,
+      });
+
+      if (postAttempt?.kind === 'created') {
+        yield {
+          type: 'post_created',
+          postId: postAttempt.postId,
+          activityLegacyId: postAttempt.activityLegacyId,
+        };
+        assistantReply = postAttempt.replyText;
+        yield { type: 'delta', content: postAttempt.replyText };
+      } else if (postAttempt?.kind === 'rejected') {
+        assistantReply = postAttempt.replyText;
+        yield { type: 'delta', content: postAttempt.replyText };
+      } else {
+        const matched = await this.postIntentService.tryMatchPostsFromChat({
+          messages: fullMessages,
+          input: lastInput,
+          activityLegacyId: dto.activityLegacyId,
           userId: dto.userId,
-          userName: dto.userName,
-          userPhone: dto.userPhone,
-          image: dto.image,
-          onTicketCreated: id => {
-            ticketId = id;
-          },
-        },
-        conversationState,
-      );
+        });
 
-      assistantReply = reply.text;
-      pindanCard = reply.pindanCard;
-      ticketCard = reply.ticketCard;
-      conversationState = reply.nextState;
+        if (matched) {
+          assistantReply = matched.replyText;
+          yield { type: 'delta', content: matched.replyText };
+        } else {
+          const reply = await this.agenticReplyService.resolve(
+            fullMessages,
+            lastInput,
+            {
+              userId: dto.userId,
+              userName: dto.userName,
+              userPhone: dto.userPhone,
+              image: dto.image,
+            },
+            conversationState,
+          );
 
-      if (reply.text) {
-        yield { type: 'delta', content: reply.text };
-      }
+          assistantReply = reply.text;
+          conversationState = reply.nextState;
 
-      if (!ticketCard && ticketId) {
-        ticketCard = await this.buildTicketCard(ticketId);
+          if (reply.text) {
+            yield { type: 'delta', content: reply.text };
+          }
+        }
       }
 
       const messageId = await this.chatService.saveTurn({
@@ -131,17 +143,19 @@ export class AiService {
         messages: fullMessages,
         assistantReply,
         conversationState,
-        pindanCard,
-        ticketCard,
+      });
+
+      void this.userProfileAgent.syncProfileFromChat({
+        messages: fullMessages,
+        input: lastInput,
+        userId: dto.userId,
+        authorName: dto.userName,
       });
 
       yield {
         type: 'done',
         messageId,
         sessionId,
-        ticketId,
-        ticketCard,
-        pindanCard,
       };
     } catch (error) {
       yield {
@@ -149,33 +163,5 @@ export class AiService {
         message: mapAiErrorToUserMessage(error),
       };
     }
-  }
-
-  private async buildTicketCard(
-    ticketId: string,
-  ): Promise<TicketCreatedCardView | undefined> {
-    const ticket = await this.ticketService.findById(ticketId);
-    if (!ticket) return undefined;
-
-    const activity = ticket.activityId
-      ? await this.activityService.findByCode(ticket.activityId)
-      : null;
-    const slot = (ticket.seatOrSlot ?? {}) as Record<string, unknown>;
-    const type = slot.type === 'buy' ? 'buy' : 'sell';
-    const quantity = Number(slot.quantity ?? 1);
-    const displayEventName =
-      typeof slot.displayEventName === 'string'
-        ? slot.displayEventName
-        : undefined;
-
-    return {
-      id: ticketId,
-      type,
-      event:
-        displayEventName ?? activity?.name ?? ticket.activityId ?? '未知活动',
-      seat: `${ticket.skuCode ?? 'GA'} · ${quantity}张`,
-      price: Number(slot.price ?? 0),
-      eventDate: slot.eventDate ? String(slot.eventDate) : undefined,
-    };
   }
 }

@@ -1,5 +1,4 @@
 import { ChatMessageDto } from '../presentation/chat-message.dto';
-import { PINDAN_TYPE_LABEL_PATTERN } from '../../common/constants/pindan-labels';
 
 export const ACTIVITY_PICKER_PROMPT = '你想参加哪个活动？';
 
@@ -47,26 +46,6 @@ export function isAwaitingActivitySelection(messages: ChatMessageDto[]): boolean
 
   const input = lastUser.content.trim();
   return parseActivityPickerIndex(input) != null;
-}
-
-export function isAwaitingPindanSelection(messages: ChatMessageDto[]): boolean {
-  if (messages.length < 2) return false;
-
-  const lastUser = messages[messages.length - 1];
-  if (lastUser?.role !== 'user') return false;
-
-  const prevAssistant = getPreviousAssistantMessage(messages);
-  if (!prevAssistant) return false;
-
-  if (prevAssistant.content.includes(ACTIVITY_PICKER_PROMPT)) {
-    return false;
-  }
-
-  return (
-    new RegExp(`【(${PINDAN_TYPE_LABEL_PATTERN})】`).test(prevAssistant.content) ||
-    (/相关拼单】/.test(prevAssistant.content) &&
-      /想加入已有拼单|回复序号/.test(prevAssistant.content))
-  );
 }
 
 export function formatActivityPickerLines(

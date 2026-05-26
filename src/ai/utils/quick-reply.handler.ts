@@ -1,6 +1,4 @@
 import { ActivityService } from '../../modules/activity/activity.service';
-import { PindanService } from '../../modules/pindan/pindan.service';
-import { ProfileService } from '../../modules/profile/profile.service';
 import { detectUserIntent } from './user-intent';
 import {
   formatActivityPickerLines,
@@ -11,11 +9,8 @@ import { composeReply } from './reply-text.util';
 export async function buildQuickReplyResponse(
   input: string,
   services: {
-    pindanService: PindanService;
     activityService: ActivityService;
-    profileService: ProfileService;
   },
-  _context: { userId?: string } = {},
 ): Promise<string | null> {
   const intent = detectUserIntent(input);
   const { activityService } = services;
@@ -26,48 +21,12 @@ export async function buildQuickReplyResponse(
       return composeReply([
         '好的，我来帮你找同行伙伴 🎵',
         '',
-        '你可以直接告诉我活动、日期、人数和出发城市，也可以上传套餐/酒店订单截图，我会自动识别并匹配拼单。',
-        '',
         ACTIVITY_PICKER_PROMPT,
         formatActivityPickerLines(activities),
         '',
-        '直接回复活动名（如 EDC、S2O），或上传订单截图让我帮你填信息。',
+        '直接回复活动名（如 EDC、Ultra），告诉我日期、人数和出发城市即可。',
       ]);
     }
-
-    case 'sell_ticket':
-      return composeReply([
-        '好的，我来帮你出票 🎟️',
-        '',
-        '你可以直接回复门票信息，也可以上传门票/购票截图，我会自动识别活动、日期、票种等字段。',
-        '',
-        '请依次告诉我：',
-        '1. 活动名称（如 EDC China、EDC 泰国）',
-        '2. 演出日期',
-        '3. 票种（单日票 / 双日票 / VIP 等）',
-        '4. 出售数量',
-        '5. 单价（元/张）',
-        '6. 联系方式（微信或手机号；回复「手机」可用账号手机）',
-        '',
-        '信息齐全后我会复述请你确认，确认后立即发布到「门票出/收」。',
-      ]);
-
-    case 'buy_ticket':
-      return composeReply([
-        '好的，我来帮你发布收票/求购 🎫',
-        '',
-        '你可以直接回复求购信息，也可以上传参考截图，我会尽量识别活动、日期、票种等字段。',
-        '',
-        '请依次告诉我：',
-        '1. 活动名称（如 EDC China、EDC 泰国）',
-        '2. 演出日期',
-        '3. 票种（单日票 / 双日票 / VIP 等）',
-        '4. 求购数量',
-        '5. 预算单价（元/张）',
-        '6. 联系方式（微信或手机号；回复「手机」可用账号手机）',
-        '',
-        '信息齐全后我会复述请你确认，确认后立即发布到「门票出/收」。',
-      ]);
 
     case 'near_events': {
       const activities = await activityService.findAll();
@@ -76,7 +35,7 @@ export async function buildQuickReplyResponse(
         '',
         formatActivityPickerLines(activities),
         '',
-        '你对哪个活动感兴趣？我可以帮你结伴、拼单，或协助出票/收票。',
+        '你对哪个活动感兴趣？告诉我活动名，我可以帮你查更多信息。',
       ]);
     }
 

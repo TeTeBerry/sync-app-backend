@@ -5,7 +5,7 @@ import {
   findAssistantBeforeIndex,
   parseActivityPickerIndex,
 } from './activity-reply.util';
-import { resolveActivityId } from './ticket-draft.parser';
+import { resolveActivityId } from './activity-id.util';
 
 export interface ConversationContext {
   mode?: 'find_buddy';
@@ -19,7 +19,7 @@ export interface ConversationContext {
 }
 
 const ACTIVITY_KEYWORD_RE =
-  /^(edc|edc\s*泰国|edc\s*thailand|s2o|ultra|tomorrowland|tmw|vac|vac\s*珠海|珠海\s*vac|电音节)$/i;
+  /^(edc|edc\s*泰国|edc\s*thailand|ultra|tomorrowland|tmw|vac|vac\s*珠海|珠海\s*vac|电音节)$/i;
 
 const CITY_NAMES = [
   '上海',
@@ -28,7 +28,6 @@ const CITY_NAMES = [
   '深圳',
   '杭州',
   '成都',
-  '三亚',
   '苏州',
   '珠海',
   '南京',
@@ -93,30 +92,18 @@ export function isFindBuddyThread(messages: ChatMessageDto[]): boolean {
   for (const message of messages) {
     if (message.role !== 'user') continue;
 
-    if (/我要出票|我有票要出|我要收票|^出票$|^收票$|卖票/.test(message.content)) {
-      active = false;
-      continue;
-    }
-
     if (
       isAiShortcutTag(message.content.trim()) ||
       message.content.trim() === '帮我找搭子' ||
       message.content.trim() === '帮我结伴' ||
-      /找搭子|找同行|帮我结伴|结伴/.test(message.content)
+      message.content.trim() === '帮我组队' ||
+      /找搭子|找同行|帮我结伴|帮我组队|结伴|组队/.test(message.content)
     ) {
       active = true;
     }
   }
 
   return active;
-}
-
-export function isTicketListingThread(messages: ChatMessageDto[]): boolean {
-  return messages.some(
-    message =>
-      message.role === 'user' &&
-      /我有票要出|我要出票|我要收票|^出票$|^收票$|卖票/.test(message.content),
-  );
 }
 
 export function isShortContextReply(input: string): boolean {
@@ -129,13 +116,9 @@ export function isShortContextReply(input: string): boolean {
   return CITY_NAMES.some(city => text === city || text.includes(city));
 }
 
-export function isCreatePindanRequest(input: string): boolean {
-  return /创建拼单|发起拼单|发布拼单|创建.*拼单活动/.test(input.trim());
-}
-
 export function parseConversationContext(
   messages: ChatMessageDto[],
-  latestInput: string,
+  _latestInput: string,
 ): ConversationContext {
   const ctx: ConversationContext = {};
 

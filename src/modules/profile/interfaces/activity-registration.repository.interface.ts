@@ -9,14 +9,29 @@ export type ActivityRegistrationRecord = ActivityRegistrationDocument & {
   _id: unknown;
 };
 
+export interface CreateActivityRegistrationInput {
+  userId: string;
+  authorName?: string;
+  activityLegacyId: number;
+  status: 'registered';
+  price?: number;
+}
+
 export interface IActivityRegistrationRepository {
   findByOwner(
     filter: ActivityRegistrationQueryFilter,
   ): Promise<ActivityRegistrationRecord[]>;
   countByOwner(filter: ActivityRegistrationQueryFilter): Promise<number>;
-  countCompletedPinsByOwner(
+  findByOwnerAndActivity(
     filter: ActivityRegistrationQueryFilter,
-  ): Promise<number>;
+    activityLegacyId: number,
+  ): Promise<ActivityRegistrationRecord | null>;
+  create(input: CreateActivityRegistrationInput): Promise<ActivityRegistrationRecord>;
+  deleteByOwnerAndActivity(
+    filter: ActivityRegistrationQueryFilter,
+    activityLegacyId: number,
+  ): Promise<boolean>;
+  findRegisteredUserIds(activityLegacyId: number): Promise<string[]>;
 }
 
 export const ACTIVITY_REGISTRATION_REPOSITORY = Symbol(

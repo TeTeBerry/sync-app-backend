@@ -35,7 +35,7 @@ export interface ProfileSummaryDto {
   avatar: string;
   stats: {
     events: number;
-    pinSuccess: number;
+    matchSuccess: number;
     likes: number;
     posts: number;
   };
@@ -64,20 +64,27 @@ export class ProfileSummaryService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    const count = await this.registrationModel.estimatedDocumentCount();
-    if (count === 0) {
-      await this.registrationModel.insertMany(ACTIVITY_REGISTRATION_SEED);
+    await this.registrationModel.deleteMany({ activityLegacyId: { $in: [3, 7] } });
+    for (const item of ACTIVITY_REGISTRATION_SEED) {
+      await this.registrationModel.findOneAndUpdate(
+        { userId: item.userId, activityLegacyId: item.activityLegacyId },
+        item,
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
     }
   }
 
-  async getSummary(userId?: string, authorName?: string): Promise<ProfileSummaryDto> {
+  async getSummary(
+    userId?: string,
+    authorName?: string,
+  ): Promise<ProfileSummaryDto> {
     const filter = resolveOwnerFilter(userId, authorName);
-    const [profile, events, pinSuccess, likes, posts] = await Promise.all([
+    const [profile, events, likes, posts, completedPosts] = await Promise.all([
       this.userService.resolveProfile(userId, authorName),
       this.registrationRepository.countByOwner(filter),
-      this.registrationRepository.countCompletedPinsByOwner(filter),
       this.postService.sumLikesByOwner(userId, authorName),
       this.postService.countByOwner(userId, authorName),
+      this.postService.countCompletedByOwner(userId, authorName),
     ]);
 
     return {
@@ -90,7 +97,7 @@ export class ProfileSummaryService implements OnModuleInit {
         'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
       stats: {
         events,
-        pinSuccess,
+        matchSuccess: completedPosts,
         likes,
         posts,
       },
@@ -102,7 +109,9 @@ export class ProfileSummaryService implements OnModuleInit {
     authorName?: string,
   ): Promise<ProfileActivityItemDto[]> {
     const filter = resolveOwnerFilter(userId, authorName);
-    const registrations = await this.registrationRepository.findByOwner(filter);
+    const registrations = (
+      await this.registrationRepository.findByOwner(filter)
+    ).filter(registration => registration.activityLegacyId !== 3);
 
     const items = await Promise.all(
       registrations.map(async registration => {

@@ -17,9 +17,22 @@ export interface IPostRepository {
   findByActivityLegacyId(activityLegacyId: number): Promise<PostRecord[]>;
   findByOwner(filter: PostQueryFilter): Promise<PostRecord[]>;
   findById(id: string): Promise<PostRecord | null>;
+  create(data: Partial<PostRecord>): Promise<PostRecord>;
+  updateById(id: string, patch: Partial<PostRecord>): Promise<PostRecord | null>;
+  incrementCounter(
+    id: string,
+    field: 'likes' | 'comments',
+    delta?: number,
+  ): Promise<PostRecord | null>;
   deleteById(id: string): Promise<boolean>;
   countByOwner(filter: PostQueryFilter): Promise<number>;
+  countCompletedByOwner(filter: PostQueryFilter): Promise<number>;
   sumLikesByOwner(filter: PostQueryFilter): Promise<number>;
+  existsDuplicateBody(
+    userId: string,
+    body: string,
+    activityLegacyId?: number,
+  ): Promise<boolean>;
 }
 
 export const POST_REPOSITORY = Symbol('POST_REPOSITORY');

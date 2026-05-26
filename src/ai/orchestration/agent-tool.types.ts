@@ -5,7 +5,7 @@ import type { ReplyContext } from '../handler-pipeline';
  * Each tool encapsulates its own name, execution logic, and error handling.
  */
 export interface AgentTool {
-  /** Unique tool identifier, e.g. 'ticket.createListing' */
+  /** Unique tool identifier, e.g. 'post.create' */
   readonly name: string;
   /** Execute the tool with the given context and arguments */
   execute(ctx: ReplyContext, args?: Record<string, unknown>): Promise<Record<string, unknown> | void>;

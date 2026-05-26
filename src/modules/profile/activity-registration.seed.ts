@@ -17,13 +17,6 @@ export const ACTIVITY_REGISTRATION_SEED = [
   {
     userId: 'demo-zara',
     authorName: 'Zara Chen',
-    activityLegacyId: 3,
-    status: 'registered' as const,
-    price: 680,
-  },
-  {
-    userId: 'demo-zara',
-    authorName: 'Zara Chen',
     activityLegacyId: 4,
     status: 'registered' as const,
     price: 1280,

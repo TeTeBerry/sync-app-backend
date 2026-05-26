@@ -27,6 +27,19 @@ export class UserRepository implements IUserRepository {
       { upsert: true, new: true, setDefaultsOnInsert: true },
     ).lean();
   }
+
+  async updateByExternalId(
+    externalId: string,
+    data: Partial<UserDocument>,
+  ): Promise<UserRecord | null> {
+    return this.model
+      .findOneAndUpdate(
+        { externalId },
+        { $set: data },
+        { new: true },
+      )
+      .lean();
+  }
 }
 
 export { DEFAULT_PROFILE_EXTERNAL_ID };

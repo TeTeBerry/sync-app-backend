@@ -1,13 +1,8 @@
 import type { ConversationState } from '../conversation';
 import type { ChatMessageDto } from '../presentation/chat-message.dto';
-import type { PindanJoinCardView } from '../presentation/pindan-join-card.view';
-import type { TicketCreatedCardView } from '../presentation/ticket-created-card.view';
 
 export interface DeterministicReplyResult {
   text: string;
-  ticketId?: string;
-  ticketCard?: TicketCreatedCardView;
-  pindanCard?: PindanJoinCardView;
   nextState: ConversationState;
 }
 
@@ -37,7 +32,6 @@ export interface ReplyContext {
   userName?: string;
   userPhone?: string;
   image?: string;
-  onTicketCreated?: (ticketId: string) => void;
   plannedToolCalls?: AgentToolCall[];
   toolResults?: AgentToolResultSnapshot[];
 }

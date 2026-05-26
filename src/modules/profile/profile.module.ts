@@ -4,32 +4,21 @@ import {
   ActivityRegistration,
   ActivityRegistrationSchema,
 } from '../../database/schemas/activity-registration.schema';
-import {
-  PindanJoin,
-  PindanJoinSchema,
-} from '../../database/schemas/pindan-join.schema';
 import { ActivityModule } from '../activity/activity.module';
-import { PindanModule } from '../pindan/pindan.module';
 import { PostModule } from '../post/post.module';
-import { TicketModule } from '../ticket/ticket.module';
-import { NotificationModule } from '../notification/notification.module';
 import { UserModule } from '../user/user.module';
 import { ACTIVITY_REGISTRATION_REPOSITORY } from './interfaces/activity-registration.repository.interface';
 import { ActivityRegistrationRepository } from './activity-registration.repository';
+import { ActivityRegistrationService } from './activity-registration.service';
 import { ProfileController } from './profile.controller';
-import { ProfileService } from './profile.service';
 import { ProfileSummaryService } from './profile-summary.service';
 
 @Module({
   imports: [
-    ActivityModule,
-    forwardRef(() => PindanModule),
-    TicketModule,
-    NotificationModule,
-    PostModule,
+    forwardRef(() => ActivityModule),
+    forwardRef(() => PostModule),
     UserModule,
     MongooseModule.forFeature([
-      { name: PindanJoin.name, schema: PindanJoinSchema },
       {
         name: ActivityRegistration.name,
         schema: ActivityRegistrationSchema,
@@ -43,9 +32,9 @@ import { ProfileSummaryService } from './profile-summary.service';
       provide: ACTIVITY_REGISTRATION_REPOSITORY,
       useExisting: ActivityRegistrationRepository,
     },
-    ProfileService,
     ProfileSummaryService,
+    ActivityRegistrationService,
   ],
-  exports: [ProfileService, ProfileSummaryService],
+  exports: [ProfileSummaryService, ActivityRegistrationService],
 })
 export class ProfileModule {}

@@ -1,11 +1,9 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ProfileService } from './profile.service';
 import { ProfileSummaryService } from './profile-summary.service';
 
 @Controller('profile')
 export class ProfileController {
   constructor(
-    private readonly profileService: ProfileService,
     private readonly profileSummaryService: ProfileSummaryService,
   ) {}
 
@@ -31,15 +29,5 @@ export class ProfileController {
     @Query('authorName') authorName?: string,
   ) {
     return this.profileSummaryService.listPosts(userId, authorName);
-  }
-
-  @Get('pindan')
-  listPindan(@Query('userId') userId?: string) {
-    return this.profileService.listMyPindan(userId);
-  }
-
-  @Get('tickets')
-  listTickets(@Query('userId') userId?: string) {
-    return this.profileService.listMyTickets(userId);
   }
 }

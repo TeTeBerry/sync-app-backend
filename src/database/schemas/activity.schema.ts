@@ -32,9 +32,6 @@ export class Activity {
 
   @Prop({ default: 0 })
   attendees?: number;
-
-  @Prop({ default: 0 })
-  pinCount?: number;
 }
 
 export const ActivitySchema = SchemaFactory.createForClass(Activity);

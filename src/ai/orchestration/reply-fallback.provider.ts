@@ -7,8 +7,8 @@ export class ReplyFallbackProvider {
   create(state: ConversationState): DeterministicReplyResult {
     return {
       text: [
-        '我可以帮你：找同行结伴、发布出票/收票、查活动或查门票挂单。',
-        '请点下方快捷按钮，或直接说需求（如「查 EDC 票」「我有票要出」）。',
+        '我可以帮你查最近活动，或了解某个电音节的信息。',
+        '请点下方快捷按钮，或直接说需求（如「查最近活动」「帮我组队」）。',
       ].join('\n'),
       nextState: state,
     };

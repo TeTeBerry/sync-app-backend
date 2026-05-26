@@ -9,6 +9,7 @@ import { buildOwnerMongoFilter } from '../../common/utils/demo-owner.util';
 import {
   ActivityRegistrationQueryFilter,
   ActivityRegistrationRecord,
+  CreateActivityRegistrationInput,
   IActivityRegistrationRepository,
 } from './interfaces/activity-registration.repository.interface';
 
@@ -35,10 +36,38 @@ export class ActivityRegistrationRepository
     return this.model.countDocuments(buildOwnerFilter(filter));
   }
 
-  async countCompletedPinsByOwner(
+  async findByOwnerAndActivity(
     filter: ActivityRegistrationQueryFilter,
-  ): Promise<number> {
-    void filter;
-    return 8;
+    activityLegacyId: number,
+  ): Promise<ActivityRegistrationRecord | null> {
+    return this.model
+      .findOne({ ...buildOwnerFilter(filter), activityLegacyId })
+      .lean();
+  }
+
+  async create(
+    input: CreateActivityRegistrationInput,
+  ): Promise<ActivityRegistrationRecord> {
+    const created = await this.model.create(input);
+    return created.toObject() as ActivityRegistrationRecord;
+  }
+
+  async findRegisteredUserIds(activityLegacyId: number): Promise<string[]> {
+    const rows = await this.model
+      .find({ activityLegacyId, status: 'registered' })
+      .select('userId')
+      .lean();
+    return [...new Set(rows.map(row => row.userId).filter(Boolean))];
+  }
+
+  async deleteByOwnerAndActivity(
+    filter: ActivityRegistrationQueryFilter,
+    activityLegacyId: number,
+  ): Promise<boolean> {
+    const result = await this.model.deleteOne({
+      ...buildOwnerFilter(filter),
+      activityLegacyId,
+    });
+    return (result.deletedCount ?? 0) > 0;
   }
 }

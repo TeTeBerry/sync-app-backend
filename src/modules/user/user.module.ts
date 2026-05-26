@@ -1,5 +1,10 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ChromaModule } from '../../ai/rag/chroma.module';
+import {
+  UserBlock,
+  UserBlockSchema,
+} from '../../database/schemas/user-block.schema';
 import { User, UserSchema } from '../../database/schemas/user.schema';
 import { USER_REPOSITORY } from './interfaces/user.repository.interface';
 import { UserController } from './user.controller';
@@ -8,7 +13,11 @@ import { UserService } from './user.service';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    ChromaModule,
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: UserBlock.name, schema: UserBlockSchema },
+    ]),
   ],
   controllers: [UserController],
   providers: [

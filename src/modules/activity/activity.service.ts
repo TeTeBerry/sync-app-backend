@@ -1,4 +1,11 @@
-import { Injectable, OnModuleInit, Optional } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+  Optional,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
@@ -10,6 +17,10 @@ import {
   extractLocationFromEventName,
   resolveFestivalBrand,
 } from '../../ai/rag/festival-brand.util';
+import { NotificationService } from '../notification/notification.service';
+import { buildNotificationFromTemplate } from '../notification/notification-templates.util';
+import { ActivityRegistrationService } from '../profile/activity-registration.service';
+import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ACTIVITY_SEED } from './activity.seed';
 
 export interface CreateActivityInput {
@@ -19,17 +30,6 @@ export interface CreateActivityInput {
   date?: string;
   location?: string;
   image?: string;
-}
-
-export interface ActivityFromBuddyInput {
-  activityId?: string;
-  activityKeyword?: string;
-  packageName?: string;
-  hotelName?: string;
-  eventDate?: string;
-  location?: string;
-  city?: string;
-  resolvedCode?: string;
 }
 
 function slugifyActivityCode(raw: string): string {
@@ -62,10 +62,15 @@ export class ActivityService implements OnModuleInit {
   constructor(
     @InjectModel(Activity.name) private model: Model<ActivityDocument>,
     @Optional() private readonly chromaService?: ChromaService,
+    @Optional() private readonly notificationService?: NotificationService,
+    @Optional()
+    @Inject(forwardRef(() => ActivityRegistrationService))
+    private readonly registrationService?: ActivityRegistrationService,
   ) {}
 
   async onModuleInit() {
     await this.initData();
+    await this.removeDeprecatedActivities();
   }
 
   async initData() {
@@ -78,12 +83,27 @@ export class ActivityService implements OnModuleInit {
     }
   }
 
+  /** Drop retired festivals still present from older seeds (e.g. S2O). */
+  async removeDeprecatedActivities() {
+    await this.model.deleteMany({
+      $or: [
+        { code: 's2o' },
+        { legacyId: 3 },
+        { code: 'sync-live-sh' },
+        { legacyId: 7 },
+      ],
+    });
+  }
+
   health() {
     return { ok: true, scope: 'activity' };
   }
 
   findAll() {
-    return this.model.find().sort({ legacyId: 1 }).lean();
+    return this.model
+      .find()
+      .sort({ legacyId: 1 })
+      .lean();
   }
 
   findByLegacyId(legacyId: number) {
@@ -129,7 +149,9 @@ export class ActivityService implements OnModuleInit {
     if (byExact) return byExact;
 
     if (/edc/.test(kw) && /泰国|thailand|泰國|曼谷|pattaya|芭提雅/.test(kw)) {
-      const thailand = await this.model.findOne({ code: 'edc-thailand' }).lean();
+      const thailand = await this.model
+        .findOne({ code: 'edc-thailand' })
+        .lean();
       if (thailand) return thailand;
     }
 
@@ -155,10 +177,7 @@ export class ActivityService implements OnModuleInit {
       if (code === 'edc' && /vac|vision|colour|珠海|hilton|希尔顿/.test(kw)) {
         continue;
       }
-      if (
-        (code === 'edc' || code === 'edc-thailand') &&
-        !/edc/.test(kw)
-      ) {
+      if ((code === 'edc' || code === 'edc-thailand') && !/edc/.test(kw)) {
         continue;
       }
 
@@ -187,10 +206,7 @@ export class ActivityService implements OnModuleInit {
       if (byBrandCode) return byBrandCode;
 
       for (const activity of all) {
-        const haystack = [
-          activity.name,
-          ...(activity.alias ?? []),
-        ]
+        const haystack = [activity.name, ...(activity.alias ?? [])]
           .filter(Boolean)
           .join(' ')
           .toLowerCase();
@@ -209,7 +225,10 @@ export class ActivityService implements OnModuleInit {
   }
 
   private async nextLegacyId() {
-    const latest = await this.model.findOne().sort({ legacyId: -1 }).lean();
+    const latest = await this.model
+      .findOne()
+      .sort({ legacyId: -1 })
+      .lean();
     return (latest?.legacyId ?? 0) + 1;
   }
 
@@ -240,7 +259,6 @@ export class ActivityService implements OnModuleInit {
       image: input.image,
       hot: false,
       attendees: 0,
-      pinCount: 0,
     });
     const activity = doc.toObject();
 
@@ -266,18 +284,14 @@ export class ActivityService implements OnModuleInit {
 
     const activity =
       (await this.matchActivity(ref)) ??
-      (input.activityId
-        ? await this.findByCode(input.activityId)
-        : null);
+      (input.activityId ? await this.findByCode(input.activityId) : null);
 
     if (activity?.code) return activity;
 
     const keyword = input.activityKeyword?.trim() || ref;
     const festival = resolveFestivalBrand(keyword);
     const location =
-      input.location ??
-      extractLocationFromEventName(keyword) ??
-      undefined;
+      input.location ?? extractLocationFromEventName(keyword) ?? undefined;
 
     const isSpecificEvent =
       keyword.length > (festival?.brand.name.length ?? 0) + 8 ||
@@ -285,7 +299,9 @@ export class ActivityService implements OnModuleInit {
 
     const preferredCode = isSpecificEvent
       ? slugifyActivityCode(keyword)
-      : input.activityId ?? festival?.brand.code ?? slugifyActivityCode(keyword);
+      : input.activityId ??
+        festival?.brand.code ??
+        slugifyActivityCode(keyword);
 
     const alias = [
       keyword,
@@ -303,69 +319,91 @@ export class ActivityService implements OnModuleInit {
     });
   }
 
-  async createFromTicket(input: {
-    activityId?: string;
-    activityKeyword?: string;
-    eventDate?: string;
-  }) {
-    return this.resolveOrCreateActivity({
-      activityRef: input.activityKeyword ?? input.activityId,
-      activityId: input.activityId,
-      activityKeyword: input.activityKeyword,
-      eventDate: input.eventDate,
-    });
+  async updateActivity(legacyId: number, dto: UpdateActivityDto) {
+    const activity = await this.model.findOne({ legacyId }).lean();
+    if (!activity) {
+      throw new NotFoundException(`Activity ${legacyId} not found`);
+    }
+
+    const patch: Partial<Activity> = {};
+    if (dto.name?.trim()) patch.name = dto.name.trim();
+    if (dto.date !== undefined) patch.date = dto.date.trim() || undefined;
+    if (dto.location !== undefined) {
+      patch.location = dto.location.trim() || undefined;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return activity;
+    }
+
+    const updated = await this.model
+      .findOneAndUpdate({ legacyId }, { $set: patch }, { new: true })
+      .lean();
+
+    if (!updated) {
+      throw new NotFoundException(`Activity ${legacyId} not found`);
+    }
+
+    const changeParts: string[] = [];
+    if (patch.date !== undefined && patch.date !== activity.date) {
+      changeParts.push(
+        patch.date
+          ? `日期已更新为 ${patch.date}`
+          : '日期信息已变更',
+      );
+    }
+    if (patch.location !== undefined && patch.location !== activity.location) {
+      changeParts.push(
+        patch.location
+          ? `地点已更新为 ${patch.location}`
+          : '地点信息已变更',
+      );
+    }
+    if (patch.name && patch.name !== activity.name) {
+      changeParts.push(`名称已更新为 ${patch.name}`);
+    }
+
+    if (changeParts.length > 0) {
+      void this.notifyActivityUpdate(updated, changeParts.join('，'));
+    }
+
+    return updated;
   }
 
-  async createFromFindBuddy(input: ActivityFromBuddyInput) {
-    const keyword =
-      input.activityKeyword?.trim() ||
-      input.packageName?.trim()?.slice(0, 48) ||
-      '未命名活动';
+  private async notifyActivityUpdate(
+    activity: Activity,
+    changeSummary: string,
+  ): Promise<void> {
+    if (!this.notificationService || !this.registrationService) {
+      return;
+    }
 
-    const existing =
-      (input.activityKeyword
-        ? await this.matchActivity(input.activityKeyword)
-        : null) ??
-      (input.activityId ? await this.findByCode(input.activityId) : null);
-    if (existing?.code) return existing;
+    const userIds = await this.registrationService.listRegisteredUserIds(
+      activity.legacyId,
+    );
+    if (!userIds.length) return;
 
-    const festival = resolveFestivalBrand(keyword);
-    const alias = [
-      input.activityKeyword,
-      input.packageName,
-      input.hotelName,
-      festival?.matchedKeyword,
-      festival?.brand.name,
-    ].filter((item): item is string => Boolean(item?.trim()));
-
-    const isSpecificEvent =
-      keyword.length > (festival?.brand.name.length ?? 0) + 8 ||
-      /\d{4}|站/.test(keyword);
-
-    const preferredCode =
-      input.resolvedCode ??
-      (isSpecificEvent
-        ? slugifyActivityCode(keyword)
-        : input.activityId && !(await this.findByCode(input.activityId))
-          ? input.activityId
-          : festival?.brand.code);
-
-    return this.createActivity({
-      name: keyword,
-      code: preferredCode,
-      alias: [...new Set(alias)],
-      date: formatActivityDate(input.eventDate),
-      location:
-        input.location ??
-        input.city ??
-        extractLocationFromEventName(keyword),
-    });
-  }
-
-  async incrementPinCount(code: string) {
-    await this.model.findOneAndUpdate(
-      { code: code.toLowerCase().trim() },
-      { $inc: { pinCount: 1 } },
+    await this.notificationService.createMany(
+      userIds.map(userId => {
+        const built = buildNotificationFromTemplate(
+          'activityUpdate',
+          {
+            activityName: activity.name,
+            changeSummary,
+          },
+          {
+            activityLegacyId: activity.legacyId,
+            type: 'activity_update',
+          },
+        );
+        return {
+          userId,
+          type: built.type,
+          title: built.title,
+          body: built.body,
+          meta: built.meta,
+        };
+      }),
     );
   }
 }

@@ -1,5 +1,11 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import { ChatMessageDto } from './chat-message.dto';
 
 export class ChatRequestDto {
@@ -27,4 +33,8 @@ export class ChatRequestDto {
   @IsOptional()
   @IsString()
   image?: string;
+
+  @IsOptional()
+  @IsNumber()
+  activityLegacyId?: number;
 }

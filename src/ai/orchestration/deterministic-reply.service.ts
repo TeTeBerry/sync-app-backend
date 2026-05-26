@@ -13,7 +13,6 @@ export interface DeterministicReplyContext {
   userName?: string;
   userPhone?: string;
   image?: string;
-  onTicketCreated?: (ticketId: string) => void;
 }
 
 @Injectable()
@@ -45,17 +44,6 @@ export class DeterministicReplyService {
       context.image,
     );
 
-    if (state.pendingImageDisambiguation) {
-      return {
-        text: [
-          '看起来像是门票截图或套餐/出行订单 📷',
-          '',
-          '你想「出票/收票」还是「结伴拼单」？直接告诉我即可。',
-        ].join('\n'),
-        nextState: { ...state, pendingImageDisambiguation: undefined },
-      };
-    }
-
     const replyContext: ReplyContext = {
       messages,
       input,
@@ -64,7 +52,6 @@ export class DeterministicReplyService {
       userName: context.userName,
       userPhone: context.userPhone,
       image: context.image,
-      onTicketCreated: context.onTicketCreated,
     };
 
     const runtimeResult = await this.agentRuntime.run(replyContext);

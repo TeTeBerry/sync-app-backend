@@ -1,6 +1,4 @@
-import { IsIn, IsOptional, IsString } from 'class-validator';
-import { PindanJoinCardView } from './pindan-join-card.view';
-import { TicketCreatedCardView } from './ticket-created-card.view';
+import { IsIn, IsString } from 'class-validator';
 
 export class ChatMessageDto {
   @IsIn(['user', 'assistant', 'system'])
@@ -8,10 +6,4 @@ export class ChatMessageDto {
 
   @IsString()
   content: string;
-
-  @IsOptional()
-  pindanCard?: PindanJoinCardView;
-
-  @IsOptional()
-  ticketCard?: TicketCreatedCardView;
 }

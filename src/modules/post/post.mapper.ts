@@ -1,8 +1,9 @@
 import { PostRecord } from './interfaces/post.repository.interface';
 
-const STATUS_LABEL: Record<string, '招募中' | '已成团'> = {
+const STATUS_LABEL: Record<string, '招募中' | '已成团' | '已隐藏'> = {
   recruiting: '招募中',
   completed: '已成团',
+  hidden: '已隐藏',
 };
 
 function formatRelativeTime(value?: Date | string): string {
@@ -31,7 +32,7 @@ function formatDateLabel(value?: Date | string): string {
 }
 
 export class PostMapper {
-  static toStatusLabel(status?: string): '招募中' | '已成团' {
+  static toStatusLabel(status?: string): '招募中' | '已成团' | '已隐藏' {
     return STATUS_LABEL[status ?? 'recruiting'] ?? '招募中';
   }
 
