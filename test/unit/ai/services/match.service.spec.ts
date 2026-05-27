@@ -26,7 +26,7 @@ describe('MatchService', () => {
     );
   }
 
-  it('returns Mongo-ranked matches when Chroma is empty', async () => {
+  it('returns Mongo-ranked matches when Chroma is empty and intent is generic team', async () => {
     const postRepository = {
       findByActivityLegacyId: jest.fn().mockResolvedValue([
         {
@@ -72,12 +72,13 @@ describe('MatchService', () => {
       postMatchRerankService,
     });
 
+    // Generic 'team' intent allows MongoDB fallback when Chroma is empty.
     const result = await service.search({
       criteria: {
         activityLegacyId: 4,
         activityName: '风暴电音节',
         departureCity: '上海',
-        intents: ['carpool', 'team'],
+        intents: ['team'],
         requesterBody: '上海出发求拼车',
       },
       userId: 'user-1',
@@ -89,6 +90,120 @@ describe('MatchService', () => {
     expect(result.items[0]?.matchReason).toContain('上海');
     expect(result.degraded).toBe(true);
     expect(postMatchRerankService.rerank).not.toHaveBeenCalled();
+  });
+
+  it('skips Mongo fallback when user has a specific intent and Chroma is empty', async () => {
+    const postRepository = {
+      findByActivityLegacyId: jest.fn().mockResolvedValue([
+        {
+          _id: 'luna',
+          userId: 'demo-luna',
+          status: 'recruiting',
+          activityLegacyId: 4,
+          body: '上海出发求拼车到深圳，2人女生',
+          departureCity: '上海',
+          eventTitle: '风暴电音节',
+        },
+      ]),
+    };
+
+    const chromaService = {
+      queryPostsForMatch: jest.fn().mockResolvedValue({
+        matches: [],
+        degraded: true,
+      }),
+    };
+
+    const matchContextService = {
+      buildFilterContext: jest.fn(),
+      buildExcludeUserIds: jest.fn(),
+      enrichCandidates: jest.fn(),
+    };
+
+    const postMatchRerankService = { rerank: jest.fn() };
+
+    const service = buildService({
+      postRepository,
+      chromaService,
+      matchContextService,
+      postMatchRerankService,
+    });
+
+    // Specific 'food' intent: user looking for supper buddies.
+    // Should NOT fallback to MongoDB carpool posts.
+    const result = await service.search({
+      criteria: {
+        activityLegacyId: 4,
+        activityName: '风暴电音节',
+        intents: ['food'],
+        requesterBody: '有没有人晚上一起宵夜的',
+      },
+      userId: 'user-1',
+      limit: BUDDY_RECOMMEND_LIMIT,
+    });
+
+    expect(result.items).toHaveLength(0);
+    expect(result.degraded).toBe(true);
+    expect(postMatchRerankService.rerank).not.toHaveBeenCalled();
+  });
+
+  it('filters Chroma matches exceeding distance threshold', async () => {
+    const postRepository = {
+      findByActivityLegacyId: jest.fn().mockResolvedValue([
+        {
+          _id: 'close-post',
+          userId: 'u1',
+          status: 'recruiting',
+          activityLegacyId: 4,
+          body: '相关性高的帖子',
+          eventTitle: '风暴电音节',
+        },
+        {
+          _id: 'far-post',
+          userId: 'u2',
+          status: 'recruiting',
+          activityLegacyId: 4,
+          body: '完全无关的帖子',
+          eventTitle: '风暴电音节',
+        },
+      ]),
+    };
+
+    const chromaService = {
+      queryPostsForMatch: jest.fn().mockResolvedValue({
+        matches: [
+          { postId: 'close-post', document: '相关性高的帖子', distance: 0.3 },
+          { postId: 'far-post', document: '完全无关的帖子', distance: 1.2 },
+        ],
+        degraded: false,
+      }),
+    };
+
+    const matchContextService = {
+      buildFilterContext: jest.fn(),
+      buildExcludeUserIds: jest.fn(),
+      enrichCandidates: jest.fn(),
+    };
+
+    const postMatchRerankService = {
+      rerank: jest.fn().mockResolvedValue(['close-post']),
+    };
+
+    const service = buildService({
+      postRepository,
+      chromaService,
+      matchContextService,
+      postMatchRerankService,
+    });
+
+    const result = await service.search({
+      criteria: { activityLegacyId: 4 },
+      limit: 2,
+    });
+
+    // far-post (distance 1.2 > 0.8 threshold) should be filtered out.
+    expect(result.items.map(i => i.postId)).toEqual(['close-post']);
+    expect(result.degraded).toBe(false);
   });
 
   it('follows LLM rerank order over Chroma vector distance', async () => {

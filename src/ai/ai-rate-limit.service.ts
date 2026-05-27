@@ -41,6 +41,14 @@ export class AiRateLimitService {
 
   private checkMemoryLimit(key: string): { allowed: boolean } {
     const now = Date.now();
+
+    // 清理过期 bucket，防止内存泄漏
+    for (const [k, v] of this.memoryBuckets) {
+      if (now >= v.resetAt) {
+        this.memoryBuckets.delete(k);
+      }
+    }
+
     const existing = this.memoryBuckets.get(key);
 
     if (!existing || now >= existing.resetAt) {

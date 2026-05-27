@@ -41,12 +41,10 @@ function authorNameMatches(stored: string, client?: string): boolean {
   );
 }
 
-/** 当前客户端是否对应演示账号（session id + 默认 Zara 昵称） */
-export function isDemoOwnerClient(userId?: string, authorName?: string): boolean {
+/** 当前客户端是否对应演示账号：仅通过 userId 确认，不通过 authorName 推断 */
+export function isDemoOwnerClient(userId?: string, _authorName?: string): boolean {
   const uid = userId?.trim();
-  if (uid === DEMO_OWNER_USER_ID) return true;
-  if (!uid && !authorName?.trim()) return true;
-  return authorNameMatches(DEMO_OWNER_DISPLAY_NAME, authorName ?? 'Zara');
+  return uid === DEMO_OWNER_USER_ID;
 }
 
 /** Mongo 查询：演示账号或真实 userId / 昵称 */
@@ -84,7 +82,7 @@ export function buildOwnerMongoFilter(
   }
 
   if (clauses.length === 0) {
-    return {};
+    return { _id: null };
   }
   return { $or: clauses };
 }

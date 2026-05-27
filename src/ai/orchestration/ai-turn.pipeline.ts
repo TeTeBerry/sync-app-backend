@@ -392,6 +392,7 @@ export class AiTurnPipeline {
       userName: dto.userName,
       activityLegacyId: dto.activityLegacyId,
       image: dto.image,
+      images: dto.images,
       conversationState: sink.getState(),
       onStateChange: state => sink.setState(state),
     });

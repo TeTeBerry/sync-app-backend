@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpException, Injectable, Logger } from '@nestjs/common';
 import { ChatService } from '../modules/chat/chat.service';
 import { AiStreamEvent } from './presentation/ai-stream-event.view';
 import { ChatRequestDto } from './presentation/chat-request.dto';
@@ -19,6 +19,14 @@ export interface AiChatTurnContext {
 }
 
 function mapAiErrorToUserMessage(error: unknown): string {
+  if (error instanceof HttpException) {
+    const response = error.getResponse();
+    if (typeof response === 'string') return response;
+    if (typeof response === 'object' && response !== null && 'message' in response) {
+      return String((response as Record<string, unknown>).message ?? '');
+    }
+  }
+
   const raw = error instanceof Error ? error.message : String(error ?? '');
 
   if (/timeout|timed out|ETIMEDOUT|network|fetch failed/i.test(raw)) {
@@ -68,14 +76,19 @@ export class AiService {
     }
 
     const lastInput = lastMessage.content ?? '';
-    if (!lastInput.trim() && !dto.image?.trim()) {
+    const hasImages = Boolean(dto.image?.trim()) || (dto.images?.length ?? 0) > 0;
+    if (!lastInput.trim() && !hasImages) {
       yield { type: 'error', message: 'messages 不能为空' };
       return;
     }
 
-    if (dto.image?.trim()) {
+    const imagesToValidate = [
+      ...(dto.image?.trim() ? [dto.image] : []),
+      ...(dto.images ?? []),
+    ];
+    for (const img of imagesToValidate) {
       try {
-        decodeBase64Payload(dto.image);
+        decodeBase64Payload(img);
       } catch (error) {
         yield {
           type: 'error',

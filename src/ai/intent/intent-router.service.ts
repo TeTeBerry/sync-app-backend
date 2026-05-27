@@ -35,6 +35,7 @@ interface CachedIntentEntry {
 }
 
 const INTENT_CACHE_TTL_MS = 30_000;
+const INTENT_CACHE_MAX_SIZE = 1000;
 
 @Injectable()
 export class IntentRouterService {
@@ -98,9 +99,20 @@ export class IntentRouterService {
 
   private storeCache(key: string | null, result: ResolvedChatIntent): void {
     if (!key) return;
+
+    const now = Date.now();
+
+    // LRU 驱逐：满时删除最久未访问的条目
+    if (this.intentCache.size >= INTENT_CACHE_MAX_SIZE) {
+      const firstKey = this.intentCache.keys().next().value;
+      if (firstKey != null) {
+        this.intentCache.delete(firstKey);
+      }
+    }
+
     this.intentCache.set(key, {
       result,
-      expiresAt: Date.now() + INTENT_CACHE_TTL_MS,
+      expiresAt: now + INTENT_CACHE_TTL_MS,
     });
   }
 

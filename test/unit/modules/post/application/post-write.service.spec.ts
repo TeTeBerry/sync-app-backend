@@ -13,6 +13,7 @@ jest.mock('@langchain/core/documents', () => require('../../../../mocks/langchai
 describe('PostWriteService', () => {
   const repository = {
     create: jest.fn(),
+    countByOwnerAndActivity: jest.fn(),
   } as unknown as IPostRepository;
 
   const userService = {
@@ -65,6 +66,7 @@ describe('PostWriteService', () => {
     (postModeration.assessPost as jest.Mock).mockResolvedValue({
       publishable: true,
     });
+    (repository.countByOwnerAndActivity as jest.Mock).mockResolvedValue(0);
     (repository.create as jest.Mock).mockResolvedValue({
       _id: 'post-123',
       userId: 'owner-1',

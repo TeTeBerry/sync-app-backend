@@ -3,7 +3,7 @@ import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filter/http-exception.filter';
 import { TransformInterceptor } from './common/interceptor/transform.interceptor';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
@@ -92,26 +92,27 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   const mongoUri = process.env.MONGODB_URI ?? process.env.MONGO_URI ?? '(default)';
+  const logger = new Logger('Bootstrap');
 
   try {
     await app.listen(port);
-    console.log(`🚀 API: http://localhost:${port}/api`);
-    console.log(`✅ AI流式接口: POST http://localhost:${port}/api/ai/chat`);
-    console.log(`📦 MongoDB: ${mongoUri.replace(/\/\/.*@/, '//***@')}`);
+    logger.log(`🚀 API: http://localhost:${port}/api`);
+    logger.log(`✅ AI流式接口: POST http://localhost:${port}/api/ai/chat`);
+    logger.log(`📦 MongoDB: ${mongoUri.replace(/\/\/.*@/, '//***@')}`);
     if (IS_PRODUCTION && !process.env.CORS_ORIGINS) {
-      console.warn('⚠️  CORS disabled: set CORS_ORIGINS in production');
+      logger.warn('⚠️  CORS disabled: set CORS_ORIGINS in production');
     } else if (!IS_PRODUCTION) {
-      console.log('🌐 CORS: dev mode (reflect origin, echo preflight headers)');
+      logger.log('🌐 CORS: dev mode (reflect origin, echo preflight headers)');
     }
   } catch (error) {
     const message = (error as Error).message ?? String(error);
     if (message.includes('EADDRINUSE')) {
-      console.error(`❌ 端口 ${port} 已被占用（可能有多个 start:dev 在跑）`);
-      console.error('请先执行: npm run stop:dev');
-      console.error('并确保只保留一个后端终端窗口');
+      logger.error(`❌ 端口 ${port} 已被占用（可能有多个 start:dev 在跑）`);
+      logger.error('请先执行: npm run stop:dev');
+      logger.error('并确保只保留一个后端终端窗口');
     } else {
-      console.error('❌ 服务启动失败:', message);
-      console.error('提示: 先运行 npm run infra:up 或 npm run dev:all 启动 MongoDB');
+      logger.error('❌ 服务启动失败:', message);
+      logger.error('提示: 先运行 npm run infra:up 或 npm run dev:all 启动 MongoDB');
     }
     process.exit(1);
   }

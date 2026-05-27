@@ -48,12 +48,20 @@ export function extractDraftBodyFromPublishConfirmContent(
   }
 
   const lines = content.split('\n');
-  const headerIndex = lines.findIndex(line => /组队帖草稿/.test(line));
-  if (headerIndex < 0) {
+  const markerIndex = lines.findIndex(line => line.includes(PUBLISH_CONFIRM_PROMPT_MARKER));
+  if (markerIndex < 0) {
     return null;
   }
 
-  let start = headerIndex + 1;
+  // Skip the marker line and the activity label line
+  let start = markerIndex + 1;
+  while (start < lines.length && !lines[start].trim()) {
+    start += 1;
+  }
+  // Skip activity label line (e.g. 「活动名」帖子预览：)
+  if (start < lines.length) {
+    start += 1;
+  }
   while (start < lines.length && !lines[start].trim()) {
     start += 1;
   }
@@ -61,7 +69,7 @@ export function extractDraftBodyFromPublishConfirmContent(
   const bodyLines: string[] = [];
   for (let index = start; index < lines.length; index += 1) {
     const line = lines[index];
-    if (/^标签：/.test(line.trim())) {
+    if (/^点「/.test(line.trim()) || /^想改/.test(line.trim())) {
       break;
     }
     bodyLines.push(line);
@@ -75,13 +83,6 @@ export function extractDraftBodyFromPublishConfirmContent(
   return draft || null;
 }
 
-export function extractShortcutTagFromPublishConfirmContent(
-  content: string,
-): string | null {
-  const match = content.match(/^标签：(.+)$/m);
-  return match?.[1]?.trim() || null;
-}
-
 export function buildPublishConfirmReply(params: {
   activityLabel: string;
   draftBody: string;
@@ -91,12 +92,10 @@ export function buildPublishConfirmReply(params: {
 
   return [
     PUBLISH_CONFIRM_PROMPT_MARKER,
-    `为你准备了「${activityLabel}」的组队帖草稿：`,
+    `「${activityLabel}」帖子预览：`,
     '',
     draftBody,
     '',
-    `标签：${shortcutTag}`,
-    '',
-    '确认内容无误后，点击下方「确认发布」按钮即可发布；若想修改，直接补充出行日期、人数或出发城市等信息。',
+    `点「确认发布」直接发，想改什么直接说～`,
   ].join('\n');
 }

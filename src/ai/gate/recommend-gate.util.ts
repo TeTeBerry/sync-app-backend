@@ -89,12 +89,7 @@ export function isAwaitingSelfPostBodyCollection(
 }
 
 export function buildDeclineRecommendCollectBodyReply(activityLabel: string): string {
-  return [
-    SELF_POST_COLLECT_BODY_MARKER,
-    `好的，请直接描述你在「${activityLabel}」的组队需求（出发地、人数、日期等），我会帮你整理成帖。`,
-    '',
-    '写好需求后直接回复我即可，我会帮你发布组队帖。',
-  ].join('\n');
+  return `想发什么直接说，我帮你发～`;
 }
 
 export function buildRecommendGateEmptyReply(activityLabel: string): string {
@@ -102,6 +97,6 @@ export function buildRecommendGateEmptyReply(activityLabel: string): string {
     RECOMMEND_GATE_MARKER,
     `暂未在「${activityLabel}」找到相近的组队帖。`,
     '',
-    '你可以直接补充出行日期、人数、出发城市等信息，我帮你发一条组队帖。',
+    '想发什么直接说，我帮你发～',
   ].join('\n');
 }

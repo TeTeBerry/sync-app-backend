@@ -47,6 +47,11 @@ export interface MatchSearchResult {
 
 const VECTOR_RECALL_N = 25;
 const RERANK_INPUT_LIMIT = 15;
+/** Max cosine distance for a Chroma match to be considered relevant.
+ *  Distance > threshold means the post is semantically unrelated to the query,
+ *  and should not be recommended (prevents hard-selling irrelevant posts).
+ */
+const CHROMA_DISTANCE_THRESHOLD = 0.8;
 
 @Injectable()
 export class MatchService {
@@ -118,9 +123,14 @@ export class MatchService {
     let items: MatchedPostItem[] = [];
     let rerankFailed = false;
 
-    if (chromaResult.matches.length > 0) {
+    // Filter out semantically unrelated matches by cosine distance.
+    const relevantMatches = chromaResult.matches.filter(
+      m => (m.distance ?? Number.POSITIVE_INFINITY) <= CHROMA_DISTANCE_THRESHOLD,
+    );
+
+    if (relevantMatches.length > 0) {
       const ranked = await this.rankChromaPipeline(
-        chromaResult.matches,
+        relevantMatches,
         mongoCandidates,
         filterContext,
         criteria,
@@ -137,7 +147,12 @@ export class MatchService {
       if (rerankFailed) degraded = true;
     }
 
-    if (!items.length) {
+    // When the user has a specific non-buddy intent (food/social) and
+    // no relevant vector matches were found, skip the MongoDB lexical fallback.
+    // This prevents pushing carpool/lodging posts to a user looking for supper.
+    const hasSpecificIntent = criteria.intents?.some(i => i === 'food' || i === 'social') ?? false;
+
+    if (!items.length && !hasSpecificIntent) {
       const mongoRanked = rankPostsByCriteria(
         mongoCandidates,
         criteria,
@@ -152,11 +167,10 @@ export class MatchService {
       if (items.length) degraded = true;
     }
 
-    items = this.filterRecommendedItems(items, mongoCandidates, {
+    items = this.filterOwnPosts(items, mongoCandidates, {
       requesterUserId,
       clientUserId: params.userId,
       authorName: params.authorName,
-      excludePostIds,
     });
 
     return { items, degraded };
@@ -331,7 +345,6 @@ export class MatchService {
 
     const items = withTieBreak
       .slice(0, limit)
-      .filter(item => !isolation.excludePostIds.has(item.postId))
       .map(item => ({
         postId: item.postId,
         snippet: item.snippet,
@@ -342,24 +355,21 @@ export class MatchService {
     return { items, rerankFailed };
   }
 
-  private filterRecommendedItems(
+  /** Filter out items authored by the requester itself. Called after both Chroma and MongoDB fallback paths. */
+  private filterOwnPosts(
     items: MatchedPostItem[],
     candidates: PostRecord[],
     isolation: {
       requesterUserId?: string;
       clientUserId?: string;
       authorName?: string;
-      excludePostIds: ReadonlySet<string>;
     },
   ): MatchedPostItem[] {
     const postById = new Map(candidates.map(post => [String(post._id), post]));
 
     return items.filter(item => {
-      if (isolation.excludePostIds.has(item.postId)) return false;
-
       const post = postById.get(item.postId);
       if (!post) return false;
-
       return !this.isOwnRecruitingPost(post, isolation);
     });
   }

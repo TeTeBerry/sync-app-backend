@@ -7,6 +7,7 @@ import {
   parseConversationContext,
   type ConversationContext,
 } from '../conversation/conversation-context.parser';
+import { formatConversationHistory } from '../utils/conversation-format.util';
 import type { ChatMessageDto } from '../presentation/chat-message.dto';
 import type { AgentParseInput, ParsedPostDraft } from './agent.types';
 
@@ -22,8 +23,6 @@ interface LlmTextParseResult {
   buddyType?: string;
   ready?: boolean;
 }
-
-const RECENT_TURN_LIMIT = 12;
 
 const TEXT_PARSE_SYSTEM = [
   '你是 TextParseAgent，从多轮对话中抽取用户组队发帖所需的结构化信息。',
@@ -49,21 +48,6 @@ function normalizeTags(raw?: string[]): string[] {
     tags.add(trimmed.startsWith('#') ? trimmed : `#${trimmed}`);
   }
   return [...tags];
-}
-
-function formatConversationHistory(messages: ChatMessageDto[]): string {
-  return messages
-    .slice(-RECENT_TURN_LIMIT)
-    .map(message => {
-      const roleLabel =
-        message.role === 'assistant'
-          ? '助手'
-          : message.role === 'user'
-            ? '用户'
-            : '系统';
-      return `[${roleLabel}] ${message.content.trim()}`;
-    })
-    .join('\n');
 }
 
 function buildMergedDescription(

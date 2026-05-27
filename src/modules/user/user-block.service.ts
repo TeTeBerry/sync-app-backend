@@ -6,10 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import {
-  DEMO_OWNER_USER_ID,
-  isDemoOwnerClient,
-} from '../../common/utils/demo-owner.util';
+import { resolveActorUserId } from '../../ai/utils/actor-user.util';
 import {
   PostApplication,
   PostApplicationDocument,
@@ -19,14 +16,6 @@ import {
   UserBlock,
   UserBlockDocument,
 } from '../../database/schemas/user-block.schema';
-
-function resolveActorUserId(userId?: string, authorName?: string): string {
-  const uid = userId?.trim();
-  if (isDemoOwnerClient(uid, authorName)) {
-    return DEMO_OWNER_USER_ID;
-  }
-  return uid || DEMO_OWNER_USER_ID;
-}
 
 @Injectable()
 export class UserBlockService {

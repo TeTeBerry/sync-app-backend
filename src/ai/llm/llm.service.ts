@@ -89,6 +89,7 @@ export class LlmService {
     model: string,
     system: string,
     user: string,
+    timeoutMs = 15000,
   ): Promise<T | null> {
     if (!this.enabled) return null;
 
@@ -104,12 +105,22 @@ export class LlmService {
               temperature: 0.1,
             });
 
-    const response = await llm.invoke([
-      new SystemMessage(system),
-      new HumanMessage(user),
-    ]);
+    const response = await this.withTimeout(
+      llm.invoke([
+        new SystemMessage(system),
+        new HumanMessage(user),
+      ]),
+      timeoutMs,
+    );
 
     return this.parseJsonFromText<T>(String(response.content ?? '').trim());
+  }
+
+  private async withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`LLM timeout after ${ms}ms`)), ms),
+    );
+    return Promise.race([promise, timeout]);
   }
 
   /** 千问 VL（multimodal-generation）：图片 + 文本 → 结构化 JSON */

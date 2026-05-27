@@ -1,3 +1,6 @@
+import { extractYearFromText } from '../../common/utils/activity-date.util';
+export { extractYearFromText };
+
 /** 从活动 catalog 日期串（如 06/13-14）推导 ISO 起始日 */
 export function catalogDateToIso(
   catalogDate: string,
@@ -15,12 +18,6 @@ export function catalogDateToIso(
 
   const [, month, day] = range;
   return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-}
-
-export function extractYearFromText(text?: string): string | undefined {
-  if (!text) return undefined;
-  const match = text.match(/\b(20\d{2})\b/);
-  return match?.[1];
 }
 
 export function extractIsoDateFromText(text: string): string | undefined {

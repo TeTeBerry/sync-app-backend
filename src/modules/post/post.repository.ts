@@ -10,7 +10,11 @@ import {
 } from './interfaces/post.repository.interface';
 
 function buildOwnerFilter(filter: PostQueryFilter) {
-  return buildOwnerMongoFilter(filter.userId, filter.authorName);
+  const base = buildOwnerMongoFilter(filter.userId, filter.authorName);
+  if (filter.status) {
+    return { ...base, status: filter.status };
+  }
+  return base;
 }
 
 @Injectable()
@@ -147,5 +151,33 @@ export class PostRepository implements IPostRepository {
       })
       .sort({ createdAt: -1 })
       .lean();
+  }
+
+  async existsOwnerRecruitingPostByContentTypes(
+    userId: string,
+    contentTypes: string[],
+  ): Promise<{ exists: boolean; matchedType?: string }> {
+    const existing = await this.model
+      .findOne({
+        userId,
+        status: 'recruiting',
+        contentTypes: { $in: contentTypes },
+      })
+      .select('_id contentTypes')
+      .lean();
+
+    if (!existing) return { exists: false };
+
+    const matched = contentTypes.find(t =>
+      (existing.contentTypes ?? []).includes(t),
+    );
+    return { exists: true, matchedType: matched };
+  }
+
+  async countByOwnerAndActivity(
+    userId: string,
+    activityLegacyId: number,
+  ): Promise<number> {
+    return this.model.countDocuments({ userId, activityLegacyId });
   }
 }

@@ -4,35 +4,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  DEMO_OWNER_USER_ID,
-  isDemoOwnerClient,
-} from '../../common/utils/demo-owner.util';
+import { resolveActorUserId } from '../../ai/utils/actor-user.util';
+import { isDemoOwnerClient } from '../../common/utils/demo-owner.util';
+import { resolveOwnerFilter } from '../../common/utils/owner-filter.util';
 import { ActivityService } from '../activity/activity.service';
 import { UserService } from '../user/user.service';
 import {
   ACTIVITY_REGISTRATION_REPOSITORY,
-  ActivityRegistrationQueryFilter,
   IActivityRegistrationRepository,
 } from './interfaces/activity-registration.repository.interface';
-
-function resolveOwnerFilter(
-  userId?: string,
-  authorName?: string,
-): ActivityRegistrationQueryFilter {
-  return {
-    userId: userId?.trim() || undefined,
-    authorName: authorName?.trim() || undefined,
-  };
-}
-
-function resolveActorUserId(userId?: string, authorName?: string): string {
-  const uid = userId?.trim();
-  if (isDemoOwnerClient(uid, authorName)) {
-    return DEMO_OWNER_USER_ID;
-  }
-  return uid || DEMO_OWNER_USER_ID;
-}
 
 function resolveActorAuthorName(
   userId?: string,

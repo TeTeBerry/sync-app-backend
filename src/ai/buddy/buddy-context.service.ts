@@ -223,7 +223,7 @@ export class BuddyContextService {
         ? normalized
         : '内容未通过审核，请修改后重试。');
 
-    return ['组队帖暂未发布 ⚠️', '', hint].join('\n');
+    return hint;
   }
 
   resolveTags(input: string, llmTags?: string[]): string[] {
@@ -233,7 +233,11 @@ export class BuddyContextService {
     }
     for (const tag of llmTags ?? []) {
       const trimmed = tag.trim();
-      if (trimmed) tags.add(trimmed);
+      if (!trimmed) continue;
+      // 过滤 LLM 幻觉标签：标签关键词必须在用户输入中出现
+      const keyword = trimmed.replace(/^#/, '');
+      if (keyword && !input.includes(keyword)) continue;
+      tags.add(trimmed);
     }
     return [...tags];
   }

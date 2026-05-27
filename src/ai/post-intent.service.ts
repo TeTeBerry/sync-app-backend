@@ -35,6 +35,7 @@ export class PostIntentService {
     userName?: string;
     activityLegacyId?: number;
     image?: string;
+    images?: string[];
     conversationState?: ConversationState | null;
     onStateChange?: (state: ConversationState) => void;
   }): Promise<PostIntentCreateAttempt> {

@@ -202,7 +202,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
     );
   });
 
-  it('does not block with existing_post when user chose self-post', async () => {
+  it('returns existing_post when user chose self-post but already has a recruiting post', async () => {
     const useCase = createUseCase({
       existingPost: {
         id: 'existing-1',
@@ -219,11 +219,10 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
       onStateChange,
     });
 
-    expect(result?.kind).not.toBe('existing_post');
     expect(result).toEqual(
       expect.objectContaining({
-        kind: 'rejected',
-        replyText: expect.stringContaining(SELF_POST_COLLECT_BODY_MARKER),
+        kind: 'existing_post',
+        postId: 'existing-1',
       }),
     );
   });

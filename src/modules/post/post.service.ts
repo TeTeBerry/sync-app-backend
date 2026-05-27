@@ -3,16 +3,17 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { resolveActorUserId } from '../../ai/utils/actor-user.util';
 import {
-  DEMO_OWNER_USER_ID,
-  isDemoOwnerClient,
   isResourceOwnedByClient,
 } from '../../common/utils/demo-owner.util';
+import { resolveOwnerFilter } from '../../common/utils/owner-filter.util';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
 import { ActivityService } from '../activity/activity.service';
 import {
@@ -46,26 +47,10 @@ import {
   normalizeCityName,
 } from '../../ai/match/buddy-match-criteria.util';
 
-function resolveOwnerFilter(
-  userId?: string,
-  authorName?: string,
-): PostQueryFilter {
-  return {
-    userId: userId?.trim() || undefined,
-    authorName: authorName?.trim() || undefined,
-  };
-}
-
-function resolveActorUserId(userId?: string, authorName?: string): string {
-  const uid = userId?.trim();
-  if (isDemoOwnerClient(uid, authorName)) {
-    return DEMO_OWNER_USER_ID;
-  }
-  return uid || DEMO_OWNER_USER_ID;
-}
-
 @Injectable()
 export class PostService implements OnModuleInit {
+  private readonly logger = new Logger(PostService.name);
+
   constructor(
     @Inject(POST_REPOSITORY)
     private readonly repository: IPostRepository,
@@ -82,14 +67,33 @@ export class PostService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    const count = await this.postModel.estimatedDocumentCount();
-    if (count === 0) {
-      const inserted = await this.postModel.insertMany(POST_SEED);
-      await this.syncPostEmbeddings(inserted);
+    try {
+      const count = await this.postModel.estimatedDocumentCount();
+      if (count === 0) {
+        const inserted = await this.postModel.insertMany(POST_SEED);
+        await this.syncPostEmbeddings(inserted);
+      }
+    } catch (error) {
+      this.logger.warn(`Post seed failed: ${(error as Error).message}`);
     }
-    await this.ensureStormDemoPosts();
-    await this.patchStormDemoDepartureCities();
-    await this.reindexRecruitingEmbeddings();
+
+    try {
+      await this.ensureStormDemoPosts();
+    } catch (error) {
+      this.logger.warn(`Storm demo posts init failed: ${(error as Error).message}`);
+    }
+
+    try {
+      await this.patchStormDemoDepartureCities();
+    } catch (error) {
+      this.logger.warn(`Departure city patch failed: ${(error as Error).message}`);
+    }
+
+    try {
+      await this.reindexRecruitingEmbeddings();
+    } catch (error) {
+      this.logger.warn(`Recruiting reindex failed: ${(error as Error).message}`);
+    }
   }
 
   /** 已有库时补全风暴电音节招募帖，便于测 AI 搭子推荐卡片 */
@@ -122,27 +126,40 @@ export class PostService implements OnModuleInit {
   }
 
   private async syncPostEmbeddings(posts: PostDocument[]) {
-    for (const post of posts) {
-      if (post.status !== 'recruiting') continue;
+    const recruitingPosts = posts.filter(p => p.status === 'recruiting');
+    if (!recruitingPosts.length) return;
 
-      const activity =
-        post.activityLegacyId != null
-          ? await this.activityService.findByLegacyId(post.activityLegacyId)
+    // 批量并行查询活动，避免 N+1
+    const uniqueLegacyIds = [
+      ...new Set(recruitingPosts.map(p => p.activityLegacyId).filter((id): id is number => id != null)),
+    ];
+    const activityResults = await Promise.all(
+      uniqueLegacyIds.map(id => this.activityService.findByLegacyId(id)),
+    );
+    const activityMap = new Map(
+      activityResults.filter(Boolean).map(a => [a!.legacyId, a]),
+    );
+
+    // 并行同步向量
+    await Promise.all(
+      recruitingPosts.map(post => {
+        const activity = post.activityLegacyId != null
+          ? activityMap.get(post.activityLegacyId)
           : null;
-
-      await this.chromaService.syncPostEmbeddingStatus({
-        postId: String(post._id ?? post.id),
-        userId: post.userId,
-        body: post.body,
-        eventTitle: post.eventTitle,
-        tags: post.tags,
-        location: post.location,
-        departureCity: post.departureCity,
-        activityCode: activity?.code,
-        activityLegacyId: post.activityLegacyId,
-        status: post.status,
-      });
-    }
+        return this.chromaService.syncPostEmbeddingStatus({
+          postId: String(post._id ?? post.id),
+          userId: post.userId,
+          body: post.body,
+          eventTitle: post.eventTitle,
+          tags: post.tags,
+          location: post.location,
+          departureCity: post.departureCity,
+          activityCode: activity?.code,
+          activityLegacyId: post.activityLegacyId,
+          status: post.status,
+        });
+      }),
+    );
   }
 
   private async patchStormDemoDepartureCities(): Promise<void> {
@@ -433,6 +450,7 @@ export class PostService implements OnModuleInit {
     if (dto.location?.trim()) patch.location = dto.location.trim();
     if (dto.departureCity?.trim()) patch.departureCity = dto.departureCity.trim();
     if (dto.status) patch.status = dto.status;
+    if (dto.images) patch.images = dto.images;
 
     if (dto.body?.trim() || dto.departureCity?.trim() || dto.location?.trim()) {
       const criteriaPatch = buildMatchCriteriaPatch({

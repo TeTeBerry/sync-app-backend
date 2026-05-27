@@ -7,10 +7,9 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { resolveActorUserId } from '../../ai/utils/actor-user.util';
 import {
-  isDemoOwnerClient,
   isResourceOwnedByClient,
-  DEMO_OWNER_USER_ID,
 } from '../../common/utils/demo-owner.util';
 import {
   PostApplication,
@@ -39,14 +38,6 @@ import {
   POST_REPOSITORY,
 } from './interfaces/post.repository.interface';
 import { PostWriteService } from './application/post-write.service';
-
-function resolveActorUserId(userId?: string, authorName?: string): string {
-  const uid = userId?.trim();
-  if (isDemoOwnerClient(uid, authorName)) {
-    return DEMO_OWNER_USER_ID;
-  }
-  return uid || DEMO_OWNER_USER_ID;
-}
 
 @Injectable()
 export class PostInteractionService {

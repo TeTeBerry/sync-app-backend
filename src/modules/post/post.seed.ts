@@ -16,6 +16,9 @@ export const POST_SEED = [
     likes: 47,
     comments: 8,
     createdAt: new Date(Date.now() - 60_000),
+    images: [
+      'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80',
+    ],
   },
   {
     userId: 'demo-kyle',
@@ -48,6 +51,10 @@ export const POST_SEED = [
     likes: 18,
     comments: 3,
     createdAt: new Date(Date.now() - 2 * 60 * 60_000),
+    images: [
+      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=80',
+      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&q=80',
+    ],
   },
   {
     userId: 'demo-zara',
@@ -96,6 +103,11 @@ export const POST_SEED = [
     likes: 12,
     comments: 1,
     createdAt: new Date(Date.now() - 7 * 60 * 60_000),
+    images: [
+      'https://images.unsplash.com/photo-1459749411177-0479bf78d6f2?w=800&q=80',
+      'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800&q=80',
+      'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800&q=80',
+    ],
   },
   {
     userId: 'demo-nova',
@@ -112,6 +124,12 @@ export const POST_SEED = [
     likes: 24,
     comments: 3,
     createdAt: new Date(Date.now() - 2 * 60 * 60_000),
+    images: [
+      'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80',
+      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80',
+      'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800&q=80',
+      'https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?w=800&q=80',
+    ],
   },
   {
     userId: 'demo-zara',
@@ -168,6 +186,14 @@ export const STORM_DEMO_POST_SEED = [
     likes: 52,
     comments: 9,
     createdAt: new Date(Date.now() - 45 * 60_000),
+    images: [
+      'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80',
+      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=80',
+      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&q=80',
+      'https://images.unsplash.com/photo-1459749411177-0479bf78d6f2?w=800&q=80',
+      'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800&q=80',
+      'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800&q=80',
+    ],
   },
   {
     userId: 'demo-ryan',

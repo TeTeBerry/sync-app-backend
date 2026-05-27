@@ -35,6 +35,11 @@ export class ChatRequestDto {
   image?: string;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
+
+  @IsOptional()
   @IsNumber()
   activityLegacyId?: number;
 }

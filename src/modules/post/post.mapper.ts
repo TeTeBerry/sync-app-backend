@@ -55,6 +55,8 @@ export class PostMapper {
       comments: post.comments ?? 0,
       avatar: post.authorAvatar ?? '',
       status: PostMapper.toStatusLabel(post.status),
+      contentTypes: post.contentTypes ?? [],
+      images: post.images ?? [],
     };
   }
 
@@ -74,11 +76,13 @@ export class PostMapper {
       createdAt,
       body: post.body,
       tags: post.tags ?? [],
+      contentTypes: post.contentTypes ?? [],
       likes: post.likes ?? 0,
       liked,
       comments: post.comments ?? 0,
       avatar: post.authorAvatar ?? '',
       status: PostMapper.toStatusLabel(post.status),
+      images: post.images ?? [],
     };
   }
 
@@ -110,6 +114,8 @@ export class PostMapper {
       comments: post.comments ?? 0,
       date: formatDateLabel(post.createdAt),
       activityLegacyId: post.activityLegacyId,
+      contentTypes: post.contentTypes ?? [],
+      images: post.images ?? [],
     };
   }
 }

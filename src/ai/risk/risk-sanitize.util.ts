@@ -60,10 +60,9 @@ export function appendTravelSafetyTip(content: string, sourceHint: string): stri
   return trimmed ? `${trimmed}\n\n${TRAVEL_SAFETY_TIP}` : TRAVEL_SAFETY_TIP;
 }
 
-/** 组装可发布的脱敏正文（含条件安全提示） */
+/** 组装可发布的脱敏正文（不再附加安全提示到帖子内容，安全提示在AI对话中展示） */
 export function buildPublishableBody(raw: string, llmContent?: string): string {
-  const base = stripDesensitizationMarkers(
+  return stripDesensitizationMarkers(
     (llmContent?.trim() || desensitizePrivacy(raw.trim())).trim(),
   );
-  return appendTravelSafetyTip(base, raw);
 }

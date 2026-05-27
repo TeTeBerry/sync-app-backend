@@ -4,6 +4,7 @@ export interface PostQueryFilter {
   userId?: string;
   authorName?: string;
   activityLegacyId?: number;
+  status?: string;
 }
 
 export type PostRecord = PostDocument & {
@@ -42,6 +43,14 @@ export interface IPostRepository {
     filter: PostQueryFilter,
     activityLegacyId: number,
   ): Promise<PostRecord | null>;
+  existsOwnerRecruitingPostByContentTypes(
+    userId: string,
+    contentTypes: string[],
+  ): Promise<{ exists: boolean; matchedType?: string }>;
+  countByOwnerAndActivity(
+    userId: string,
+    activityLegacyId: number,
+  ): Promise<number>;
 }
 
 export const POST_REPOSITORY = Symbol('POST_REPOSITORY');

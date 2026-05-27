@@ -12,7 +12,7 @@ import {
   TextParseAgent,
 } from '../agents';
 import type { ConversationState } from '../conversation';
-import { enterClarifyBuddyState, enterCollectPostBodyState, enterPublishConfirmState } from '../conversation';
+import { enterCollectPostBodyState, enterPublishConfirmState } from '../conversation';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
 import {
   getMissingBuddyFields,
@@ -21,26 +21,24 @@ import {
   parseConversationContext,
 } from '../conversation/conversation-context.parser';
 import {
-  buildExistingPostGuidanceReply,
   isExplicitReplacePostIntent,
   isInformalPostBodyInput,
-  isSupplementDetailInput,
 } from '../conversation/existing-post-guidance.util';
 import {
   buildPublishConfirmReply,
   isAwaitingPublishConfirmation,
   isPublishConfirmIntent,
 } from '../publish/publish-confirm.util';
-import { buildBuddyClarifyReply } from '../conversation/buddy-clarify.util';
 import {
   buildDeclineRecommendCollectBodyReply,
   isAwaitingRecommendationsGate,
   isAwaitingSelfPostBodyCollection,
   isDeclineRecommendationsIntent,
 } from '../gate/recommend-gate.util';
-import { isExactQuickReply } from '../intent/user-intent';
 import { BuddyContextService } from './buddy-context.service';
 import type { PostIntentCreateAttempt } from './buddy.types';
+import { inferPostContentTypes } from '../../modules/post/utils/post-content-type.util';
+import { TRAVEL_SAFETY_TIP } from '../risk/risk-sanitize.util';
 
 export interface CreatePostFromChatParams {
   messages: ChatMessageDto[];
@@ -49,6 +47,7 @@ export interface CreatePostFromChatParams {
   userName?: string;
   activityLegacyId?: number;
   image?: string;
+  images?: string[];
   conversationState?: ConversationState | null;
   onStateChange?: (state: ConversationState) => void;
 }
@@ -74,6 +73,7 @@ export class CreatePostFromChatUseCase {
       userName,
       activityLegacyId,
       image,
+      images,
       conversationState,
       onStateChange,
     } = params;
@@ -134,50 +134,12 @@ export class CreatePostFromChatUseCase {
     const inSelfPostCollectFlow =
       awaitingSelfPostBody || conversationState?.flow === 'collect_post_body';
     const skipExistingPostGuidance =
-      isDeclineRecommendationsIntent(trimmedInput) ||
       isExplicitReplacePostIntent(trimmedInput) ||
       inSelfPostCollectFlow ||
       conversationState?.publishDraft?.fromSelfPost === true;
 
-    if (resolvedActivity?.legacyId && !skipExistingPostGuidance) {
-      const existingPost =
-        await this.postService.findOwnerRecruitingPostForActivity(
-          resolvedActivity.legacyId,
-          userId,
-          userName,
-        );
-      if (existingPost) {
-        const supplement =
-          isSupplementDetailInput(trimmedInput) ||
-          isShortContextReply(trimmedInput)
-            ? trimmedInput
-            : undefined;
-        const shouldGuideExisting =
-          publishConfirmReady ||
-          supplement != null ||
-          isExplicitReplacePostIntent(trimmedInput);
-
-        if (shouldGuideExisting) {
-          const activityLabel =
-            resolvedActivity.name ?? existingPost.eventTitle ?? '活动';
-          return {
-            kind: 'existing_post',
-            postId: existingPost.id,
-            activityLegacyId: resolvedActivity.legacyId,
-            replyText: buildExistingPostGuidanceReply({
-              activityLabel,
-              postBody: existingPost.body,
-              supplement,
-            }),
-          };
-        }
-      }
-    }
-
     const missing = getMissingBuddyFields(ctx, activityLegacyId);
     const hasActivity = Boolean(resolvedActivity?.legacyId);
-    const inClarifyBuddyFlow = conversationState?.flow === 'clarify_buddy';
-    const allBuddyFieldsPresent = missing.length === 0;
     const llmReady = parsed?.ready === true && Boolean(parsed.body?.trim());
 
     if (
@@ -199,26 +161,7 @@ export class CreatePostFromChatUseCase {
       };
     }
 
-    if (
-      missing.length > 0 &&
-      isFindBuddyThread(messages) &&
-      !publishConfirmReady &&
-      !isShortcutWithActivity &&
-      !isAiShortcutTag(trimmedInput) &&
-      !isDeclineRecommendationsIntent(trimmedInput) &&
-      !inSelfPostCollectFlow &&
-      !(inClarifyBuddyFlow && isInformalPostBodyInput(trimmedInput) && hasActivity)
-    ) {
-      onStateChange?.(enterClarifyBuddyState());
-      return {
-        kind: 'rejected',
-        replyText: buildBuddyClarifyReply(
-          missing,
-          ctx,
-          resolvedActivity?.name,
-        ),
-      };
-    }
+    // 缺失字段不再阻断发帖，仅作为建议信息融入帖子内容
 
     if (isDeclineRecommendationsIntent(trimmedInput) && hasActivity && !publishConfirmReady) {
       onStateChange?.(
@@ -235,13 +178,26 @@ export class CreatePostFromChatUseCase {
       };
     }
 
+    const isSelfPostIntent = trimmedInput === '自己发帖';
+
+    if (isSelfPostIntent && hasActivity && !publishConfirmReady) {
+      onStateChange?.(
+        enterCollectPostBodyState({
+          activityLegacyId: resolvedActivity?.legacyId,
+          fromSelfPost: true,
+        }),
+      );
+      return {
+        kind: 'rejected',
+        replyText: '想发什么直接说，我帮你发～',
+      };
+    }
+
     const readyForDirectSelfPost =
-      (inSelfPostCollectFlow ||
-        (inClarifyBuddyFlow && isInformalPostBodyInput(trimmedInput))) &&
+      inSelfPostCollectFlow &&
       hasActivity &&
       Boolean(trimmedInput) &&
       !isDeclineRecommendationsIntent(trimmedInput) &&
-      !isExactQuickReply(trimmedInput) &&
       !publishConfirmReady;
 
     if (isShortcutWithActivity && hasActivity && !publishConfirmReady) {
@@ -273,18 +229,13 @@ export class CreatePostFromChatUseCase {
       };
     }
 
+    // 不再校验字段完整性，只要用户在找搭子且活动已知即可创建
     const canCreate =
       publishConfirmReady ||
       readyForDirectSelfPost ||
       (!isDeclineRecommendationsIntent(trimmedInput) &&
         !inSelfPostCollectFlow &&
-        (llmReady ||
-          (isFindBuddyThread(messages) &&
-            hasActivity &&
-            (allBuddyFieldsPresent ||
-              (trimmedInput.length > 12 &&
-                !isShortContextReply(trimmedInput) &&
-                !isExactQuickReply(trimmedInput))))));
+        (llmReady || (isFindBuddyThread(messages) && hasActivity)));
 
     if (!canCreate || !hasActivity) {
       return null;
@@ -344,12 +295,16 @@ export class CreatePostFromChatUseCase {
     // Zone/area parsed from body (e.g. "A区") stays in body only.
     const departureCity = ctx.city?.trim();
 
+    const contentTypes = inferPostContentTypes({ tags, body: finalBody });
+
     const dto: CreatePostDto = {
       body: finalBody,
       activityLegacyId: resolvedActivity?.legacyId,
       eventTitle: resolvedActivity?.name ?? parsed?.eventName,
       ...(departureCity ? { location: departureCity, departureCity } : {}),
       tags,
+      contentTypes,
+      images: images?.length ? images : undefined,
     };
 
     const post = await this.postService.createPost(dto, userId, userName, {
@@ -369,6 +324,8 @@ export class CreatePostFromChatUseCase {
       createdPost,
       replyText: [
         `已为你发布「${activityLabel}」组队帖 ✅`,
+        '',
+        TRAVEL_SAFETY_TIP,
         '',
         '点击下方卡片可在活动详情页查看，等待伙伴申请加入。',
       ].join('\n'),

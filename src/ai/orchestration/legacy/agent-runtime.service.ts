@@ -24,8 +24,8 @@ export interface AgentRuntimeResult {
 }
 
 /**
- * @deprecated Posting uses BuddyModule use cases, not this runtime. Still used by
- * DeterministicReplyService for rule-based quick replies. See orchestration/README.md.
+ * Rule-based quick reply runtime used by DeterministicReplyService.
+ * Posting flow uses BuddyModule use cases instead.
  */
 @Injectable()
 export class AgentRuntimeService {

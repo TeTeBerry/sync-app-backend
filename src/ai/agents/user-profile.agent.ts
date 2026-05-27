@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { UserService } from '../../modules/user/user.service';
 import { LlmService } from '../llm/llm.service';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { formatConversationHistory } from '../utils/conversation-format.util';
 import {
   buildKnownFactsSummary,
   isFindBuddyThread,
@@ -47,23 +48,6 @@ const KNOWN_GENRES = new Set([
   'psytrance',
   'bass',
 ]);
-
-const RECENT_TURN_LIMIT = 12;
-
-function formatConversationHistory(messages: ChatMessageDto[]): string {
-  return messages
-    .slice(-RECENT_TURN_LIMIT)
-    .map(message => {
-      const roleLabel =
-        message.role === 'assistant'
-          ? '助手'
-          : message.role === 'user'
-            ? '用户'
-            : '系统';
-      return `[${roleLabel}] ${message.content.trim()}`;
-    })
-    .join('\n');
-}
 
 function normalizeGenres(raw?: string[]): string[] {
   const genres = new Set<string>();

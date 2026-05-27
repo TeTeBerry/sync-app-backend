@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 import { ActivityService } from '../../activity/activity.service';
 import { ChromaService } from '../../../ai/rag/chroma.service';
 import type { PostStatus } from '../../../database/schemas/post.schema';
@@ -18,19 +18,9 @@ import {
   POST_REPOSITORY,
   PostRecord,
 } from '../interfaces/post.repository.interface';
-import {
-  DEMO_OWNER_USER_ID,
-  isDemoOwnerClient,
-} from '../../../common/utils/demo-owner.util';
+import { resolveActorUserId } from '../../../ai/utils/actor-user.util';
 import { buildMatchCriteriaPatch } from '../../../ai/match/buddy-match-criteria.util';
-
-function resolveActorUserId(userId?: string, authorName?: string): string {
-  const uid = userId?.trim();
-  if (isDemoOwnerClient(uid, authorName)) {
-    return DEMO_OWNER_USER_ID;
-  }
-  return uid || DEMO_OWNER_USER_ID;
-}
+import { inferPostContentTypes } from '../utils/post-content-type.util';
 
 @Injectable()
 export class PostWriteService {
@@ -56,6 +46,7 @@ export class PostWriteService {
   ) {
     const profile = await this.userService.resolveProfile(userId, authorName);
     const ownerUserId = resolveActorUserId(userId, authorName);
+
     const activity =
       dto.activityLegacyId != null
         ? await this.activityService.findByLegacyId(dto.activityLegacyId)
@@ -95,6 +86,25 @@ export class PostWriteService {
       activityLegacyId,
     });
 
+    // 推断内容类型（支持交集）
+    const contentTypes = dto.contentTypes?.length
+      ? dto.contentTypes
+      : inferPostContentTypes({ tags: dto.tags, body: bodyToSave });
+
+    // 同一活动发帖数量限制：最多 8 篇
+    const MAX_POSTS_PER_ACTIVITY = 8;
+    if (activityLegacyId != null) {
+      const activityPostCount = await this.repository.countByOwnerAndActivity(
+        ownerUserId,
+        activityLegacyId,
+      );
+      if (activityPostCount >= MAX_POSTS_PER_ACTIVITY) {
+        throw new ConflictException(
+          `您在「${eventTitle}」已发布 ${MAX_POSTS_PER_ACTIVITY} 篇帖子，达到上限。请先删除或修改之前的帖子后再发布。`,
+        );
+      }
+    }
+
     const created = await this.repository.create({
       userId: ownerUserId,
       authorName: profile?.name ?? authorName?.trim() ?? 'Zara Chen',
@@ -107,9 +117,11 @@ export class PostWriteService {
       matchCriteria: criteriaPatch.matchCriteria,
       body: bodyToSave,
       tags: dto.tags ?? [],
+      contentTypes,
       status,
       likes: 0,
       comments: 0,
+      images: dto.images ?? [],
     });
 
     const postId = String(created._id);

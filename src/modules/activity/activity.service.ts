@@ -166,7 +166,7 @@ export class ActivityService implements OnModuleInit {
     }
 
     const compact = kw.replace(/[\s.\-_/]/g, '');
-    const all = await this.model.find().lean();
+    const all = await this.model.find().limit(100).lean();
 
     for (const activity of all) {
       const code = activity.code?.toLowerCase() ?? '';

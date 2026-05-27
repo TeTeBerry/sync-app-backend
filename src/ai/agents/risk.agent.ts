@@ -69,22 +69,6 @@ export class RiskAgent {
 
     const actorUserId = resolveActorUserId(input.userId);
 
-    if (input.activityLegacyId != null) {
-      const hasRecruitingPost =
-        await this.postRepository.existsOwnerRecruitingPostForActivity(
-          actorUserId,
-          input.activityLegacyId,
-        );
-      if (hasRecruitingPost) {
-        return {
-          publishable: false,
-          reason: '你已在此活动发布过组队帖，请勿重复刷屏',
-          violationType: 'duplicate',
-          severity: 'medium',
-        };
-      }
-    }
-
     const isDuplicate = await this.postRepository.existsDuplicateBody(
       actorUserId,
       body,

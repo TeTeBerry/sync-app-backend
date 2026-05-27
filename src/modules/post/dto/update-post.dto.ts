@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 import type { PostStatus } from '../../../database/schemas/post.schema';
 
 export class UpdatePostDto {
@@ -22,4 +22,9 @@ export class UpdatePostDto {
   @IsOptional()
   @IsIn(['recruiting', 'completed'])
   status?: PostStatus;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
 }

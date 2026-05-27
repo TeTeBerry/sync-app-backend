@@ -1,5 +1,11 @@
 /** Structured fields used for buddy post matching (stored on Post + Chroma metadata). */
-export type BuddyMatchIntent = 'carpool' | 'lodging' | 'team' | 'ticket';
+export type BuddyMatchIntent =
+  | 'carpool'   // 交通：拼车、顺风车、包车
+  | 'lodging'   // 住宿：拼房、酒店、民宿
+  | 'team'      // 通用组队/搭子（兜底）
+  | 'ticket'    // 票务：内场、看台、区、票
+  | 'food'      // 吃饭：宵夜、夜宵、聚餐、吃饭、美食、烧烤
+  | 'social';   // 社交：喝酒、蹦迪、派对、afterparty
 
 export interface BuddyMatchCriteria {
   activityLegacyId: number;

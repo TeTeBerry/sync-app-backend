@@ -66,6 +66,8 @@ export function inferIntentsFromPost(
   if (/拼住宿|拼房|住宿/.test(haystack)) intents.add('lodging');
   if (/组队|搭子|同行|缺\d/.test(haystack)) intents.add('team');
   if (/票|内场|看台|区/.test(haystack)) intents.add('ticket');
+  if (/宵夜|夜宵|吃饭|聚餐|美食|烧烤|火锅|餐厅|吃货/.test(haystack)) intents.add('food');
+  if (/喝酒|蹦迪|派对|afterparty|酒局|酒吧|微醺|\bap\b/.test(haystack)) intents.add('social');
 
   if (!intents.size) intents.add('team');
   return [...intents];
@@ -257,6 +259,14 @@ export function buildRerankUserNeed(criteria: BuddyMatchCriteria): string {
 }
 
 export function criteriaToEmbeddingText(criteria: BuddyMatchCriteria): string {
+  const body = criteria.requesterBody?.trim();
+
+  // 有用户发帖内容时，只用帖子内容做精准匹配，不拼接其他宽泛字段
+  if (body) {
+    return body;
+  }
+
+  // fallback：没有帖子内容时，用结构化需求信息
   const parts = [
     criteria.activityName,
     criteria.departureCity ? `${criteria.departureCity}出发` : '',
@@ -266,8 +276,6 @@ export function criteriaToEmbeddingText(criteria: BuddyMatchCriteria): string {
     criteria.genderPref,
     criteria.intents?.join(' '),
     criteria.requesterTags?.map(tag => `#${tag}`).join(' '),
-    criteria.requesterBody,
-    '组队 搭子 同行',
   ];
   return parts.filter(Boolean).join(' ');
 }
