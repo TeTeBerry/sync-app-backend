@@ -244,6 +244,10 @@ export class BuddyContextService {
     activityLegacyId?: number,
     state?: import('../conversation').ConversationState | null,
   ): boolean {
+    if (isDeclineRecommendationsIntent(input) && activityLegacyId != null) {
+      return true;
+    }
+
     if (isAwaitingRecommendationsGate(messages, state)) {
       if (isPublishConfirmIntent(input) || isDeclineRecommendationsIntent(input)) {
         return true;

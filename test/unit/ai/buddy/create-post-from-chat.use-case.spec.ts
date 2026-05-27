@@ -312,4 +312,105 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
     expect(dto.location).toBeUndefined();
     expect(dto.departureCity).toBeUndefined();
   });
+
+  it('asks to collect body instead of structured clarify when user wants to repost', async () => {
+    const useCase = createUseCase({
+      existingPost: {
+        id: 'existing-1',
+        body: '已有组队帖',
+        eventTitle: '风暴电音节',
+      },
+    });
+    const onStateChange = jest.fn();
+
+    const result = await useCase.execute({
+      ...baseParams,
+      conversationState: { version: 1, flow: 'idle' },
+      messages: [
+        { role: 'user', content: '组队队友' },
+        { role: 'user', content: '重新发贴' },
+      ],
+      input: '重新发贴',
+      onStateChange,
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        kind: 'rejected',
+        replyText: expect.stringContaining(SELF_POST_COLLECT_BODY_MARKER),
+      }),
+    );
+    expect(onStateChange).toHaveBeenCalledWith(
+      expect.objectContaining({ flow: 'collect_post_body' }),
+    );
+  });
+
+  it('publishes cpdd verbatim after repost flow', async () => {
+    const buildPostBody = jest
+      .fn()
+      .mockImplementation(async ({ parsedBody }: { parsedBody?: string }) => parsedBody?.trim() ?? '');
+    const useCase = createUseCase({ buildPostBody });
+    const onStateChange = jest.fn();
+
+    const result = await useCase.execute({
+      ...baseParams,
+      conversationState: {
+        version: 1,
+        flow: 'collect_post_body',
+        publishDraft: { activityLegacyId: 9, fromSelfPost: true },
+      },
+      messages: [
+        { role: 'user', content: '组队队友' },
+        { role: 'user', content: '重新发贴' },
+        {
+          role: 'assistant',
+          content: `${SELF_POST_COLLECT_BODY_MARKER}\n请描述需求`,
+        },
+        { role: 'user', content: 'cpdd' },
+      ],
+      input: 'cpdd',
+      onStateChange,
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        kind: 'created',
+        postId: 'post-new',
+      }),
+    );
+    expect(buildPostBody).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parsedBody: 'cpdd',
+        input: 'cpdd',
+      }),
+    );
+  });
+
+  it('publishes cpdd when stuck in clarify_buddy state', async () => {
+    const buildPostBody = jest
+      .fn()
+      .mockImplementation(async ({ parsedBody }: { parsedBody?: string }) => parsedBody?.trim() ?? '');
+    const useCase = createUseCase({ buildPostBody });
+    const onStateChange = jest.fn();
+
+    const result = await useCase.execute({
+      ...baseParams,
+      conversationState: { version: 1, flow: 'clarify_buddy' },
+      messages: [
+        { role: 'user', content: '组队队友' },
+        { role: 'user', content: '重新发贴' },
+        { role: 'assistant', content: '计划哪天出发/到场？' },
+        { role: 'user', content: 'cpdd' },
+      ],
+      input: 'cpdd',
+      onStateChange,
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        kind: 'created',
+        postId: 'post-new',
+      }),
+    );
+  });
 });

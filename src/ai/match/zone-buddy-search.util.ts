@@ -161,6 +161,150 @@ export function formatZoneMatchScope(
     : `「${hintLabel}」`;
 }
 
+export interface BuddySearchHintConstraints {
+  eventDayLabels: string[];
+  catalogDayNumbers: number[];
+  zoneLabels: string[];
+  zoneLetters: string[];
+}
+
+function collectRegexMatches(text: string, pattern: RegExp): RegExpExecArray[] {
+  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+  const re = new RegExp(pattern.source, flags);
+  const matches: RegExpExecArray[] = [];
+  let match: RegExpExecArray | null = re.exec(text);
+  while (match) {
+    matches.push(match);
+    match = re.exec(text);
+  }
+  return matches;
+}
+
+/** 从检索 hint 提取日期/票区约束，用于过滤明显不相关的推荐帖 */
+export function parseBuddySearchHintConstraints(
+  hintLabel: string,
+  hintKind?: BuddySearchHintKind,
+): BuddySearchHintConstraints | null {
+  const label = hintLabel.trim();
+  if (!label || !hintKind) return null;
+  if (hintKind !== 'event_day' && hintKind !== 'zone' && hintKind !== 'day_or_zone') {
+    return null;
+  }
+
+  const eventDayLabels = collectRegexMatches(label, /(\d{1,2})月(\d{1,2})日/g).map(
+    match => `${match[1]}月${match[2]}日`,
+  );
+  const catalogDayNumbers = new Set<number>();
+  for (const match of collectRegexMatches(label, /(\d{1,2})月(\d{1,2})日/g)) {
+    catalogDayNumbers.add(Number(match[2]));
+  }
+  for (const match of collectRegexMatches(label, /(\d{1,2})\s*号\s*([A-Za-z])?\s*区?/g)) {
+    catalogDayNumbers.add(Number(match[1]));
+  }
+
+  const zoneLabels: string[] = [];
+  const zoneLetters = new Set<string>();
+  for (const match of collectRegexMatches(label, /(\d{1,2})\s*号\s*([A-Za-z])\s*区/gi)) {
+    const day = match[1];
+    const letter = (match[2] ?? '').toUpperCase();
+    zoneLabels.push(`${day}号${letter}区`);
+    zoneLetters.add(letter);
+  }
+  for (const match of collectRegexMatches(label, /\b([A-Za-z])\s*区\b/g)) {
+    zoneLetters.add(match[1].toUpperCase());
+  }
+
+  if (!eventDayLabels.length && !catalogDayNumbers.size && !zoneLabels.length && !zoneLetters.size) {
+    return null;
+  }
+
+  return {
+    eventDayLabels,
+    catalogDayNumbers: [...catalogDayNumbers],
+    zoneLabels,
+    zoneLetters: [...zoneLetters],
+  };
+}
+
+export function postTextMatchesBuddySearchHint(
+  text: string,
+  constraints: BuddySearchHintConstraints,
+): boolean {
+  const haystack = text.trim();
+  if (!haystack) return false;
+
+  const mentionsDay = (day: number): boolean => {
+    const monthDay = new RegExp(`\\d+月${day}日`);
+    return (
+      monthDay.test(haystack) ||
+      new RegExp(`${day}\\s*日`).test(haystack) ||
+      new RegExp(`${day}\\s*号`).test(haystack)
+    );
+  };
+
+  const mentionsEventDayLabel = (label: string): boolean => haystack.includes(label);
+
+  const dayMatched =
+    constraints.eventDayLabels.some(mentionsEventDayLabel) ||
+    constraints.catalogDayNumbers.some(mentionsDay);
+
+  if (constraints.catalogDayNumbers.length) {
+    const conflictingDays = constraints.catalogDayNumbers
+      .map(day => day + 1)
+      .filter(nextDay => mentionsDay(nextDay) && !mentionsDay(nextDay - 1));
+
+    if (conflictingDays.length && !dayMatched) {
+      return false;
+    }
+
+    if (dayMatched && constraints.catalogDayNumbers.length === 1) {
+      const target = constraints.catalogDayNumbers[0];
+      const onlyNextDay =
+        mentionsDay(target + 1) &&
+        !mentionsDay(target) &&
+        !constraints.eventDayLabels.some(mentionsEventDayLabel);
+      if (onlyNextDay) return false;
+    }
+  }
+
+  if (constraints.eventDayLabels.length && !dayMatched) {
+    return false;
+  }
+
+  if (constraints.zoneLabels.length || constraints.zoneLetters.length) {
+    const zoneMatched =
+      constraints.zoneLabels.some(zone =>
+        haystack.toUpperCase().includes(zone.toUpperCase()),
+      ) ||
+      constraints.zoneLetters.some(letter => {
+        if (!new RegExp(`${letter}\\s*区`, 'i').test(haystack)) return false;
+        if (dayMatched) return true;
+        return constraints.catalogDayNumbers.some(day =>
+          new RegExp(`${day}\\s*号`).test(haystack),
+        );
+      });
+
+    if (!zoneMatched) return false;
+  }
+
+  return true;
+}
+
+export function filterMatchesByBuddySearchHint<T extends { snippet: string }>(
+  matches: T[],
+  hintLabel: string,
+  hintKind?: BuddySearchHintKind,
+): T[] {
+  const constraints = parseBuddySearchHintConstraints(hintLabel, hintKind);
+  if (!constraints) return matches;
+
+  const filtered = matches.filter(match =>
+    postTextMatchesBuddySearchHint(match.snippet, constraints),
+  );
+
+  return filtered.length ? filtered : matches;
+}
+
 export function buildZoneMatchFoundReply(
   activityLabel: string,
   hintLabel: string,

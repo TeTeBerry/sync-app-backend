@@ -1,8 +1,11 @@
 import {
   buildBuddySearchQuery,
   buildZoneMatchEmptyReply,
+  filterMatchesByBuddySearchHint,
   formatActivityCatalogDayLabels,
   inferBuddySearchHintKind,
+  postTextMatchesBuddySearchHint,
+  parseBuddySearchHintConstraints,
 } from '@src/ai/match/zone-buddy-search.util';
 
 describe('zone-buddy-search.util', () => {
@@ -28,6 +31,35 @@ describe('zone-buddy-search.util', () => {
     expect(inferBuddySearchHintKind('6月13日（或 13号A区）')).toBe('day_or_zone');
     expect(inferBuddySearchHintKind('6月13日')).toBe('event_day');
     expect(inferBuddySearchHintKind('13号A区')).toBe('zone');
+  });
+
+  it('filters out posts on wrong event day or zone', () => {
+    const hint = '6月13日、13号A区';
+    const constraints = parseBuddySearchHintConstraints(hint, 'day_or_zone');
+    expect(constraints).not.toBeNull();
+    expect(
+      postTextMatchesBuddySearchHint(
+        '6月13日场 13号A区 内场票已出，上海出发求拼车',
+        constraints!,
+      ),
+    ).toBe(true);
+    expect(
+      postTextMatchesBuddySearchHint(
+        '风暴 STORM 深圳站 6月14日，B区看台，3缺1男生',
+        constraints!,
+      ),
+    ).toBe(false);
+
+    const matches = filterMatchesByBuddySearchHint(
+      [
+        { snippet: '6月13日场 13号A区 内场票' },
+        { snippet: '风暴 STORM 深圳站 6月14日，B区看台' },
+      ],
+      hint,
+      'day_or_zone',
+    );
+    expect(matches).toHaveLength(1);
+    expect(matches[0]?.snippet).toContain('13号A区');
   });
 
   it('builds empty reply for ambiguous day/zone', () => {

@@ -3,6 +3,7 @@ import { isDeclineRecommendationsIntent } from '../gate/recommend-gate.util';
 import { detectUserIntent, isExactQuickReply } from '../intent/user-intent';
 import {
   createIdleState,
+  enterCollectPostBodyState,
   type ConversationState,
 } from './conversation-state.types';
 
@@ -18,7 +19,13 @@ export function applyFlowSwitch(
   const trimmed = input.trim();
 
   if (state.flow === 'recommend_gate') {
-    if (isDeclineRecommendationsIntent(trimmed) || isPublishConfirmIntent(trimmed)) {
+    if (isDeclineRecommendationsIntent(trimmed)) {
+      return enterCollectPostBodyState({
+        activityLegacyId: state.gate?.activityLegacyId,
+        fromSelfPost: true,
+      });
+    }
+    if (isPublishConfirmIntent(trimmed)) {
       return resetToIdle();
     }
   }

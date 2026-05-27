@@ -12,6 +12,26 @@ describe('intent-router.rules', () => {
     expect(hit?.source).toBe('rule');
   });
 
+  it('routes self-post decline to create_post when activity is bound', () => {
+    const hit = resolveChatIntentFastPath('自己发帖', {
+      messages: [],
+      input: '自己发帖',
+      activityLegacyId: 9,
+    });
+    expect(hit?.kind).toBe('create_post');
+    expect(hit?.source).toBe('rule');
+  });
+
+  it('routes informal post body to create_post when activity is bound', () => {
+    const hit = resolveChatIntentFastPath('13 号 A区 cpdd一个搭子', {
+      messages: [],
+      input: '13 号 A区 cpdd一个搭子',
+      activityLegacyId: 9,
+    });
+    expect(hit?.kind).toBe('create_post');
+    expect(hit?.source).toBe('rule');
+  });
+
   it('routes confirm publish to create_post', () => {
     const hit = resolveChatIntentFastPath('确认发布', {
       messages: [],

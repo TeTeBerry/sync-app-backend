@@ -76,7 +76,8 @@ export class AiTurnPipeline {
     const intentStartedAt = Date.now();
     const forceCreatePostIntent =
       conversationState.flow === 'collect_post_body' ||
-      isAwaitingSelfPostBodyCollection(fullMessages, conversationState);
+      isAwaitingSelfPostBodyCollection(fullMessages, conversationState) ||
+      isDeclineRecommendationsIntent(lastInput.trim());
 
     const routed = forceCreatePostIntent
       ? ({ kind: 'create_post' as const, source: 'rule' as const })

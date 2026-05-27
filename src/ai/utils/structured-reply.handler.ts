@@ -6,6 +6,7 @@ import {
   parseConversationContext,
 } from '../conversation/conversation-context.parser';
 import { buildBuddyClarifyReply } from '../conversation/buddy-clarify.util';
+import { isInformalPostBodyInput } from '../conversation/existing-post-guidance.util';
 import { isExactQuickReply } from '../intent/user-intent';
 import {
   isPublishConfirmIntent,
@@ -27,6 +28,7 @@ export function shouldHandleStructuredReply(
   if (isExactQuickReply(input)) return false;
   if (isPublishConfirmIntent(input)) return false;
   if (isAwaitingPublishConfirmation(messages)) return false;
+  if (isInformalPostBodyInput(input)) return false;
 
   const ctx = parseConversationContext(messages, input);
   const missing = getMissingBuddyFields(ctx, activityLegacyId);

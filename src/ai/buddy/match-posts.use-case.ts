@@ -10,6 +10,7 @@ import { buildMatchRecommendCardsIntro } from '../gate/recommend-gate.util';
 import {
   buildZoneMatchEmptyReply,
   buildZoneMatchFoundReply,
+  filterMatchesByBuddySearchHint,
   inferBuddySearchHintKind,
 } from '../match/zone-buddy-search.util';
 import { buildMatchCriteriaForSearch } from '../match/buddy-match-criteria.util';
@@ -120,8 +121,12 @@ export class MatchPostsFromChatUseCase {
       rankingWeights: resolvedProfileSync?.weights,
     });
 
-    const matches = matchResult.items;
+    let matches = matchResult.items;
     const activityLabel = resolvedActivity.name ?? '活动';
+
+    if (isStructuredSearch && hintDisplay) {
+      matches = filterMatchesByBuddySearchHint(matches, hintDisplay, hintKind);
+    }
 
     if (!matches.length) {
       return {

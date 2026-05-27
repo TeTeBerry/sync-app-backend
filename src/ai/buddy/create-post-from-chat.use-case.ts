@@ -23,6 +23,7 @@ import {
 import {
   buildExistingPostGuidanceReply,
   isExplicitReplacePostIntent,
+  isInformalPostBodyInput,
   isSupplementDetailInput,
 } from '../conversation/existing-post-guidance.util';
 import {
@@ -175,8 +176,28 @@ export class CreatePostFromChatUseCase {
 
     const missing = getMissingBuddyFields(ctx, activityLegacyId);
     const hasActivity = Boolean(resolvedActivity?.legacyId);
+    const inClarifyBuddyFlow = conversationState?.flow === 'clarify_buddy';
     const allBuddyFieldsPresent = missing.length === 0;
     const llmReady = parsed?.ready === true && Boolean(parsed.body?.trim());
+
+    if (
+      isExplicitReplacePostIntent(trimmedInput) &&
+      hasActivity &&
+      !publishConfirmReady
+    ) {
+      onStateChange?.(
+        enterCollectPostBodyState({
+          activityLegacyId: resolvedActivity?.legacyId,
+          fromSelfPost: true,
+        }),
+      );
+      return {
+        kind: 'rejected',
+        replyText: buildDeclineRecommendCollectBodyReply(
+          resolvedActivity?.name ?? '活动',
+        ),
+      };
+    }
 
     if (
       missing.length > 0 &&
@@ -185,7 +206,8 @@ export class CreatePostFromChatUseCase {
       !isShortcutWithActivity &&
       !isAiShortcutTag(trimmedInput) &&
       !isDeclineRecommendationsIntent(trimmedInput) &&
-      !inSelfPostCollectFlow
+      !inSelfPostCollectFlow &&
+      !(inClarifyBuddyFlow && isInformalPostBodyInput(trimmedInput) && hasActivity)
     ) {
       onStateChange?.(enterClarifyBuddyState());
       return {
@@ -214,7 +236,8 @@ export class CreatePostFromChatUseCase {
     }
 
     const readyForDirectSelfPost =
-      inSelfPostCollectFlow &&
+      (inSelfPostCollectFlow ||
+        (inClarifyBuddyFlow && isInformalPostBodyInput(trimmedInput))) &&
       hasActivity &&
       Boolean(trimmedInput) &&
       !isDeclineRecommendationsIntent(trimmedInput) &&

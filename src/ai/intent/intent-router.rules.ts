@@ -1,4 +1,6 @@
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
+import { isDeclineRecommendationsIntent } from '../gate/recommend-gate.util';
+import { isInformalPostBodyInput } from '../conversation/existing-post-guidance.util';
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
 import {
   detectUserIntent,
@@ -21,6 +23,10 @@ export function resolveChatIntentFastPath(
     return { kind: 'create_post', source: 'rule' };
   }
 
+  if (isDeclineRecommendationsIntent(trimmed) && params.activityLegacyId != null) {
+    return { kind: 'create_post', source: 'rule' };
+  }
+
   if (isAiShortcutTag(trimmed) && params.activityLegacyId != null) {
     return { kind: 'search_posts', source: 'rule' };
   }
@@ -36,6 +42,10 @@ export function resolveChatIntentFastPath(
     }
 
     if (detectUserIntent(trimmed) === 'find_buddy') {
+      return { kind: 'create_post', source: 'rule' };
+    }
+
+    if (isInformalPostBodyInput(trimmed)) {
       return { kind: 'create_post', source: 'rule' };
     }
   }
