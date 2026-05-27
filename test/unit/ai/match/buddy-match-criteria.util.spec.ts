@@ -47,6 +47,7 @@ describe('buddy-match-criteria.util', () => {
     });
 
     expect(criteria.departureCity).toBe('上海');
+    expect(criteria.excludePostIds).toEqual(['mine']);
   });
 
   it('buildRerankUserNeed prioritizes requester body and structured fields', () => {

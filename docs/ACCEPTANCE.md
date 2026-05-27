@@ -60,7 +60,6 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
 | `existing_post` | ✅ | ✅ | ✅ | onExistingPost 回调 |
 | `post_recommendations` | ✅ (+ `degraded?`) | ✅ (+ `degraded?`) | ✅ | 渲染推荐帖卡片 |
 | `suggested_replies` | ✅ | ✅ | ✅ | 渲染快捷 chip |
-| `buddy_copy_variants` | ✅ | ✅ | ✅ | 文案风格 chip |
 | `conversation_patch` | ✅ | ✅ | ✅ | `aiChatStore.applyConversationPatch` |
 | `error` | ✅ | ✅ | ✅ | 展示错误文案 |
 

@@ -11,6 +11,7 @@ import {
   UserMatchProfile,
 } from '../match/match-ranking.util';
 import { UserService } from '../../modules/user/user.service';
+import { resolveActorUserId } from '../utils/actor-user.util';
 
 @Injectable()
 export class MatchContextService {
@@ -41,9 +42,12 @@ export class MatchContextService {
   async buildFilterContext(
     userId?: string,
     profile?: UserMatchProfile,
+    authorName?: string,
   ): Promise<MatchFilterContext> {
-    const requesterUserId = userId?.trim();
-    const resolvedProfile = await this.resolveProfile(requesterUserId, profile);
+    const requesterUserId = userId?.trim()
+      ? resolveActorUserId(userId, authorName)
+      : undefined;
+    const resolvedProfile = await this.resolveProfile(userId, profile);
 
     if (!requesterUserId) {
       return {

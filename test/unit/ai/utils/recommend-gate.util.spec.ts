@@ -2,12 +2,15 @@ import {
   RECOMMEND_GATE_MARKER,
   buildRecommendGateFoundReply,
   buildRecommendGateEmptyReply,
+  buildDeclineRecommendCollectBodyReply,
   isAwaitingRecommendationsGate,
+  isAwaitingSelfPostBodyCollection,
   isDeclineRecommendationsIntent,
   RECOMMEND_GATE_SUGGESTED_REPLIES,
+  SELF_POST_COLLECT_BODY_MARKER,
 } from '@src/ai/gate/recommend-gate.util';
 import { ChatMessageDto } from '@src/ai/presentation/chat-message.dto';
-import { enterRecommendGateState } from '@src/ai/conversation';
+import { enterCollectPostBodyState, enterRecommendGateState } from '@src/ai/conversation';
 
 describe('recommend-gate.util', () => {
   it('detects decline to self-post intents', () => {
@@ -56,5 +59,21 @@ describe('recommend-gate.util', () => {
 
   it('exposes suggested reply chips for recommend gate', () => {
     expect(RECOMMEND_GATE_SUGGESTED_REPLIES).toContain('自己发帖');
+  });
+
+  it('builds collect-body reply with marker', () => {
+    const reply = buildDeclineRecommendCollectBodyReply('风暴电音节');
+    expect(reply).toContain(SELF_POST_COLLECT_BODY_MARKER);
+    expect(reply).toContain('风暴电音节');
+  });
+
+  it('detects awaiting self-post body from conversation state', () => {
+    const messages: ChatMessageDto[] = [{ role: 'user', content: '13号A区' }];
+    expect(
+      isAwaitingSelfPostBodyCollection(
+        messages,
+        enterCollectPostBodyState({ activityLegacyId: 9 }),
+      ),
+    ).toBe(true);
   });
 });

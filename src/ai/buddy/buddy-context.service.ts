@@ -7,6 +7,7 @@ import { ActivityService } from '../../modules/activity/activity.service';
 import { PostService } from '../../modules/post/post.service';
 import type { RecommendedPostCard } from '../presentation/ai-stream-event.view';
 import { inferAuthorGenderFromPost } from '../../common/utils/infer-author-gender.util';
+import { BUDDY_RECOMMEND_CARD_SNIPPET_MAX } from '../match/buddy-match.constants';
 import {
   buildKnownFactsSummary,
   isFindBuddyThread,
@@ -22,6 +23,7 @@ import {
 } from '../intent/user-intent';
 import {
   isAwaitingRecommendationsGate,
+  isAwaitingSelfPostBodyCollection,
   isDeclineRecommendationsIntent,
 } from '../gate/recommend-gate.util';
 import {
@@ -147,6 +149,14 @@ export class BuddyContextService {
       : '找同行伙伴，欢迎一起组队 🎵';
   }
 
+  private truncateRecommendSnippet(text: string): string {
+    const normalized = text.replace(/\s+/g, ' ').trim();
+    if (normalized.length <= BUDDY_RECOMMEND_CARD_SNIPPET_MAX) {
+      return normalized;
+    }
+    return `${normalized.slice(0, BUDDY_RECOMMEND_CARD_SNIPPET_MAX)}…`;
+  }
+
   async buildRecommendedPostCards(
     matches: Array<{ postId: string; snippet: string; matchReason?: string }>,
     activityLegacyId?: number,
@@ -158,7 +168,7 @@ export class BuddyContextService {
       if (!post) {
         cards.push({
           postId: match.postId,
-          snippet: match.snippet,
+          snippet: this.truncateRecommendSnippet(match.snippet),
           authorName: 'Sync 用户',
           eventTitle: '组队帖',
           activityLegacyId,
@@ -169,7 +179,9 @@ export class BuddyContextService {
 
       cards.push({
         postId: match.postId,
-        snippet: match.snippet || post.body.slice(0, 120),
+        snippet: this.truncateRecommendSnippet(
+          match.snippet || post.body,
+        ),
         authorName: post.authorName,
         authorHandle: post.authorHandle,
         authorAvatar: post.authorAvatar,
@@ -233,6 +245,13 @@ export class BuddyContextService {
     state?: import('../conversation').ConversationState | null,
   ): boolean {
     if (isAwaitingRecommendationsGate(messages, state)) {
+      if (isPublishConfirmIntent(input) || isDeclineRecommendationsIntent(input)) {
+        return true;
+      }
+      return Boolean(input.trim());
+    }
+
+    if (isAwaitingSelfPostBodyCollection(messages, state)) {
       if (isPublishConfirmIntent(input) || isDeclineRecommendationsIntent(input)) {
         return true;
       }

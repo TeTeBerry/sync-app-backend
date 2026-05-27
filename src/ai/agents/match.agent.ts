@@ -5,6 +5,7 @@ import {
 } from '../match/buddy-match-criteria.util';
 import type { BuddyMatchCriteria } from '../match/buddy-match.types';
 import type { MatchAgentInput, MatchAgentResult } from './agent.types';
+import { BUDDY_RECOMMEND_LIMIT } from '../match/buddy-match.constants';
 
 @Injectable()
 export class MatchAgent {
@@ -24,9 +25,10 @@ export class MatchAgent {
     const result = await this.matchService.search({
       criteria,
       userId: input.userId,
+      authorName: input.authorName,
       profile: input.profile,
       rankingWeights: input.rankingWeights,
-      limit: input.limit ?? 5,
+      limit: input.limit ?? BUDDY_RECOMMEND_LIMIT,
     });
 
     return {

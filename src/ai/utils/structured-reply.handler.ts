@@ -6,7 +6,6 @@ import {
   parseConversationContext,
 } from '../conversation/conversation-context.parser';
 import { buildBuddyClarifyReply } from '../conversation/buddy-clarify.util';
-import { detectBuddyCopyStyleRequest } from '../conversation/buddy-copy.util';
 import { isExactQuickReply } from '../intent/user-intent';
 import {
   isPublishConfirmIntent,
@@ -27,7 +26,6 @@ export function shouldHandleStructuredReply(
   if (!isFindBuddyThread(messages)) return false;
   if (isExactQuickReply(input)) return false;
   if (isPublishConfirmIntent(input)) return false;
-  if (detectBuddyCopyStyleRequest(input)) return false;
   if (isAwaitingPublishConfirmation(messages)) return false;
 
   const ctx = parseConversationContext(messages, input);

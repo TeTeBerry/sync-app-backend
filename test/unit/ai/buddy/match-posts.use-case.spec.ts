@@ -4,7 +4,6 @@ jest.mock('@langchain/core/documents', () => require('../../../mocks/langchain-d
 
 jest.mock('@src/ai/agents', () => ({
   MatchAgent: jest.fn(),
-  NoticeAgent: jest.fn(),
   UserProfileAgent: jest.fn(),
 }));
 
@@ -37,7 +36,6 @@ describe('MatchPostsFromChatUseCase profile dedupe', () => {
     const useCase = new MatchPostsFromChatUseCase(
       { match } as never,
       { syncProfileFromChat } as never,
-      { notifyMatchRecommendation: jest.fn() } as never,
       {
         isMatchExistingPostsIntent: () => true,
         resolveActivity,

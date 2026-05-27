@@ -16,12 +16,6 @@ export interface RecommendedPostCard {
   matchReason?: string;
 }
 
-export interface BuddyCopyVariantPayload {
-  style: 'literary' | 'minimal' | 'direct';
-  label: string;
-  body: string;
-}
-
 export type AiStreamEvent =
   | { type: 'delta'; content: string }
   | {
@@ -38,6 +32,7 @@ export type AiStreamEvent =
       type: 'post_created';
       postId: string;
       activityLegacyId?: number;
+      post?: RecommendedPostCard;
     }
   | {
       type: 'existing_post';
@@ -52,10 +47,6 @@ export type AiStreamEvent =
   | {
       type: 'suggested_replies';
       replies: string[];
-    }
-  | {
-      type: 'buddy_copy_variants';
-      variants: BuddyCopyVariantPayload[];
     }
   | {
       type: 'conversation_patch';

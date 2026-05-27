@@ -1,8 +1,3 @@
-import {
-  buildBuddyCopyVariant,
-  buildBuddyCopyVariants,
-  detectBuddyCopyStyleRequest,
-} from '@src/ai/conversation/buddy-copy.util';
 import { buildBuddyClarifyReply } from '@src/ai/conversation/buddy-clarify.util';
 import {
   getMissingBuddyFields,
@@ -41,31 +36,5 @@ describe('buddy-clarify.util', () => {
     );
     expect(reply).toContain('计划哪天出发');
     expect(reply).toContain('EDC Thailand');
-  });
-});
-
-describe('buddy-copy.util', () => {
-  it('detects style-specific copy requests', () => {
-    expect(detectBuddyCopyStyleRequest('文案-文艺')).toBe('literary');
-    expect(detectBuddyCopyStyleRequest('生成文案')).toBe('all');
-  });
-
-  it('builds three style variants', () => {
-    const ctx = parseConversationContext(
-      [
-        { role: 'user', content: '帮我组队' },
-        { role: 'user', content: '2人' },
-      ],
-      '2人',
-    );
-    const variants = buildBuddyCopyVariants('找 EDC 同行', 'EDC Thailand', ctx);
-    expect(variants).toHaveLength(3);
-    expect(variants.map(item => item.label)).toEqual(['文艺', '简约', '直白']);
-  });
-
-  it('builds a single style variant', () => {
-    const variant = buildBuddyCopyVariant('direct', '找 EDC 同行', 'EDC');
-    expect(variant.label).toBe('直白');
-    expect(variant.body).toContain('EDC');
   });
 });

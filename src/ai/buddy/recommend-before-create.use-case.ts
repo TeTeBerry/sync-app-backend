@@ -7,7 +7,10 @@ import {
   isAwaitingPublishConfirmation,
   isPublishConfirmIntent,
 } from '../publish/publish-confirm.util';
-import { isDeclineRecommendationsIntent } from '../gate/recommend-gate.util';
+import {
+  isAwaitingSelfPostBodyCollection,
+  isDeclineRecommendationsIntent,
+} from '../gate/recommend-gate.util';
 import { buildMatchCriteriaForSearch } from '../match/buddy-match-criteria.util';
 import { PostService } from '../../modules/post/post.service';
 import { BuddyContextService } from './buddy-context.service';
@@ -19,6 +22,7 @@ export interface RecommendBeforeCreateParams {
   input: string;
   activityLegacyId?: number;
   userId?: string;
+  authorName?: string;
   conversationState?: ConversationState | null;
   profileSync?: import('../agents/user-profile.agent').UserProfileSyncResult | null;
 }
@@ -34,13 +38,17 @@ export class RecommendBeforeCreateUseCase {
   async execute(
     params: RecommendBeforeCreateParams,
   ): Promise<PostIntentMatchResult | null> {
-    const { messages, input, activityLegacyId, userId, conversationState, profileSync } =
+    const { messages, input, activityLegacyId, userId, authorName, conversationState, profileSync } =
       params;
     if (activityLegacyId == null) return null;
     if (isPublishConfirmIntent(input.trim())) return null;
     if (isExplicitReplacePostIntent(input)) return null;
     if (isDeclineRecommendationsIntent(input)) return null;
     if (isAwaitingPublishConfirmation(messages, conversationState)) return null;
+    if (conversationState?.flow === 'collect_post_body') return null;
+    if (isAwaitingSelfPostBodyCollection(messages, conversationState)) {
+      return null;
+    }
 
     const ctx = parseConversationContext(messages, input);
     const trimmed = input.trim();
@@ -55,6 +63,7 @@ export class RecommendBeforeCreateUseCase {
       ? await this.postService.findOwnerRecruitingPostRecord(
           resolvedActivity.legacyId,
           userId,
+          authorName,
         )
       : null;
 
@@ -74,6 +83,7 @@ export class RecommendBeforeCreateUseCase {
       input: trimmed,
       activityLegacyId: resolvedActivity.legacyId,
       userId,
+      authorName,
       fromIntentRouter: true,
       profileSync,
       preResolvedActivity: resolvedActivity,

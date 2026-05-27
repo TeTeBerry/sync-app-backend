@@ -1,4 +1,6 @@
 import {
+  buildPublishConfirmReply,
+  extractDraftBodyFromPublishConfirmContent,
   isAwaitingPublishConfirmation,
   isPublishConfirmIntent,
   PUBLISH_CONFIRM_PROMPT_MARKER,
@@ -23,6 +25,16 @@ describe('publish-confirm.util', () => {
     ];
 
     expect(isAwaitingPublishConfirmation(messages)).toBe(true);
+  });
+
+  it('extracts draft paragraph from publish confirm reply', () => {
+    const draft = 'cpdd三个男生';
+    const content = buildPublishConfirmReply({
+      activityLabel: '风暴电音节',
+      draftBody: draft,
+      shortcutTag: '自己发帖',
+    });
+    expect(extractDraftBodyFromPublishConfirmContent(content)).toBe(draft);
   });
 
   it('detects awaiting confirmation from persisted conversation state', () => {

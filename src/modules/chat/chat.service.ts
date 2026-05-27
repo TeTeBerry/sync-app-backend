@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatMessageDto } from '../../ai/presentation/chat-message.dto';
+import type { ChatMessageRichMetadata } from '../../ai/presentation/chat-message-metadata.util';
 import {
   CONVERSATION_STATE_VERSION,
   createIdleState,
@@ -33,9 +34,9 @@ export class ChatService {
   }
 
   private normalizeMessage(
-    message?: { role?: string; content?: string } | null,
+    message?: Partial<ChatMessageDto> | null,
   ): ChatMessageDto | null {
-    if (!message?.content?.trim()) return null;
+    if (!message) return null;
     if (
       message.role !== 'user' &&
       message.role !== 'assistant' &&
@@ -43,14 +44,93 @@ export class ChatService {
     ) {
       return null;
     }
+
+    const content = message.content?.trim() ?? '';
+    const imageContext = this.normalizeImageContext(message.imageContext);
+    const recommendedPosts = this.normalizeRecommendedPosts(
+      message.recommendedPosts,
+    );
+    const createdPost = this.normalizeCreatedPost(message.createdPost);
+    const suggestedReplies = this.normalizeSuggestedReplies(
+      message.suggestedReplies,
+    );
+
+    if (
+      !content &&
+      !imageContext &&
+      !recommendedPosts?.length &&
+      !createdPost &&
+      !suggestedReplies?.length
+    ) {
+      return null;
+    }
+
     return {
       role: message.role,
-      content: message.content.trim(),
+      content,
+      ...(imageContext ? { imageContext } : {}),
+      ...(recommendedPosts?.length ? { recommendedPosts } : {}),
+      ...(createdPost ? { createdPost } : {}),
+      ...(suggestedReplies?.length ? { suggestedReplies } : {}),
     };
   }
 
+  private normalizeImageContext(
+    imageContext?: ChatMessageDto['imageContext'],
+  ): ChatMessageDto['imageContext'] | undefined {
+    if (!imageContext) return undefined;
+    const source = imageContext.source?.trim();
+    const ocrText = imageContext.ocrText?.trim();
+    if (!source && !ocrText) return undefined;
+    return {
+      ...(source ? { source } : {}),
+      ...(ocrText ? { ocrText } : {}),
+    };
+  }
+
+  private normalizeRecommendedPosts(
+    posts?: ChatMessageDto['recommendedPosts'],
+  ): ChatMessageDto['recommendedPosts'] | undefined {
+    if (!posts?.length) return undefined;
+    const normalized = posts.filter(
+      post =>
+        typeof post?.postId === 'string' &&
+        post.postId.trim() &&
+        typeof post?.snippet === 'string' &&
+        typeof post?.authorName === 'string' &&
+        typeof post?.eventTitle === 'string',
+    );
+    return normalized.length ? normalized : undefined;
+  }
+
+  private normalizeCreatedPost(
+    post?: ChatMessageDto['createdPost'],
+  ): ChatMessageDto['createdPost'] | undefined {
+    if (
+      !post ||
+      typeof post.postId !== 'string' ||
+      !post.postId.trim() ||
+      typeof post.snippet !== 'string' ||
+      typeof post.authorName !== 'string' ||
+      typeof post.eventTitle !== 'string'
+    ) {
+      return undefined;
+    }
+    return post;
+  }
+
+  private normalizeSuggestedReplies(
+    replies?: ChatMessageDto['suggestedReplies'],
+  ): ChatMessageDto['suggestedReplies'] | undefined {
+    if (!replies?.length) return undefined;
+    const normalized = replies
+      .map(reply => reply?.trim())
+      .filter((reply): reply is string => Boolean(reply));
+    return normalized.length ? normalized : undefined;
+  }
+
   private normalizeHistory(
-    history?: Array<{ role?: string; content?: string }>,
+    history?: Array<Partial<ChatMessageDto>>,
   ): ChatMessageDto[] {
     if (!history?.length) return [];
     return history
@@ -154,7 +234,9 @@ export class ChatService {
     return {
       sessionId,
       userId: doc?.userId,
-      history: this.normalizeHistory(doc?.history),
+      history: this.normalizeHistory(
+        doc?.history as Array<Partial<ChatMessageDto>> | undefined,
+      ),
       conversationState: this.normalizeConversationState(doc?.conversationState),
     };
   }
@@ -185,20 +267,27 @@ export class ChatService {
     messages: ChatMessageDto[];
     assistantReply: string;
     conversationState?: ConversationState;
+    assistantMetadata?: Omit<ChatMessageRichMetadata, 'imageContext'>;
   }): Promise<string> {
     const messageId = uuidv4();
     const stored = await this.getSession(params.sessionId);
     const merged = this.mergeChatHistory(stored.history, params.messages);
     const reply = params.assistantReply.trim();
-    const history = reply
-      ? [
-          ...merged,
-          {
-            role: 'assistant' as const,
-            content: reply,
-          },
-        ]
-      : merged;
+    const assistantMetadata = params.assistantMetadata ?? {};
+    const history =
+      reply ||
+      assistantMetadata.recommendedPosts?.length ||
+      assistantMetadata.createdPost ||
+      assistantMetadata.suggestedReplies?.length
+        ? [
+            ...merged,
+            {
+              role: 'assistant' as const,
+              content: reply,
+              ...assistantMetadata,
+            },
+          ]
+        : merged;
 
     await this.chatModel.findOneAndUpdate(
       { sessionId: params.sessionId },

@@ -51,18 +51,19 @@ describe('intent-router.rules', () => {
   });
 
   it('returns null for zone buddy text (LLM path)', () => {
-    const hit = resolveChatIntentFastPath(
-      '13号 A区 有人吗',
-      { messages: [], input: '13号 A区 有人吗', activityLegacyId: 4 },
-    );
+    const hit = resolveChatIntentFastPath('13号 A区 有人吗', {
+      messages: [],
+      input: '13号 A区 有人吗',
+      activityLegacyId: 4,
+    });
     expect(hit).toBeNull();
   });
 
   it('returns null for ambiguous long text (LLM path)', () => {
-    const hit = resolveChatIntentFastPath(
-      '我想交个朋友聊聊天',
-      { messages: [], input: '我想交个朋友聊聊天' },
-    );
+    const hit = resolveChatIntentFastPath('我想交个朋友聊聊天', {
+      messages: [],
+      input: '我想交个朋友聊聊天',
+    });
     expect(hit).toBeNull();
   });
 });

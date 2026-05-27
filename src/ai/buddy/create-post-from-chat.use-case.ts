@@ -12,7 +12,7 @@ import {
   TextParseAgent,
 } from '../agents';
 import type { ConversationState } from '../conversation';
-import { enterClarifyBuddyState, enterPublishConfirmState } from '../conversation';
+import { enterClarifyBuddyState, enterCollectPostBodyState, enterPublishConfirmState } from '../conversation';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
 import {
   getMissingBuddyFields,
@@ -30,12 +30,11 @@ import {
   isAwaitingPublishConfirmation,
   isPublishConfirmIntent,
 } from '../publish/publish-confirm.util';
-import {
-  buildBuddyCopyVariants,
-} from '../conversation/buddy-copy.util';
 import { buildBuddyClarifyReply } from '../conversation/buddy-clarify.util';
 import {
+  buildDeclineRecommendCollectBodyReply,
   isAwaitingRecommendationsGate,
+  isAwaitingSelfPostBodyCollection,
   isDeclineRecommendationsIntent,
 } from '../gate/recommend-gate.util';
 import { isExactQuickReply } from '../intent/user-intent';
@@ -127,8 +126,19 @@ export class CreatePostFromChatUseCase {
     const publishConfirmReady =
       isAwaitingPublishConfirmation(messages, conversationState) &&
       isPublishConfirmIntent(trimmedInput);
+    const awaitingSelfPostBody = isAwaitingSelfPostBodyCollection(
+      messages,
+      conversationState,
+    );
+    const inSelfPostCollectFlow =
+      awaitingSelfPostBody || conversationState?.flow === 'collect_post_body';
+    const skipExistingPostGuidance =
+      isDeclineRecommendationsIntent(trimmedInput) ||
+      isExplicitReplacePostIntent(trimmedInput) ||
+      inSelfPostCollectFlow ||
+      conversationState?.publishDraft?.fromSelfPost === true;
 
-    if (resolvedActivity?.legacyId && !isExplicitReplacePostIntent(trimmedInput)) {
+    if (resolvedActivity?.legacyId && !skipExistingPostGuidance) {
       const existingPost =
         await this.postService.findOwnerRecruitingPostForActivity(
           resolvedActivity.legacyId,
@@ -173,7 +183,9 @@ export class CreatePostFromChatUseCase {
       isFindBuddyThread(messages) &&
       !publishConfirmReady &&
       !isShortcutWithActivity &&
-      !isAiShortcutTag(trimmedInput)
+      !isAiShortcutTag(trimmedInput) &&
+      !isDeclineRecommendationsIntent(trimmedInput) &&
+      !inSelfPostCollectFlow
     ) {
       onStateChange?.(enterClarifyBuddyState());
       return {
@@ -185,6 +197,29 @@ export class CreatePostFromChatUseCase {
         ),
       };
     }
+
+    if (isDeclineRecommendationsIntent(trimmedInput) && hasActivity && !publishConfirmReady) {
+      onStateChange?.(
+        enterCollectPostBodyState({
+          activityLegacyId: resolvedActivity?.legacyId,
+          fromSelfPost: true,
+        }),
+      );
+      return {
+        kind: 'rejected',
+        replyText: buildDeclineRecommendCollectBodyReply(
+          resolvedActivity?.name ?? '活动',
+        ),
+      };
+    }
+
+    const readyForDirectSelfPost =
+      inSelfPostCollectFlow &&
+      hasActivity &&
+      Boolean(trimmedInput) &&
+      !isDeclineRecommendationsIntent(trimmedInput) &&
+      !isExactQuickReply(trimmedInput) &&
+      !publishConfirmReady;
 
     if (isShortcutWithActivity && hasActivity && !publishConfirmReady) {
       const draftBody = await this.buddyContext.buildPostBody({
@@ -212,23 +247,21 @@ export class CreatePostFromChatUseCase {
           shortcutTag: normalizeAiShortcutInput(trimmedInput),
         }),
         draftBody,
-        copyVariants: buildBuddyCopyVariants(
-          draftBody,
-          resolvedActivity?.name,
-          ctx,
-        ),
       };
     }
 
     const canCreate =
       publishConfirmReady ||
-      llmReady ||
-      (isFindBuddyThread(messages) &&
-        hasActivity &&
-        (allBuddyFieldsPresent ||
-          (trimmedInput.length > 12 &&
-            !isShortContextReply(trimmedInput) &&
-            !isExactQuickReply(trimmedInput))));
+      readyForDirectSelfPost ||
+      (!isDeclineRecommendationsIntent(trimmedInput) &&
+        !inSelfPostCollectFlow &&
+        (llmReady ||
+          (isFindBuddyThread(messages) &&
+            hasActivity &&
+            (allBuddyFieldsPresent ||
+              (trimmedInput.length > 12 &&
+                !isShortContextReply(trimmedInput) &&
+                !isExactQuickReply(trimmedInput))))));
 
     if (!canCreate || !hasActivity) {
       return null;
@@ -238,13 +271,17 @@ export class CreatePostFromChatUseCase {
       ctx,
       input: trimmedInput,
       activityName: resolvedActivity?.name,
-      parsedBody: parsed?.body,
+      parsedBody: readyForDirectSelfPost ? trimmedInput : parsed?.body,
       messages,
       activityLegacyId: resolvedActivity?.legacyId,
     });
 
     const riskStart = Date.now();
-    const useRulesOnlyRisk = publishConfirmReady && !image?.trim();
+    const useRulesOnlyRisk =
+      !image?.trim() &&
+      (publishConfirmReady ||
+        readyForDirectSelfPost ||
+        conversationState?.publishDraft?.fromSelfPost === true);
     const risk = image?.trim()
       ? await this.riskAgent.assessImage({
           body,
@@ -280,14 +317,15 @@ export class CreatePostFromChatUseCase {
 
     const finalBody = risk.sanitizedBody ?? body;
     const tags = this.buddyContext.resolveTags(trimmedInput, parsed?.tags);
-    const location =
-      parsed?.location?.trim() || ctx.city || resolvedActivity?.name;
+    // Post location metadata = user's departure city / profile location.
+    // Zone/area parsed from body (e.g. "A区") stays in body only.
+    const departureCity = ctx.city?.trim();
 
     const dto: CreatePostDto = {
       body: finalBody,
       activityLegacyId: resolvedActivity?.legacyId,
       eventTitle: resolvedActivity?.name ?? parsed?.eventName,
-      location,
+      ...(departureCity ? { location: departureCity, departureCity } : {}),
       tags,
     };
 
@@ -295,17 +333,21 @@ export class CreatePostFromChatUseCase {
       skipRiskCheck: true,
     });
     const activityLabel = resolvedActivity?.name ?? '活动';
+    const createdCards = await this.buddyContext.buildRecommendedPostCards(
+      [{ postId: post.id, snippet: finalBody }],
+      resolvedActivity?.legacyId,
+    );
+    const createdPost = createdCards[0];
 
     return {
       kind: 'created',
       postId: post.id,
       activityLegacyId: resolvedActivity?.legacyId,
+      createdPost,
       replyText: [
         `已为你发布「${activityLabel}」组队帖 ✅`,
         '',
-        finalBody,
-        '',
-        '可在活动详情页查看帖子，等待伙伴申请加入。',
+        '点击下方卡片可在活动详情页查看，等待伙伴申请加入。',
       ].join('\n'),
     };
   }

@@ -22,6 +22,15 @@ const ORDER_NO_PATTERN =
 const TRAVEL_SAFETY_KEYWORDS =
   /拼车|拼住宿|同住|拼房|合住|一起住|拼车去|拼酒店|拼民宿/;
 
+/** Remove internal desensitization placeholders from publishable text. */
+export function stripDesensitizationMarkers(text: string): string {
+  return text
+    .replace(/【已脱敏】/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 /** 规则层隐私脱敏（LLM 不可用或未返回 content 时的兜底） */
 export function desensitizePrivacy(text: string): string {
   let result = text;
@@ -35,9 +44,9 @@ export function desensitizePrivacy(text: string): string {
     ORDER_NO_PATTERN,
   ];
   for (const pattern of patterns) {
-    result = result.replace(pattern, '【已脱敏】');
+    result = result.replace(pattern, ' ');
   }
-  return result.replace(/【已脱敏】(\s*【已脱敏】)+/g, '【已脱敏】').trim();
+  return stripDesensitizationMarkers(result);
 }
 
 export function needsTravelSafetyTip(text: string): boolean {
@@ -53,6 +62,8 @@ export function appendTravelSafetyTip(content: string, sourceHint: string): stri
 
 /** 组装可发布的脱敏正文（含条件安全提示） */
 export function buildPublishableBody(raw: string, llmContent?: string): string {
-  const base = (llmContent?.trim() || desensitizePrivacy(raw.trim())).trim();
+  const base = stripDesensitizationMarkers(
+    (llmContent?.trim() || desensitizePrivacy(raw.trim())).trim(),
+  );
   return appendTravelSafetyTip(base, raw);
 }

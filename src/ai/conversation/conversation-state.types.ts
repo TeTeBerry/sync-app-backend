@@ -4,7 +4,8 @@ export type ConversationFlow =
   | 'idle'
   | 'recommend_gate'
   | 'publish_confirm'
-  | 'clarify_buddy';
+  | 'clarify_buddy'
+  | 'collect_post_body';
 
 export interface RecommendGateState {
   activityLegacyId?: number;
@@ -15,6 +16,8 @@ export interface RecommendGateState {
 export interface PublishDraftState {
   activityLegacyId?: number;
   draftBody?: string;
+  /** User explicitly chose self-post / custom body — skip existing-post gate on confirm */
+  fromSelfPost?: boolean;
 }
 
 /** 会话级结构化状态（持久化到 MongoDB） */
@@ -51,6 +54,7 @@ export function enterRecommendGateState(params: {
 export function enterPublishConfirmState(params: {
   activityLegacyId?: number;
   draftBody?: string;
+  fromSelfPost?: boolean;
 }): ConversationState {
   return {
     version: CONVERSATION_STATE_VERSION,
@@ -58,6 +62,7 @@ export function enterPublishConfirmState(params: {
     publishDraft: {
       activityLegacyId: params.activityLegacyId,
       draftBody: params.draftBody,
+      fromSelfPost: params.fromSelfPost,
     },
   };
 }
@@ -66,5 +71,19 @@ export function enterClarifyBuddyState(): ConversationState {
   return {
     version: CONVERSATION_STATE_VERSION,
     flow: 'clarify_buddy',
+  };
+}
+
+export function enterCollectPostBodyState(params: {
+  activityLegacyId?: number;
+  fromSelfPost?: boolean;
+}): ConversationState {
+  return {
+    version: CONVERSATION_STATE_VERSION,
+    flow: 'collect_post_body',
+    publishDraft: {
+      activityLegacyId: params.activityLegacyId,
+      fromSelfPost: params.fromSelfPost,
+    },
   };
 }

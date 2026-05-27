@@ -9,6 +9,7 @@ jest.mock('@src/ai/llm/llm.service', () => ({
 }));
 
 import { MatchService } from '@src/ai/services/match.service';
+import { BUDDY_RECOMMEND_LIMIT } from '@src/ai/match/buddy-match.constants';
 
 describe('MatchService', () => {
   function buildService(deps: {
@@ -80,7 +81,7 @@ describe('MatchService', () => {
         requesterBody: '上海出发求拼车',
       },
       userId: 'user-1',
-      limit: 5,
+      limit: BUDDY_RECOMMEND_LIMIT,
     });
 
     expect(result.items.length).toBeGreaterThan(0);
@@ -230,5 +231,213 @@ describe('MatchService', () => {
 
     expect(result.items[0]?.postId).toBe('vector-first');
     expect(result.degraded).toBe(true);
+  });
+
+  it('excludes the requester own recruiting post from recommendations', async () => {
+    const postRepository = {
+      findByActivityLegacyId: jest.fn().mockResolvedValue([
+        {
+          _id: 'own-post',
+          userId: 'user-1',
+          status: 'recruiting',
+          activityLegacyId: 4,
+          body: '我自己的组队帖',
+          departureCity: '上海',
+          eventTitle: '风暴电音节',
+        },
+        {
+          _id: 'other-post',
+          userId: 'user-2',
+          status: 'recruiting',
+          activityLegacyId: 4,
+          body: '他人组队帖',
+          departureCity: '上海',
+          eventTitle: '风暴电音节',
+        },
+      ]),
+    };
+
+    const chromaService = {
+      queryPostsForMatch: jest.fn().mockResolvedValue({
+        matches: [
+          { postId: 'own-post', document: '我自己的组队帖', distance: 0.05 },
+          { postId: 'other-post', document: '他人组队帖', distance: 0.2 },
+        ],
+        degraded: false,
+      }),
+    };
+
+    const matchContextService = {
+      buildFilterContext: jest.fn(),
+      buildExcludeUserIds: jest.fn(),
+      enrichCandidates: jest.fn(),
+    };
+
+    const postMatchRerankService = {
+      rerank: jest.fn().mockResolvedValue(['other-post', 'own-post']),
+    };
+
+    const service = buildService({
+      postRepository,
+      chromaService,
+      matchContextService,
+      postMatchRerankService,
+    });
+
+    const result = await service.search({
+      criteria: { activityLegacyId: 4, departureCity: '上海' },
+      userId: 'user-1',
+      authorName: 'Alice Wang',
+      limit: BUDDY_RECOMMEND_LIMIT,
+    });
+
+    expect(result.items.map(item => item.postId)).not.toContain('own-post');
+    expect(result.items[0]?.postId).toBe('other-post');
+    expect(chromaService.queryPostsForMatch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        excludeUserIds: ['user-1'],
+        profileUserId: 'user-1',
+      }),
+    );
+  });
+
+  it('excludes demo owner post when client userId differs from stored author id', async () => {
+    const postRepository = {
+      findByActivityLegacyId: jest.fn().mockResolvedValue([
+        {
+          _id: 'demo-post',
+          userId: 'demo-zara',
+          authorName: 'Zara Chen',
+          status: 'recruiting',
+          activityLegacyId: 4,
+          body: 'Zara 自己的组队帖',
+          departureCity: '上海',
+          eventTitle: '风暴电音节',
+        },
+        {
+          _id: 'other-post',
+          userId: 'user-2',
+          status: 'recruiting',
+          activityLegacyId: 4,
+          body: '他人组队帖',
+          departureCity: '上海',
+          eventTitle: '风暴电音节',
+        },
+      ]),
+    };
+
+    const chromaService = {
+      queryPostsForMatch: jest.fn().mockResolvedValue({
+        matches: [
+          { postId: 'demo-post', document: 'Zara 自己的组队帖', distance: 0.05 },
+          { postId: 'other-post', document: '他人组队帖', distance: 0.2 },
+        ],
+        degraded: false,
+      }),
+    };
+
+    const matchContextService = {
+      buildFilterContext: jest.fn().mockResolvedValue({
+        requesterUserId: 'demo-zara',
+        blockedUserIds: new Set<string>(),
+        buddyUserIds: new Set<string>(),
+      }),
+      buildExcludeUserIds: jest.fn().mockReturnValue(['demo-zara']),
+      enrichCandidates: jest.fn(),
+    };
+
+    const postMatchRerankService = {
+      rerank: jest.fn().mockResolvedValue(['other-post', 'demo-post']),
+    };
+
+    const service = buildService({
+      postRepository,
+      chromaService,
+      matchContextService,
+      postMatchRerankService,
+    });
+
+    const result = await service.search({
+      criteria: { activityLegacyId: 4, departureCity: '上海' },
+      userId: 'client-session-xyz',
+      authorName: 'Zara Chen',
+      limit: BUDDY_RECOMMEND_LIMIT,
+    });
+
+    expect(result.items.map(item => item.postId)).not.toContain('demo-post');
+    expect(result.items[0]?.postId).toBe('other-post');
+    expect(chromaService.queryPostsForMatch).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        excludeUserIds: ['demo-zara'],
+        profileUserId: 'demo-zara',
+      }),
+    );
+  });
+
+  it('excludes criteria seed owner post id even when rerank prefers it', async () => {
+    const postRepository = {
+      findByActivityLegacyId: jest.fn().mockResolvedValue([
+        {
+          _id: 'seed-post',
+          userId: 'user-2',
+          status: 'recruiting',
+          activityLegacyId: 4,
+          body: '他人但用作 seed 的帖',
+          departureCity: '上海',
+          eventTitle: '风暴电音节',
+        },
+        {
+          _id: 'other-post',
+          userId: 'user-3',
+          status: 'recruiting',
+          activityLegacyId: 4,
+          body: '另一条组队帖',
+          departureCity: '上海',
+          eventTitle: '风暴电音节',
+        },
+      ]),
+    };
+
+    const chromaService = {
+      queryPostsForMatch: jest.fn().mockResolvedValue({
+        matches: [
+          { postId: 'seed-post', document: '他人但用作 seed 的帖', distance: 0.05 },
+          { postId: 'other-post', document: '另一条组队帖', distance: 0.2 },
+        ],
+        degraded: false,
+      }),
+    };
+
+    const matchContextService = {
+      buildFilterContext: jest.fn(),
+      buildExcludeUserIds: jest.fn(),
+      enrichCandidates: jest.fn(),
+    };
+
+    const postMatchRerankService = {
+      rerank: jest.fn().mockResolvedValue(['seed-post', 'other-post']),
+    };
+
+    const service = buildService({
+      postRepository,
+      chromaService,
+      matchContextService,
+      postMatchRerankService,
+    });
+
+    const result = await service.search({
+      criteria: {
+        activityLegacyId: 4,
+        departureCity: '上海',
+        excludePostIds: ['seed-post'],
+      },
+      userId: 'user-1',
+      limit: BUDDY_RECOMMEND_LIMIT,
+    });
+
+    expect(result.items.map(item => item.postId)).not.toContain('seed-post');
+    expect(result.items[0]?.postId).toBe('other-post');
   });
 });

@@ -8,9 +8,10 @@ export const AI_SHORTCUT_TAGS = [
   '组队队友',
   '住宿同行',
   '拼车同行',
-  '拼套票',
-  '拼房同行',
 ] as const;
+
+/** 历史标签，仍视为快捷标签以兼容旧会话 */
+const LEGACY_AI_SHORTCUT_TAGS = ['拼套票', '拼房同行'] as const;
 
 /** 展示文案别名 → 标准快捷标签（与前端 aiShortcutTags 对齐） */
 export const AI_SHORTCUT_TAG_ALIASES: Record<string, (typeof AI_SHORTCUT_TAGS)[number]> = {
@@ -109,5 +110,6 @@ export function isResourceOwnedByClient(
 
 export function isAiShortcutTag(input: string): boolean {
   const text = normalizeAiShortcutInput(input);
-  return (AI_SHORTCUT_TAGS as readonly string[]).includes(text);
+  if ((AI_SHORTCUT_TAGS as readonly string[]).includes(text)) return true;
+  return (LEGACY_AI_SHORTCUT_TAGS as readonly string[]).includes(text);
 }

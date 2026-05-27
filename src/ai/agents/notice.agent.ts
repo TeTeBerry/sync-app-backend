@@ -31,8 +31,6 @@ export interface NoticeDispatchInput {
   };
 }
 
-const MATCH_RECOMMENDATION_DEDUPE_MS = 6 * 60 * 60 * 1000;
-
 @Injectable()
 export class NoticeAgent {
   readonly id = 'notice';
@@ -171,38 +169,6 @@ export class NoticeAgent {
         postId,
         type: 'post_hidden',
         rejectionReason: reasonText,
-      },
-    });
-  }
-
-  async notifyMatchRecommendation(
-    userId: string | undefined,
-    activityLegacyId: number,
-    activityName: string,
-    matchPostIds: string[],
-    count: number,
-  ): Promise<void> {
-    const uid = userId?.trim();
-    if (!uid || count === 0) return;
-
-    await this.dispatch({
-      userId: uid,
-      category: 'buddy_recommend',
-      templateKey: 'matchRecommendation',
-      templateParams: {
-        activityName,
-        count: String(count),
-      },
-      meta: {
-        activityLegacyId,
-        type: 'match_recommendation',
-        matchPostIds,
-        postId: matchPostIds[0],
-      },
-      dedupe: {
-        metaType: 'match_recommendation',
-        activityLegacyId,
-        sinceMs: MATCH_RECOMMENDATION_DEDUPE_MS,
       },
     });
   }

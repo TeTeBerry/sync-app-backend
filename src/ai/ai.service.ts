@@ -10,6 +10,7 @@ import {
 import { AiRateLimitService } from './ai-rate-limit.service';
 import { logAiTurn } from './utils/log-ai-turn.util';
 import { AiTurnPipeline } from './orchestration/ai-turn.pipeline';
+import { extractAssistantMessageMetadata } from './presentation/chat-message-metadata.util';
 
 export const LLM_CONTEXT_TURNS = 6;
 
@@ -141,6 +142,7 @@ export class AiService {
         messages: fullMessages,
         assistantReply,
         conversationState,
+        assistantMetadata: extractAssistantMessageMetadata(turnResult.events),
       });
 
       yield {

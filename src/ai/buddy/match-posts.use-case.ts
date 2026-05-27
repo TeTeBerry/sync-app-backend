@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
-import { MatchAgent, NoticeAgent, UserProfileAgent } from '../agents';
+import { MatchAgent, UserProfileAgent } from '../agents';
 import type { UserProfileSyncResult } from '../agents/user-profile.agent';
 import type { ConversationState } from '../conversation';
 import type { BuddySearchHintPayload } from '../intent/chat-intent.types';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
 import { parseConversationContext } from '../conversation/conversation-context.parser';
+import { buildMatchRecommendCardsIntro } from '../gate/recommend-gate.util';
 import {
   buildZoneMatchEmptyReply,
   buildZoneMatchFoundReply,
@@ -13,6 +14,7 @@ import {
 } from '../match/zone-buddy-search.util';
 import { buildMatchCriteriaForSearch } from '../match/buddy-match-criteria.util';
 import type { BuddyMatchCriteria } from '../match/buddy-match.types';
+import { BUDDY_RECOMMEND_LIMIT } from '../match/buddy-match.constants';
 import { BuddyContextService } from './buddy-context.service';
 import type { PostIntentMatchResult } from './buddy.types';
 
@@ -28,6 +30,7 @@ export interface MatchPostsFromChatParams {
   input: string;
   activityLegacyId?: number;
   userId?: string;
+  authorName?: string;
   buddySearchHint?: BuddySearchHintPayload;
   fromIntentRouter?: boolean;
   profileSync?: UserProfileSyncResult | null;
@@ -41,7 +44,6 @@ export class MatchPostsFromChatUseCase {
   constructor(
     private readonly matchAgent: MatchAgent,
     private readonly userProfileAgent: UserProfileAgent,
-    private readonly noticeAgent: NoticeAgent,
     private readonly buddyContext: BuddyContextService,
   ) {}
 
@@ -51,6 +53,7 @@ export class MatchPostsFromChatUseCase {
       input,
       activityLegacyId,
       userId,
+      authorName,
       buddySearchHint,
       fromIntentRouter,
       profileSync,
@@ -110,8 +113,9 @@ export class MatchPostsFromChatUseCase {
       criteria,
       activityCode: resolvedActivity.code ?? '',
       activityLegacyId: resolvedActivity.legacyId,
-      limit: 5,
+      limit: BUDDY_RECOMMEND_LIMIT,
       userId,
+      authorName,
       profile: resolvedProfileSync?.profile,
       rankingWeights: resolvedProfileSync?.weights,
     });
@@ -143,14 +147,25 @@ export class MatchPostsFromChatUseCase {
     const lines = matches.map(
       (match, index) => `${index + 1}. ${match.snippet}`,
     );
+    const cardsOnly = postCards.length > 0;
 
-    void this.noticeAgent.notifyMatchRecommendation(
-      params.userId,
-      resolvedActivity.legacyId,
-      activityLabel,
-      matches.map(match => match.postId),
-      matches.length,
-    );
+    const replyText = isStructuredSearch
+      ? buildZoneMatchFoundReply(
+          activityLabel,
+          hintDisplay,
+          lines,
+          hintKind,
+          { cardsOnly },
+        )
+      : cardsOnly
+        ? buildMatchRecommendCardsIntro(activityLabel, matches.length)
+        : [
+            `在「${activityLabel}」下找到 ${matches.length} 条相近组队帖：`,
+            '',
+            ...lines,
+            '',
+            '可在活动详情页查看帖子并申请加入。',
+          ].join('\n');
 
     return {
       matches: matches.map(match => ({
@@ -161,20 +176,7 @@ export class MatchPostsFromChatUseCase {
       postCards,
       activityLabel,
       degraded: matchResult.degraded,
-      replyText: isStructuredSearch
-        ? buildZoneMatchFoundReply(
-            activityLabel,
-            hintDisplay,
-            lines,
-            hintKind,
-          )
-        : [
-            `在「${activityLabel}」下找到 ${matches.length} 条相近组队帖：`,
-            '',
-            ...lines,
-            '',
-            '可在活动详情页查看帖子并申请加入。',
-          ].join('\n'),
+      replyText,
     };
   }
 }

@@ -73,6 +73,7 @@ export interface MatchAgentInput {
   activityLegacyId?: number;
   limit?: number;
   userId?: string;
+  authorName?: string;
   profile?: UserMatchProfile;
   rankingWeights?: MatchRankingWeights;
 }

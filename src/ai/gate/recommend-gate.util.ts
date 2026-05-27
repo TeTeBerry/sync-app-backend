@@ -6,6 +6,9 @@ export const RECOMMEND_GATE_MARKER = '【先推荐搭子】';
 
 export const RECOMMEND_GATE_SUGGESTED_REPLIES = ['自己发帖'] as const;
 
+/** 助手已请用户填写组队帖正文，等待下一条用户消息 */
+export const SELF_POST_COLLECT_BODY_MARKER = '【填写组队帖】';
+
 const DECLINE_RECOMMEND_RE =
   /^(自己发帖|发一条|发组队帖|没有合适的|没有合适|都不合适|不合适|不想用推荐|不想匹配|继续发帖|自己发|我来发帖)/;
 
@@ -37,6 +40,18 @@ export function isAwaitingRecommendationsGate(
   return false;
 }
 
+/** Short assistant text when post cards carry the details (no numbered list in bubble). */
+export function buildMatchRecommendCardsIntro(
+  activityLabel: string,
+  matchCount: number,
+  scopeLabel?: string,
+): string {
+  const scope = scopeLabel?.trim();
+  return scope
+    ? `在「${activityLabel}」找到 ${matchCount} 条与${scope}相关的组队帖，点下方卡片查看：`
+    : `在「${activityLabel}」找到 ${matchCount} 条相近组队帖，点下方卡片查看：`;
+}
+
 export function buildRecommendGateFoundReply(
   activityLabel: string,
   matchCount: number,
@@ -46,6 +61,39 @@ export function buildRecommendGateFoundReply(
     `在「${activityLabel}」找到 ${matchCount} 条可能合适的组队帖，先看看是否想加入：`,
     '',
     '若都不合适，回复「自己发帖」，我再帮你发一条招募帖。',
+  ].join('\n');
+}
+
+export function isAwaitingSelfPostBodyCollection(
+  messages: ChatMessageDto[],
+  state?: ConversationState | null,
+): boolean {
+  if (state?.flow === 'collect_post_body') {
+    return true;
+  }
+
+  const lastIndex = messages.length - 1;
+  if (lastIndex < 1) return false;
+
+  for (let index = lastIndex - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.role === 'assistant') {
+      return message.content.includes(SELF_POST_COLLECT_BODY_MARKER);
+    }
+    if (message.role === 'user') {
+      return false;
+    }
+  }
+
+  return false;
+}
+
+export function buildDeclineRecommendCollectBodyReply(activityLabel: string): string {
+  return [
+    SELF_POST_COLLECT_BODY_MARKER,
+    `好的，请直接描述你在「${activityLabel}」的组队需求（出发地、人数、日期等），我会帮你整理成帖。`,
+    '',
+    '写好需求后直接回复我即可，我会帮你发布组队帖。',
   ].join('\n');
 }
 

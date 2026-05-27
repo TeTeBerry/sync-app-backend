@@ -11,8 +11,7 @@ export type NotificationTemplateKey =
   | 'application'
   | 'postRejected'
   | 'postHidden'
-  | 'activityUpdate'
-  | 'matchRecommendation';
+  | 'activityUpdate';
 
 export const NOTIFICATION_CATEGORY_BY_TEMPLATE: Record<
   NotificationTemplateKey,
@@ -25,7 +24,6 @@ export const NOTIFICATION_CATEGORY_BY_TEMPLATE: Record<
   postRejected: 'system',
   postHidden: 'system',
   activityUpdate: 'system',
-  matchRecommendation: 'buddy_recommend',
 };
 
 const TEMPLATE_DEFAULTS: Record<
@@ -66,11 +64,6 @@ const TEMPLATE_DEFAULTS: Record<
     type: 'system',
     title: '活动信息变更',
     body: '「{{activityName}}」{{changeSummary}}',
-  },
-  matchRecommendation: {
-    type: 'match',
-    title: '为你找到新搭子',
-    body: '在「{{activityName}}」下找到 {{count}} 条匹配的组队帖',
   },
 };
 

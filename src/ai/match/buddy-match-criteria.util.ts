@@ -185,6 +185,9 @@ export function buildMatchCriteriaForSearch(params: {
       params.ownerPost?.body?.trim() ??
       fromOwner?.requesterBody ??
       undefined,
+    excludePostIds: params.ownerPost?._id
+      ? [String(params.ownerPost._id)]
+      : undefined,
   };
 }
 

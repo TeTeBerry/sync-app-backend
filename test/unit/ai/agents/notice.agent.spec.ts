@@ -80,35 +80,6 @@ describe('NoticeAgent', () => {
     );
   });
 
-  it('creates buddy recommendation with dedupe key', async () => {
-    await agent.notifyMatchRecommendation('user-1', 10, 'EDC', ['p1', 'p2'], 2);
-
-    expect(notificationService.createFromTemplate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: 'user-1',
-        templateKey: 'matchRecommendation',
-        meta: expect.objectContaining({
-          category: 'buddy_recommend',
-          type: 'match_recommendation',
-          matchPostIds: ['p1', 'p2'],
-        }),
-      }),
-    );
-    expect(notificationService.hasRecentByMeta).toHaveBeenCalledWith(
-      'user-1',
-      'match_recommendation',
-      expect.objectContaining({ activityLegacyId: 10 }),
-    );
-  });
-
-  it('skips match recommendation when deduped for same activity', async () => {
-    notificationService.hasRecentByMeta.mockResolvedValue(true);
-
-    await agent.notifyMatchRecommendation('user-1', 10, 'EDC', ['p1'], 1);
-
-    expect(notificationService.createFromTemplate).not.toHaveBeenCalled();
-  });
-
   it('notifies activity update recipients who opted in', async () => {
     await agent.notifyActivityUpdate(
       ['user-a', 'user-b'],

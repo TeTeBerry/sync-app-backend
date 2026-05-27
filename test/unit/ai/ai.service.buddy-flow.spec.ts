@@ -43,7 +43,11 @@ import { AiTurnPipeline } from '@src/ai/orchestration/ai-turn.pipeline';
 import { AiSseBuilder } from '@src/ai/presentation/ai-sse.builder';
 import type { PostIntentCreateAttempt } from '@src/ai/post-intent.service';
 import type { PostIntentMatchResult } from '@src/ai/buddy/buddy.types';
-import { RECOMMEND_GATE_MARKER } from '@src/ai/gate/recommend-gate.util';
+import {
+  RECOMMEND_GATE_MARKER,
+  SELF_POST_COLLECT_BODY_MARKER,
+} from '@src/ai/gate/recommend-gate.util';
+import { PUBLISH_CONFIRM_SUGGESTED_REPLIES } from '@src/ai/publish/publish-confirm.util';
 import { PUBLISH_CONFIRM_PROMPT_MARKER } from '@src/ai/publish/publish-confirm.util';
 
 async function collectEvents(
@@ -71,7 +75,6 @@ describe('AiService buddy flow', () => {
     tryProactiveRecommendBeforeCreate: jest.fn(),
     tryCreatePostFromChat: jest.fn(),
     tryMatchPostsFromChat: jest.fn(),
-    tryGenerateBuddyCopy: jest.fn(),
   };
   const userProfileAgent = {
     syncProfileFromChat: jest.fn().mockResolvedValue(null),
@@ -161,15 +164,13 @@ describe('AiService buddy flow', () => {
       },
     },
     {
-      name: 'decline recommend → create post',
+      name: 'decline recommend → ask for custom body',
       input: '自己发帖',
       intentKind: 'create_post' as const,
       matchResult: null,
       createResult: {
-        kind: 'created',
-        postId: 'new-post',
-        activityLegacyId: 9,
-        replyText: '已发布',
+        kind: 'rejected',
+        replyText: '请描述你的组队需求',
       } satisfies PostIntentCreateAttempt,
       expectCreate: true,
       gateState: {
@@ -178,7 +179,108 @@ describe('AiService buddy flow', () => {
         gate: { activityLegacyId: 9, shownPostIds: ['p1'], empty: false },
       },
       assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
+        expect(events.some(e => e.type === 'post_created')).toBe(false);
+        const complete = events.find(e => e.type === 'message_complete');
+        expect(
+          complete &&
+            'content' in complete &&
+            complete.content.includes('组队需求'),
+        ).toBe(true);
+      },
+    },
+    {
+      name: 'collect_post_body → zone-like input forces draft not search',
+      input: '13号 A区 dd',
+      intentKind: 'search_posts' as const,
+      matchResult: {
+        postCards: [{ postId: 'p1', snippet: '长帖文'.repeat(20), authorName: 'A', eventTitle: '风暴' }],
+        activityLabel: '风暴电音节',
+        replyText: '不应使用',
+        matches: [],
+        degraded: false,
+      } satisfies PostIntentMatchResult,
+      createResult: {
+        kind: 'created',
+        postId: 'self-post-1',
+        activityLegacyId: 9,
+        replyText: '已为你发布「风暴电音节」组队帖 ✅',
+      } satisfies PostIntentCreateAttempt,
+      expectCreate: true,
+      gateState: {
+        version: 1,
+        flow: 'collect_post_body' as const,
+        publishDraft: { activityLegacyId: 9, fromSelfPost: true },
+      },
+      assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
+        expect(postIntentService.tryMatchPostsFromChat).not.toHaveBeenCalled();
+        expect(postIntentService.tryProactiveRecommendBeforeCreate).not.toHaveBeenCalled();
+        expect(events.some(e => e.type === 'post_recommendations')).toBe(false);
         expect(events.some(e => e.type === 'post_created')).toBe(true);
+        const complete = events.find(e => e.type === 'message_complete');
+        expect(
+          complete && 'content' in complete && complete.content.includes('已为你发布'),
+        ).toBe(true);
+      },
+    },
+    {
+      name: 'collect_post_body → informal body skips proactive recommend',
+      input: '13号 dd 一个女生',
+      intentKind: 'create_post' as const,
+      matchResult: {
+        postCards: [{ postId: 'p1', snippet: '找搭子', authorName: 'A', eventTitle: '风暴' }],
+        activityLabel: '风暴电音节',
+        replyText: 'found',
+        matches: [],
+        degraded: false,
+      } satisfies PostIntentMatchResult,
+      createResult: {
+        kind: 'created',
+        postId: 'self-post-2',
+        activityLegacyId: 9,
+        replyText: '已为你发布组队帖 ✅',
+      } satisfies PostIntentCreateAttempt,
+      expectCreate: true,
+      gateState: {
+        version: 1,
+        flow: 'collect_post_body' as const,
+        publishDraft: { activityLegacyId: 9 },
+      },
+      assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
+        expect(postIntentService.tryProactiveRecommendBeforeCreate).not.toHaveBeenCalled();
+        expect(events.some(e => e.type === 'post_recommendations')).toBe(false);
+        expect(events.some(e => e.type === 'post_created')).toBe(true);
+        const complete = events.find(e => e.type === 'message_complete');
+        expect(
+          complete &&
+            'content' in complete &&
+            !complete.content.includes(RECOMMEND_GATE_MARKER) &&
+            complete.content.includes('已为你发布'),
+        ).toBe(true);
+      },
+    },
+    {
+      name: 'decline recommend → custom body → direct publish',
+      input: '13号A区求组队，3人从上海出发',
+      intentKind: 'create_post' as const,
+      matchResult: null,
+      createResult: {
+        kind: 'created',
+        postId: 'self-post-3',
+        activityLegacyId: 9,
+        replyText: '已为你发布组队帖 ✅',
+      } satisfies PostIntentCreateAttempt,
+      expectCreate: true,
+      gateState: {
+        version: 1,
+        flow: 'collect_post_body' as const,
+        publishDraft: { activityLegacyId: 9, fromSelfPost: true },
+      },
+      assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
+        expect(events.some(e => e.type === 'post_created')).toBe(true);
+        const complete = events.find(e => e.type === 'message_complete');
+        expect(
+          complete && 'content' in complete && complete.content.includes('已为你发布'),
+        ).toBe(true);
       },
     },
     {
@@ -191,7 +293,6 @@ describe('AiService buddy flow', () => {
         activityLegacyId: 9,
         replyText: `${PUBLISH_CONFIRM_PROMPT_MARKER}\n草稿已就绪`,
         draftBody: '13号A区求组队',
-        copyVariants: [],
       } satisfies PostIntentCreateAttempt,
       expectCreate: true,
       gateState: {
@@ -248,31 +349,24 @@ describe('AiService buddy flow', () => {
         source: 'rule',
       });
 
+      const assistantHistoryContent =
+        gateState?.flow === 'publish_confirm'
+          ? PUBLISH_CONFIRM_PROMPT_MARKER
+          : gateState?.flow === 'collect_post_body'
+            ? `${SELF_POST_COLLECT_BODY_MARKER}\n请描述你的组队需求`
+            : gateState
+              ? RECOMMEND_GATE_MARKER
+              : null;
+
       chatService.getSession.mockResolvedValue({
-        history: gateState
-          ? [
-              {
-                role: 'assistant',
-                content:
-                  gateState.flow === 'publish_confirm'
-                    ? PUBLISH_CONFIRM_PROMPT_MARKER
-                    : RECOMMEND_GATE_MARKER,
-              },
-            ]
+        history: assistantHistoryContent
+          ? [{ role: 'assistant', content: assistantHistoryContent }]
           : [],
         conversationState: gateState ?? null,
       });
       chatService.mergeChatHistory.mockReturnValue([
-        ...(gateState
-          ? [
-              {
-                role: 'assistant' as const,
-                content:
-                  gateState.flow === 'publish_confirm'
-                    ? PUBLISH_CONFIRM_PROMPT_MARKER
-                    : RECOMMEND_GATE_MARKER,
-              },
-            ]
+        ...(assistantHistoryContent
+          ? [{ role: 'assistant' as const, content: assistantHistoryContent }]
           : []),
         { role: 'user' as const, content: input },
       ]);

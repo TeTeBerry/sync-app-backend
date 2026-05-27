@@ -1,9 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
+  isResourceOwnedByClient,
+} from '../../common/utils/demo-owner.util';
+import {
   IPostRepository,
   POST_REPOSITORY,
   type PostRecord,
 } from '../../modules/post/interfaces/post.repository.interface';
+import { resolveActorUserId } from '../utils/actor-user.util';
 import { ChromaService } from '../rag/chroma.service';
 import {
   buildRerankUserNeed,
@@ -21,13 +25,16 @@ import { PostMatchRerankService } from './post-match-rerank.service';
 import {
   type MatchFilterContext,
   type RankablePostCandidate,
+  shouldFilterCandidate,
 } from '../match/match-ranking.util';
 import type { UserMatchProfile } from '../match/match-ranking.util';
 import type { MatchedPostItem } from '../agents/agent.types';
+import { BUDDY_RECOMMEND_LIMIT } from '../match/buddy-match.constants';
 
 export interface MatchSearchParams {
   criteria: BuddyMatchCriteria;
   userId?: string;
+  authorName?: string;
   profile?: UserMatchProfile;
   rankingWeights?: import('../match/match-ranking.util').MatchRankingWeights;
   limit?: number;
@@ -54,17 +61,24 @@ export class MatchService {
   ) {}
 
   async search(params: MatchSearchParams): Promise<MatchSearchResult> {
-    const limit = params.limit ?? 5;
+    const limit = params.limit ?? BUDDY_RECOMMEND_LIMIT;
     const { criteria } = params;
     if (!criteria.activityLegacyId) {
       return { items: [], degraded: false };
     }
+
+    const excludePostIds = new Set(
+      (criteria.excludePostIds ?? [])
+        .map(id => String(id).trim())
+        .filter(Boolean),
+    );
 
     const hasPersonalization = Boolean(params.userId?.trim() || params.profile);
     const context = hasPersonalization
       ? await this.matchContextService.buildFilterContext(
           params.userId,
           params.profile,
+          params.authorName,
         )
       : undefined;
 
@@ -72,15 +86,22 @@ export class MatchService {
       ? { ...context, criteria }
       : undefined;
 
+    const requesterUserId =
+      context?.requesterUserId ??
+      (params.userId?.trim()
+        ? resolveActorUserId(params.userId, params.authorName)
+        : undefined);
+
     const excludeUserIds = context
       ? this.matchContextService.buildExcludeUserIds(context)
-      : params.userId?.trim()
-        ? [params.userId.trim()]
+      : requesterUserId
+        ? [requesterUserId]
         : [];
 
     const mongoCandidates = await this.loadRecruitingCandidates(
       criteria.activityLegacyId,
       excludeUserIds,
+      excludePostIds,
     );
 
     const queryText = criteriaToEmbeddingText(criteria);
@@ -89,7 +110,7 @@ export class MatchService {
       activityCode: criteria.activityCode ?? '',
       activityLegacyId: criteria.activityLegacyId,
       excludeUserIds: excludeUserIds.length ? excludeUserIds : undefined,
-      profileUserId: params.userId,
+      profileUserId: requesterUserId ?? params.userId,
       n: VECTOR_RECALL_N,
     });
 
@@ -104,6 +125,12 @@ export class MatchService {
         filterContext,
         criteria,
         limit,
+        {
+          requesterUserId,
+          authorName: params.authorName,
+          clientUserId: params.userId,
+          excludePostIds,
+        },
       );
       items = ranked.items;
       rerankFailed = ranked.rerankFailed;
@@ -125,12 +152,20 @@ export class MatchService {
       if (items.length) degraded = true;
     }
 
+    items = this.filterRecommendedItems(items, mongoCandidates, {
+      requesterUserId,
+      clientUserId: params.userId,
+      authorName: params.authorName,
+      excludePostIds,
+    });
+
     return { items, degraded };
   }
 
   private async loadRecruitingCandidates(
     activityLegacyId: number,
     excludeUserIds: string[],
+    excludePostIds: ReadonlySet<string>,
   ): Promise<PostRecord[]> {
     const excluded = new Set(excludeUserIds.filter(Boolean));
     const rows = await this.postRepository.findByActivityLegacyId(activityLegacyId);
@@ -138,7 +173,8 @@ export class MatchService {
       post =>
         post.status === 'recruiting' &&
         post.userId &&
-        !excluded.has(String(post.userId)),
+        !excluded.has(String(post.userId)) &&
+        !excludePostIds.has(String(post._id)),
     );
   }
 
@@ -153,6 +189,12 @@ export class MatchService {
     context: MatchFilterContext | undefined,
     criteria: BuddyMatchCriteria,
     limit: number,
+    isolation: {
+      requesterUserId?: string;
+      clientUserId?: string;
+      authorName?: string;
+      excludePostIds: ReadonlySet<string>;
+    },
   ): Promise<{ items: MatchedPostItem[]; rerankFailed: boolean }> {
     const postById = new Map(
       mongoCandidates.map(post => [String(post._id), post]),
@@ -177,12 +219,29 @@ export class MatchService {
     const prepared: Prepared[] = [];
 
     chromaMatches.forEach((match, chromaRank) => {
+      if (isolation.excludePostIds.has(match.postId)) {
+        return;
+      }
+
       const enrichedCandidate = enrichedById.get(match.postId);
       if (context && enrichedCandidate && shouldFilterChromaCandidate(enrichedCandidate, context)) {
         return;
       }
 
       const post = postById.get(match.postId);
+      if (!post) {
+        return;
+      }
+
+      if (
+        this.isOwnRecruitingPost(post, {
+          requesterUserId: isolation.requesterUserId,
+          clientUserId: isolation.clientUserId,
+          authorName: isolation.authorName,
+        })
+      ) {
+        return;
+      }
       const snapshot = post
         ? postRecordToFitSnapshot(post)
         : {
@@ -270,14 +329,59 @@ export class MatchService {
       return leftDistance - rightDistance;
     });
 
-    const items = withTieBreak.slice(0, limit).map(item => ({
-      postId: item.postId,
-      snippet: item.snippet,
-      distance: item.distance,
-      matchReason: item.matchReason,
-    }));
+    const items = withTieBreak
+      .slice(0, limit)
+      .filter(item => !isolation.excludePostIds.has(item.postId))
+      .map(item => ({
+        postId: item.postId,
+        snippet: item.snippet,
+        distance: item.distance,
+        matchReason: item.matchReason,
+      }));
 
     return { items, rerankFailed };
+  }
+
+  private filterRecommendedItems(
+    items: MatchedPostItem[],
+    candidates: PostRecord[],
+    isolation: {
+      requesterUserId?: string;
+      clientUserId?: string;
+      authorName?: string;
+      excludePostIds: ReadonlySet<string>;
+    },
+  ): MatchedPostItem[] {
+    const postById = new Map(candidates.map(post => [String(post._id), post]));
+
+    return items.filter(item => {
+      if (isolation.excludePostIds.has(item.postId)) return false;
+
+      const post = postById.get(item.postId);
+      if (!post) return false;
+
+      return !this.isOwnRecruitingPost(post, isolation);
+    });
+  }
+
+  private isOwnRecruitingPost(
+    post: Pick<PostRecord, 'userId' | 'authorName' | '_id'>,
+    isolation: {
+      requesterUserId?: string;
+      clientUserId?: string;
+      authorName?: string;
+    },
+  ): boolean {
+    const requesterUserId = isolation.requesterUserId?.trim();
+    if (requesterUserId && post.userId && String(post.userId) === requesterUserId) {
+      return true;
+    }
+
+    return isResourceOwnedByClient(
+      post,
+      isolation.clientUserId,
+      isolation.authorName,
+    );
   }
 
   private buildSnippet(document: string): string {
@@ -289,15 +393,5 @@ function shouldFilterChromaCandidate(
   candidate: RankablePostCandidate,
   context: MatchFilterContext,
 ): boolean {
-  const requesterId = context.requesterUserId?.trim();
-  if (!requesterId) return false;
-
-  const authorId = candidate.authorUserId.trim();
-  if (!authorId) return false;
-
-  if (authorId === requesterId) return true;
-  if (context.blockedUserIds.has(authorId)) return true;
-  if (context.buddyUserIds.has(authorId)) return true;
-
-  return false;
+  return shouldFilterCandidate(candidate, context);
 }

@@ -3,6 +3,7 @@ export interface PostIntentCreateResult {
   postId: string;
   activityLegacyId?: number;
   replyText: string;
+  createdPost?: import('../presentation/ai-stream-event.view').RecommendedPostCard;
 }
 
 export interface PostIntentRejectedResult {
@@ -15,7 +16,6 @@ export interface PostIntentPendingConfirmationResult {
   replyText: string;
   activityLegacyId?: number;
   draftBody?: string;
-  copyVariants?: import('../conversation/buddy-copy.util').BuddyCopyVariant[];
 }
 
 export interface PostIntentExistingPostResult {
@@ -38,9 +38,4 @@ export interface PostIntentMatchResult {
   postCards: import('../presentation/ai-stream-event.view').RecommendedPostCard[];
   degraded?: boolean;
   activityLabel?: string;
-}
-
-export interface PostIntentBuddyCopyResult {
-  replyText: string;
-  variants: import('../conversation/buddy-copy.util').BuddyCopyVariant[];
 }

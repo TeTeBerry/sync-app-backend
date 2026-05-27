@@ -15,4 +15,6 @@ export interface BuddyMatchCriteria {
   requesterTags?: string[];
   /** Requester recruiting post body — reference for content overlap ranking */
   requesterBody?: string;
+  /** Post ids that must never be recommended back (e.g. criteria seed owner post) */
+  excludePostIds?: string[];
 }

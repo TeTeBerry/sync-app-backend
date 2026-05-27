@@ -152,16 +152,31 @@ export function buildZoneMatchEmptyReply(
   ].join('\n');
 }
 
+export function formatZoneMatchScope(
+  hintLabel: string,
+  hintKind?: BuddySearchHintKind,
+): string {
+  return hintKind === 'event_day'
+    ? `「${hintLabel}」这场`
+    : `「${hintLabel}」`;
+}
+
 export function buildZoneMatchFoundReply(
   activityLabel: string,
   hintLabel: string,
   matchLines: string[],
   hintKind?: BuddySearchHintKind,
+  options?: { cardsOnly?: boolean },
 ): string {
-  const scope =
-    hintKind === 'event_day'
-      ? `「${hintLabel}」这场`
-      : `「${hintLabel}」`;
+  const scope = formatZoneMatchScope(hintLabel, hintKind);
+
+  if (options?.cardsOnly) {
+    return [
+      `在「${activityLabel}」找到 ${matchLines.length} 条与${scope}相关的组队帖，点下方卡片查看：`,
+      '',
+      '若不合适，回复「自己发帖」或补充你的出行需求，我再帮你发组队帖。',
+    ].join('\n');
+  }
 
   return [
     `在「${activityLabel}」找到 ${matchLines.length} 条与${scope}相关的组队帖：`,

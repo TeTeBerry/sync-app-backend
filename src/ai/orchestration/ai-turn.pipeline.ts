@@ -7,11 +7,13 @@ import {
   UserProfileAgent,
   type UserProfileSyncResult,
 } from '../agents/user-profile.agent';
-import { detectBuddyCopyStyleRequest } from '../conversation/buddy-copy.util';
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
 import { isExplicitReplacePostIntent } from '../conversation/existing-post-guidance.util';
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
-import { isDeclineRecommendationsIntent } from '../gate/recommend-gate.util';
+import {
+  isAwaitingSelfPostBodyCollection,
+  isDeclineRecommendationsIntent,
+} from '../gate/recommend-gate.util';
 import type { ConversationState } from '../conversation';
 import { logAiTurn } from '../utils/log-ai-turn.util';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
@@ -71,50 +73,21 @@ export class AiTurnPipeline {
 
     const timings: AiTurnTimings = {};
 
-    const copyStyleRequest = detectBuddyCopyStyleRequest(lastInput);
-    if (copyStyleRequest) {
-      const copyResult = await this.postIntentService.tryGenerateBuddyCopy({
-        messages: fullMessages,
-        input: lastInput,
-        activityLegacyId: dto.activityLegacyId,
-      });
-
-      if (copyResult) {
-        sink.setReply(copyResult.replyText);
-        const events = this.sseBuilder.withMessageComplete(
-          [
-            { type: 'delta', content: copyResult.replyText },
-            ...(copyResult.variants.length
-              ? [
-                  {
-                    type: 'buddy_copy_variants' as const,
-                    variants: copyResult.variants,
-                  },
-                ]
-              : []),
-          ],
-          copyResult.replyText,
-        );
-
-        return {
-          events,
-          assistantReply: copyResult.replyText,
-          conversationState,
-          timings,
-          earlyComplete: true,
-        };
-      }
-    }
-
     const intentStartedAt = Date.now();
-    const routed = await this.intentRouter.resolve({
-      messages: fullMessages,
-      input: lastInput,
-      activityLegacyId: dto.activityLegacyId,
-      image: dto.image,
-      sessionId,
-      requestId,
-    });
+    const forceCreatePostIntent =
+      conversationState.flow === 'collect_post_body' ||
+      isAwaitingSelfPostBodyCollection(fullMessages, conversationState);
+
+    const routed = forceCreatePostIntent
+      ? ({ kind: 'create_post' as const, source: 'rule' as const })
+      : await this.intentRouter.resolve({
+          messages: fullMessages,
+          input: lastInput,
+          activityLegacyId: dto.activityLegacyId,
+          image: dto.image,
+          sessionId,
+          requestId,
+        });
     timings.ms_intent = Date.now() - intentStartedAt;
 
     logAiTurn(this.logger, {
@@ -231,6 +204,7 @@ export class AiTurnPipeline {
       input: lastInput,
       activityLegacyId: dto.activityLegacyId,
       userId: dto.userId,
+      authorName: dto.userName,
       buddySearchHint: routed.buddySearchHint,
       fromIntentRouter: true,
       profileSync,
@@ -311,6 +285,7 @@ export class AiTurnPipeline {
         input: lastInput,
         activityLegacyId: dto.activityLegacyId,
         userId: dto.userId,
+        authorName: dto.userName,
         conversationState: sink.getState(),
         profileSync,
       });
@@ -362,6 +337,12 @@ export class AiTurnPipeline {
     if (isPublishConfirmIntent(trimmed)) return true;
     if (isExplicitReplacePostIntent(trimmed)) return true;
     if (isDeclineRecommendationsIntent(trimmed)) return true;
+    if (state.flow === 'collect_post_body' || state.flow === 'publish_confirm') {
+      return true;
+    }
+    if (isAwaitingSelfPostBodyCollection(messages, state)) {
+      return true;
+    }
     return false;
   }
 

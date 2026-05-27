@@ -8,6 +8,7 @@ import { matchRiskRules } from '../risk/risk-rules.util';
 import {
   buildPublishableBody,
   desensitizePrivacy,
+  stripDesensitizationMarkers,
 } from '../risk/risk-sanitize.util';
 import {
   IPostRepository,
@@ -127,8 +128,9 @@ export class RiskAgent {
       };
     }
 
-    const sanitizedBody =
-      llmResult?.content?.trim() || desensitizePrivacy(body);
+    const sanitizedBody = stripDesensitizationMarkers(
+      llmResult?.content?.trim() || desensitizePrivacy(body),
+    );
 
     return {
       publishable: true,

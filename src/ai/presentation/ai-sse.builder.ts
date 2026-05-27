@@ -9,6 +9,7 @@ import {
   buildRecommendGateFoundReply,
   RECOMMEND_GATE_SUGGESTED_REPLIES,
 } from '../gate/recommend-gate.util';
+import { PUBLISH_CONFIRM_SUGGESTED_REPLIES } from '../publish/publish-confirm.util';
 import type { PostIntentCreateAttempt } from '../post-intent.service';
 import type { AiStreamEvent, RecommendedPostCard } from './ai-stream-event.view';
 
@@ -43,6 +44,13 @@ export class AiSseBuilder {
     return {
       type: 'suggested_replies',
       replies: [...RECOMMEND_GATE_SUGGESTED_REPLIES],
+    };
+  }
+
+  publishConfirmSuggestedRepliesEvent(): AiStreamEvent {
+    return {
+      type: 'suggested_replies',
+      replies: [...PUBLISH_CONFIRM_SUGGESTED_REPLIES],
     };
   }
 
@@ -117,6 +125,7 @@ export class AiSseBuilder {
           type: 'post_created',
           postId: postAttempt.postId,
           activityLegacyId: postAttempt.activityLegacyId,
+          post: postAttempt.createdPost,
         },
         { type: 'delta', content: postAttempt.replyText },
         this.conversationPatchEvent(sink),
@@ -144,14 +153,8 @@ export class AiSseBuilder {
         { type: 'delta', content: postAttempt.replyText },
         ...patchIfNeeded(),
       ];
-      if (
-        postAttempt.kind === 'pending_confirmation' &&
-        postAttempt.copyVariants?.length
-      ) {
-        events.push({
-          type: 'buddy_copy_variants',
-          variants: postAttempt.copyVariants,
-        });
+      if (postAttempt.kind === 'pending_confirmation') {
+        events.push(this.publishConfirmSuggestedRepliesEvent());
       }
       return events;
     }
