@@ -64,10 +64,12 @@ export interface UserMatchProfile {
 }
 
 import type { MatchRankingWeights } from '../match/match-ranking.util';
+import type { BuddyMatchCriteria } from '../match/buddy-match.types';
 
 export interface MatchAgentInput {
-  query: string;
-  activityCode: string;
+  query?: string;
+  criteria?: BuddyMatchCriteria;
+  activityCode?: string;
   activityLegacyId?: number;
   limit?: number;
   userId?: string;

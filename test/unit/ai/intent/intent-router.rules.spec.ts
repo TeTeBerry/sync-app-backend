@@ -21,13 +21,13 @@ describe('intent-router.rules', () => {
     expect(hit?.kind).toBe('create_post');
   });
 
-  it('routes shortcut tag with bound activity to create_post', () => {
+  it('routes shortcut tag with bound activity to search_posts', () => {
     const hit = resolveChatIntentFastPath('帮我dd', {
       messages: [],
       input: '帮我dd',
       activityLegacyId: 4,
     });
-    expect(hit?.kind).toBe('create_post');
+    expect(hit?.kind).toBe('search_posts');
   });
 
   it('routes search-existing intent with bound activity to search_posts', () => {

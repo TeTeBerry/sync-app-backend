@@ -10,10 +10,8 @@ import {
 import { detectBuddyCopyStyleRequest } from '../conversation/buddy-copy.util';
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
 import { isExplicitReplacePostIntent } from '../conversation/existing-post-guidance.util';
-import {
-  isAwaitingRecommendationsGate,
-  isDeclineRecommendationsIntent,
-} from '../gate/recommend-gate.util';
+import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
+import { isDeclineRecommendationsIntent } from '../gate/recommend-gate.util';
 import type { ConversationState } from '../conversation';
 import { logAiTurn } from '../utils/log-ai-turn.util';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
@@ -240,6 +238,29 @@ export class AiTurnPipeline {
     timings.ms_match = Date.now() - matchStart;
 
     if (matched) {
+      const activityLabel = matched.activityLabel ?? '本活动';
+      const useRecommendGate =
+        isAiShortcutTag(lastInput) && dto.activityLegacyId != null;
+
+      if (useRecommendGate && matched.postCards.length) {
+        return this.sseBuilder.buildRecommendGateFoundEvents(
+          sink,
+          dto.activityLegacyId,
+          activityLabel,
+          matched.postCards,
+          matched.postCards.length,
+          matched.degraded,
+        );
+      }
+
+      if (useRecommendGate && !matched.postCards.length) {
+        return this.sseBuilder.buildRecommendGateEmptyEvents(
+          sink,
+          dto.activityLegacyId,
+          activityLabel,
+        );
+      }
+
       sink.setReply(matched.replyText);
       const events: AiStreamEvent[] = [
         { type: 'delta', content: matched.replyText },
@@ -341,7 +362,6 @@ export class AiTurnPipeline {
     if (isPublishConfirmIntent(trimmed)) return true;
     if (isExplicitReplacePostIntent(trimmed)) return true;
     if (isDeclineRecommendationsIntent(trimmed)) return true;
-    if (isAwaitingRecommendationsGate(messages, state)) return true;
     return false;
   }
 

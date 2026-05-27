@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import type { ConversationState } from '../conversation';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
 import { parseConversationContext } from '../conversation/conversation-context.parser';
@@ -8,10 +7,9 @@ import {
   isAwaitingPublishConfirmation,
   isPublishConfirmIntent,
 } from '../publish/publish-confirm.util';
-import {
-  isAwaitingRecommendationsGate,
-  isDeclineRecommendationsIntent,
-} from '../gate/recommend-gate.util';
+import { isDeclineRecommendationsIntent } from '../gate/recommend-gate.util';
+import { buildMatchCriteriaForSearch } from '../match/buddy-match-criteria.util';
+import { PostService } from '../../modules/post/post.service';
 import { BuddyContextService } from './buddy-context.service';
 import { MatchPostsFromChatUseCase } from './match-posts.use-case';
 import type { PostIntentMatchResult } from './buddy.types';
@@ -30,6 +28,7 @@ export class RecommendBeforeCreateUseCase {
   constructor(
     private readonly matchPostsUseCase: MatchPostsFromChatUseCase,
     private readonly buddyContext: BuddyContextService,
+    private readonly postService: PostService,
   ) {}
 
   async execute(
@@ -41,7 +40,6 @@ export class RecommendBeforeCreateUseCase {
     if (isPublishConfirmIntent(input.trim())) return null;
     if (isExplicitReplacePostIntent(input)) return null;
     if (isDeclineRecommendationsIntent(input)) return null;
-    if (isAwaitingRecommendationsGate(messages, conversationState)) return null;
     if (isAwaitingPublishConfirmation(messages, conversationState)) return null;
 
     const ctx = parseConversationContext(messages, input);
@@ -53,22 +51,33 @@ export class RecommendBeforeCreateUseCase {
     );
     if (!resolvedActivity?.legacyId) return null;
 
-    const matchQuery = isAiShortcutTag(trimmed)
-      ? `${resolvedActivity.name ?? '活动'} 组队 搭子 同行`
-      : trimmed.length >= 2
-        ? trimmed
-        : `${resolvedActivity.name ?? '活动'} 组队 搭子`;
+    const ownerPost = userId
+      ? await this.postService.findOwnerRecruitingPostRecord(
+          resolvedActivity.legacyId,
+          userId,
+        )
+      : null;
 
-    const result = await this.matchPostsUseCase.execute({
+    const criteria = buildMatchCriteriaForSearch({
+      activityLegacyId: resolvedActivity.legacyId,
+      activityName: resolvedActivity.name,
+      activityCode: resolvedActivity.code,
+      activityDate: resolvedActivity.date,
+      ownerPost,
+      conversation: ctx,
+      profileCity: profileSync?.profile?.city,
+      userInput: trimmed,
+    });
+
+    return this.matchPostsUseCase.execute({
       messages,
-      input: matchQuery,
+      input: trimmed,
       activityLegacyId: resolvedActivity.legacyId,
       userId,
       fromIntentRouter: true,
       profileSync,
       preResolvedActivity: resolvedActivity,
+      matchCriteria: criteria,
     });
-
-    return result;
   }
 }

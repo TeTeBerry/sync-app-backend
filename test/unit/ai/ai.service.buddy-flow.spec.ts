@@ -1,3 +1,13 @@
+import {
+  AiRateLimitService as mockAiRateLimitService,
+  ChatService as mockChatService,
+  DeterministicReplyService as mockDeterministicReplyService,
+  IntentRouterService as mockIntentRouterService,
+  LlmService as mockLlmService,
+  PostIntentService as mockPostIntentService,
+  UserProfileAgent as mockUserProfileAgent,
+} from '../../mocks/ai-service-deps';
+
 jest.mock('chromadb', () => require('../../mocks/chromadb'));
 
 jest.mock('@langchain/core/documents', () => require('../../mocks/langchain-documents'));
@@ -7,25 +17,25 @@ jest.mock('@langchain/core/messages', () => require('../../mocks/langchain-messa
 jest.mock('@langchain/community/chat_models/alibaba_tongyi', () => require('../../mocks/alibaba-tongyi'));
 
 jest.mock('@src/ai/llm/llm.service', () => ({
-  LlmService: require('../../mocks/ai-service-deps').LlmService,
+  LlmService: mockLlmService,
 }));
 jest.mock('@src/ai/intent/intent-router.service', () => ({
-  IntentRouterService: require('../../mocks/ai-service-deps').IntentRouterService,
+  IntentRouterService: mockIntentRouterService,
 }));
 jest.mock('@src/ai/post-intent.service', () => ({
-  PostIntentService: require('../../mocks/ai-service-deps').PostIntentService,
+  PostIntentService: mockPostIntentService,
 }));
 jest.mock('@src/ai/orchestration/deterministic-reply.service', () => ({
-  DeterministicReplyService: require('../../mocks/ai-service-deps').DeterministicReplyService,
+  DeterministicReplyService: mockDeterministicReplyService,
 }));
 jest.mock('@src/ai/agents/user-profile.agent', () => ({
-  UserProfileAgent: require('../../mocks/ai-service-deps').UserProfileAgent,
+  UserProfileAgent: mockUserProfileAgent,
 }));
 jest.mock('@src/ai/ai-rate-limit.service', () => ({
-  AiRateLimitService: require('../../mocks/ai-service-deps').AiRateLimitService,
+  AiRateLimitService: mockAiRateLimitService,
 }));
 jest.mock('@src/modules/chat/chat.service', () => ({
-  ChatService: require('../../mocks/ai-service-deps').ChatService,
+  ChatService: mockChatService,
 }));
 
 import { AiService } from '@src/ai/ai.service';
@@ -109,9 +119,10 @@ describe('AiService buddy flow', () => {
 
   it.each([
     {
-      name: 'shortcut + activity → recommend gate with posts',
+      name: 'shortcut + activity → search_posts recommend gate with posts',
       input: '组队队友',
-      recommendResult: {
+      intentKind: 'search_posts' as const,
+      matchResult: {
         postCards: [{ postId: 'p1', snippet: '找搭子', authorName: 'A', eventTitle: '风暴' }],
         activityLabel: '风暴电音节',
         replyText: 'found',
@@ -129,9 +140,10 @@ describe('AiService buddy flow', () => {
       },
     },
     {
-      name: 'shortcut + activity → recommend gate empty',
+      name: 'shortcut + activity → search_posts recommend gate empty',
       input: '组队队友',
-      recommendResult: {
+      intentKind: 'search_posts' as const,
+      matchResult: {
         postCards: [],
         activityLabel: '风暴电音节',
         replyText: 'empty',
@@ -151,7 +163,8 @@ describe('AiService buddy flow', () => {
     {
       name: 'decline recommend → create post',
       input: '自己发帖',
-      recommendResult: null,
+      intentKind: 'create_post' as const,
+      matchResult: null,
       createResult: {
         kind: 'created',
         postId: 'new-post',
@@ -171,7 +184,8 @@ describe('AiService buddy flow', () => {
     {
       name: 'decline recommend → pending_confirmation',
       input: '自己发帖',
-      recommendResult: null,
+      intentKind: 'create_post' as const,
+      matchResult: null,
       createResult: {
         kind: 'pending_confirmation',
         activityLegacyId: 9,
@@ -198,7 +212,8 @@ describe('AiService buddy flow', () => {
     {
       name: 'publish confirm → create without recommend',
       input: '确认发布',
-      recommendResult: null,
+      intentKind: 'create_post' as const,
+      matchResult: null,
       createResult: {
         kind: 'created',
         postId: 'confirmed-post',
@@ -213,12 +228,26 @@ describe('AiService buddy flow', () => {
       },
       assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
         expect(postIntentService.tryProactiveRecommendBeforeCreate).not.toHaveBeenCalled();
+        expect(postIntentService.tryMatchPostsFromChat).not.toHaveBeenCalled();
         expect(events.some(e => e.type === 'post_created')).toBe(true);
       },
     },
   ])(
     '$name',
-    async ({ input, recommendResult, createResult, expectCreate, gateState, assert }) => {
+    async ({
+      input,
+      intentKind,
+      matchResult,
+      createResult,
+      expectCreate,
+      gateState,
+      assert,
+    }) => {
+      intentRouter.resolve.mockResolvedValue({
+        kind: intentKind,
+        source: 'rule',
+      });
+
       chatService.getSession.mockResolvedValue({
         history: gateState
           ? [
@@ -251,7 +280,8 @@ describe('AiService buddy flow', () => {
         gateState ?? { version: 1, flow: 'idle' },
       );
 
-      postIntentService.tryProactiveRecommendBeforeCreate.mockResolvedValue(recommendResult);
+      postIntentService.tryMatchPostsFromChat.mockResolvedValue(matchResult);
+      postIntentService.tryProactiveRecommendBeforeCreate.mockResolvedValue(matchResult);
       postIntentService.tryCreatePostFromChat.mockResolvedValue(createResult ?? null);
 
       const events = await collectEvents(
@@ -263,10 +293,8 @@ describe('AiService buddy flow', () => {
 
       if (expectCreate) {
         expect(postIntentService.tryCreatePostFromChat).toHaveBeenCalled();
-      } else if (!gateState || gateState.flow === 'recommend_gate') {
-        if (recommendResult != null) {
-          expect(postIntentService.tryProactiveRecommendBeforeCreate).toHaveBeenCalled();
-        }
+      } else if (intentKind === 'search_posts') {
+        expect(postIntentService.tryMatchPostsFromChat).toHaveBeenCalled();
       }
 
       assert(events);

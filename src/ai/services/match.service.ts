@@ -1,0 +1,285 @@
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  IPostRepository,
+  POST_REPOSITORY,
+  type PostRecord,
+} from '../../modules/post/interfaces/post.repository.interface';
+import { ChromaService } from '../rag/chroma.service';
+import { criteriaToEmbeddingText } from '../match/buddy-match-criteria.util';
+import {
+  applyLightTieBreak,
+  buildPostFitMatchReason,
+  postRecordToFitSnapshot,
+  rankPostsByCriteria,
+} from '../match/buddy-match-rank.util';
+import type { BuddyMatchCriteria } from '../match/buddy-match.types';
+import { MatchContextService } from './match-context.service';
+import { PostMatchRerankService } from './post-match-rerank.service';
+import {
+  type MatchFilterContext,
+  type RankablePostCandidate,
+} from '../match/match-ranking.util';
+import type { UserMatchProfile } from '../match/match-ranking.util';
+import type { MatchedPostItem } from '../agents/agent.types';
+
+export interface MatchSearchParams {
+  criteria: BuddyMatchCriteria;
+  userId?: string;
+  profile?: UserMatchProfile;
+  rankingWeights?: import('../match/match-ranking.util').MatchRankingWeights;
+  limit?: number;
+}
+
+export interface MatchSearchResult {
+  items: MatchedPostItem[];
+  degraded: boolean;
+}
+
+const VECTOR_RECALL_N = 25;
+const RERANK_INPUT_LIMIT = 15;
+
+@Injectable()
+export class MatchService {
+  constructor(
+    @Inject(POST_REPOSITORY)
+    private readonly postRepository: IPostRepository,
+    private readonly chromaService: ChromaService,
+    private readonly matchContextService: MatchContextService,
+    private readonly postMatchRerankService: PostMatchRerankService,
+  ) {}
+
+  async search(params: MatchSearchParams): Promise<MatchSearchResult> {
+    const limit = params.limit ?? 5;
+    const { criteria } = params;
+    if (!criteria.activityLegacyId) {
+      return { items: [], degraded: false };
+    }
+
+    const hasPersonalization = Boolean(params.userId?.trim() || params.profile);
+    const context = hasPersonalization
+      ? await this.matchContextService.buildFilterContext(
+          params.userId,
+          params.profile,
+        )
+      : undefined;
+
+    const filterContext: MatchFilterContext | undefined = context
+      ? { ...context, criteria }
+      : undefined;
+
+    const excludeUserIds = context
+      ? this.matchContextService.buildExcludeUserIds(context)
+      : params.userId?.trim()
+        ? [params.userId.trim()]
+        : [];
+
+    const mongoCandidates = await this.loadRecruitingCandidates(
+      criteria.activityLegacyId,
+      excludeUserIds,
+    );
+
+    const queryText = criteriaToEmbeddingText(criteria);
+
+    const chromaResult = await this.chromaService.queryPostsForMatch(queryText, {
+      activityCode: criteria.activityCode ?? '',
+      activityLegacyId: criteria.activityLegacyId,
+      excludeUserIds: excludeUserIds.length ? excludeUserIds : undefined,
+      profileUserId: params.userId,
+      n: VECTOR_RECALL_N,
+    });
+
+    let degraded = Boolean(chromaResult.degraded);
+    let items: MatchedPostItem[] = [];
+    let rerankFailed = false;
+
+    if (chromaResult.matches.length > 0) {
+      const ranked = await this.rankChromaPipeline(
+        chromaResult.matches,
+        mongoCandidates,
+        filterContext,
+        criteria,
+        limit,
+      );
+      items = ranked.items;
+      rerankFailed = ranked.rerankFailed;
+      if (rerankFailed) degraded = true;
+    }
+
+    if (!items.length) {
+      const mongoRanked = rankPostsByCriteria(
+        mongoCandidates,
+        criteria,
+        limit,
+        params.profile,
+      );
+      items = mongoRanked.map(row => ({
+        postId: row.postId,
+        snippet: row.snippet,
+        matchReason: row.matchReason ?? '同活动招募帖',
+      }));
+      if (items.length) degraded = true;
+    }
+
+    return { items, degraded };
+  }
+
+  private async loadRecruitingCandidates(
+    activityLegacyId: number,
+    excludeUserIds: string[],
+  ): Promise<PostRecord[]> {
+    const excluded = new Set(excludeUserIds.filter(Boolean));
+    const rows = await this.postRepository.findByActivityLegacyId(activityLegacyId);
+    return rows.filter(
+      post =>
+        post.status === 'recruiting' &&
+        post.userId &&
+        !excluded.has(String(post.userId)),
+    );
+  }
+
+  private async rankChromaPipeline(
+    chromaMatches: Array<{
+      postId: string;
+      document: string;
+      distance?: number;
+      profileDistance?: number;
+    }>,
+    mongoCandidates: PostRecord[],
+    context: MatchFilterContext | undefined,
+    criteria: BuddyMatchCriteria,
+    limit: number,
+  ): Promise<{ items: MatchedPostItem[]; rerankFailed: boolean }> {
+    const postById = new Map(
+      mongoCandidates.map(post => [String(post._id), post]),
+    );
+
+    const enriched = context
+      ? await this.matchContextService.enrichCandidates(chromaMatches, postById)
+      : undefined;
+
+    const enrichedById = new Map(
+      (enriched ?? []).map(candidate => [candidate.postId, candidate]),
+    );
+
+    type Prepared = {
+      postId: string;
+      snippet: string;
+      distance?: number;
+      chromaRank: number;
+      snapshot: ReturnType<typeof postRecordToFitSnapshot>;
+    };
+
+    const prepared: Prepared[] = [];
+
+    chromaMatches.forEach((match, chromaRank) => {
+      const enrichedCandidate = enrichedById.get(match.postId);
+      if (context && enrichedCandidate && shouldFilterChromaCandidate(enrichedCandidate, context)) {
+        return;
+      }
+
+      const post = postById.get(match.postId);
+      const snapshot = post
+        ? postRecordToFitSnapshot(post)
+        : {
+            body: enrichedCandidate?.postBody ?? match.document,
+            tags: enrichedCandidate?.postTags,
+            departureCity: enrichedCandidate?.postDepartureCity,
+            location: enrichedCandidate?.postCity,
+          };
+
+      const snippetSource = post?.body ?? enrichedCandidate?.postBody ?? match.document;
+
+      prepared.push({
+        postId: match.postId,
+        snippet: this.buildSnippet(snippetSource),
+        distance: match.distance,
+        chromaRank,
+        snapshot,
+      });
+    });
+
+    if (!prepared.length) {
+      return { items: [], rerankFailed: false };
+    }
+
+    const rerankInput = prepared.slice(0, RERANK_INPUT_LIMIT);
+    const userNeed = criteriaToEmbeddingText(criteria).slice(0, 500);
+
+    const rerankedIds = await this.postMatchRerankService.rerank(
+      userNeed,
+      rerankInput.map(item => ({ postId: item.postId, snippet: item.snippet })),
+    );
+
+    const rerankFailed = rerankedIds == null;
+    const orderIndex = new Map<string, number>();
+
+    if (rerankedIds) {
+      rerankedIds.forEach((id, index) => orderIndex.set(id, index));
+    } else {
+      prepared.forEach((item, index) => orderIndex.set(item.postId, index));
+    }
+
+    const withTieBreak = prepared.map(item => {
+      const tie = applyLightTieBreak(criteria, item.snapshot);
+      const rerankRank = orderIndex.get(item.postId) ?? prepared.length;
+      const isTopRerank = rerankRank === 0 && !rerankFailed;
+
+      const matchReason =
+        buildPostFitMatchReason({
+          matchedTags: tie.matchedTags,
+          departureCity: criteria.departureCity,
+          departureCityExact: tie.departureCityExact,
+          topRerank: isTopRerank,
+        }) ?? tie.matchReason;
+
+      return {
+        postId: item.postId,
+        snippet: item.snippet,
+        distance: item.distance,
+        rerankRank,
+        tieBoost: tie.boost,
+        matchReason,
+      };
+    });
+
+    withTieBreak.sort((left, right) => {
+      if (left.rerankRank !== right.rerankRank) {
+        return left.rerankRank - right.rerankRank;
+      }
+      if (right.tieBoost !== left.tieBoost) return right.tieBoost - left.tieBoost;
+      const leftDistance = left.distance ?? Number.POSITIVE_INFINITY;
+      const rightDistance = right.distance ?? Number.POSITIVE_INFINITY;
+      return leftDistance - rightDistance;
+    });
+
+    const items = withTieBreak.slice(0, limit).map(item => ({
+      postId: item.postId,
+      snippet: item.snippet,
+      distance: item.distance,
+      matchReason: item.matchReason,
+    }));
+
+    return { items, rerankFailed };
+  }
+
+  private buildSnippet(document: string): string {
+    return document.length > 120 ? `${document.slice(0, 120)}…` : document;
+  }
+}
+
+function shouldFilterChromaCandidate(
+  candidate: RankablePostCandidate,
+  context: MatchFilterContext,
+): boolean {
+  const requesterId = context.requesterUserId?.trim();
+  if (!requesterId) return false;
+
+  const authorId = candidate.authorUserId.trim();
+  if (!authorId) return false;
+
+  if (authorId === requesterId) return true;
+  if (context.blockedUserIds.has(authorId)) return true;
+  if (context.buddyUserIds.has(authorId)) return true;
+
+  return false;
+}

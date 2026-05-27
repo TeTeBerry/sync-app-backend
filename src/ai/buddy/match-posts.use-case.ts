@@ -10,8 +10,9 @@ import {
   buildZoneMatchEmptyReply,
   buildZoneMatchFoundReply,
   inferBuddySearchHintKind,
-  buildBuddySearchQuery,
 } from '../match/zone-buddy-search.util';
+import { buildMatchCriteriaForSearch } from '../match/buddy-match-criteria.util';
+import type { BuddyMatchCriteria } from '../match/buddy-match.types';
 import { BuddyContextService } from './buddy-context.service';
 import type { PostIntentMatchResult } from './buddy.types';
 
@@ -32,6 +33,7 @@ export interface MatchPostsFromChatParams {
   profileSync?: UserProfileSyncResult | null;
   /** When caller already resolved activity (e.g. recommend-before-create), skip duplicate lookup. */
   preResolvedActivity?: PreResolvedActivity | null;
+  matchCriteria?: BuddyMatchCriteria | null;
 }
 
 @Injectable()
@@ -87,19 +89,25 @@ export class MatchPostsFromChatUseCase {
     const hintKind =
       buddySearchHint?.kind ?? inferBuddySearchHintKind(hintDisplay);
 
-    const matchQuery = buildBuddySearchQuery({
-      userInput: trimmed,
-      searchHint: buddySearchHint?.displayLabel,
-      activityDate: resolvedActivity.date,
-      activityName: resolvedActivity.name,
-    });
+    const criteria =
+      params.matchCriteria ??
+      buildMatchCriteriaForSearch({
+        activityLegacyId: resolvedActivity.legacyId,
+        activityName: resolvedActivity.name,
+        activityCode: resolvedActivity.code,
+        activityDate: resolvedActivity.date,
+        conversation: ctx,
+        profileCity: resolvedProfileSync?.profile?.city,
+        userInput: trimmed,
+        zone: hintKind === 'zone' ? hintDisplay : undefined,
+      });
 
     const isStructuredSearch = Boolean(
       fromIntentRouter || buddySearchHint?.displayLabel,
     );
 
     const matchResult = await this.matchAgent.match({
-      query: matchQuery,
+      criteria,
       activityCode: resolvedActivity.code ?? '',
       activityLegacyId: resolvedActivity.legacyId,
       limit: 5,

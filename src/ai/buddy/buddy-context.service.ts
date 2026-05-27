@@ -6,6 +6,7 @@ import {
 import { ActivityService } from '../../modules/activity/activity.service';
 import { PostService } from '../../modules/post/post.service';
 import type { RecommendedPostCard } from '../presentation/ai-stream-event.view';
+import { inferAuthorGenderFromPost } from '../../common/utils/infer-author-gender.util';
 import {
   buildKnownFactsSummary,
   isFindBuddyThread,
@@ -172,6 +173,12 @@ export class BuddyContextService {
         authorName: post.authorName,
         authorHandle: post.authorHandle,
         authorAvatar: post.authorAvatar,
+        authorGender: inferAuthorGenderFromPost({
+          userId: post.userId,
+          authorName: post.authorName,
+          body: post.body,
+          tags: post.tags,
+        }),
         eventTitle: post.eventTitle,
         location: post.location,
         tags: post.tags,

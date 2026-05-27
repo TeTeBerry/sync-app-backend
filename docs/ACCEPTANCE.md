@@ -1,7 +1,7 @@
 # P0–P3 全栈验收报告
 
-> 验收日期：2026-05-27  
-> 范围：后端 P0–P3 优化 + 前端 AI 聊天 / 活动页 / 契约对齐
+> 验收日期：2026-05-27（复验）  
+> 范围：后端 P0–P3 + 前端 AI/活动页/性能优化 + 契约对齐
 
 ---
 
@@ -13,8 +13,8 @@
 | Recommend Gate | ✅ | 后端发 `post_recommendations` + `suggested_replies`；前端 chip 可点 |
 | Intent Router | ✅ | 22 套件含 `intent-router.service.spec.ts` 等，规则/LLM/缓存覆盖 |
 | Post Create 闭环 | ✅ | `post_created` / `existing_post` / `conversation_patch` 契约对齐 |
-| Events UI | ✅ | 活动列表、Tab、卡片渲染无编译回归 |
-| Search Bar | ✅ | `events.scss` 深色搜索框样式（focus/autofill/webkit-search）保留 |
+| Events UI | ✅ | 活动列表 Tab/卡片；价格与组队热度已移除；按钮「加入」 |
+| Search Bar | ✅ | 活动页搜索条为静态占位（无输入框/filter），仅展示样式 |
 | 后端测试 | ✅ | **22 suites / 85 tests** 全部通过 |
 | 后端构建 | ✅ | `npm run build` |
 | 前端类型检查 | ✅ | `npx tsc --noEmit` |
@@ -61,10 +61,16 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
 | `post_recommendations` | ✅ (+ `degraded?`) | ✅ (+ `degraded?`) | ✅ | 渲染推荐帖卡片 |
 | `suggested_replies` | ✅ | ✅ | ✅ | 渲染快捷 chip |
 | `buddy_copy_variants` | ✅ | ✅ | ✅ | 文案风格 chip |
-| `conversation_patch` | ✅ | ✅ | — | 无操作（状态由服务端 session 维护） |
+| `conversation_patch` | ✅ | ✅ | ✅ | `aiChatStore.applyConversationPatch` |
 | `error` | ✅ | ✅ | ✅ | 展示错误文案 |
 
-> `conversation_patch`  intentionally 不在 SSE 解析层展开：对话状态存于 Mongo session，前端无需本地镜像。
+> `conversation_patch` 写入 Zustand `aiChatStore`；持久化仍以服务端 Mongo session 为准。
+
+### 前端近期结构（不影响契约）
+
+- `useAiChatStream` 拆至 `hooks/ai-chat/`
+- `aiChatStore` + `navigationStore.activeActivityLegacyId`
+- 首屏性能：vendor split、首页 Feed lazy、i18n 按需
 
 ### activityLegacyId 传递链
 
@@ -109,7 +115,7 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
 1. **启动依赖**：`cd sync-app-backend && npm run infra:up:cn`（Mongo + Redis）；可选 `npm run infra:chroma`
 2. **启动后端**：`npm run dev`，确认控制台 `API: http://localhost:3000/api`
 3. **启动前端 H5**：`cd sync-app && npm run dev:h5`，浏览器打开本地地址
-4. **活动页搜索**：进入「活动」Tab，搜索框输入关键词，列表应实时过滤；搜索框为深色圆角样式
+4. **活动页**：进入「活动」Tab，卡片无价格/热度条，CTA 为「加入」；搜索条为静态占位
 5. **活动详情 → AI**：打开任一活动，点击快捷标签（如「找搭子」），应跳转 AI 助手并自动发送首条消息
 6. **Recommend Gate**：在活动上下文下发「组队队友」，应看到推荐帖卡片 + 「自己发帖」等 chip；点 chip 应继续对话
 7. **发帖闭环**：选择「自己发帖」或描述需求，确认后出现 `post_created` toast，活动帖列表刷新

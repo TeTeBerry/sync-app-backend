@@ -22,6 +22,7 @@ import {
   DEMO_OWNER_USER_ID,
   isDemoOwnerClient,
 } from '../../../common/utils/demo-owner.util';
+import { buildMatchCriteriaPatch } from '../../../ai/match/buddy-match-criteria.util';
 
 function resolveActorUserId(userId?: string, authorName?: string): string {
   const uid = userId?.trim();
@@ -83,14 +84,27 @@ export class PostWriteService {
       }
     }
 
+    const activityLegacyId = dto.activityLegacyId ?? activity?.legacyId;
+    const location =
+      dto.location?.trim() || profile?.location || activity?.location;
+    const criteriaPatch = buildMatchCriteriaPatch({
+      body: bodyToSave,
+      tags: dto.tags,
+      location,
+      departureCity: dto.departureCity,
+      activityLegacyId,
+    });
+
     const created = await this.repository.create({
       userId: ownerUserId,
       authorName: profile?.name ?? authorName?.trim() ?? 'Zara Chen',
       authorHandle: profile?.handle,
       authorAvatar: profile?.avatar,
-      activityLegacyId: dto.activityLegacyId ?? activity?.legacyId,
+      activityLegacyId,
       eventTitle,
-      location: dto.location?.trim() || profile?.location || activity?.location,
+      location,
+      departureCity: criteriaPatch.departureCity,
+      matchCriteria: criteriaPatch.matchCriteria,
       body: bodyToSave,
       tags: dto.tags ?? [],
       status,
@@ -117,6 +131,7 @@ export class PostWriteService {
       eventTitle: created.eventTitle,
       tags: created.tags,
       location: created.location,
+      departureCity: created.departureCity,
       activityCode: activity?.code,
       activityLegacyId: created.activityLegacyId,
       status,
@@ -132,6 +147,7 @@ export class PostWriteService {
     eventTitle: string;
     tags?: string[];
     location?: string;
+    departureCity?: string;
     activityCode?: string;
     activityLegacyId?: number;
     status?: PostStatus;
@@ -156,10 +172,23 @@ export class PostWriteService {
       eventTitle: post.eventTitle,
       tags: post.tags,
       location: post.location,
+      departureCity: post.departureCity,
       activityCode: activity?.code,
       activityLegacyId: post.activityLegacyId,
       status: post.status,
     });
+  }
+
+  /** Re-sync all recruiting post vectors (startup / repair). */
+  async reindexRecruitingEmbeddings(
+    posts: PostRecord[],
+    resolveActivityCode: (legacyId?: number) => Promise<string | undefined>,
+  ): Promise<void> {
+    for (const post of posts) {
+      if (post.status !== 'recruiting') continue;
+      const code = await resolveActivityCode(post.activityLegacyId);
+      this.scheduleEmbeddingSyncForRecord(post, code ? { code } : null);
+    }
   }
 
   scheduleEmbeddingDeprecate(postId: string): void {

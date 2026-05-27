@@ -22,7 +22,7 @@ export function resolveChatIntentFastPath(
   }
 
   if (isAiShortcutTag(trimmed) && params.activityLegacyId != null) {
-    return { kind: 'create_post', source: 'rule' };
+    return { kind: 'search_posts', source: 'rule' };
   }
 
   if (params.activityLegacyId != null && trimmed) {

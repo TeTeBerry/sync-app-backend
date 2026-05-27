@@ -8,6 +8,8 @@ import { NotificationModule } from '../../modules/notification/notification.modu
 import { ChromaModule } from '../rag/chroma.module';
 import { ParserModule } from '../parser/parser.module';
 import { MatchContextService } from '../services/match-context.service';
+import { MatchService } from '../services/match.service';
+import { PostMatchRerankService } from '../services/post-match-rerank.service';
 import { ImageParseAgent } from './image-parse.agent';
 import { MatchAgent } from './match.agent';
 import { NoticeAgent } from './notice.agent';
@@ -35,6 +37,8 @@ import { UserProfileAgent } from './user-profile.agent';
     UserProfileAgent,
     NoticeAgent,
     MatchContextService,
+    PostMatchRerankService,
+    MatchService,
   ],
   exports: [
     TextParseAgent,

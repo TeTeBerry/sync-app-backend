@@ -34,7 +34,10 @@ function extractMultimodalText(data: DashScopeMultimodalResponse): string {
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
   public readonly llm: ChatAlibabaTongyi;
+  public readonly rerankLlm: ChatAlibabaTongyi;
   public readonly vlModel: string;
+  public readonly rerankModel: string;
+  private readonly defaultModel: string;
   private readonly apiKey: string;
   public readonly enabled: boolean;
   public readonly visionEnabled: boolean;
@@ -44,12 +47,23 @@ export class LlmService {
     this.enabled = Boolean(this.apiKey && this.apiKey !== 'MISSING_API_KEY');
     this.visionEnabled = this.enabled;
     this.vlModel = this.config.get<string>('llm.vlModel') ?? 'qwen-vl-plus';
+    this.defaultModel = this.config.get<string>('llm.model') ?? 'qwen-turbo';
+    this.rerankModel = this.config.get<string>('llm.rerankModel') ?? 'qwen-plus';
 
-    this.llm = new ChatAlibabaTongyi({
+    const llmOptions = {
       alibabaApiKey: this.apiKey || 'MISSING_API_KEY',
-      model: this.config.get<string>('llm.model') ?? 'qwen-turbo',
       streaming: true,
       temperature: 0.1,
+    };
+
+    this.llm = new ChatAlibabaTongyi({
+      ...llmOptions,
+      model: this.defaultModel,
+    });
+
+    this.rerankLlm = new ChatAlibabaTongyi({
+      ...llmOptions,
+      model: this.rerankModel,
     });
   }
 
@@ -66,9 +80,30 @@ export class LlmService {
 
   /** 结构化 JSON 抽取（非 Function Calling，低温度） */
   async invokeJson<T>(system: string, user: string): Promise<T | null> {
+    return this.invokeJsonWithModel<T>(this.defaultModel, system, user);
+  }
+
+  /** 指定模型做结构化 JSON 抽取（如 post match rerank） */
+  async invokeJsonWithModel<T>(
+    model: string,
+    system: string,
+    user: string,
+  ): Promise<T | null> {
     if (!this.enabled) return null;
 
-    const response = await this.llm.invoke([
+    const llm =
+      model === this.defaultModel
+        ? this.llm
+        : model === this.rerankModel
+          ? this.rerankLlm
+          : new ChatAlibabaTongyi({
+              alibabaApiKey: this.apiKey || 'MISSING_API_KEY',
+              model,
+              streaming: true,
+              temperature: 0.1,
+            });
+
+    const response = await llm.invoke([
       new SystemMessage(system),
       new HumanMessage(user),
     ]);

@@ -1,3 +1,10 @@
+import type { BuddyMatchCriteria } from './buddy-match.types';
+import {
+  applyLightTieBreak,
+  buildPostFitMatchReason,
+  type PostFitSnapshot,
+} from './buddy-match-rank.util';
+
 export interface UserMatchProfile {
   city?: string;
   favorGenres?: string[];
@@ -25,6 +32,7 @@ export const DEFAULT_MATCH_RANKING_WEIGHTS: MatchRankingWeights = {
 export interface MatchFilterContext {
   requesterUserId?: string;
   profile?: UserMatchProfile;
+  criteria?: BuddyMatchCriteria;
   blockedUserIds: ReadonlySet<string>;
   buddyUserIds: ReadonlySet<string>;
 }
@@ -45,6 +53,8 @@ export interface RankablePostCandidate {
   authorUserId: string;
   postCity?: string;
   postTags?: string[];
+  postBody?: string;
+  postDepartureCity?: string;
   author?: PostAuthorSnapshot;
 }
 
@@ -201,10 +211,34 @@ function buildSnippet(document: string): string {
   return document.length > 120 ? `${document.slice(0, 120)}…` : document;
 }
 
+function candidateToPostFitSnapshot(
+  candidate: RankablePostCandidate,
+): PostFitSnapshot {
+  return {
+    tags: candidate.postTags,
+    body: candidate.postBody ?? candidate.document,
+    departureCity: candidate.postDepartureCity,
+    location: candidate.postCity,
+  };
+}
+
 export function buildMatchReason(
   candidate: RankablePostCandidate,
   profile?: UserMatchProfile,
+  criteria?: BuddyMatchCriteria,
 ): string | undefined {
+  if (criteria) {
+    const tie = applyLightTieBreak(criteria, candidateToPostFitSnapshot(candidate));
+    const reason = buildPostFitMatchReason({
+      matchedTags: tie.matchedTags,
+      departureCity: criteria.departureCity,
+      departureCityExact: tie.departureCityExact,
+      topRerank:
+        candidate.distance != null && candidate.distance < 0.35,
+    });
+    if (reason) return reason;
+  }
+
   const reasons: string[] = [];
 
   if (
@@ -259,19 +293,36 @@ export function rerankMatchCandidates(
     const base = vectorScore(candidate.distance);
     const vectorWeighted =
       base * profileVectorWeightBoost(candidate.profileDistance, weights.profileVector);
-    const profileBoost = computeProfileBoost(context.profile, candidate, weights);
     const personalization =
       requesterId && weights.personalization > 0
         ? hashPersonalization(requesterId, candidate.postId) *
           weights.personalization
         : 0;
 
+    let score = vectorWeighted + personalization;
+    let matchReason: string | undefined;
+
+    if (context.criteria) {
+      const tie = applyLightTieBreak(
+        context.criteria,
+        candidateToPostFitSnapshot(candidate),
+      );
+      score = vectorWeighted + personalization + tie.boost * 0.01;
+      matchReason =
+        tie.matchReason ??
+        buildMatchReason(candidate, context.profile, context.criteria);
+    } else {
+      const profileBoost = computeProfileBoost(context.profile, candidate, weights);
+      score += profileBoost;
+      matchReason = buildMatchReason(candidate, context.profile);
+    }
+
     scored.push({
       postId: candidate.postId,
       snippet: buildSnippet(candidate.document),
       distance: candidate.distance,
-      score: vectorWeighted + profileBoost + personalization,
-      matchReason: buildMatchReason(candidate, context.profile),
+      score,
+      matchReason,
     });
   }
 

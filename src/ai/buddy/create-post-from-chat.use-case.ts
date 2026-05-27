@@ -38,7 +38,7 @@ import {
   isAwaitingRecommendationsGate,
   isDeclineRecommendationsIntent,
 } from '../gate/recommend-gate.util';
-import { detectUserIntent, isExactQuickReply } from '../intent/user-intent';
+import { isExactQuickReply } from '../intent/user-intent';
 import { BuddyContextService } from './buddy-context.service';
 import type { PostIntentCreateAttempt } from './buddy.types';
 
@@ -142,11 +142,9 @@ export class CreatePostFromChatUseCase {
             ? trimmedInput
             : undefined;
         const shouldGuideExisting =
-          (isShortcutWithActivity ||
-            publishConfirmReady ||
-            supplement != null ||
-            isFindBuddyThread(messages) ||
-            detectUserIntent(trimmedInput) === 'find_buddy');
+          publishConfirmReady ||
+          supplement != null ||
+          isExplicitReplacePostIntent(trimmedInput);
 
         if (shouldGuideExisting) {
           const activityLabel =

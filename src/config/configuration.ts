@@ -24,6 +24,7 @@ export default () => ({
         process.env.DASHSCOPE_API_KEY,
     ),
     model: cleanEnv(process.env.QWEN_MODEL, 'qwen-turbo'),
+    rerankModel: cleanEnv(process.env.QWEN_RERANK_MODEL, 'qwen-plus'),
     vlModel: cleanEnv(process.env.QWEN_VL_MODEL, 'qwen-vl-plus'),
   },
 

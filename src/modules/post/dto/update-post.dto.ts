@@ -12,6 +12,14 @@ export class UpdatePostDto {
   eventTitle?: string;
 
   @IsOptional()
+  @IsString()
+  location?: string;
+
+  @IsOptional()
+  @IsString()
+  departureCity?: string;
+
+  @IsOptional()
   @IsIn(['recruiting', 'completed'])
   status?: PostStatus;
 }

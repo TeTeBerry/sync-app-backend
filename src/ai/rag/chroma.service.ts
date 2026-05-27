@@ -13,6 +13,7 @@ export interface PostEmbeddingInput {
   eventTitle: string;
   tags?: string[];
   location?: string;
+  departureCity?: string;
   activityCode?: string;
   activityLegacyId?: number;
   status?: PostStatus;
@@ -210,7 +211,10 @@ export class ChromaService implements OnModuleInit {
 
   private buildPostDocument(input: PostEmbeddingInput): string {
     const tags = input.tags?.length ? input.tags.join(' ') : '';
-    return [input.eventTitle, input.body, input.location, tags]
+    const departure = input.departureCity
+      ? `${input.departureCity}出发`
+      : '';
+    return [input.eventTitle, input.body, departure, input.location, tags]
       .filter(Boolean)
       .join(' ')
       .trim();
@@ -370,6 +374,7 @@ export class ChromaService implements OnModuleInit {
                 ? String(input.activityLegacyId)
                 : '',
             status: input.status ?? 'recruiting',
+            departureCity: input.departureCity ?? '',
           },
         ],
       });

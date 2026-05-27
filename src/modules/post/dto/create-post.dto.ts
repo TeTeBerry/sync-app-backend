@@ -24,6 +24,10 @@ export class CreatePostDto {
   location?: string;
 
   @IsOptional()
+  @IsString()
+  departureCity?: string;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   tags?: string[];

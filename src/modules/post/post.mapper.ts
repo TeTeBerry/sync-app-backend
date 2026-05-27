@@ -69,6 +69,7 @@ export class PostMapper {
       userId: post.userId,
       name: post.authorName,
       location: post.location ?? '',
+      departureCity: post.departureCity ?? '',
       time: formatRelativeTime(post.createdAt),
       createdAt,
       body: post.body,

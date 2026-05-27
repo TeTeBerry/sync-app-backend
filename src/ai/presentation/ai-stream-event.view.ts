@@ -1,11 +1,14 @@
 import type { ConversationState } from '../conversation';
 
+export type RecommendedPostAuthorGender = 'female' | 'male';
+
 export interface RecommendedPostCard {
   postId: string;
   snippet: string;
   authorName: string;
   authorHandle?: string;
   authorAvatar?: string;
+  authorGender?: RecommendedPostAuthorGender;
   eventTitle: string;
   location?: string;
   tags?: string[];

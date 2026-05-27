@@ -144,4 +144,37 @@ describe('match-ranking.util', () => {
     expect(reason).toContain('同城出发');
     expect(reason).toContain('风格相近');
   });
+
+  it('keeps vector distance primary; criteria only nudges ties', () => {
+    const context: MatchFilterContext = {
+      ...baseContext,
+      criteria: {
+        activityLegacyId: 4,
+        departureCity: '上海',
+        requesterTags: ['拼车'],
+      },
+    };
+
+    const ranked = rerankMatchCandidates(
+      [
+        candidate('vector-closer', {
+          distance: 0.2,
+          postDepartureCity: '北京',
+          postTags: ['组队'],
+          postBody: '北京出发',
+        }),
+        candidate('tag-fit', {
+          distance: 0.45,
+          postDepartureCity: '上海',
+          postTags: ['拼车'],
+          postBody: '上海 #拼车 缺1',
+        }),
+      ],
+      context,
+      2,
+    );
+
+    expect(ranked[0]?.postId).toBe('vector-closer');
+    expect(ranked[1]?.matchReason).toBe('标签契合：#拼车');
+  });
 });

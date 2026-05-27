@@ -40,6 +40,11 @@ import {
 } from './interfaces/post.repository.interface';
 import { PostWriteService } from './application/post-write.service';
 import { PostInteractionService } from './post-interaction.service';
+import {
+  buildMatchCriteriaPatch,
+  inferDepartureCityFromText,
+  normalizeCityName,
+} from '../../ai/match/buddy-match-criteria.util';
 
 function resolveOwnerFilter(
   userId?: string,
@@ -83,6 +88,8 @@ export class PostService implements OnModuleInit {
       await this.syncPostEmbeddings(inserted);
     }
     await this.ensureStormDemoPosts();
+    await this.patchStormDemoDepartureCities();
+    await this.reindexRecruitingEmbeddings();
   }
 
   /** 已有库时补全风暴电音节招募帖，便于测 AI 搭子推荐卡片 */
@@ -130,11 +137,53 @@ export class PostService implements OnModuleInit {
         eventTitle: post.eventTitle,
         tags: post.tags,
         location: post.location,
+        departureCity: post.departureCity,
         activityCode: activity?.code,
         activityLegacyId: post.activityLegacyId,
         status: post.status,
       });
     }
+  }
+
+  private async patchStormDemoDepartureCities(): Promise<void> {
+    for (const seed of STORM_DEMO_POST_SEED) {
+      const departureCity =
+        seed.departureCity ??
+        normalizeCityName(seed.location) ??
+        inferDepartureCityFromText(seed.body);
+      if (!departureCity) continue;
+
+      await this.postModel.updateMany(
+        {
+          activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+          userId: seed.userId,
+          body: seed.body,
+        },
+        {
+          $set: {
+            departureCity,
+            matchCriteria: {
+              activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+              departureCity,
+            },
+          },
+        },
+      );
+    }
+  }
+
+  private async reindexRecruitingEmbeddings(): Promise<void> {
+    const recruiting = await this.postModel
+      .find({ status: 'recruiting' })
+      .lean();
+    await this.postWriteService.reindexRecruitingEmbeddings(
+      recruiting as PostRecord[],
+      async legacyId => {
+        if (legacyId == null) return undefined;
+        const activity = await this.activityService.findByLegacyId(legacyId);
+        return activity?.code;
+      },
+    );
   }
 
   private async syncPostEmbeddingForRecord(post: PostRecord): Promise<void> {
@@ -150,6 +199,7 @@ export class PostService implements OnModuleInit {
       eventTitle: post.eventTitle,
       tags: post.tags,
       location: post.location,
+      departureCity: post.departureCity,
       activityCode: activity?.code,
       activityLegacyId: post.activityLegacyId,
       status: post.status,
@@ -293,10 +343,12 @@ export class PostService implements OnModuleInit {
     body: string;
     eventTitle?: string;
     activityLegacyId?: number;
+    departureCity?: string;
   } | null> {
-    const record = await this.repository.findOwnerRecruitingPostForActivity(
-      resolveOwnerFilter(userId, authorName),
+    const record = await this.findOwnerRecruitingPostRecord(
       activityLegacyId,
+      userId,
+      authorName,
     );
     if (!record) return null;
     return {
@@ -304,7 +356,19 @@ export class PostService implements OnModuleInit {
       body: record.body ?? '',
       eventTitle: record.eventTitle,
       activityLegacyId: record.activityLegacyId,
+      departureCity: record.departureCity,
     };
+  }
+
+  async findOwnerRecruitingPostRecord(
+    activityLegacyId: number,
+    userId?: string,
+    authorName?: string,
+  ): Promise<PostRecord | null> {
+    return this.repository.findOwnerRecruitingPostForActivity(
+      resolveOwnerFilter(userId, authorName),
+      activityLegacyId,
+    );
   }
 
   async createPost(
@@ -366,7 +430,21 @@ export class PostService implements OnModuleInit {
     const patch: Partial<Post> = {};
     if (dto.body?.trim()) patch.body = dto.body.trim();
     if (dto.eventTitle?.trim()) patch.eventTitle = dto.eventTitle.trim();
+    if (dto.location?.trim()) patch.location = dto.location.trim();
+    if (dto.departureCity?.trim()) patch.departureCity = dto.departureCity.trim();
     if (dto.status) patch.status = dto.status;
+
+    if (dto.body?.trim() || dto.departureCity?.trim() || dto.location?.trim()) {
+      const criteriaPatch = buildMatchCriteriaPatch({
+        body: (dto.body ?? post.body).trim(),
+        tags: post.tags,
+        location: dto.location?.trim() ?? post.location,
+        departureCity: dto.departureCity?.trim() ?? post.departureCity,
+        activityLegacyId: post.activityLegacyId,
+      });
+      patch.departureCity = criteriaPatch.departureCity;
+      patch.matchCriteria = criteriaPatch.matchCriteria;
+    }
 
     if (Object.keys(patch).length === 0) {
       throw new BadRequestException('没有可更新的字段');

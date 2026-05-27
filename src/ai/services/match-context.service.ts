@@ -67,18 +67,39 @@ export class MatchContextService {
     };
   }
 
-  async enrichCandidates(raw: PostMatchResult[]): Promise<RankablePostCandidate[]> {
+  async enrichCandidates(
+    raw: PostMatchResult[],
+    postById?: Map<string, Pick<PostDocument, 'userId' | 'location' | 'tags' | 'body' | 'departureCity'>>,
+  ): Promise<RankablePostCandidate[]> {
     const postIds = [...new Set(raw.map(item => item.postId).filter(Boolean))];
     if (!postIds.length) return [];
 
-    const posts = await this.postModel
-      .find({ _id: { $in: postIds } })
-      .select('userId location tags')
-      .lean();
+    const resolvedPostMap = new Map<
+      string,
+      Pick<PostDocument, 'userId' | 'location' | 'tags' | 'body' | 'departureCity'>
+    >();
 
-    const postMap = new Map(posts.map(post => [String(post._id), post]));
+    if (postById) {
+      for (const id of postIds) {
+        const post = postById.get(id);
+        if (post) resolvedPostMap.set(id, post);
+      }
+    } else {
+      const posts = await this.postModel
+        .find({ _id: { $in: postIds } })
+        .select('userId location tags body departureCity')
+        .lean();
+      for (const post of posts) {
+        resolvedPostMap.set(String(post._id), post);
+      }
+    }
+
     const authorIds = [
-      ...new Set(posts.map(post => post.userId).filter(Boolean)),
+      ...new Set(
+        [...resolvedPostMap.values()]
+          .map(post => post.userId)
+          .filter(Boolean),
+      ),
     ];
 
     const users = authorIds.length
@@ -95,8 +116,8 @@ export class MatchContextService {
     );
 
     return raw.map(item => {
-      const post = postMap.get(item.postId);
-      const author = post ? userMap.get(post.userId) : undefined;
+      const post = resolvedPostMap.get(item.postId);
+      const author = post?.userId ? userMap.get(post.userId) : undefined;
 
       return {
         postId: item.postId,
@@ -106,7 +127,9 @@ export class MatchContextService {
         authorUserId: post?.userId ?? '',
         postCity: post?.location,
         postTags: post?.tags,
-        author: post
+        postBody: post?.body,
+        postDepartureCity: post?.departureCity,
+        author: post?.userId
           ? {
               userId: post.userId,
               city: author?.city,

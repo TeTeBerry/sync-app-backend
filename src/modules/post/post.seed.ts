@@ -160,6 +160,7 @@ export const STORM_DEMO_POST_SEED = [
     activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
     eventTitle: '风暴电音节 深圳站',
     location: '上海',
+    departureCity: '上海',
     body:
       '6月13日场 13号A区 内场票已出，上海出发求拼车到深圳，2人女生，可拼住宿～',
     tags: ['#13号A区', '#拼车', '#拼住宿', '#女生优先'],
@@ -177,6 +178,7 @@ export const STORM_DEMO_POST_SEED = [
     activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
     eventTitle: '风暴电音节 深圳站',
     location: '广州',
+    departureCity: '广州',
     body:
       '风暴 STORM 深圳站 6月14日，B区看台，3缺1男生，广州拼车出发，有人吗？',
     tags: ['#组队', '#B区', '#6月14日'],
@@ -194,6 +196,7 @@ export const STORM_DEMO_POST_SEED = [
     activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
     eventTitle: '风暴电音节 深圳站',
     location: '深圳',
+    departureCity: '深圳',
     body:
       '13号 A区 有没有人一起进场？本地土著带路，可分享检票口和接驳攻略，求搭子同行。',
     tags: ['#13号A区', '#搭子', '#深圳'],
@@ -211,6 +214,7 @@ export const STORM_DEMO_POST_SEED = [
     activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
     eventTitle: '风暴电音节 深圳站',
     location: '东莞',
+    departureCity: '东莞',
     body:
       '6月13-14 连刷两场 STORM，已订会展中心附近酒店，求2人拼房，男生女生都可聊。',
     tags: ['#拼住宿', '#6月13日', '#6月14日'],
@@ -245,6 +249,7 @@ export const STORM_DEMO_POST_SEED = [
     activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
     eventTitle: '风暴电音节 深圳站',
     location: '杭州',
+    departureCity: '杭州',
     body:
       '杭州飞深圳，6月13日风暴电音节，女生优先结伴，可AA拼酒店和打车，佛系不熬夜。',
     tags: ['#女生优先', '#拼住宿', '#6月13日'],
@@ -279,6 +284,7 @@ export const STORM_DEMO_POST_SEED = [
     activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
     eventTitle: '风暴电音节 深圳站',
     location: '北京',
+    departureCity: '北京',
     body:
       '北京出发深圳 STORM，6月14日场，求同行搭子一起看压轴，可拼车可拼票区附近酒店。',
     tags: ['#拼车', '#6月14日', '#搭子'],
