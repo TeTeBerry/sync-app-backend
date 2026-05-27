@@ -64,6 +64,7 @@ export class LlmService {
     this.rerankLlm = new ChatAlibabaTongyi({
       ...llmOptions,
       model: this.rerankModel,
+      streaming: false,
     });
   }
 

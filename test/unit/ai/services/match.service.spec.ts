@@ -152,7 +152,22 @@ describe('MatchService', () => {
       limit: 2,
     });
 
-    expect(postMatchRerankService.rerank).toHaveBeenCalled();
+    expect(postMatchRerankService.rerank).toHaveBeenCalledWith(
+      expect.stringContaining('上海 #拼车'),
+      expect.arrayContaining([
+        expect.objectContaining({
+          postId: 'post-a',
+          body: '帖子A 向量更近',
+          departureCity: '北京',
+        }),
+        expect.objectContaining({
+          postId: 'post-b',
+          body: '帖子B 向量更远',
+          departureCity: '上海',
+          tags: ['拼车'],
+        }),
+      ]),
+    );
     expect(result.items[0]?.postId).toBe('post-b');
     expect(result.items[0]?.matchReason).toBe('内容高度相关');
     expect(result.items[1]?.postId).toBe('post-a');

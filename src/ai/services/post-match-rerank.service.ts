@@ -5,13 +5,33 @@ import { LlmService } from '../llm/llm.service';
 export interface PostRerankCandidate {
   postId: string;
   snippet: string;
+  tags?: string[];
+  departureCity?: string;
+  body?: string;
 }
 
-const RERANK_TIMEOUT_MS = 3_000;
 const RERANK_CANDIDATE_LIMIT = 15;
+const RERANK_CANDIDATE_BODY_MAX = 400;
 
 const RERANK_SYSTEM = `你是活动组队帖匹配助手。根据用户招募需求，对候选帖子按内容契合度从高到低排序。
 只输出 JSON：{"postIds":["id1","id2",...]}，包含所有候选 postId，不得遗漏或编造 id。`;
+
+function formatRerankCandidate(item: PostRerankCandidate, index: number): string {
+  const lines = [`${index + 1}. postId=${item.postId}`];
+  if (item.departureCity?.trim()) {
+    lines.push(`出发地=${item.departureCity.trim()}`);
+  }
+  if (item.tags?.length) {
+    lines.push(`标签=${item.tags.map(tag => `#${tag}`).join(' ')}`);
+  }
+  const body = item.body?.trim() || item.snippet.trim();
+  if (body) {
+    lines.push(
+      `正文=${body.length > RERANK_CANDIDATE_BODY_MAX ? body.slice(0, RERANK_CANDIDATE_BODY_MAX) : body}`,
+    );
+  }
+  return lines.join(' ');
+}
 
 @Injectable()
 export class PostMatchRerankService {
@@ -38,19 +58,21 @@ export class PostMatchRerankService {
     }
 
     const slice = candidates.slice(0, RERANK_CANDIDATE_LIMIT);
+    const rerankModel =
+      this.config.get<string>('llm.rerankModel') ?? 'qwen-plus';
+    const timeoutMs =
+      this.config.get<number>('llm.rerankTimeoutMs') ?? 6000;
+
     const user = [
-      `用户需求：${userNeed.trim().slice(0, 500)}`,
+      `用户需求：${userNeed.trim()}`,
       '',
       '候选帖子：',
-      ...slice.map(
-        (item, index) =>
-          `${index + 1}. postId=${item.postId} 摘要=${item.snippet.slice(0, 200)}`,
-      ),
+      ...slice.map((item, index) => formatRerankCandidate(item, index)),
     ].join('\n');
 
+    const startedAt = Date.now();
+
     try {
-      const rerankModel =
-        this.config.get<string>('llm.rerankModel') ?? 'qwen-plus';
       const parsed = await Promise.race([
         this.llmService.invokeJsonWithModel<{ postIds?: string[] }>(
           rerankModel,
@@ -58,11 +80,21 @@ export class PostMatchRerankService {
           user,
         ),
         new Promise<null>(resolve => {
-          setTimeout(() => resolve(null), RERANK_TIMEOUT_MS);
+          setTimeout(() => resolve(null), timeoutMs);
         }),
       ]);
 
-      if (!parsed?.postIds?.length) return null;
+      const rerankMs = Date.now() - startedAt;
+
+      if (!parsed?.postIds?.length) {
+        this.logger.log({
+          rerank_ms: rerankMs,
+          rerank_ok: false,
+          candidate_count: slice.length,
+          model: rerankModel,
+        });
+        return null;
+      }
 
       const allowed = new Set(slice.map(item => item.postId));
       const ordered: string[] = [];
@@ -77,11 +109,24 @@ export class PostMatchRerankService {
         if (!ordered.includes(item.postId)) ordered.push(item.postId);
       }
 
-      return ordered.length ? ordered : null;
+      const rerankOk = ordered.length > 0;
+      this.logger.log({
+        rerank_ms: rerankMs,
+        rerank_ok: rerankOk,
+        candidate_count: slice.length,
+        model: rerankModel,
+      });
+
+      return rerankOk ? ordered : null;
     } catch (error) {
-      this.logger.warn(
-        `Post rerank failed: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      const rerankMs = Date.now() - startedAt;
+      this.logger.warn({
+        rerank_ms: rerankMs,
+        rerank_ok: false,
+        candidate_count: slice.length,
+        model: rerankModel,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return null;
     }
   }

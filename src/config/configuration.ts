@@ -25,6 +25,10 @@ export default () => ({
     ),
     model: cleanEnv(process.env.QWEN_MODEL, 'qwen-turbo'),
     rerankModel: cleanEnv(process.env.QWEN_RERANK_MODEL, 'qwen-plus'),
+    rerankTimeoutMs: parseInt(
+      cleanEnv(process.env.QWEN_RERANK_TIMEOUT_MS, '6000'),
+      10,
+    ),
     vlModel: cleanEnv(process.env.QWEN_VL_MODEL, 'qwen-vl-plus'),
   },
 

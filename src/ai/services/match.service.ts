@@ -1,11 +1,14 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   IPostRepository,
   POST_REPOSITORY,
   type PostRecord,
 } from '../../modules/post/interfaces/post.repository.interface';
 import { ChromaService } from '../rag/chroma.service';
-import { criteriaToEmbeddingText } from '../match/buddy-match-criteria.util';
+import {
+  buildRerankUserNeed,
+  criteriaToEmbeddingText,
+} from '../match/buddy-match-criteria.util';
 import {
   applyLightTieBreak,
   buildPostFitMatchReason,
@@ -40,6 +43,8 @@ const RERANK_INPUT_LIMIT = 15;
 
 @Injectable()
 export class MatchService {
+  private readonly logger = new Logger(MatchService.name);
+
   constructor(
     @Inject(POST_REPOSITORY)
     private readonly postRepository: IPostRepository,
@@ -203,14 +208,27 @@ export class MatchService {
     }
 
     const rerankInput = prepared.slice(0, RERANK_INPUT_LIMIT);
-    const userNeed = criteriaToEmbeddingText(criteria).slice(0, 500);
+    const userNeed = buildRerankUserNeed(criteria);
 
     const rerankedIds = await this.postMatchRerankService.rerank(
       userNeed,
-      rerankInput.map(item => ({ postId: item.postId, snippet: item.snippet })),
+      rerankInput.map(item => ({
+        postId: item.postId,
+        snippet: item.snippet,
+        tags: item.snapshot.tags,
+        departureCity: item.snapshot.departureCity,
+        body: item.snapshot.body,
+      })),
     );
 
     const rerankFailed = rerankedIds == null;
+    if (rerankFailed) {
+      this.logger.warn({
+        msg: 'match_rerank_fallback',
+        activityLegacyId: criteria.activityLegacyId,
+        candidate_count: rerankInput.length,
+      });
+    }
     const orderIndex = new Map<string, number>();
 
     if (rerankedIds) {

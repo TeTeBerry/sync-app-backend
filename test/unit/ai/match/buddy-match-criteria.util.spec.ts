@@ -1,5 +1,6 @@
 import {
   buildMatchCriteriaForSearch,
+  buildRerankUserNeed,
   criteriaFromPostRecord,
   inferDepartureCityFromText,
 } from '@src/ai/match/buddy-match-criteria.util';
@@ -46,5 +47,40 @@ describe('buddy-match-criteria.util', () => {
     });
 
     expect(criteria.departureCity).toBe('上海');
+  });
+
+  it('buildRerankUserNeed prioritizes requester body and structured fields', () => {
+    const need = buildRerankUserNeed({
+      activityLegacyId: 4,
+      activityName: '风暴电音节',
+      departureCity: '上海',
+      requesterTags: ['拼车'],
+      intents: ['carpool', 'team'],
+      zone: '内场',
+      eventDate: '2025-05-01',
+      genderPref: '女生',
+      requesterBody: '上海出发求拼车到深圳，2人女生同行',
+    });
+
+    expect(need.startsWith('上海出发求拼车到深圳，2人女生同行')).toBe(true);
+    expect(need).toContain('活动：风暴电音节');
+    expect(need).toContain('出发地：上海');
+    expect(need).toContain('#拼车');
+    expect(need).toContain('carpool');
+    expect(need).toContain('内场');
+    expect(need).toContain('2025-05-01');
+    expect(need).toContain('女生');
+  });
+
+  it('buildRerankUserNeed truncates very long requester body', () => {
+    const longBody = '求'.repeat(900);
+    const need = buildRerankUserNeed({
+      activityLegacyId: 1,
+      requesterBody: longBody,
+      departureCity: '北京',
+    });
+
+    expect(need.startsWith('求'.repeat(800))).toBe(true);
+    expect(need).toContain('出发地：北京');
   });
 });

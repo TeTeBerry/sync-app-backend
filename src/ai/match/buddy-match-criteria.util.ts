@@ -216,6 +216,43 @@ export function buildMatchCriteriaPatch(params: {
   return { departureCity, matchCriteria };
 }
 
+const RERANK_USER_NEED_BODY_MAX = 800;
+
+/** Full recruiting need text for LLM rerank (not used for Chroma embedding). */
+export function buildRerankUserNeed(criteria: BuddyMatchCriteria): string {
+  const parts: string[] = [];
+
+  const body = criteria.requesterBody?.trim();
+  if (body) {
+    parts.push(
+      body.length > RERANK_USER_NEED_BODY_MAX
+        ? body.slice(0, RERANK_USER_NEED_BODY_MAX)
+        : body,
+    );
+  }
+
+  const structured: string[] = [];
+  if (criteria.activityName) structured.push(`活动：${criteria.activityName}`);
+  if (criteria.departureCity) structured.push(`出发地：${criteria.departureCity}`);
+  if (criteria.requesterTags?.length) {
+    structured.push(
+      `标签：${criteria.requesterTags.map(tag => `#${tag}`).join(' ')}`,
+    );
+  }
+  if (criteria.intents?.length) {
+    structured.push(`意图：${criteria.intents.join('、')}`);
+  }
+  if (criteria.zone) structured.push(`区域：${criteria.zone}`);
+  if (criteria.eventDate) structured.push(`日期：${criteria.eventDate}`);
+  if (criteria.genderPref) structured.push(`性别偏好：${criteria.genderPref}`);
+
+  if (structured.length) {
+    parts.push(structured.join('\n'));
+  }
+
+  return parts.join('\n\n').trim();
+}
+
 export function criteriaToEmbeddingText(criteria: BuddyMatchCriteria): string {
   const parts = [
     criteria.activityName,
