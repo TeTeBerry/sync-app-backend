@@ -143,8 +143,8 @@ export class ChromaService implements OnModuleInit {
 
     if (!baseUrl) {
       this.enabled = false;
-      this.logger.warn(
-        'Chroma 未配置 HTTP 地址（设置 CHROMA_URL=http://localhost:8000），RAG 已禁用',
+      this.logger.log(
+        'RAG optional: CHROMA_URL not set; vector search uses Mongo/rules fallback (set CHROMA_URL=http://localhost:8000 to enable)',
       );
       return;
     }
@@ -173,8 +173,8 @@ export class ChromaService implements OnModuleInit {
       );
     } catch (error) {
       this.enabled = false;
-      this.logger.warn(
-        `Chroma unavailable, RAG disabled: ${(error as Error).message}`,
+      this.logger.log(
+        `RAG optional: Chroma unreachable at ${baseUrl} (${(error as Error).message}); using Mongo/rules fallback`,
       );
     }
   }

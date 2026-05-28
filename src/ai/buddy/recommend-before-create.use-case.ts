@@ -14,6 +14,7 @@ import {
 import { buildMatchCriteriaForSearch } from '../match/buddy-match-criteria.util';
 import { PostService } from '../../modules/post/post.service';
 import { BuddyContextService } from './buddy-context.service';
+import { shouldSkipActivityScopedBuddyRecommend } from './activity-scope-guard.util';
 import { MatchPostsFromChatUseCase } from './match-posts.use-case';
 import type { PostIntentMatchResult } from './buddy.types';
 
@@ -41,6 +42,9 @@ export class RecommendBeforeCreateUseCase {
     const { messages, input, activityLegacyId, userId, authorName, conversationState, profileSync } =
       params;
     if (activityLegacyId == null) return null;
+    if (shouldSkipActivityScopedBuddyRecommend(input, activityLegacyId)) {
+      return null;
+    }
     if (isPublishConfirmIntent(input.trim())) return null;
     if (isExplicitReplacePostIntent(input)) return null;
     if (isDeclineRecommendationsIntent(input)) return null;

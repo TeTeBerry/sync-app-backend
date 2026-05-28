@@ -1,4 +1,5 @@
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
+import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
 
 export type UserIntent =
   | 'find_buddy'
@@ -39,6 +40,7 @@ export function detectUserIntent(input: string): UserIntent {
 export function isExactQuickReply(input: string): boolean {
   const text = input.trim();
   if (text === '帮我dd') return true;
+  if (isHomeFestivalShortcutInput(text)) return true;
   return Object.values(QUICK_REPLIES).some(reply => reply && reply === text);
 }
 

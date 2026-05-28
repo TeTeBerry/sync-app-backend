@@ -13,6 +13,7 @@ const FEMALE_DEMO_USER_IDS = new Set([
 const MALE_DEMO_USER_IDS = new Set([
   'demo-ryan',
   'demo-sam',
+  'demo-sean',
   'demo-leo',
   'demo-kai',
   'demo-alex',
@@ -32,6 +33,7 @@ const FEMALE_NAME_HINTS = [
 const MALE_NAME_HINTS = [
   'ryan',
   'sam',
+  'sean',
   'leo',
   'kai',
   'alex',

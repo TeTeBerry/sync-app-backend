@@ -1,13 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
+import { AiChatWsServer } from './ai/ws/ai-chat-ws.server';
+import { AI_CHAT_WS_PATH } from './ai/ws/ai-chat-ws.protocol';
 import { HttpExceptionFilter } from './common/filter/http-exception.filter';
 import { TransformInterceptor } from './common/interceptor/transform.interceptor';
 import { Logger, ValidationPipe } from '@nestjs/common';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
-/** Headers the H5 client may send (REST + AI SSE preflight). */
+/** Headers the H5 client may send (REST + WebSocket preflight). */
 const PROD_ALLOWED_HEADERS = [
   'Content-Type',
   'Authorization',
@@ -96,8 +98,10 @@ async function bootstrap() {
 
   try {
     await app.listen(port);
+    const httpServer = app.getHttpServer();
+    app.get(AiChatWsServer).attach(httpServer);
     logger.log(`🚀 API: http://localhost:${port}/api`);
-    logger.log(`✅ AI流式接口: POST http://localhost:${port}/api/ai/chat`);
+    logger.log(`✅ AI WebSocket: ws://localhost:${port}${AI_CHAT_WS_PATH}`);
     logger.log(`📦 MongoDB: ${mongoUri.replace(/\/\/.*@/, '//***@')}`);
     if (IS_PRODUCTION && !process.env.CORS_ORIGINS) {
       logger.warn('⚠️  CORS disabled: set CORS_ORIGINS in production');

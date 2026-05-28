@@ -17,6 +17,6 @@ import { RecommendBeforeCreateUseCase } from './recommend-before-create.use-case
     RecommendBeforeCreateUseCase,
     PostIntentService,
   ],
-  exports: [PostIntentService],
+  exports: [PostIntentService, BuddyContextService],
 })
 export class BuddyModule {}

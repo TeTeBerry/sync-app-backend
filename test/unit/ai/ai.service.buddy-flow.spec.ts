@@ -86,12 +86,17 @@ describe('AiService buddy flow', () => {
     checkLimit: jest.fn().mockResolvedValue({ allowed: true }),
   };
 
+  const buddyContext = {
+    resolveActivityLegacyIdFromChat: jest.fn().mockResolvedValue(undefined),
+  };
+
   const turnPipeline = new AiTurnPipeline(
     agenticReplyService as never,
     postIntentService as never,
     userProfileAgent as never,
     intentRouter as never,
     new AiSseBuilder(),
+    buddyContext as never,
   );
 
   const service = new AiService(
@@ -307,6 +312,37 @@ describe('AiService buddy flow', () => {
           complete &&
             'content' in complete &&
             complete.content.includes(PUBLISH_CONFIRM_PROMPT_MARKER),
+        ).toBe(true);
+      },
+    },
+    {
+      name: 'ASOT HK ticket in Storm activity → skip recommend gate',
+      input:
+        '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
+      intentKind: 'create_post' as const,
+      matchResult: null,
+      createResult: {
+        kind: 'pending_confirmation',
+        activityLegacyId: 9,
+        replyText: [
+          '你这条是出票/转票信息，和当前打开的「风暴电音节」不是同一场活动，我不会在这里推荐组队帖。',
+          PUBLISH_CONFIRM_PROMPT_MARKER,
+          '草稿',
+        ].join('\n'),
+        draftBody:
+          '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
+      } satisfies PostIntentCreateAttempt,
+      expectCreate: true,
+      assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
+        expect(postIntentService.tryProactiveRecommendBeforeCreate).not.toHaveBeenCalled();
+        expect(events.some(e => e.type === 'post_recommendations')).toBe(false);
+        const complete = events.find(e => e.type === 'message_complete');
+        expect(
+          complete &&
+            'content' in complete &&
+            !complete.content.includes(RECOMMEND_GATE_MARKER) &&
+            complete.content.includes(PUBLISH_CONFIRM_PROMPT_MARKER) &&
+            complete.content.includes('不是同一场活动'),
         ).toBe(true);
       },
     },

@@ -5,6 +5,7 @@ import {
   ACTIVITY_PICKER_PROMPT,
   buildScopedFindBuddyReply,
 } from './activity-reply.util';
+import { buildHomeFestivalShortcutReplyFromCatalog } from './festival-shortcut.util';
 import { composeReply } from './reply-text.util';
 
 export async function buildQuickReplyResponse(
@@ -16,6 +17,14 @@ export async function buildQuickReplyResponse(
 ): Promise<string | null> {
   const intent = detectUserIntent(input);
   const { activityService } = services;
+
+  if (activityLegacyId == null) {
+    const festivalReply = await buildHomeFestivalShortcutReplyFromCatalog(
+      input,
+      code => activityService.findByCode(code).exec(),
+    );
+    if (festivalReply) return festivalReply;
+  }
 
   switch (intent) {
     case 'find_buddy': {

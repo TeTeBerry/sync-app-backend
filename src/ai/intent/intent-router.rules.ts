@@ -1,4 +1,5 @@
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
+import { isTicketResaleIntent } from '../buddy/activity-scope-guard.util';
 import { isDeclineRecommendationsIntent } from '../gate/recommend-gate.util';
 import { isInformalPostBodyInput } from '../conversation/existing-post-guidance.util';
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
@@ -6,6 +7,7 @@ import {
   detectUserIntent,
   isSearchExistingPostsIntent,
 } from '../intent/user-intent';
+import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
 import { inferBuddySearchHintKind } from '../match/zone-buddy-search.util';
 import type { IntentRouterInput } from './intent-router.service';
 import type { ResolvedChatIntent } from './chat-intent.types';
@@ -17,6 +19,13 @@ export function resolveChatIntentFastPath(
 ): ResolvedChatIntent | null {
   if (params.image?.trim()) {
     return { kind: 'create_post', source: 'rule' };
+  }
+
+  if (
+    params.activityLegacyId == null &&
+    isHomeFestivalShortcutInput(trimmed)
+  ) {
+    return { kind: 'quick_reply', source: 'rule' };
   }
 
   if (isPublishConfirmIntent(trimmed)) {
@@ -32,6 +41,10 @@ export function resolveChatIntentFastPath(
   }
 
   if (params.activityLegacyId != null && trimmed) {
+    if (isTicketResaleIntent(trimmed)) {
+      return { kind: 'create_post', source: 'rule' };
+    }
+
     if (isSearchExistingPostsIntent(trimmed)) {
       const kind = inferBuddySearchHintKind(trimmed);
       return {

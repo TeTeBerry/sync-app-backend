@@ -31,6 +31,9 @@ import {
   isPublishConfirmIntent,
 } from '../publish/publish-confirm.util';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { isTicketResaleIntent } from './activity-scope-guard.util';
+import { inferIntentTagsFromText } from './infer-intent-tags.util';
+import { extractActivityLookupKeywords } from './resolve-activity-from-chat.util';
 
 interface ResolvedActivity {
   legacyId?: number;
@@ -94,6 +97,27 @@ export class BuddyContextService {
     }
 
     return null;
+  }
+
+  /**
+   * Homepage / global AI: infer activity from user text (name, alias, festival token).
+   * Returns undefined when nothing in the catalog matches.
+   */
+  async resolveActivityLegacyIdFromChat(
+    messages: ChatMessageDto[],
+    input: string,
+  ): Promise<number | undefined> {
+    const ctx = parseConversationContext(messages, input.trim());
+    const keywords = extractActivityLookupKeywords(messages, input);
+
+    for (const keyword of keywords) {
+      const resolved = await this.resolveActivity(ctx, undefined, keyword);
+      if (resolved?.legacyId != null) {
+        return resolved.legacyId;
+      }
+    }
+
+    return undefined;
   }
 
   async buildPostBody(params: {
@@ -226,18 +250,25 @@ export class BuddyContextService {
     return hint;
   }
 
-  resolveTags(input: string, llmTags?: string[]): string[] {
+  resolveTags(input: string, llmTags?: string[], bodyForIntent?: string): string[] {
     const tags = new Set<string>();
+    const sourceText = [bodyForIntent, input].filter(Boolean).join('\n');
+
     if (isAiShortcutTag(input)) {
       tags.add(normalizeAiShortcutInput(input));
     }
+
+    for (const tag of inferIntentTagsFromText(bodyForIntent, input)) {
+      tags.add(tag);
+    }
+
     for (const tag of llmTags ?? []) {
       const trimmed = tag.trim();
       if (!trimmed) continue;
-      // 过滤 LLM 幻觉标签：标签关键词必须在用户输入中出现
+      // 过滤 LLM 幻觉标签：标签关键词须在正文或用户输入中出现
       const keyword = trimmed.replace(/^#/, '');
-      if (keyword && !input.includes(keyword)) continue;
-      tags.add(trimmed);
+      if (keyword && sourceText && !sourceText.includes(keyword)) continue;
+      tags.add(trimmed.startsWith('#') ? trimmed : `#${trimmed}`);
     }
     return [...tags];
   }
@@ -267,6 +298,10 @@ export class BuddyContextService {
     }
 
     if (isAiShortcutTag(input) && activityLegacyId != null) {
+      return true;
+    }
+
+    if (activityLegacyId != null && isTicketResaleIntent(input)) {
       return true;
     }
 

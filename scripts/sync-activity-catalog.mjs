@@ -24,7 +24,7 @@ const ACTIVITY_SEED = [
     date: '12/11-13',
     location: '芭提雅 Wisdom Valley',
     image:
-      'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&q=80',
+      'https://mma.prnewswire.com/media/2921955/Tomorrowland_Thailand_PR_Newswire.jpg',
     hot: true,
     attendees: 1500,
   },
@@ -48,7 +48,7 @@ const ACTIVITY_SEED = [
     date: '06/13-14',
     location: '深圳国际会展中心',
     image:
-      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&q=80',
+      'https://img.alicdn.com/imgextra/i2/2251059038/O1CN011VWlmX2GdSmiFVt13_!!2251059038.jpg',
     hot: true,
     attendees: 420,
   },
@@ -101,6 +101,8 @@ async function main() {
   await mongoose.connect(uri, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
+    useCreateIndex: true,
+    useFindAndModify: false,
   });
 
   const activities = mongoose.connection.db.collection('activities');

@@ -32,6 +32,14 @@ export class Activity {
 
   @Prop({ default: 0 })
   attendees?: number;
+
+  /** Damai project id for catalog imports (dedup on re-import). */
+  @Prop({ sparse: true, unique: true })
+  damaiProjectId?: string;
+
+  /** Official ticketing page (e.g. detail.damai.cn). */
+  @Prop()
+  externalUrl?: string;
 }
 
 export const ActivitySchema = SchemaFactory.createForClass(Activity);

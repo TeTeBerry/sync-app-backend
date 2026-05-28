@@ -2,12 +2,18 @@
  * 帖子内容类型（同类型限制的基础）
  * 支持交集：一个帖子可以同时属于多个类型
  */
-export type PostContentType = 'team' | 'accommodation' | 'carpool' | 'other';
+export type PostContentType =
+  | 'team'
+  | 'accommodation'
+  | 'carpool'
+  | 'ticket'
+  | 'other';
 
 const CONTENT_TYPE_LABELS: Record<PostContentType, string> = {
   team: '组队队友',
   accommodation: '住宿同行',
   carpool: '拼车同行',
+  ticket: '转票',
   other: '其他',
 };
 
@@ -26,6 +32,10 @@ const TAG_TO_TYPE: Record<string, PostContentType> = {
   拼车: 'carpool',
   顺路: 'carpool',
   顺风车: 'carpool',
+  转票: 'ticket',
+  出票: 'ticket',
+  票务: 'ticket',
+  折价: 'ticket',
 };
 
 /** buddyType → 内容类型映射 */
@@ -38,9 +48,18 @@ const BUDDY_TYPE_TO_TYPE: Record<string, PostContentType> = {
 
 /** 正文关键词 → 内容类型映射（支持交集，全部匹配） */
 const BODY_PATTERNS: Array<{ pattern: RegExp; type: PostContentType }> = [
+  {
+    pattern:
+      /转票|出票|折价出|转手|转让|出一张.*票|舞台票|临时有事.*票|VIP.*票|Stage.*票/i,
+    type: 'ticket',
+  },
   { pattern: /拼房|住宿|酒店|同房|合住/i, type: 'accommodation' },
   { pattern: /拼车|顺路|顺风车|接送|包车/i, type: 'carpool' },
-  { pattern: /组队|找队友|求组队|搭子|结伴|同行/i, type: 'team' },
+  {
+    pattern:
+      /组队|找队友|求组队|搭子|结伴|同行|姐妹|兄弟|cpdd|有人吗|有姐妹|缺\d|[A-Za-z]区|\d+号/i,
+    type: 'team',
+  },
 ];
 
 /**

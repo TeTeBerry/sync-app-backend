@@ -1,6 +1,7 @@
 import {
   buildPublishConfirmReply,
   extractDraftBodyFromPublishConfirmContent,
+  extractDraftTagsFromPublishConfirmContent,
   isAwaitingPublishConfirmation,
   isPublishConfirmIntent,
   PUBLISH_CONFIRM_PROMPT_MARKER,
@@ -35,6 +36,20 @@ describe('publish-confirm.util', () => {
       shortcutTag: '自己发帖',
     });
     expect(extractDraftBodyFromPublishConfirmContent(content)).toBe(draft);
+  });
+
+  it('embeds and extracts draft tags in publish confirm reply', () => {
+    const draft = '13A区有姐妹吗';
+    const content = buildPublishConfirmReply({
+      activityLabel: '风暴电音节',
+      draftBody: draft,
+      shortcutTag: '组队队友',
+      draftTags: ['#13号A区', '#女生'],
+    });
+    expect(extractDraftTagsFromPublishConfirmContent(content)).toEqual([
+      '#13号A区',
+      '#女生',
+    ]);
   });
 
   it('detects awaiting confirmation from persisted conversation state', () => {

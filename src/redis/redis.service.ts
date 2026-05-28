@@ -20,33 +20,60 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private readonly config: ConfigService) {}
 
+  /** Avoid ioredis "enableOfflineQueue" noise when Redis is down at startup. */
+  private formatConnectError(error: unknown): string {
+    const err = error as NodeJS.ErrnoException;
+    if (err?.code === 'ECONNREFUSED') return 'connection refused';
+    if (err?.code === 'ETIMEDOUT') return 'connection timed out';
+    const message = (error as Error).message ?? String(error);
+    if (message.includes('enableOfflineQueue')) return 'not reachable';
+    return message;
+  }
+
+  private redisLogTarget(url: string): string {
+    try {
+      const parsed = new URL(url);
+      return `${parsed.hostname}:${parsed.port || '6379'}`;
+    } catch {
+      return 'configured host';
+    }
+  }
+
   async onModuleInit() {
     const url = this.config.get<string>('redis.url')?.trim();
     if (!url) {
-      this.logger.warn('REDIS_URL not set, Redis caching disabled');
+      this.logger.log(
+        'Redis optional: REDIS_URL not set; heat cache and rate limits use Mongo/in-memory fallback',
+      );
       return;
     }
 
-    try {
-      this.client = new Redis(url, {
-        enableOfflineQueue: false,
-        maxRetriesPerRequest: 1,
-        retryStrategy: () => null,
-      });
+    const client = new Redis(url, {
+      lazyConnect: true,
+      enableOfflineQueue: false,
+      maxRetriesPerRequest: 1,
+      connectTimeout: 4_000,
+      retryStrategy: () => null,
+    });
 
-      this.client.on('error', error => {
+    client.on('error', error => {
+      if (this.enabled) {
         this.logger.warn(`Redis error: ${error.message}`);
-      });
+      }
+    });
 
-      await this.client.ping();
+    try {
+      await client.connect();
+      await client.ping();
+      this.client = client;
       this.enabled = true;
-      this.logger.log(`Redis connected (${url})`);
+      this.logger.log(`Redis connected (${this.redisLogTarget(url)})`);
     } catch (error) {
       this.enabled = false;
-      this.client?.disconnect();
+      await client.quit().catch(() => client.disconnect());
       this.client = undefined;
-      this.logger.warn(
-        `Redis unavailable, using Mongo fallback: ${(error as Error).message}`,
+      this.logger.log(
+        `Redis optional: unreachable at ${this.redisLogTarget(url)} (${this.formatConnectError(error)}); using Mongo/in-memory fallback`,
       );
     }
   }

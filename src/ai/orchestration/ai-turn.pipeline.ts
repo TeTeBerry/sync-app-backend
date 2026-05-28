@@ -10,6 +10,9 @@ import {
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
 import { isExplicitReplacePostIntent } from '../conversation/existing-post-guidance.util';
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
+import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
+import { shouldSkipActivityScopedBuddyRecommend } from '../buddy/activity-scope-guard.util';
+import { BuddyContextService } from '../buddy/buddy-context.service';
 import {
   isAwaitingSelfPostBodyCollection,
   isDeclineRecommendationsIntent,
@@ -47,6 +50,7 @@ export class AiTurnPipeline {
     private readonly userProfileAgent: UserProfileAgent,
     private readonly intentRouter: IntentRouterService,
     private readonly sseBuilder: AiSseBuilder,
+    private readonly buddyContext: BuddyContextService,
   ) {}
 
   async runTurn(
@@ -261,11 +265,17 @@ export class AiTurnPipeline {
     profileSync: UserProfileSyncResult | null,
     timings: AiTurnTimings,
   ): Promise<AiStreamEvent[]> {
+    const effectiveActivityLegacyId = await this.resolveEffectiveActivityLegacyId(
+      dto,
+      fullMessages,
+      lastInput,
+    );
+
     if (
       this.shouldSkipRecommendBeforeCreate(
         fullMessages,
         lastInput,
-        dto,
+        effectiveActivityLegacyId,
         sink.getState(),
       )
     ) {
@@ -274,6 +284,7 @@ export class AiTurnPipeline {
         fullMessages,
         lastInput,
         sink,
+        effectiveActivityLegacyId,
       );
       if (postEvents.length > 0) return postEvents;
       return this.collectDeterministicOnly(dto, fullMessages, lastInput, sink);
@@ -284,7 +295,7 @@ export class AiTurnPipeline {
       await this.postIntentService.tryProactiveRecommendBeforeCreate({
         messages: fullMessages,
         input: lastInput,
-        activityLegacyId: dto.activityLegacyId,
+        activityLegacyId: effectiveActivityLegacyId,
         userId: dto.userId,
         authorName: dto.userName,
         conversationState: sink.getState(),
@@ -299,7 +310,7 @@ export class AiTurnPipeline {
         '本活动';
       return this.sseBuilder.buildRecommendGateFoundEvents(
         sink,
-        dto.activityLegacyId,
+        effectiveActivityLegacyId,
         activityLabel,
         recommended.postCards,
         recommended.postCards.length,
@@ -311,7 +322,7 @@ export class AiTurnPipeline {
       const activityLabel = recommended.activityLabel ?? '本活动';
       return this.sseBuilder.buildRecommendGateEmptyEvents(
         sink,
-        dto.activityLegacyId,
+        effectiveActivityLegacyId,
         activityLabel,
       );
     }
@@ -321,20 +332,38 @@ export class AiTurnPipeline {
       fullMessages,
       lastInput,
       sink,
+      effectiveActivityLegacyId,
     );
     if (postEvents.length > 0) return postEvents;
 
     return this.collectDeterministicOnly(dto, fullMessages, lastInput, sink);
   }
 
+  private async resolveEffectiveActivityLegacyId(
+    dto: ChatRequestDto,
+    messages: ChatMessageDto[],
+    input: string,
+  ): Promise<number | undefined> {
+    if (dto.activityLegacyId != null && !Number.isNaN(dto.activityLegacyId)) {
+      return dto.activityLegacyId;
+    }
+    if (isHomeFestivalShortcutInput(input.trim())) {
+      return undefined;
+    }
+    return this.buddyContext.resolveActivityLegacyIdFromChat(messages, input);
+  }
+
   private shouldSkipRecommendBeforeCreate(
     messages: ChatMessageDto[],
     lastInput: string,
-    dto: ChatRequestDto,
+    effectiveActivityLegacyId: number | undefined,
     state: ConversationState,
   ): boolean {
     const trimmed = lastInput.trim();
-    if (!dto.activityLegacyId) return true;
+    if (effectiveActivityLegacyId == null) return true;
+    if (shouldSkipActivityScopedBuddyRecommend(trimmed, effectiveActivityLegacyId)) {
+      return true;
+    }
     if (isPublishConfirmIntent(trimmed)) return true;
     if (isExplicitReplacePostIntent(trimmed)) return true;
     if (isDeclineRecommendationsIntent(trimmed)) return true;
@@ -384,13 +413,14 @@ export class AiTurnPipeline {
     fullMessages: ChatMessageDto[],
     lastInput: string,
     sink: ReplySink,
+    effectiveActivityLegacyId?: number,
   ): Promise<AiStreamEvent[]> {
     const postAttempt = await this.postIntentService.tryCreatePostFromChat({
       messages: fullMessages,
       input: lastInput,
       userId: dto.userId,
       userName: dto.userName,
-      activityLegacyId: dto.activityLegacyId,
+      activityLegacyId: effectiveActivityLegacyId ?? dto.activityLegacyId,
       image: dto.image,
       images: dto.images,
       conversationState: sink.getState(),

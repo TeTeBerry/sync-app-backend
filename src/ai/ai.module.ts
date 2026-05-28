@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
 import { ActivityModule } from '../modules/activity/activity.module';
 import { ProfileModule } from '../modules/profile/profile.module';
@@ -17,6 +16,8 @@ import { IntentRouterModule } from './intent/intent-router.module';
 import { AiRateLimitService } from './ai-rate-limit.service';
 import { AiTurnPipeline } from './orchestration/ai-turn.pipeline';
 import { AiSseBuilder } from './presentation/ai-sse.builder';
+import { AiChatWsHandler } from './ws/ai-chat-ws.handler';
+import { AiChatWsServer } from './ws/ai-chat-ws.server';
 
 @Module({
   imports: [
@@ -33,7 +34,13 @@ import { AiSseBuilder } from './presentation/ai-sse.builder';
     IntentRouterModule,
     BuddyModule,
   ],
-  controllers: [AiController],
-  providers: [AiService, AiRateLimitService, AiTurnPipeline, AiSseBuilder],
+  providers: [
+    AiService,
+    AiRateLimitService,
+    AiTurnPipeline,
+    AiSseBuilder,
+    AiChatWsHandler,
+    AiChatWsServer,
+  ],
 })
 export class AiModule {}

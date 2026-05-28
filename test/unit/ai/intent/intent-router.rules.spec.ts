@@ -41,6 +41,19 @@ describe('intent-router.rules', () => {
     expect(hit?.kind).toBe('create_post');
   });
 
+  it('routes ticket resale in activity chat to create_post', () => {
+    const hit = resolveChatIntentFastPath(
+      '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
+      {
+        messages: [],
+        input: '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
+        activityLegacyId: 9,
+      },
+    );
+    expect(hit?.kind).toBe('create_post');
+    expect(hit?.source).toBe('rule');
+  });
+
   it('routes shortcut tag with bound activity to search_posts', () => {
     const hit = resolveChatIntentFastPath('帮我dd', {
       messages: [],
@@ -85,5 +98,14 @@ describe('intent-router.rules', () => {
       input: '我想交个朋友聊聊天',
     });
     expect(hit).toBeNull();
+  });
+
+  it('routes homepage festival shortcut to quick_reply without binding activity', () => {
+    const hit = resolveChatIntentFastPath('风暴电音节', {
+      messages: [],
+      input: '风暴电音节',
+    });
+    expect(hit?.kind).toBe('quick_reply');
+    expect(hit?.source).toBe('rule');
   });
 });

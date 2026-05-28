@@ -21,6 +21,11 @@
     "wait:mongo": "node scripts/wait-for-port.mjs localhost 27017 90000 MongoDB",
     "db:reset": "node scripts/reset-test-data.mjs",
     "db:sync-catalog": "node scripts/sync-activity-catalog.mjs",
+    "db:import-damai": "node scripts/import-damai-activities.mjs --inline",
+    "db:fix-damai-images": "node scripts/fix-damai-activity-images.mjs",
+    "db:patch-storm-heroes": "node scripts/patch-storm-post-hero-images.mjs",
+    "db:patch-guan-attendees": "node scripts/patch-guan-attendees.mjs",
+    "db:patch-festival-images": "node scripts/patch-festival-activity-images.mjs",
     "dev": "npm run wait:mongo && npm run stop:dev && nest build && nest start --watch",
     "dev:all": "npm run infra:up:cn && npm run wait:mongo && npm run stop:dev && nest build && nest start --watch",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
@@ -46,7 +51,8 @@
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^6.6.7",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^9.5.0",
@@ -56,6 +62,7 @@
     "@types/jest": "25.1.4",
     "@types/node": "^13.9.1",
     "@types/supertest": "^2.0.8",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
     "eslint": "^6.8.0",
