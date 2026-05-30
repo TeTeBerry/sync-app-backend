@@ -23,7 +23,7 @@ export default () => ({
         process.env.ALIBABA_API_KEY ??
         process.env.DASHSCOPE_API_KEY,
     ),
-    model: cleanEnv(process.env.QWEN_MODEL, 'qwen-turbo'),
+    model: cleanEnv(process.env.QWEN_MODEL, 'qwen-max'),
     rerankModel: cleanEnv(process.env.QWEN_RERANK_MODEL, 'qwen-plus'),
     rerankTimeoutMs: parseInt(
       cleanEnv(process.env.QWEN_RERANK_TIMEOUT_MS, '6000'),
@@ -54,12 +54,19 @@ export default () => ({
 
   ai: {
     rateLimit: {
-      maxRequests: parseInt(
-        cleanEnv(process.env.AI_RATE_LIMIT_MAX, '30'),
-        10,
-      ),
+      maxRequests: parseInt(cleanEnv(process.env.AI_RATE_LIMIT_MAX, '30'), 10),
       windowMs: parseInt(
         cleanEnv(process.env.AI_RATE_LIMIT_WINDOW_MS, String(5 * 60 * 1000)),
+        10,
+      ),
+    },
+    intentCache: {
+      ttlMs: parseInt(
+        cleanEnv(process.env.AI_INTENT_CACHE_TTL_MS, '30000'),
+        10,
+      ),
+      maxMemoryEntries: parseInt(
+        cleanEnv(process.env.AI_INTENT_CACHE_MAX_MEMORY, '1000'),
         10,
       ),
     },
@@ -67,5 +74,16 @@ export default () => ({
 
   redis: {
     url: cleanEnv(process.env.REDIS_URL, ''),
+  },
+
+  wechatPay: {
+    mchId: cleanEnv(process.env.WECHAT_PAY_MCH_ID, ''),
+    apiKey: cleanEnv(process.env.WECHAT_PAY_API_KEY, ''),
+  },
+
+  wristband: {
+    minConfidence: parseFloat(
+      cleanEnv(process.env.WRISTBAND_VERIFY_MIN_CONFIDENCE, '0.72'),
+    ),
   },
 });

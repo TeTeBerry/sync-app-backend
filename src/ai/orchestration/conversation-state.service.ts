@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
 import {
   applyFlowSwitch,
-  bootstrapConversationState,
+  createIdleState,
   type ConversationState,
 } from '../conversation';
 
@@ -13,15 +13,12 @@ import {
 export class ConversationStateService {
   resolve(
     stored: ConversationState | null | undefined,
-    messages: ChatMessageDto[],
+    _messages?: ChatMessageDto[],
   ): ConversationState {
     if (stored?.flow) {
       return stored;
     }
-    if (messages.length) {
-      return bootstrapConversationState(messages);
-    }
-    return stored ?? bootstrapConversationState([]);
+    return createIdleState();
   }
 
   async advance(

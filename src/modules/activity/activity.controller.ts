@@ -9,7 +9,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ActivityRegistrationService } from '../profile/activity-registration.service';
+import { ActivityRegistrationService } from './registration/activity-registration.service';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ActivityService } from './activity.service';
 

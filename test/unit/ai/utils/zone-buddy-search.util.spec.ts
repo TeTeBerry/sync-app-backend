@@ -69,5 +69,13 @@ describe('zone-buddy-search.util', () => {
       'day_or_zone',
     );
     expect(reply).toContain('活动日期或票区');
+    expect(reply).toContain('你可以：告诉我内容帮你发布帖子');
+    expect(reply).not.toContain('在活动详情页浏览');
+  });
+
+  it('builds empty reply with post body prompt for zone search', () => {
+    const reply = buildZoneMatchEmptyReply('风暴电音节', '13号A区', 'zone');
+    expect(reply).toContain('你可以：告诉我内容帮你发布帖子');
+    expect(reply).not.toContain('出发城市');
   });
 });

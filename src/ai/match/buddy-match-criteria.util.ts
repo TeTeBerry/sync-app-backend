@@ -1,4 +1,4 @@
-import type { PostRecord } from '../../modules/post/interfaces/post.repository.interface';
+import type { PostRecord } from '../../modules/partner/interfaces/post.repository.interface';
 import type { ConversationContext } from '../conversation/conversation-context.parser';
 import type { BuddyMatchCriteria, BuddyMatchIntent } from './buddy-match.types';
 

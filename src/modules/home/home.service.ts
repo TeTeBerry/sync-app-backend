@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RedisService } from '../../redis/redis.service';
 import { ActivityService } from '../activity/activity.service';
-import { ActivityRegistrationService } from '../profile/activity-registration.service';
+import { ActivityRegistrationService } from '../activity/registration/activity-registration.service';
 
 @Injectable()
 export class HomeService {

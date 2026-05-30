@@ -3,8 +3,8 @@ import {
   isAiShortcutTag,
   normalizeAiShortcutInput,
 } from '../../common/utils/demo-owner.util';
-import { CreatePostDto } from '../../modules/post/dto/create-post.dto';
-import { PostService } from '../../modules/post/post.service';
+import { CreatePostDto } from '../../modules/partner/dto/create-post.dto';
+import { PostService } from '../../modules/partner/post.service';
 import {
   ImageParseAgent,
   NoticeAgent,
@@ -43,7 +43,7 @@ import {
   isTicketResaleIntent,
 } from './activity-scope-guard.util';
 import type { PostIntentCreateAttempt } from './buddy.types';
-import { inferPostContentTypes } from '../../modules/post/utils/post-content-type.util';
+import { inferPostContentTypes } from '../../modules/partner/utils/post-content-type.util';
 import { TRAVEL_SAFETY_TIP } from '../risk/risk-sanitize.util';
 
 export interface CreatePostFromChatParams {

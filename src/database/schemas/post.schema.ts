@@ -42,6 +42,10 @@ export class Post {
   @Prop({ type: [String], default: [] })
   tags: string[];
 
+  /**
+   * recruiting=招募中
+   * completed=已完成（组队成功 / 手动标记）
+   */
   @Prop({ default: 'recruiting' })
   status: PostStatus;
 
@@ -63,9 +67,6 @@ export const PostSchema = SchemaFactory.createForClass(Post);
 PostSchema.index({ createdAt: -1 });
 PostSchema.index({ activityLegacyId: 1, createdAt: -1 });
 PostSchema.index({ activityLegacyId: 1, status: 1, departureCity: 1 });
-/** 覆盖 findByActivityLegacyId 的 { activityLegacyId, status, sort: createdAt } 查询 */
 PostSchema.index({ activityLegacyId: 1, status: 1, createdAt: -1 });
-/** 覆盖 findPopular 的 { status, sort: likes, createdAt } 查询 */
 PostSchema.index({ status: 1, likes: -1, createdAt: -1 });
-/** 覆盖 findAll 的 { status, sort: createdAt } 查询 */
 PostSchema.index({ status: 1, createdAt: -1 });

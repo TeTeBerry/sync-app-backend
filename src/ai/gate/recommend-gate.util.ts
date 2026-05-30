@@ -9,6 +9,9 @@ export const RECOMMEND_GATE_SUGGESTED_REPLIES = ['自己发帖'] as const;
 /** 助手已请用户填写组队帖正文，等待下一条用户消息 */
 export const SELF_POST_COLLECT_BODY_MARKER = '【填写组队帖】';
 
+/** 无匹配结果时引导用户下一条消息作为发帖正文 */
+export const MATCH_EMPTY_POST_BODY_PROMPT = '你可以：告诉我内容帮你发布帖子';
+
 const DECLINE_RECOMMEND_RE =
   /^(自己发帖|发一条|发组队帖|没有合适的|没有合适|都不合适|不合适|不想用推荐|不想匹配|继续发帖|自己发|我来发帖)/;
 
@@ -17,27 +20,10 @@ export function isDeclineRecommendationsIntent(input: string): boolean {
 }
 
 export function isAwaitingRecommendationsGate(
-  messages: ChatMessageDto[],
+  _messages: ChatMessageDto[],
   state?: ConversationState | null,
 ): boolean {
-  if (state?.flow === 'recommend_gate') {
-    return true;
-  }
-
-  const lastIndex = messages.length - 1;
-  if (lastIndex < 1) return false;
-
-  for (let index = lastIndex - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message.role === 'assistant') {
-      return message.content.includes(RECOMMEND_GATE_MARKER);
-    }
-    if (message.role === 'user') {
-      return false;
-    }
-  }
-
-  return false;
+  return state?.flow === 'recommend_gate';
 }
 
 /** Short assistant text when post cards carry the details (no numbered list in bubble). */
@@ -65,27 +51,10 @@ export function buildRecommendGateFoundReply(
 }
 
 export function isAwaitingSelfPostBodyCollection(
-  messages: ChatMessageDto[],
+  _messages: ChatMessageDto[],
   state?: ConversationState | null,
 ): boolean {
-  if (state?.flow === 'collect_post_body') {
-    return true;
-  }
-
-  const lastIndex = messages.length - 1;
-  if (lastIndex < 1) return false;
-
-  for (let index = lastIndex - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message.role === 'assistant') {
-      return message.content.includes(SELF_POST_COLLECT_BODY_MARKER);
-    }
-    if (message.role === 'user') {
-      return false;
-    }
-  }
-
-  return false;
+  return state?.flow === 'collect_post_body';
 }
 
 export function buildDeclineRecommendCollectBodyReply(activityLabel: string): string {

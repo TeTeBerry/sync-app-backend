@@ -6,7 +6,10 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import type { RecommendedPostCard } from './ai-stream-event.view';
+import type {
+  RecommendedActivityCard,
+  RecommendedPostCard,
+} from './ai-stream-event.view';
 
 export class ChatMessageImageContextDto {
   @IsOptional()
@@ -33,6 +36,9 @@ export class ChatMessageDto {
   @IsOptional()
   @IsArray()
   recommendedPosts?: RecommendedPostCard[];
+
+  @IsOptional()
+  recommendedActivity?: RecommendedActivityCard;
 
   @IsOptional()
   createdPost?: RecommendedPostCard;

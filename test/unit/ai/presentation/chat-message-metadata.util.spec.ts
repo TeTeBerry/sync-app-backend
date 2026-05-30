@@ -16,6 +16,15 @@ describe('extractAssistantMessageMetadata', () => {
             },
           ],
         },
+        {
+          type: 'activity_recommendation',
+          activity: {
+            activityLegacyId: 4,
+            title: '风暴电音节',
+            date: '06/13-14',
+            venue: '深圳',
+          },
+        },
         { type: 'suggested_replies', replies: ['好的'] },
         {
           type: 'post_created',
@@ -29,6 +38,12 @@ describe('extractAssistantMessageMetadata', () => {
         },
       ]),
     ).toEqual({
+      recommendedActivity: {
+        activityLegacyId: 4,
+        title: '风暴电音节',
+        date: '06/13-14',
+        venue: '深圳',
+      },
       recommendedPosts: [
         {
           postId: 'p1',

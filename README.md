@@ -48,7 +48,7 @@ npm run start:dev
 | `MONGODB_URI` | MongoDB 连接串 |
 | `REDIS_URL` | Redis（空则跳过，热度用 Mongo 兜底） |
 | `QWEN_API_KEY` | 通义 API Key（或 `DASHSCOPE_API_KEY`） |
-| `QWEN_MODEL` | 文本模型，默认 `qwen-turbo` |
+| `QWEN_MODEL` | 文本模型，默认 `qwen-max` |
 | `QWEN_VL_MODEL` | 视觉模型，默认 `qwen-vl-plus` |
 | `CHROMA_PATH` | Chroma 本地目录，默认 `./chroma_data` |
 | `CHROMA_COLLECTION` | 活动知识库，默认 `sync_knowledge` |
@@ -100,7 +100,10 @@ data: {"type":"error","message":"..."}
 | POST/DELETE | `/api/activities/:legacyId/register` | 活动报名 / 取消 |
 | GET/POST/PATCH/DELETE | `/api/posts`… | 帖子 CRUD + 点赞/评论/申请 |
 | GET/PATCH | `/api/users/me` | 当前用户资料 |
-| GET | `/api/profile` | 个人页 BFF |
+| GET | `/api/profile` | 个人页 BFF（可选 `activityLegacyId` 返回单场权益） |
+| GET | `/api/profile/packages` | 单场套餐档位列表 |
+| GET | `/api/profile/entitlements` | 每月免费额度 + 单场付费权益（合并剩余次数） |
+| POST | `/api/profile/packages/purchase` | 购买 stub（直接发放权益，无微信支付） |
 | POST | `/api/ai/chat` | AI SSE |
 | GET | `/api/chat/sessions/:id` | 会话历史 |
 
@@ -122,9 +125,22 @@ npm run db:reset
 |------|------|
 | activities | `ActivityService` |
 | posts | `PostService` |
-| activity registrations | `ProfileSummaryService` |
+| activity registrations | `ActivityRegistrationSeedService` |
 | users (demo profile) | `UserService` |
 | Chroma 知识库 | `ChromaService.seedIfEmpty` |
+
+## 活动实时资讯 `live-info`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/activities/:legacyId/live-info` | 快照：`viewer` / `summary` / `certCount` / `feed` |
+| POST | `/api/uploads/images` |  multipart 上传图片，返回 `{ url }`（本地静态目录，见环境变量） |
+| POST | `.../live-info/wristband` | 提交本站上传返回的 `{ imageUrl }`；先查当日同活动是否已有他人用过同一张上传图，再 **Qwen-VL AI 审核**；通过则当日认证，否则 `{ ok: false, message, viewer }`，重复图为 `{ code: "duplicate_image", ... }` |
+| DELETE | `.../live-info/wristband` | 清除当日认证 |
+| POST | `.../live-info/updates` | 发布 `{ ratings: [{ categoryId, score }], remark? }` |
+| POST | `.../live-info/updates/:updateId/like` | 点赞切换 |
+
+Query：`userId`、`authorName`（与其它活动 API 一致）。报告约 90 分钟过期；发布需当日已认证手环。Demo 活动 `legacyId=4` 启动时种子一条现场报告。
 
 ## 前端对接
 
@@ -136,6 +152,29 @@ TARO_APP_AI_CHAT_URL=/api/ai/chat
 ```
 
 H5 devServer 将 `/api` 代理到 `http://localhost:3000/api`。
+
+### 图片上传（手环认证等）
+
+| 变量 | 说明 |
+|------|------|
+| `UPLOAD_DIR` | 本地保存目录，默认 `./uploads` |
+| `UPLOAD_PUBLIC_BASE_URL` | 返回给前端的图片根 URL，如 `http://192.168.x.x:3000`（小程序 uploadFile / 图片域名需可达） |
+
+静态访问路径：`{UPLOAD_PUBLIC_BASE_URL}/uploads/<filename>`（与 `/api` 前缀无关）。
+
+### 手环 AI 审核
+
+| 变量 | 说明 |
+|------|------|
+| `QWEN_API_KEY` | 必填（与 VL 共用） |
+| `QWEN_VL_MODEL` | 默认 `qwen-vl-plus` |
+| `WRISTBAND_VERIFY_ENABLED` | 默认随 API Key 开启；`false` 关闭 |
+| `WRISTBAND_VERIFY_MIN_CONFIDENCE` | 通过阈值，默认 `0.72` |
+| `WRISTBAND_AI_SKIP` | `true` 时跳过审核（仅本地调试） |
+
+`viewer.certStatus`：`none` \| `approved` \| `rejected`；拒绝时带 `rejectReason`。
+
+活动帖分页：`GET /api/posts?activityLegacyId=&limit=10&cursor=&anchorPostId=` → `{ items, nextCursor?, hasMore }`。
 
 ## 常见问题
 

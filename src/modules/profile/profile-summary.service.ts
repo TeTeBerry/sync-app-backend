@@ -1,22 +1,17 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import {
-  ActivityRegistration,
-  ActivityRegistrationDocument,
-} from '../../database/schemas/activity-registration.schema';
+import { Inject, Injectable } from '@nestjs/common';
 import { ActivityService } from '../activity/activity.service';
-import { PostService } from '../post/post.service';
-import { canViewPersonalInfo } from '../../common/utils/privacy.util';
-import { UserBlockService } from '../user/user-block.service';
-import { UserService } from '../user/user.service';
-import { resolveProfileActivityStatus, compareActivityDateDesc } from '../../common/utils/activity-date.util';
-import { ACTIVITY_REGISTRATION_SEED } from './activity-registration.seed';
 import {
   ACTIVITY_REGISTRATION_REPOSITORY,
   ActivityRegistrationQueryFilter,
   IActivityRegistrationRepository,
-} from './interfaces/activity-registration.repository.interface';
+} from '../activity/registration/interfaces/activity-registration.repository.interface';
+import { PostService } from '../partner/post.service';
+import { canViewPersonalInfo } from '../../common/utils/privacy.util';
+import { UserBlockService } from '../user/user-block.service';
+import { UserService } from '../user/user.service';
+import { resolveProfileActivityStatus, compareActivityDateDesc } from '../../common/utils/activity-date.util';
+import type { EventPackageEntitlementDto } from './profile-package.service';
+import { ProfilePackageService } from './profile-package.service';
 
 function resolveOwnerFilter(
   userId?: string,
@@ -42,6 +37,10 @@ export interface ProfileSummaryDto {
     likes: number;
     posts: number;
   };
+  /** Present when `activityLegacyId` query is passed to GET /profile. */
+  packageEntitlement?: EventPackageEntitlementDto | null;
+  /** All per-event entitlements for the user (omitted when scoped to one activity). */
+  packageEntitlements?: EventPackageEntitlementDto[];
 }
 
 export interface ProfileActivityItemDto {
@@ -54,34 +53,23 @@ export interface ProfileActivityItemDto {
 }
 
 @Injectable()
-export class ProfileSummaryService implements OnModuleInit {
+export class ProfileSummaryService {
   constructor(
     @Inject(ACTIVITY_REGISTRATION_REPOSITORY)
     private readonly registrationRepository: IActivityRegistrationRepository,
-    @InjectModel(ActivityRegistration.name)
-    private readonly registrationModel: Model<ActivityRegistrationDocument>,
     private readonly activityService: ActivityService,
     private readonly postService: PostService,
     private readonly userService: UserService,
     private readonly userBlockService: UserBlockService,
+    private readonly profilePackageService: ProfilePackageService,
   ) {}
-
-  async onModuleInit() {
-    await this.registrationModel.deleteMany({ activityLegacyId: { $in: [3, 7] } });
-    for (const item of ACTIVITY_REGISTRATION_SEED) {
-      await this.registrationModel.findOneAndUpdate(
-        { userId: item.userId, activityLegacyId: item.activityLegacyId },
-        item,
-        { upsert: true, new: true, setDefaultsOnInsert: true },
-      );
-    }
-  }
 
   async getSummary(
     userId?: string,
     authorName?: string,
     viewerUserId?: string,
     viewerAuthorName?: string,
+    activityLegacyId?: number,
   ): Promise<ProfileSummaryDto> {
     const filter = resolveOwnerFilter(userId, authorName);
     const ownerExternalId = filter.userId ?? userId?.trim();
@@ -91,7 +79,12 @@ export class ProfileSummaryService implements OnModuleInit {
       !ownerExternalId ||
       viewerId === ownerExternalId;
 
-    const [profile, events, likes, posts, completedPosts, buddyUserIds] =
+    const scopedActivity =
+      activityLegacyId != null && !Number.isNaN(activityLegacyId)
+        ? activityLegacyId
+        : undefined;
+
+    const [profile, events, likes, posts, completedPosts, buddyUserIds, packageData] =
       await Promise.all([
         this.userService.resolveProfile(userId, authorName),
         this.registrationRepository.countByOwner(filter),
@@ -101,6 +94,13 @@ export class ProfileSummaryService implements OnModuleInit {
         viewerId
           ? this.userBlockService.loadBuddyUserIds(viewerId)
           : Promise.resolve(new Set<string>()),
+        scopedActivity != null
+          ? this.profilePackageService.getEntitlementForActivity(
+              userId,
+              authorName,
+              scopedActivity,
+            )
+          : this.profilePackageService.listEntitlements(userId, authorName),
       ]);
 
     const privacyLevel =
@@ -112,7 +112,7 @@ export class ProfileSummaryService implements OnModuleInit {
       Boolean(ownerExternalId && buddyUserIds.has(ownerExternalId)),
     );
 
-    return {
+    const summary: ProfileSummaryDto = {
       name: profile?.name ?? 'Zara Chen',
       handle: profile?.handle ?? '@zara',
       location: canView ? profile?.location ?? '上海' : '',
@@ -127,6 +127,15 @@ export class ProfileSummaryService implements OnModuleInit {
         posts,
       },
     };
+
+    if (scopedActivity != null) {
+      summary.packageEntitlement =
+        (packageData as EventPackageEntitlementDto | null) ?? null;
+    } else {
+      summary.packageEntitlements = packageData as EventPackageEntitlementDto[];
+    }
+
+    return summary;
   }
 
   async listActivities(

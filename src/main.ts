@@ -1,5 +1,7 @@
 import { NestFactory } from '@nestjs/core';
-import { json, urlencoded } from 'express';
+import { json, urlencoded, static as expressStatic } from 'express';
+import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 import { AppModule } from './app.module';
 import { AiChatWsServer } from './ai/ws/ai-chat-ws.server';
 import { AI_CHAT_WS_PATH } from './ai/ws/ai-chat-ws.protocol';
@@ -72,6 +74,13 @@ async function bootstrap() {
   // AI 聊天上传门票截图（Base64）需放宽 JSON 体积限制
   app.use(json({ limit: '12mb' }));
   app.use(urlencoded({ extended: true, limit: '12mb' }));
+
+  const uploadDir = process.env.UPLOAD_DIR?.trim() || './uploads';
+  if (!existsSync(uploadDir)) {
+    mkdirSync(uploadDir, { recursive: true });
+  }
+  app.use('/uploads', expressStatic(join(process.cwd(), uploadDir)));
+
   app.enableShutdownHooks();
 
   const corsOptions = resolveCorsOptions();

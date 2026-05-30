@@ -36,7 +36,7 @@
 
 ### 已实现
 
-- **PostModule**：`POST/PATCH/DELETE /posts`；`POST .../like|comments|applications`
+- **PartnerModule**（`modules/partner/`）：`POST/PATCH/DELETE /posts`；`POST .../like|comments|applications`
 - **Schema**：`post-like`、`post-comment`、`post-application`
 - **AiModule**：SSE；`PostIntentService` 编排四 Agent
 - **Agents**：`text-parse` / `image-parse` / `match` / `risk`（`src/ai/agents/`）
@@ -47,8 +47,8 @@
 ### 未实现 / 延后
 
 - `AuthModule`、`JwtAuthGuard`、`POST /auth/*`
-- ActivityRegistration 物理迁入 ActivityModule（仍在 Profile 侧；路由在 ActivityController）
-- `PartnerModule` 目录 rename（可选）
+- ~~ActivityRegistration 物理迁入 ActivityModule~~ ✅ `activity/registration/`
+- ~~`PartnerModule` 目录 rename~~ ✅ `modules/partner/`
 - `ALL_AGENT_TOOLS` 注册进 `AgentRuntimeService`（发帖走独立编排，非必须）
 - 生产限流、关闭 demo Query
 
@@ -60,18 +60,18 @@
 
 - [x] `GET /activities`、`/match`、`/:legacyId`
 - [x] `POST/DELETE /activities/:legacyId/register`
-- [ ] Registration 从 `profile/` 迁入 `activity/registration/`（可选）
+- [x] Registration 从 `profile/` 迁入 `activity/registration/`
 
 ### UserModule
 
 - [x] `GET/PATCH /users/me`
 - [x] Demo seed / health
 
-### PartnerModule（PostModule）✅ 核心
+### PartnerModule ✅ 核心
 
 - [x] 帖子 CRUD + 互动 API
 - [x] 创建时 Chroma upsert；删帖删向量
-- [ ] 可选：rename → `modules/partner/`
+- [x] 目录 `modules/partner/`（`PartnerModule` / `PartnerRepositoryModule` / `PartnerWriteModule`）
 
 ### AiAssistantModule ✅ 核心
 
@@ -194,7 +194,7 @@
 | 阶段 | 主题 | 状态 |
 |------|------|------|
 | P0 | 会话状态机 + BuddyModule use cases + Post 端口 | ✅ |
-| P1 | Intent 规则快路径 / 缓存 / recommend gate / profile dedupe / Chroma breaker | ✅ |
+| P1 | Intent 规则快路径 / Redis+内存意图缓存 / recommend gate / profile dedupe / Chroma breaker | ✅ |
 | P2 | 并行路径 / async Chroma upsert / rate limit / message_complete SSE / 集成测试 / timing logs | ✅ |
 | P3 | 测试金字塔 / requestId 日志 / health / PostWriteService / orchestration README | ✅ |
 | P4 | JWT / 微信登录 / ActivityRegistration 物理迁入 / PartnerModule rename | ⬜ 延后 |
@@ -212,7 +212,10 @@
 ### 仍延后（P4+）
 
 - [ ] `AuthModule` / JWT / `POST /auth/*`
-- [ ] `PartnerModule` 目录 rename（可选）
+- [x] `PartnerModule` 目录 `modules/partner/`
+- [x] 意图缓存 Redis 多实例 + `activityLegacyId` 维度 cache key
+- [x] 会话 marker → `conversationState` 迁移（`getSession` 持久化）；gate/publish state-only
+- [x] 移除 `AiModule` / `OrchestrationModule` 无用 `ProfileModule` 依赖
 - [ ] `ALL_AGENT_TOOLS` 注册进 `AgentRuntimeService`（发帖非必须）
 - [ ] E2E：发帖 → 点赞
 - [ ] 微服务拆分

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ActivityService } from '../../modules/activity/activity.service';
 import type { BuddySearchHintPayload } from '../intent/chat-intent.types';
 import { IntentRouterService } from '../intent/intent-router.service';
 import { DeterministicReplyService } from '../orchestration/deterministic-reply.service';
@@ -10,7 +11,16 @@ import {
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
 import { isExplicitReplacePostIntent } from '../conversation/existing-post-guidance.util';
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
-import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
+import {
+  isActivityEnterNameInput,
+  isAwaitingActivityEnterSelection,
+  toRecommendedActivityCard,
+} from '../utils/activity-enter.util';
+import { resolveActivityId } from '../utils/activity-id.util';
+import {
+  isHomeFestivalShortcutInput,
+  resolveHomeFestivalShortcutCode,
+} from '../utils/festival-shortcut.util';
 import { shouldSkipActivityScopedBuddyRecommend } from '../buddy/activity-scope-guard.util';
 import { BuddyContextService } from '../buddy/buddy-context.service';
 import {
@@ -18,6 +28,7 @@ import {
   isDeclineRecommendationsIntent,
 } from '../gate/recommend-gate.util';
 import type { ConversationState } from '../conversation';
+import { enterCollectPostBodyState } from '../conversation';
 import { logAiTurn } from '../utils/log-ai-turn.util';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
@@ -51,6 +62,7 @@ export class AiTurnPipeline {
     private readonly intentRouter: IntentRouterService,
     private readonly sseBuilder: AiSseBuilder,
     private readonly buddyContext: BuddyContextService,
+    private readonly activityService: ActivityService,
   ) {}
 
   async runTurn(
@@ -147,6 +159,21 @@ export class AiTurnPipeline {
           lastInput,
           sink,
         );
+        break;
+      case 'activity_enter':
+        events = await this.collectActivityEnter(
+          fullMessages,
+          lastInput,
+          sink,
+        );
+        if (events.length === 0) {
+          events = await this.collectDeterministicOnly(
+            dto,
+            fullMessages,
+            lastInput,
+            sink,
+          );
+        }
         break;
       default:
         events = await this.collectBuddyIntentFlow(
@@ -250,6 +277,14 @@ export class AiTurnPipeline {
           posts: matched.postCards,
           degraded: matched.degraded,
         });
+      } else if (dto.activityLegacyId != null) {
+        sink.setState(
+          enterCollectPostBodyState({
+            activityLegacyId: dto.activityLegacyId,
+            fromSelfPost: true,
+          }),
+        );
+        events.push(this.sseBuilder.conversationPatchEvent(sink));
       }
       return events;
     }
@@ -374,6 +409,41 @@ export class AiTurnPipeline {
       return true;
     }
     return false;
+  }
+
+  private async collectActivityEnter(
+    messages: ChatMessageDto[],
+    input: string,
+    sink: ReplySink,
+  ): Promise<AiStreamEvent[]> {
+    if (
+      !isAwaitingActivityEnterSelection(messages) ||
+      !isActivityEnterNameInput(input)
+    ) {
+      return [];
+    }
+
+    const activity = await this.resolveActivityForEnter(input.trim());
+    if (!activity?.legacyId) {
+      return [];
+    }
+
+    const card = toRecommendedActivityCard(activity);
+    return this.sseBuilder.buildActivityEnterEvents(sink, card);
+  }
+
+  private async resolveActivityForEnter(input: string) {
+    const festivalCode = resolveHomeFestivalShortcutCode(input);
+    if (festivalCode) {
+      return this.activityService.findByCode(festivalCode).exec();
+    }
+
+    const activityCode = resolveActivityId(input);
+    if (activityCode) {
+      return this.activityService.findByCode(activityCode).exec();
+    }
+
+    return this.activityService.matchActivity(input);
   }
 
   private async collectDeterministicOnly(

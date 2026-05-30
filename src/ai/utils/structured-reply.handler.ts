@@ -19,7 +19,7 @@ export interface StructuredReplyResult {
 }
 
 export function shouldHandleStructuredReply(
-  _state: ConversationState,
+  state: ConversationState,
   messages: ChatMessageDto[],
   input: string,
   activityLegacyId?: number,
@@ -27,7 +27,7 @@ export function shouldHandleStructuredReply(
   if (!isFindBuddyThread(messages)) return false;
   if (isExactQuickReply(input)) return false;
   if (isPublishConfirmIntent(input)) return false;
-  if (isAwaitingPublishConfirmation(messages)) return false;
+  if (isAwaitingPublishConfirmation(messages, state)) return false;
   if (isInformalPostBodyInput(input)) return false;
 
   const ctx = parseConversationContext(messages, input);

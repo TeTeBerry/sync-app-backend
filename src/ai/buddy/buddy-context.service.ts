@@ -4,7 +4,7 @@ import {
   normalizeAiShortcutInput,
 } from '../../common/utils/demo-owner.util';
 import { ActivityService } from '../../modules/activity/activity.service';
-import { PostService } from '../../modules/post/post.service';
+import { PostService } from '../../modules/partner/post.service';
 import type { RecommendedPostCard } from '../presentation/ai-stream-event.view';
 import { inferAuthorGenderFromPost } from '../../common/utils/infer-author-gender.util';
 import { BUDDY_RECOMMEND_CARD_SNIPPET_MAX } from '../match/buddy-match.constants';

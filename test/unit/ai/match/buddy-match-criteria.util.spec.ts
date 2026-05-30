@@ -5,7 +5,7 @@ import {
   inferDepartureCityFromText,
   inferIntentsFromPost,
 } from '@src/ai/match/buddy-match-criteria.util';
-import type { PostRecord } from '@src/modules/post/interfaces/post.repository.interface';
+import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
 
 describe('buddy-match-criteria.util', () => {
   it('extracts departure city from post body', () => {

@@ -153,14 +153,30 @@ export class UserService implements OnModuleInit {
     authorName?: string,
   ): Promise<UserMeDto> {
     const externalId = this.resolveExternalId(userId, authorName);
-    const updated = await this.repository.updateByExternalId(externalId, body);
-    if (!updated) {
+    const existing = await this.repository.findByExternalId(externalId);
+    const updated = existing
+      ? await this.repository.updateByExternalId(externalId, body)
+      : null;
+    const record =
+      updated ??
+      (await this.repository.upsertByExternalId(externalId, {
+        name: authorName?.trim() || DEMO_PROFILE.name,
+        handle: DEMO_PROFILE.handle,
+        location: DEMO_PROFILE.location,
+        bio: DEMO_PROFILE.bio,
+        avatar: DEMO_PROFILE.avatar,
+        notificationsEnabled: DEMO_PROFILE.notificationsEnabled,
+        privacyLevel: DEMO_PROFILE.privacyLevel,
+        ...body,
+      }));
+
+    if (!record) {
       throw new NotFoundException('User profile not found');
     }
 
-    void this.syncUserProfileVector(updated, externalId);
+    void this.syncUserProfileVector(record, externalId);
 
-    return this.toMeDto(updated, externalId);
+    return this.toMeDto(record, externalId);
   }
 
   /** Sync user profile vector to Chroma (also callable after UserProfileAgent extraction) */

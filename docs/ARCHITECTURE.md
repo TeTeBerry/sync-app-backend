@@ -11,9 +11,9 @@
 AppModule
 ├── ConfigModule + MongooseModule
 ├── RedisModule              # 热度缓存（可选）
-├── ActivityModule           # 活动
+├── ActivityModule           # 活动 + registration/
 ├── UserModule               # Demo 用户 seed
-├── PostModule               # 帖子 ≈ PartnerModule
+├── PartnerModule              # 组队帖（REST 仍为 /posts）
 ├── ProfileModule            # 个人页 BFF
 ├── HomeModule               # 首页 BFF
 ├── NotificationModule
@@ -29,14 +29,14 @@ AppModule
     ├── orchestration/          # AiTurnPipeline（单轮编排）+ legacy AgentRuntime（仅 DeterministicReply）
     ├── presentation/           # AiSseBuilder（SSE 事件组装）
     ├── gate/ match/ publish/ risk/ intent/  # 原 ai/utils 按域拆分
-    ├── PostAgentAdaptersModule # PostModule ↔ AgentsModule 端口适配
+    ├── PostAgentAdaptersModule # PartnerModule ↔ AgentsModule 端口适配
 ```
 
 | 目标模块 | 代码路径 | 状态 |
 |----------|----------|------|
 | User | `modules/user/` | `GET/PATCH /users/me`（Query 身份）✅ |
-| Activity | `modules/activity/` | 列表 / 匹配 / 详情 / 报名 ✅ |
-| Partner | `modules/post/` | 帖子 CRUD + `PostInteractionService`（赞/评/申请）✅ |
+| Activity | `modules/activity/` | 列表 / 匹配 / 详情 / 报名（`registration/`）✅ |
+| Partner | `modules/partner/` | 帖子 CRUD + `PostInteractionService`（赞/评/申请）✅ |
 | AiAssistant | `ai/` + `modules/chat/` | SSE + Agent ✅ |
 | BFF | `home/`、`profile/` | 聚合读 ✅ |
 
@@ -50,7 +50,7 @@ AppModule
 用户消息
   → AiService：校验、限流、会话合并
   → AiTurnPipeline.runTurn
-       → IntentRouterService.resolve（规则快路径优先，未命中再 qwen-turbo 意图 JSON）
+       → IntentRouterService.resolve（规则快路径优先，未命中再 qwen-max 意图 JSON）
        → syncProfileOnce（search/create 路径各一次）
        → search_posts：collectMatchOnly
        → create_post / legacy_cascade：collectBuddyIntentFlow（recommend gate → 发帖）
@@ -67,6 +67,7 @@ AppModule
 | 风控成本 | 快捷「确认发布」：`RiskAgent.assess(..., { rulesOnly: true })`，规则+重复通过后跳过 Qwen-Max |
 | Chroma 写 | `PostWriteService.scheduleEmbeddingUpsert` 异步 + 失败 warn；删帖仍 deprecate |
 | 限流 | `AiRateLimitService` Redis INCR 或内存 fallback；`config.ai.rateLimit`（默认 30 次 / 5 分钟 / userId∥sessionId） |
+| 意图缓存 | `IntentCacheService` Redis SETEX + 进程内 Map 降级；key 含 `sessionId` / `activityLegacyId` / `hasImage` / input hash；`config.ai.intentCache` |
 | Chroma circuit | `config.chroma.circuit`（failureThreshold、cooldownMs）→ `ChromaService` |
 | SSE | `delta` + `message_complete` + `done` |
 | 可观测 | `logAiTurn`：`ms_intent` / `ms_match` / `ms_buddy` / `ms_total`；create-post：`ms_parse` / `ms_risk` |
@@ -82,11 +83,11 @@ AppModule
 | `publish_confirm` | 草稿待发，等待「确认发布」 | `publishDraft.activityLegacyId`, `publishDraft.draftBody` |
 | `clarify_buddy` | 缺槽位，等待补充出行信息 | — |
 
-旧会话无 `conversationState` 时，从助手消息内 marker（`【先推荐搭子】` / `【发布确认】`）bootstrap 一次。gate / publish 检测优先读 persisted state，marker 仅作向后兼容。
+`ChatService.getSession`：无 `conversationState.flow` 时从助手文案 marker **一次性迁移**并写回 Mongo。运行时 `isAwaiting*` 仅读 `conversationState.flow`（不再扫历史消息）；marker 仍保留在助手回复文案中供展示/测试。
 
-### PostModule 端口（解耦 AgentsModule）
+### PartnerModule 端口（解耦 AgentsModule）
 
-`PostService` 依赖 `POST_MODERATION_PORT` / `POST_NOTIFICATION_PORT`，由 `PostAgentAdaptersModule`（`RiskAgent` / `NoticeAgent` 适配）注入。`PostModule` 不再直接 import `AgentsModule`；`AgentsModule` 仅依赖 `PostRepositoryModule`（`POST_REPOSITORY`）。
+`PostService` 依赖 `POST_MODERATION_PORT` / `POST_NOTIFICATION_PORT`，由 `PostAgentAdaptersModule`（`RiskAgent` / `NoticeAgent` 适配）注入。`PartnerModule` 不再直接 import `AgentsModule`；`AgentsModule` 仅依赖 `PartnerRepositoryModule`（`POST_REPOSITORY`）。
 
 ### 四 Agent（`src/ai/agents/`）
 
@@ -123,7 +124,7 @@ AppModule
 
 ## 身份与鉴权
 
-- **当前**：Query `userId` / `authorName` → `demo-owner.util.ts`
+- **当前**：Query `userId` / `authorName` → `common/auth/actor-user.util.ts` + `demo-owner.util.ts`
 - **未实现**：`AuthModule`、`JwtAuthGuard`、`POST /auth/dev`、`POST /auth/wechat`
 - AI 请求可带 body `activityLegacyId`；前端另发 Header `X-Activity-Id`（后端 middleware 登录期再统一）
 
@@ -140,7 +141,7 @@ AppModule
 - P0：Dev / 微信登录 + JWT
 - P1（AI 优化，已实现）：Intent 规则快路径 + resolve 日志/缓存；`legacy_cascade` 与 `create_post` 合并；推荐门控空结果 + `suggested_replies` SSE；单轮 `syncProfileFromChat`；匹配 `matchReason` + Chroma 降级/circuit breaker；有图仍走 proactive recommend
 - P2（AI 优化，已实现）：关键路径 `Promise.all`（parse∥resolveActivity、profile∥match）；快捷确认发帖 `RiskAgent.rulesOnly` 跳过 LLM；REST/AI 发帖 Chroma upsert 异步 + 失败日志；AI Redis/内存限流 30/5min；SSE `message_complete`；结构化 turn 日志（`ms_intent`/`ms_match`/`ms_buddy`/`ms_total`）；`AgentRuntimeService` 工具链仍为空（发帖走 Buddy use cases）
-- P1：Registration 物理迁入 ActivityModule（可选；逻辑在 `ActivityRegistrationService`）
+- ~~P1：Registration 物理迁入 ActivityModule~~ ✅ `modules/activity/registration/`
 - P5：通知 meta 深链、Partner 目录可选 rename
 
 对照清单：`docs/BACKEND-REFACTOR-CHECKLIST.md`

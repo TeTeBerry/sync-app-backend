@@ -3,7 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Post, PostSchema } from '../../database/schemas/post.schema';
 import { User, UserSchema } from '../../database/schemas/user.schema';
 import { UserModule } from '../../modules/user/user.module';
-import { PostRepositoryModule } from '../../modules/post/post-repository.module';
+import { PartnerRepositoryModule } from '../../modules/partner/partner-repository.module';
 import { NotificationModule } from '../../modules/notification/notification.module';
 import { ChromaModule } from '../rag/chroma.module';
 import { ParserModule } from '../parser/parser.module';
@@ -20,7 +20,7 @@ import { UserProfileAgent } from './user-profile.agent';
 @Module({
   imports: [
     ChromaModule,
-    PostRepositoryModule,
+    PartnerRepositoryModule,
     ParserModule,
     UserModule,
     NotificationModule,

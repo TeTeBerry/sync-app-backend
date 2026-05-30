@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
-import { POST_MODERATION_PORT } from '../../modules/post/ports/post-moderation.port';
-import { POST_NOTIFICATION_PORT } from '../../modules/post/ports/post-notification.port';
+import { POST_MODERATION_PORT } from '../../modules/partner/ports/post-moderation.port';
+import { POST_NOTIFICATION_PORT } from '../../modules/partner/ports/post-notification.port';
 import { AgentsModule } from '../agents/agents.module';
 import { PostModerationAdapter } from './post-moderation.adapter';
 import { PostNotificationAdapter } from './post-notification.adapter';

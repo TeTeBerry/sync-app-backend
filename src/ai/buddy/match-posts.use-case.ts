@@ -6,7 +6,10 @@ import type { ConversationState } from '../conversation';
 import type { BuddySearchHintPayload } from '../intent/chat-intent.types';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
 import { parseConversationContext } from '../conversation/conversation-context.parser';
-import { buildMatchRecommendCardsIntro } from '../gate/recommend-gate.util';
+import {
+  buildMatchRecommendCardsIntro,
+  MATCH_EMPTY_POST_BODY_PROMPT,
+} from '../gate/recommend-gate.util';
 import {
   buildZoneMatchEmptyReply,
   buildZoneMatchFoundReply,
@@ -139,7 +142,7 @@ export class MatchPostsFromChatUseCase {
           : [
               `暂未找到「${activityLabel}」相关的组队帖。`,
               '',
-              '你可以直接告诉我出行需求，我帮你发一条组队帖。',
+              MATCH_EMPTY_POST_BODY_PROMPT,
             ].join('\n'),
       };
     }

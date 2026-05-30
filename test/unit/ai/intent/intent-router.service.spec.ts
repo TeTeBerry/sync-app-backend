@@ -10,9 +10,12 @@ jest.mock('@src/modules/activity/activity.service', () => ({
   ActivityService: class MockActivityService {},
 }));
 
+import { IntentCacheService } from '@src/ai/intent/intent-cache.service';
 import { IntentRouterService } from '@src/ai/intent/intent-router.service';
 import type { LlmService } from '@src/ai/llm/llm.service';
 import type { ActivityService } from '@src/modules/activity/activity.service';
+import { RedisService } from '@src/redis/redis.service';
+import { ConfigService } from '@nestjs/config';
 
 describe('IntentRouterService', () => {
   const activityService = {
@@ -24,11 +27,26 @@ describe('IntentRouterService', () => {
     invokeJson: jest.fn(),
   } as unknown as LlmService;
 
+  const redisService = {
+    getCacheValue: jest.fn().mockResolvedValue(null),
+    setCacheValueEx: jest.fn().mockResolvedValue(undefined),
+  } as unknown as RedisService;
+
+  const configService = {
+    get: jest.fn((key: string) => {
+      if (key === 'ai.intentCache.ttlMs') return 30_000;
+      if (key === 'ai.intentCache.maxMemoryEntries') return 1000;
+      return undefined;
+    }),
+  } as unknown as ConfigService;
+
+  let intentCache: IntentCacheService;
   let router: IntentRouterService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    router = new IntentRouterService(llmService, activityService);
+    intentCache = new IntentCacheService(redisService, configService);
+    router = new IntentRouterService(llmService, activityService, intentCache);
   });
 
   it('uses rule fast path without calling LLM', async () => {
@@ -85,6 +103,24 @@ describe('IntentRouterService', () => {
 
     expect(first).toEqual(second);
     expect(llmService.invokeJson).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not share cache across different activityLegacyId', async () => {
+    (llmService.invokeJson as jest.Mock).mockResolvedValue({
+      intent: 'create_post',
+    });
+
+    const base = {
+      messages: [],
+      input: '有人吗',
+      sessionId: 'sess-act',
+      requestId: 'req-act',
+    };
+
+    await router.resolve({ ...base, activityLegacyId: 4 });
+    await router.resolve({ ...base, activityLegacyId: 9 });
+
+    expect(llmService.invokeJson).toHaveBeenCalledTimes(2);
   });
 
   it('falls back to create_post when LLM is disabled', async () => {

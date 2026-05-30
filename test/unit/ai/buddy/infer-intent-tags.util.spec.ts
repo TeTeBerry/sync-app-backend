@@ -1,5 +1,5 @@
 import { inferIntentTagsFromText } from '@src/ai/buddy/infer-intent-tags.util';
-import { inferPostContentTypes } from '@src/modules/post/utils/post-content-type.util';
+import { inferPostContentTypes } from '@src/modules/partner/utils/post-content-type.util';
 
 const TICKET_RESALE_EXAMPLE =
   '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～';

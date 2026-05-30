@@ -11,7 +11,7 @@ import {
   UserMatchProfile,
 } from '../match/match-ranking.util';
 import { UserService } from '../../modules/user/user.service';
-import { resolveActorUserId } from '../utils/actor-user.util';
+import { resolveActorUserId } from '../../common/auth/actor-user.util';
 
 @Injectable()
 export class MatchContextService {

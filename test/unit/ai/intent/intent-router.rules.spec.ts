@@ -108,4 +108,19 @@ describe('intent-router.rules', () => {
     expect(hit?.kind).toBe('quick_reply');
     expect(hit?.source).toBe('rule');
   });
+
+  it('routes activity name reply after enter prompt to activity_enter', () => {
+    const hit = resolveChatIntentFastPath('风暴电音节', {
+      messages: [
+        {
+          role: 'assistant',
+          content: `艺人阵容\n想进入哪个活动？\n直接回复活动名即可`,
+        },
+        { role: 'user', content: '风暴电音节' },
+      ],
+      input: '风暴电音节',
+    });
+    expect(hit?.kind).toBe('activity_enter');
+    expect(hit?.source).toBe('rule');
+  });
 });

@@ -7,7 +7,7 @@ import type {
 import { NotificationService } from '../../modules/notification/notification.service';
 import type { NotificationTemplateKey } from '../../modules/notification/notification-templates.util';
 import { UserService } from '../../modules/user/user.service';
-import type { PostRecord } from '../../modules/post/interfaces/post.repository.interface';
+import type { PostRecord } from '../../modules/partner/interfaces/post.repository.interface';
 import { isResourceOwnedByClient } from '../../common/utils/demo-owner.util';
 
 export interface NoticeInteractionCopy {

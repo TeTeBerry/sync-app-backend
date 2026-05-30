@@ -1,40 +1,50 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
-  ActivityRegistration,
-  ActivityRegistrationSchema,
-} from '../../database/schemas/activity-registration.schema';
+  EventPackageEntitlement,
+  EventPackageEntitlementSchema,
+} from '../../database/schemas/event-package-entitlement.schema';
+import {
+  UserFreeQuota,
+  UserFreeQuotaSchema,
+} from '../../database/schemas/user-free-quota.schema';
 import { ActivityModule } from '../activity/activity.module';
-import { PostModule } from '../post/post.module';
+import { PartnerModule } from '../partner/partner.module';
 import { UserModule } from '../user/user.module';
-import { ACTIVITY_REGISTRATION_REPOSITORY } from './interfaces/activity-registration.repository.interface';
-import { ActivityRegistrationRepository } from './activity-registration.repository';
-import { ActivityRegistrationService } from './activity-registration.service';
 import { ProfileController } from './profile.controller';
+import { ProfileEntitlementConsumeService } from './profile-entitlement-consume.service';
+import { ProfileFreeQuotaService } from './profile-free-quota.service';
+import { ProfilePackageService } from './profile-package.service';
 import { ProfileSummaryService } from './profile-summary.service';
 
 @Module({
   imports: [
     forwardRef(() => ActivityModule),
-    forwardRef(() => PostModule),
+    forwardRef(() => PartnerModule),
     UserModule,
     MongooseModule.forFeature([
       {
-        name: ActivityRegistration.name,
-        schema: ActivityRegistrationSchema,
+        name: EventPackageEntitlement.name,
+        schema: EventPackageEntitlementSchema,
+      },
+      {
+        name: UserFreeQuota.name,
+        schema: UserFreeQuotaSchema,
       },
     ]),
   ],
   controllers: [ProfileController],
   providers: [
-    ActivityRegistrationRepository,
-    {
-      provide: ACTIVITY_REGISTRATION_REPOSITORY,
-      useExisting: ActivityRegistrationRepository,
-    },
     ProfileSummaryService,
-    ActivityRegistrationService,
+    ProfileFreeQuotaService,
+    ProfilePackageService,
+    ProfileEntitlementConsumeService,
   ],
-  exports: [ProfileSummaryService, ActivityRegistrationService],
+  exports: [
+    ProfileSummaryService,
+    ProfileFreeQuotaService,
+    ProfilePackageService,
+    ProfileEntitlementConsumeService,
+  ],
 })
 export class ProfileModule {}

@@ -7,6 +7,7 @@ import type { ChatMessageRichMetadata } from '../../ai/presentation/chat-message
 import {
   CONVERSATION_STATE_VERSION,
   createIdleState,
+  migrateConversationStateFromHistory,
   type ConversationState,
 } from '../../ai/conversation';
 import { Chat, ChatDocument } from '../../database/schemas/chat.schema';
@@ -50,6 +51,9 @@ export class ChatService {
     const recommendedPosts = this.normalizeRecommendedPosts(
       message.recommendedPosts,
     );
+    const recommendedActivity = this.normalizeRecommendedActivity(
+      message.recommendedActivity,
+    );
     const createdPost = this.normalizeCreatedPost(message.createdPost);
     const suggestedReplies = this.normalizeSuggestedReplies(
       message.suggestedReplies,
@@ -59,6 +63,7 @@ export class ChatService {
       !content &&
       !imageContext &&
       !recommendedPosts?.length &&
+      !recommendedActivity &&
       !createdPost &&
       !suggestedReplies?.length
     ) {
@@ -70,6 +75,7 @@ export class ChatService {
       content,
       ...(imageContext ? { imageContext } : {}),
       ...(recommendedPosts?.length ? { recommendedPosts } : {}),
+      ...(recommendedActivity ? { recommendedActivity } : {}),
       ...(createdPost ? { createdPost } : {}),
       ...(suggestedReplies?.length ? { suggestedReplies } : {}),
     };
@@ -101,6 +107,28 @@ export class ChatService {
         typeof post?.eventTitle === 'string',
     );
     return normalized.length ? normalized : undefined;
+  }
+
+  private normalizeRecommendedActivity(
+    activity?: ChatMessageDto['recommendedActivity'],
+  ): ChatMessageDto['recommendedActivity'] | undefined {
+    if (
+      !activity ||
+      typeof activity.activityLegacyId !== 'number' ||
+      Number.isNaN(activity.activityLegacyId) ||
+      typeof activity.title !== 'string' ||
+      !activity.title.trim()
+    ) {
+      return undefined;
+    }
+    const date = activity.date?.trim();
+    const venue = activity.venue?.trim();
+    return {
+      activityLegacyId: activity.activityLegacyId,
+      title: activity.title.trim(),
+      ...(date ? { date } : {}),
+      ...(venue ? { venue } : {}),
+    };
   }
 
   private normalizeCreatedPost(
@@ -231,13 +259,32 @@ export class ChatService {
 
   async getSession(sessionId: string): Promise<ChatSessionDto> {
     const doc = await this.chatModel.findOne({ sessionId }).lean();
+    const history = this.normalizeHistory(
+      doc?.history as Array<Partial<ChatMessageDto>> | undefined,
+    );
+    let conversationState = this.normalizeConversationState(doc?.conversationState);
+
+    if (!conversationState.flow && history.length > 0) {
+      const migrated = migrateConversationStateFromHistory(history);
+      if (migrated.flow !== 'idle') {
+        conversationState = migrated;
+        await this.chatModel.findOneAndUpdate(
+          { sessionId },
+          {
+            sessionId,
+            userId: doc?.userId,
+            conversationState,
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true },
+        );
+      }
+    }
+
     return {
       sessionId,
       userId: doc?.userId,
-      history: this.normalizeHistory(
-        doc?.history as Array<Partial<ChatMessageDto>> | undefined,
-      ),
-      conversationState: this.normalizeConversationState(doc?.conversationState),
+      history,
+      conversationState,
     };
   }
 
@@ -277,6 +324,7 @@ export class ChatService {
     const history =
       reply ||
       assistantMetadata.recommendedPosts?.length ||
+      assistantMetadata.recommendedActivity ||
       assistantMetadata.createdPost ||
       assistantMetadata.suggestedReplies?.length
         ? [

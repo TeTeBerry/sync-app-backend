@@ -89,6 +89,10 @@ describe('AiService buddy flow', () => {
   const buddyContext = {
     resolveActivityLegacyIdFromChat: jest.fn().mockResolvedValue(undefined),
   };
+  const activityService = {
+    findByCode: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+    matchActivity: jest.fn().mockResolvedValue(null),
+  };
 
   const turnPipeline = new AiTurnPipeline(
     agenticReplyService as never,
@@ -97,6 +101,7 @@ describe('AiService buddy flow', () => {
     intentRouter as never,
     new AiSseBuilder(),
     buddyContext as never,
+    activityService as never,
   );
 
   const service = new AiService(

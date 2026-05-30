@@ -43,6 +43,8 @@ describe('festival-shortcut.util', () => {
     expect(reply).toContain(formatFestivalArtistLine(STORM_FESTIVAL_ARTISTS));
     expect(reply).toContain(HOME_FESTIVAL_ENTER_ACTIVITY_PROMPT);
     expect(reply).not.toContain('**');
+    expect(reply).not.toContain('编号选择');
+    expect(reply).toContain('直接回复活动名');
     expect(reply).toContain('不会自动绑定活动');
   });
 

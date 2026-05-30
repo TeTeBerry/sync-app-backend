@@ -7,6 +7,10 @@ import {
   detectUserIntent,
   isSearchExistingPostsIntent,
 } from '../intent/user-intent';
+import {
+  isActivityEnterNameInput,
+  isAwaitingActivityEnterSelection,
+} from '../utils/activity-enter.util';
 import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
 import { inferBuddySearchHintKind } from '../match/zone-buddy-search.util';
 import type { IntentRouterInput } from './intent-router.service';
@@ -19,6 +23,12 @@ export function resolveChatIntentFastPath(
 ): ResolvedChatIntent | null {
   if (params.image?.trim()) {
     return { kind: 'create_post', source: 'rule' };
+  }
+
+  if (params.activityLegacyId == null && isAwaitingActivityEnterSelection(params.messages)) {
+    if (isActivityEnterNameInput(trimmed)) {
+      return { kind: 'activity_enter', source: 'rule' };
+    }
   }
 
   if (

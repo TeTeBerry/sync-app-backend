@@ -12,7 +12,7 @@ import {
   isDeclineRecommendationsIntent,
 } from '../gate/recommend-gate.util';
 import { buildMatchCriteriaForSearch } from '../match/buddy-match-criteria.util';
-import { PostService } from '../../modules/post/post.service';
+import { PostService } from '../../modules/partner/post.service';
 import { BuddyContextService } from './buddy-context.service';
 import { shouldSkipActivityScopedBuddyRecommend } from './activity-scope-guard.util';
 import { MatchPostsFromChatUseCase } from './match-posts.use-case';

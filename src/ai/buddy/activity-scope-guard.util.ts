@@ -1,5 +1,5 @@
 import { inferIntentTagsFromText } from './infer-intent-tags.util';
-import { inferPostContentTypes } from '../../modules/post/utils/post-content-type.util';
+import { inferPostContentTypes } from '../../modules/partner/utils/post-content-type.util';
 
 export interface ActivityScopeContext {
   name?: string;

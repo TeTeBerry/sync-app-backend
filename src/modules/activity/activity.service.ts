@@ -18,7 +18,7 @@ import {
   resolveFestivalBrand,
 } from '../../ai/rag/festival-brand.util';
 import { NoticeAgent } from '../../ai/agents/notice.agent';
-import { ActivityRegistrationService } from '../profile/activity-registration.service';
+import { ActivityRegistrationService } from './registration/activity-registration.service';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ACTIVITY_SEED } from './activity.seed';
 

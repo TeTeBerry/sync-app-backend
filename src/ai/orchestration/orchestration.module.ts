@@ -7,7 +7,6 @@ import { ReplyFallbackProvider } from './reply-fallback.provider';
 import { RagModule } from '../rag/rag.module';
 import { ParserModule } from '../parser/parser.module';
 import { ActivityModule } from '../../modules/activity/activity.module';
-import { ProfileModule } from '../../modules/profile/profile.module';
 import { HandlerModule } from '../handlers/handler.module';
 
 @Module({
@@ -15,7 +14,6 @@ import { HandlerModule } from '../handlers/handler.module';
     RagModule,
     ParserModule,
     ActivityModule,
-    ProfileModule,
     HandlerModule,
   ],
   providers: [

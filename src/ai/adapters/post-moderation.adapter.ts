@@ -5,7 +5,7 @@ import type {
   PostCommentModerationInput,
   PostModerationInput,
   PostModerationResult,
-} from '../../modules/post/ports/post-moderation.port';
+} from '../../modules/partner/ports/post-moderation.port';
 
 @Injectable()
 export class PostModerationAdapter implements IPostModerationPort {

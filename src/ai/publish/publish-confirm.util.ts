@@ -19,27 +19,10 @@ export function isPublishConfirmIntent(input: string): boolean {
 
 /** Whether the assistant already proposed a publish draft awaiting user confirmation. */
 export function isAwaitingPublishConfirmation(
-  messages: ChatMessageDto[],
+  _messages: ChatMessageDto[],
   state?: ConversationState | null,
 ): boolean {
-  if (state?.flow === 'publish_confirm') {
-    return true;
-  }
-
-  const lastIndex = messages.length - 1;
-  if (lastIndex < 1) return false;
-
-  for (let index = lastIndex - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message.role === 'assistant') {
-      return message.content.includes(PUBLISH_CONFIRM_PROMPT_MARKER);
-    }
-    if (message.role === 'user') {
-      return false;
-    }
-  }
-
-  return false;
+  return state?.flow === 'publish_confirm';
 }
 
 /** Pull the draft paragraph from a prior 【发布确认】 assistant message. */
@@ -116,6 +99,10 @@ export function resolvePublishDraftBody(params: {
 }): string | null {
   const fromState = params.conversationState?.publishDraft?.draftBody?.trim();
   if (fromState) return fromState;
+
+  if (params.conversationState?.flow !== 'publish_confirm') {
+    return null;
+  }
 
   for (let index = params.messages.length - 1; index >= 0; index -= 1) {
     const message = params.messages[index];

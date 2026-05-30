@@ -15,7 +15,7 @@ describe('publish-confirm.util', () => {
     expect(isPublishConfirmIntent('组队队友')).toBe(false);
   });
 
-  it('detects awaiting confirmation from prior assistant turn', () => {
+  it('does not detect awaiting confirmation from marker without persisted state', () => {
     const messages = [
       { role: 'user' as const, content: '组队队友' },
       {
@@ -25,7 +25,7 @@ describe('publish-confirm.util', () => {
       { role: 'user' as const, content: '确认发布' },
     ];
 
-    expect(isAwaitingPublishConfirmation(messages)).toBe(true);
+    expect(isAwaitingPublishConfirmation(messages)).toBe(false);
   });
 
   it('extracts draft paragraph from publish confirm reply', () => {

@@ -4,7 +4,7 @@ import {
   rankPostsByCriteria,
 } from '@src/ai/match/buddy-match-rank.util';
 import type { BuddyMatchCriteria } from '@src/ai/match/buddy-match.types';
-import type { PostRecord } from '@src/modules/post/interfaces/post.repository.interface';
+import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
 
 function post(
   id: string,

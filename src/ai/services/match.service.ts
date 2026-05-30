@@ -6,8 +6,8 @@ import {
   IPostRepository,
   POST_REPOSITORY,
   type PostRecord,
-} from '../../modules/post/interfaces/post.repository.interface';
-import { resolveActorUserId } from '../utils/actor-user.util';
+} from '../../modules/partner/interfaces/post.repository.interface';
+import { resolveActorUserId } from '../../common/auth/actor-user.util';
 import { ChromaService } from '../rag/chroma.service';
 import {
   buildRerankUserNeed,

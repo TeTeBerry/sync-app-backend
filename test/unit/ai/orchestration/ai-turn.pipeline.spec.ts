@@ -36,6 +36,10 @@ describe('AiTurnPipeline homepage activity gating', () => {
   const buddyContext = {
     resolveActivityLegacyIdFromChat: jest.fn(),
   };
+  const activityService = {
+    findByCode: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+    matchActivity: jest.fn().mockResolvedValue(null),
+  };
 
   const pipeline = new AiTurnPipeline(
     agenticReplyService as never,
@@ -44,6 +48,7 @@ describe('AiTurnPipeline homepage activity gating', () => {
     intentRouter as never,
     new AiSseBuilder(),
     buddyContext as never,
+    activityService as never,
   );
 
   const baseDto = {
@@ -54,6 +59,9 @@ describe('AiTurnPipeline homepage activity gating', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    intentRouter.resolve.mockResolvedValue({ kind: 'create_post', source: 'rule' });
+    postIntentService.tryMatchPostsFromChat.mockResolvedValue(null);
+    postIntentService.tryProactiveRecommendBeforeCreate.mockResolvedValue(null);
   });
 
   it('skips proactive recommend on home when no activity is inferred', async () => {
@@ -166,6 +174,76 @@ describe('AiTurnPipeline homepage activity gating', () => {
 
     expect(buddyContext.resolveActivityLegacyIdFromChat).toHaveBeenCalled();
     expect(postIntentService.tryProactiveRecommendBeforeCreate).not.toHaveBeenCalled();
+  });
+
+  it('enters collect_post_body when search_posts finds no matches on event detail', async () => {
+    intentRouter.resolve.mockResolvedValue({
+      kind: 'search_posts',
+      source: 'rule',
+    });
+    postIntentService.tryMatchPostsFromChat.mockResolvedValue({
+      matches: [],
+      postCards: [],
+      activityLabel: '风暴电音节',
+      degraded: false,
+      replyText: '暂未在「风暴电音节」找到相近的组队帖。\n\n你可以：告诉我内容帮你发布帖子',
+    });
+
+    const result = await pipeline.runTurn(
+      {
+        ...baseDto,
+        activityLegacyId: 9,
+        messages: [{ role: 'user', content: '看看有没有组队帖' }],
+      },
+      [{ role: 'user', content: '看看有没有组队帖' }],
+      '看看有没有组队帖',
+      { version: 1, flow: 'idle' },
+      'req-search-empty',
+      'scoped-session',
+    );
+
+    expect(result.conversationState.flow).toBe('collect_post_body');
+    expect(result.conversationState.publishDraft?.activityLegacyId).toBe(9);
+    expect(result.conversationState.publishDraft?.fromSelfPost).toBe(true);
+    expect(result.events.some(e => e.type === 'conversation_patch')).toBe(true);
+  });
+
+  it('emits activity card when user confirms festival enter by name', async () => {
+    intentRouter.resolve.mockResolvedValue({ kind: 'activity_enter', source: 'rule' });
+    activityService.findByCode.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        legacyId: 4,
+        name: '风暴电音节 深圳站',
+        date: '06/13-14',
+        location: '深圳国际会展中心',
+        code: 'storm',
+      }),
+    });
+
+    const messages = [
+      {
+        role: 'assistant' as const,
+        content: '阵容\n想进入哪个活动？',
+      },
+      { role: 'user' as const, content: '风暴电音节' },
+    ];
+
+    const result = await pipeline.runTurn(
+      { ...baseDto, messages },
+      messages,
+      '风暴电音节',
+      { version: 1, flow: 'idle' },
+      'req-activity-enter',
+      'home-session',
+    );
+
+    expect(result.events.some(e => e.type === 'activity_recommendation')).toBe(true);
+    const cardEvent = result.events.find(e => e.type === 'activity_recommendation');
+    expect(cardEvent && 'activity' in cardEvent && cardEvent.activity).toMatchObject({
+      activityLegacyId: 4,
+      title: '风暴电音节 深圳站',
+    });
+    expect(result.assistantReply).toContain('点下方卡片');
   });
 
   it('uses bound activityLegacyId on event detail without home inference', async () => {

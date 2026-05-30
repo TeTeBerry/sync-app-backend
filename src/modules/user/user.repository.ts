@@ -41,6 +41,23 @@ export class UserRepository implements IUserRepository {
       .lean();
   }
 
+  async upsertByExternalId(
+    externalId: string,
+    data: Partial<UserDocument>,
+  ): Promise<UserRecord> {
+    const doc = await this.model
+      .findOneAndUpdate(
+        { externalId },
+        { $set: { ...data, externalId } },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      )
+      .lean();
+    if (!doc) {
+      throw new Error(`Failed to upsert user profile: ${externalId}`);
+    }
+    return doc;
+  }
+
   async findByExternalIds(externalIds: string[]): Promise<UserRecord[]> {
     if (!externalIds.length) return [];
     return this.model

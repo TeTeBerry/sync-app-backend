@@ -8,7 +8,7 @@ jest.mock('@src/modules/notification/notification.service', () => ({
 import { NoticeAgent } from '@src/ai/agents/notice.agent';
 import type { NotificationService } from '@src/modules/notification/notification.service';
 import type { UserService } from '@src/modules/user/user.service';
-import type { PostRecord } from '@src/modules/post/interfaces/post.repository.interface';
+import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
 
 describe('NoticeAgent', () => {
   let agent: NoticeAgent;

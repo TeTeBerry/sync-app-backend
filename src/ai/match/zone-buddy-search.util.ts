@@ -1,3 +1,4 @@
+import { MATCH_EMPTY_POST_BODY_PROMPT } from '../gate/recommend-gate.util';
 import {
   catalogDateToIso,
   extractYearFromText,
@@ -141,15 +142,17 @@ export function buildZoneMatchEmptyReply(
         ? `「${hintLabel}」相关`
         : `「${hintLabel}」`;
 
-  return [
-    `暂未在「${activityLabel}」找到${scope}的搭子/组队帖 🔍`,
-    '',
-    hintKind === 'day_or_zone'
-      ? '若你指的是活动日期或票区，可以补充更具体的信息（如出发城市、人数），我再帮你搜或发组队帖。'
-      : '你可以：',
-    '· 在活动详情页浏览其他场次/区域的组队帖并申请加入',
-    '· 告诉我日期、人数、出发城市，我帮你在本活动发一条组队帖',
-  ].join('\n');
+  const lines = [`暂未在「${activityLabel}」找到${scope}的搭子/组队帖 🔍`, ''];
+
+  if (hintKind === 'day_or_zone') {
+    lines.push(
+      '若你指的是活动日期或票区，可以补充更具体的信息（如出发城市、人数），我再帮你搜或发组队帖。',
+      '',
+    );
+  }
+
+  lines.push(MATCH_EMPTY_POST_BODY_PROMPT);
+  return lines.join('\n');
 }
 
 export function formatZoneMatchScope(

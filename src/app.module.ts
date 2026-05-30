@@ -11,8 +11,10 @@ import { HomeModule } from './modules/home/home.module';
 import { AiModule } from './ai/ai.module';
 import { PostAgentAdaptersModule } from './ai/adapters/post-agent-adapters.module';
 import { NotificationModule } from './modules/notification/notification.module';
-import { PostModule } from './modules/post/post.module';
+import { PartnerModule } from './modules/partner/partner.module';
 import { ReportModule } from './modules/report/report.module';
+import { LiveInfoModule } from './modules/live-info/live-info.module';
+import { UploadModule } from './modules/upload/upload.module';
 import { HealthModule } from './common/health/health.module';
 
 @Module({
@@ -44,10 +46,12 @@ import { HealthModule } from './common/health/health.module';
     ProfileModule,
     HomeModule,
     PostAgentAdaptersModule,
-    PostModule,
+    PartnerModule,
     AiModule,
     NotificationModule,
     ReportModule,
+    LiveInfoModule,
+    UploadModule,
     HealthModule,
   ],
 })

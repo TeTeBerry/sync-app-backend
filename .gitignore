@@ -1,5 +1,7 @@
 # compiled output
 /dist
+/uploads/*
+!uploads/.gitkeep
 /node_modules
 
 # Logs
@@ -12,6 +14,7 @@ lerna-debug.log*
 
 # Secrets
 .env
+.env.example
 .env.local
 .env.*.local
 

@@ -16,6 +16,13 @@ export interface RecommendedPostCard {
   matchReason?: string;
 }
 
+export interface RecommendedActivityCard {
+  activityLegacyId: number;
+  title: string;
+  date?: string;
+  venue?: string;
+}
+
 export type AiStreamEvent =
   | { type: 'delta'; content: string }
   | {
@@ -43,6 +50,10 @@ export type AiStreamEvent =
       type: 'post_recommendations';
       posts: RecommendedPostCard[];
       degraded?: boolean;
+    }
+  | {
+      type: 'activity_recommendation';
+      activity: RecommendedActivityCard;
     }
   | {
       type: 'suggested_replies';

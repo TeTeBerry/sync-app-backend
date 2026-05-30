@@ -14,6 +14,7 @@ import {
   buildIntentRouterUserPrompt,
   type IntentRouterActivityContext,
 } from './intent-router.prompt';
+import { IntentCacheService } from './intent-cache.service';
 
 export interface IntentRouterInput {
   messages: ChatMessageDto[];
@@ -29,47 +30,38 @@ interface LlmIntentRouteResult {
   searchHint?: string;
 }
 
-interface CachedIntentEntry {
-  result: ResolvedChatIntent;
-  expiresAt: number;
-}
-
-const INTENT_CACHE_TTL_MS = 30_000;
-const INTENT_CACHE_MAX_SIZE = 1000;
-
 @Injectable()
 export class IntentRouterService {
   private readonly logger = new Logger(IntentRouterService.name);
-  private readonly intentCache = new Map<string, CachedIntentEntry>();
 
   constructor(
     private readonly llmService: LlmService,
     private readonly activityService: ActivityService,
+    private readonly intentCache: IntentCacheService,
   ) {}
 
   async resolve(params: IntentRouterInput): Promise<ResolvedChatIntent> {
     const startedAt = Date.now();
     const trimmed = params.input.trim();
-    const cacheKey = this.buildCacheKey(params.sessionId, trimmed);
+    const cacheKey = this.intentCache.buildKey({
+      sessionId: params.sessionId,
+      input: trimmed,
+      activityLegacyId: params.activityLegacyId,
+      hasImage: Boolean(params.image?.trim()),
+    });
 
-    if (cacheKey) {
-      const cached = this.intentCache.get(cacheKey);
-      if (cached && cached.expiresAt > Date.now()) {
-        const result = cached.result;
-        this.logIntentResolve(params, result, Date.now() - startedAt);
-        return result;
-      }
-      if (cached) {
-        this.intentCache.delete(cacheKey);
-      }
+    const cached = await this.intentCache.get(cacheKey);
+    if (cached) {
+      this.logIntentResolve(params, cached.result, Date.now() - startedAt, cached.layer);
+      return cached.result;
     }
 
     const activityMeta = await this.loadActivityMeta(params.activityLegacyId);
 
     const ruleHit = resolveChatIntentFastPath(trimmed, params);
     if (ruleHit) {
-      this.storeCache(cacheKey, ruleHit);
-      this.logIntentResolve(params, ruleHit, Date.now() - startedAt);
+      await this.intentCache.set(cacheKey, ruleHit);
+      this.logIntentResolve(params, ruleHit, Date.now() - startedAt, 'miss');
       return ruleHit;
     }
 
@@ -79,47 +71,22 @@ export class IntentRouterService {
       activityMeta,
     );
     if (llmHit) {
-      this.storeCache(cacheKey, llmHit);
-      this.logIntentResolve(params, llmHit, Date.now() - startedAt);
+      await this.intentCache.set(cacheKey, llmHit);
+      this.logIntentResolve(params, llmHit, Date.now() - startedAt, 'miss');
       return llmHit;
     }
 
     const fallback: ResolvedChatIntent = { kind: 'create_post', source: 'default' };
-    this.storeCache(cacheKey, fallback);
-    this.logIntentResolve(params, fallback, Date.now() - startedAt);
+    await this.intentCache.set(cacheKey, fallback);
+    this.logIntentResolve(params, fallback, Date.now() - startedAt, 'miss');
     return fallback;
-  }
-
-  private buildCacheKey(sessionId?: string, input?: string): string | null {
-    const sid = sessionId?.trim();
-    const text = input?.trim();
-    if (!sid || !text) return null;
-    return `${sid}:${text}`;
-  }
-
-  private storeCache(key: string | null, result: ResolvedChatIntent): void {
-    if (!key) return;
-
-    const now = Date.now();
-
-    // LRU 驱逐：满时删除最久未访问的条目
-    if (this.intentCache.size >= INTENT_CACHE_MAX_SIZE) {
-      const firstKey = this.intentCache.keys().next().value;
-      if (firstKey != null) {
-        this.intentCache.delete(firstKey);
-      }
-    }
-
-    this.intentCache.set(key, {
-      result,
-      expiresAt: now + INTENT_CACHE_TTL_MS,
-    });
   }
 
   private logIntentResolve(
     params: IntentRouterInput,
     result: ResolvedChatIntent,
     latencyMs: number,
+    intentCache: 'redis' | 'memory' | 'miss',
   ): void {
     logAiTurn(this.logger, {
       event: 'intent_router',
@@ -127,6 +94,7 @@ export class IntentRouterService {
       sessionId: params.sessionId ?? 'unknown',
       intent: result.kind,
       intentSource: result.source,
+      intentCache,
       ms_intent: latencyMs,
     });
   }

@@ -21,6 +21,10 @@ export interface IUserRepository {
     externalId: string,
     data: Partial<UserDocument>,
   ): Promise<UserRecord | null>;
+  upsertByExternalId(
+    externalId: string,
+    data: Partial<UserDocument>,
+  ): Promise<UserRecord>;
   findByExternalIds(externalIds: string[]): Promise<UserRecord[]>;
 }
 

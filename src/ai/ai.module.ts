@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { ActivityModule } from '../modules/activity/activity.module';
-import { ProfileModule } from '../modules/profile/profile.module';
 import { ChatModule } from '../modules/chat/chat.module';
-import { PostModule } from '../modules/post/post.module';
+import { PartnerModule } from '../modules/partner/partner.module';
 import { ChromaModule } from './rag/chroma.module';
 import { RagModule } from './rag/rag.module';
 import { HandlerModule } from './handlers/handler.module';
@@ -22,9 +21,8 @@ import { AiChatWsServer } from './ws/ai-chat-ws.server';
 @Module({
   imports: [
     ActivityModule,
-    ProfileModule,
     ChatModule,
-    PostModule,
+    PartnerModule,
     ChromaModule,
     RagModule,
     HandlerModule,

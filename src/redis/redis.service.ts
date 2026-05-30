@@ -175,6 +175,23 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async setCacheValueEx(
+    key: string,
+    value: string,
+    ttlSec: number,
+  ): Promise<void> {
+    if (!this.client || !this.enabled) return;
+    if (!Number.isFinite(ttlSec) || ttlSec <= 0) return;
+
+    try {
+      await this.client.set(key, value, 'EX', Math.ceil(ttlSec));
+    } catch (error) {
+      this.logger.warn(
+        `Redis setex failed (${key}): ${(error as Error).message}`,
+      );
+    }
+  }
+
   /** Fixed-window counter; returns null when Redis unavailable (caller should fallback). */
   async incrementRateLimit(key: string, windowSec: number): Promise<number | null> {
     if (!this.client || !this.enabled) return null;

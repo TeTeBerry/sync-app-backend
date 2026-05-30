@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { NoticeAgent } from '../agents/notice.agent';
-import type { IPostNotificationPort } from '../../modules/post/ports/post-notification.port';
-import type { PostRecord } from '../../modules/post/interfaces/post.repository.interface';
+import type { IPostNotificationPort } from '../../modules/partner/ports/post-notification.port';
+import type { PostRecord } from '../../modules/partner/interfaces/post.repository.interface';
 
 @Injectable()
 export class PostNotificationAdapter implements IPostNotificationPort {

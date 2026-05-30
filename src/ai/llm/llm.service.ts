@@ -47,8 +47,9 @@ export class LlmService {
     this.enabled = Boolean(this.apiKey && this.apiKey !== 'MISSING_API_KEY');
     this.visionEnabled = this.enabled;
     this.vlModel = this.config.get<string>('llm.vlModel') ?? 'qwen-vl-plus';
-    this.defaultModel = this.config.get<string>('llm.model') ?? 'qwen-turbo';
-    this.rerankModel = this.config.get<string>('llm.rerankModel') ?? 'qwen-plus';
+    this.defaultModel = this.config.get<string>('llm.model') ?? 'qwen-max';
+    this.rerankModel =
+      this.config.get<string>('llm.rerankModel') ?? 'qwen-plus';
 
     const llmOptions = {
       alibabaApiKey: this.apiKey || 'MISSING_API_KEY',
@@ -97,19 +98,16 @@ export class LlmService {
       model === this.defaultModel
         ? this.llm
         : model === this.rerankModel
-          ? this.rerankLlm
-          : new ChatAlibabaTongyi({
-              alibabaApiKey: this.apiKey || 'MISSING_API_KEY',
-              model,
-              streaming: true,
-              temperature: 0.1,
-            });
+        ? this.rerankLlm
+        : new ChatAlibabaTongyi({
+            alibabaApiKey: this.apiKey || 'MISSING_API_KEY',
+            model,
+            streaming: true,
+            temperature: 0.1,
+          });
 
     const response = await this.withTimeout(
-      llm.invoke([
-        new SystemMessage(system),
-        new HumanMessage(user),
-      ]),
+      llm.invoke([new SystemMessage(system), new HumanMessage(user)]),
       timeoutMs,
     );
 

@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { resolveActorUserId } from '../../ai/utils/actor-user.util';
+import { resolveActorUserId } from '../../common/auth/actor-user.util';
 import {
   PostApplication,
   PostApplicationDocument,

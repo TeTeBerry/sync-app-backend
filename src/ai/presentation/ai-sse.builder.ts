@@ -11,7 +11,12 @@ import {
 } from '../gate/recommend-gate.util';
 import { PUBLISH_CONFIRM_SUGGESTED_REPLIES } from '../publish/publish-confirm.util';
 import type { PostIntentCreateAttempt } from '../post-intent.service';
-import type { AiStreamEvent, RecommendedPostCard } from './ai-stream-event.view';
+import { buildActivityEnterConfirmationReply } from '../utils/activity-enter.util';
+import type {
+  AiStreamEvent,
+  RecommendedActivityCard,
+  RecommendedPostCard,
+} from './ai-stream-event.view';
 
 export interface ReplySink {
   setReply: (text: string) => void;
@@ -52,6 +57,18 @@ export class AiSseBuilder {
       type: 'suggested_replies',
       replies: [...PUBLISH_CONFIRM_SUGGESTED_REPLIES],
     };
+  }
+
+  buildActivityEnterEvents(
+    sink: ReplySink,
+    activity: RecommendedActivityCard,
+  ): AiStreamEvent[] {
+    const replyText = buildActivityEnterConfirmationReply(activity.title);
+    sink.setReply(replyText);
+    return [
+      { type: 'delta', content: replyText },
+      { type: 'activity_recommendation', activity },
+    ];
   }
 
   buildRecommendGateFoundEvents(
