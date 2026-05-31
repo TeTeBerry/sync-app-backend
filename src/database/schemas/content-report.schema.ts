@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
-export type ContentReportDocument = ContentReport & Document;
+export type ContentReportDocument = HydratedDocument<ContentReport>;
 
 export type ReportTargetType = 'post' | 'user' | 'comment';
 export type ReportCategory = 'ads' | 'scalper' | 'vulgar';

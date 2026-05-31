@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
-export type UserBlockDocument = UserBlock & Document;
+export type UserBlockDocument = HydratedDocument<UserBlock>;
 
 /** One-way block: `userId` has blocked `blockedUserId`. */
 @Schema({ timestamps: true })

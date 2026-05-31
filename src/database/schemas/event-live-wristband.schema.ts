@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
-export type EventLiveWristbandDocument = EventLiveWristband & Document;
+export type EventLiveWristbandDocument = HydratedDocument<EventLiveWristband>;
 
 @Schema({ collection: 'event_live_wristbands', timestamps: true })
 export class EventLiveWristband {

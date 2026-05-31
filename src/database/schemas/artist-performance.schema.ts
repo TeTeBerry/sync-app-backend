@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
-export type ArtistPerformanceDocument = ArtistPerformance & Document;
+export type ArtistPerformanceDocument = HydratedDocument<ArtistPerformance>;
 
 @Schema({ collection: 'artist_performances', timestamps: true })
 export class ArtistPerformance {

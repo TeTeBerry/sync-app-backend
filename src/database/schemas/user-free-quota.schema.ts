@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
-export type UserFreeQuotaDocument = UserFreeQuota & Document;
+export type UserFreeQuotaDocument = HydratedDocument<UserFreeQuota>;
 
 /** Global monthly free quota counters per user (not per-event). */
 @Schema({ timestamps: true })

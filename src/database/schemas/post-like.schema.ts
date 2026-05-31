@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
-export type PostLikeDocument = PostLike & Document;
+export type PostLikeDocument = HydratedDocument<PostLike>;
 
 @Schema({ timestamps: true })
 export class PostLike {

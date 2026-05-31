@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
 export type NotificationType = 'general' | 'interaction' | 'system' | 'match';
 
@@ -47,7 +47,7 @@ export interface NotificationMeta {
   parentCommentId?: string;
 }
 
-export type NotificationDocument = Notification & Document;
+export type NotificationDocument = HydratedDocument<Notification>;
 
 @Schema({ timestamps: true })
 export class Notification {

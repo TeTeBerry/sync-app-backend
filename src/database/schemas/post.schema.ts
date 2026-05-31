@@ -1,8 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 import type { BuddyMatchCriteria } from '../../ai/match/buddy-match.types';
 
-export type PostDocument = Post & Document;
+export type PostDocument = HydratedDocument<Post>;
 
 export type PostStatus = 'recruiting' | 'completed' | 'hidden';
 

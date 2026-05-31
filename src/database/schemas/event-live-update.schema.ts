@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 import type { LiveInfoCategoryId } from '../../modules/live-info/domain/live-info-categories';
 
 export type { LiveInfoCategoryId } from '../../modules/live-info/domain/live-info-categories';
@@ -10,7 +10,7 @@ const LiveInfoRatingSchema = {
   score: { type: Number, required: true, min: 1, max: 5 },
 };
 
-export type EventLiveUpdateDocument = EventLiveUpdate & Document;
+export type EventLiveUpdateDocument = HydratedDocument<EventLiveUpdate>;
 
 @Schema({ collection: 'event_live_updates', timestamps: true })
 export class EventLiveUpdate {

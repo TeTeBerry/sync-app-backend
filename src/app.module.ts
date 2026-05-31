@@ -29,15 +29,7 @@ import { HealthModule } from './common/health/health.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         uri: config.get<string>('mongodb.uri'),
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        // Mongoose 5: use createIndexes instead of deprecated collection.ensureIndex
-        useCreateIndex: true,
-        // Mongoose 5: native findOneAndUpdate/findOneAndDelete (no findAndModify)
-        useFindAndModify: false,
         serverSelectionTimeoutMS: 8000,
-        retryAttempts: 5,
-        retryDelay: 3000,
       }),
     }),
     RedisModule,

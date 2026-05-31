@@ -1,5 +1,6 @@
-import { PostDocument } from '../../../database/schemas/post.schema';
+import type { Post } from '../../../database/schemas/post.schema';
 import type { PostPageCursor } from '../domain/post-cursor.util';
+import type { Types } from 'mongoose';
 
 export interface PostQueryFilter {
   userId?: string;
@@ -8,8 +9,9 @@ export interface PostQueryFilter {
   status?: string;
 }
 
-export type PostRecord = PostDocument & {
-  _id: unknown;
+/** Plain post shape from lean() / toObject() — not a Mongoose document instance. */
+export type PostRecord = Post & {
+  _id: Types.ObjectId | string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 };

@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
 export type ItineraryTimelineDotColor = 'pink' | 'cyan' | 'purple';
 
@@ -28,7 +28,7 @@ export type ItineraryDay = {
   items: ItineraryTimelineItem[];
 };
 
-export type UserItineraryDocument = UserItinerary & Document;
+export type UserItineraryDocument = HydratedDocument<UserItinerary>;
 
 @Schema({ collection: 'user_itineraries', timestamps: true })
 export class UserItinerary {

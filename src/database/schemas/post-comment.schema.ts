@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
-export type PostCommentDocument = PostComment & Document;
+export type PostCommentDocument = HydratedDocument<PostComment>;
 
 @Schema({ timestamps: true })
 export class PostComment {

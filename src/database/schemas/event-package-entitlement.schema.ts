@@ -1,8 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 import type { PackageTierId } from '../../modules/profile/domain/package-tier-id.type';
 
-export type EventPackageEntitlementDocument = EventPackageEntitlement & Document;
+export type EventPackageEntitlementDocument = HydratedDocument<EventPackageEntitlement>;
 
 @Schema({ _id: false })
 export class EventEntitlementUsageRecord {

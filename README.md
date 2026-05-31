@@ -6,7 +6,7 @@ NestJS 后端：组队活动、AI 对话 WebSocket、四 Agent 发帖闭环、Ch
 
 | 层级 | 选型 |
 |------|------|
-| 框架 | NestJS 7 |
+| 框架 | NestJS 10（Node ≥ 18.18，Mongoose 7） |
 | AI | 通义千问（Qwen-Max / Qwen-VL）+ LangChain 文档抽象 |
 | Agent | TextParse / ImageParse / Match / Risk（`src/ai/agents/`） |
 | 知识库 | Chroma（`sync_knowledge` + `sync_posts`） |
@@ -15,7 +15,8 @@ NestJS 后端：组队活动、AI 对话 WebSocket、四 Agent 发帖闭环、Ch
 | 通信 | WebSocket（`ws://<host>/api/ai/chat/ws`） |
 
 架构说明：[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)  
-改造清单：[docs/BACKEND-REFACTOR-CHECKLIST.md](./docs/BACKEND-REFACTOR-CHECKLIST.md)
+改造清单：[docs/BACKEND-REFACTOR-CHECKLIST.md](./docs/BACKEND-REFACTOR-CHECKLIST.md)  
+Nest/Mongoose 升级：[docs/UPGRADE-NEST-MONGOOSE.md](./docs/UPGRADE-NEST-MONGOOSE.md)
 
 ## 快速开始
 

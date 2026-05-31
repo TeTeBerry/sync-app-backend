@@ -79,7 +79,7 @@ export class PostService implements OnModuleInit {
       const count = await this.postModel.estimatedDocumentCount();
       if (count === 0) {
         const inserted = await this.postModel.insertMany(POST_SEED);
-        await this.syncPostEmbeddings(inserted);
+        await this.syncPostEmbeddings(inserted as PostDocument[]);
       }
     } catch (error) {
       this.logger.warn(`Post seed failed: ${(error as Error).message}`);
@@ -182,7 +182,7 @@ export class PostService implements OnModuleInit {
           ? activityMap.get(post.activityLegacyId)
           : null;
         return this.chromaService.syncPostEmbeddingStatus({
-          postId: String(post._id ?? post.id),
+          postId: String(post._id),
           userId: post.userId,
           body: post.body,
           eventTitle: post.eventTitle,
@@ -245,7 +245,7 @@ export class PostService implements OnModuleInit {
         : null;
 
     await this.chromaService.syncPostEmbeddingStatus({
-      postId: String(post._id ?? post.id),
+      postId: String(post._id),
       userId: post.userId,
       body: post.body,
       eventTitle: post.eventTitle,

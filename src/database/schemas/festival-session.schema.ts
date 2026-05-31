@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 
-export type FestivalSessionDocument = FestivalSession & Document;
+export type FestivalSessionDocument = HydratedDocument<FestivalSession>;
 
 @Schema({ collection: 'festival_sessions', timestamps: true })
 export class FestivalSession {
