@@ -40,10 +40,11 @@ describe('risk-sanitize.util', () => {
     expect(appendTravelSafetyTip(withTip, '拼车')).toBe(withTip);
   });
 
-  it('builds publishable body with fallback desensitization', () => {
+  it('builds publishable body with fallback desensitization (no safety tip in post body)', () => {
     const result = buildPublishableBody('电话13812345678，2人拼车');
     expect(result).not.toContain('【已脱敏】');
-    expect(result).toContain(TRAVEL_SAFETY_TIP);
+    expect(result).not.toContain('13812345678');
+    expect(result).not.toContain(TRAVEL_SAFETY_TIP);
   });
 
   it('prefers llm content when provided and strips markers', () => {

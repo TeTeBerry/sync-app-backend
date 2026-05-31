@@ -32,11 +32,14 @@ npm run dev:all
 
 ```bash
 npm run infra:up      # mongo + redis
+npm run infra:chroma  # optional: Chroma on :8000 (profile chroma)
 npm run wait:mongo
 npm run start:dev
 ```
 
 国内 Docker 拉取失败：`npm run infra:up:cn`
+
+向量检索（帖子匹配 / 行程 RAG）需 Chroma：`npm run infra:chroma`，并在 `.env` 设置 `CHROMA_URL=http://localhost:8000`。
 
 服务默认：`http://localhost:3000/api`
 
@@ -50,9 +53,10 @@ npm run start:dev
 | `QWEN_API_KEY` | 通义 API Key（或 `DASHSCOPE_API_KEY`） |
 | `QWEN_MODEL` | 文本模型，默认 `qwen-max` |
 | `QWEN_VL_MODEL` | 视觉模型，默认 `qwen-vl-plus` |
-| `CHROMA_PATH` | Chroma 本地目录，默认 `./chroma_data` |
+| `CHROMA_URL` | Chroma HTTP 基址，如 `http://localhost:8000`（`npm run infra:chroma`）；空则 RAG 降级 Mongo/规则 |
 | `CHROMA_COLLECTION` | 活动知识库，默认 `sync_knowledge` |
 | `CHROMA_POSTS_COLLECTION` | 帖子向量，默认 `sync_posts` |
+| `CHROMA_ITINERARY_COLLECTION` | 专属行程演出向量，默认 `sync_itinerary_performances` |
 
 完整示例见 [.env.example](./.env.example)。
 
@@ -142,6 +146,17 @@ npm run db:reset
 
 Query：`userId`、`authorName`（与其它活动 API 一致）。报告约 90 分钟过期；发布需当日已认证手环。Demo 活动 `legacyId=4` 启动时种子一条现场报告。
 
+## 专属电音行程 `itinerary`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/activities/:legacyId/itinerary/schedule` | 演出表 + DJ 列表；Query `dateKey?`、`selectedDjIds?`（逗号分隔）返回 `conflicts` |
+| POST | `/api/activities/:legacyId/itinerary/generate` | Body `{ selectedDjIds, dateKey? }` → `{ itinerary, conflicts, cached, llmUsed }`（Qwen-Max；无 key 时规则兜底） |
+| POST | `/api/activities/:legacyId/itinerary/save` | 持久化用户行程 |
+| GET | `/api/activities/:legacyId/itinerary/saved` | 读取已保存行程 |
+
+Demo：`legacyId=4`（风暴电音节）启动时 seed **2026-06-13/14 深圳站完整阵容**（`itinerary.seed.ts`）；重启后端可 upsert 并剔除旧 demo 艺人。Redis 缓存排期/生成结果、生成锁与频率限制（`REDIS_URL` 空则内存兜底）。生成时 `FACTUAL_SCHEDULE` 来自 Mongo（`ItineraryChromaService` 在 `CHROMA_URL` 可用时优先 Chroma）；LLM 输出经 `validateItineraryAgainstFactualSchedule` 校验，失败则规则兜底（`llmUsed: false`）。
+
 ## 前端对接
 
 `sync-app/.env`：
@@ -186,4 +201,9 @@ H5 devServer 将 `/api` 代理到 `http://localhost:3000/api`。
 
 ### Chroma
 
-默认本地嵌入式（`CHROMA_PATH`），无需 Docker。不可用时 RAG / Match 自动降级。
+```bash
+npm run infra:chroma   # docker compose --profile chroma up -d chroma  → :8000
+curl -s http://localhost:8000/api/v1/heartbeat
+```
+
+`.env` 设置 `CHROMA_URL=http://localhost:8000`。未配置或连不上时 RAG / 帖子向量匹配自动降级；专属行程仍以 Mongo 官方演出表为准。后端健康：`GET /api/health` → `chroma: enabled|disabled|circuitOpen`。

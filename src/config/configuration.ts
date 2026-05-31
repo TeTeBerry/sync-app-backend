@@ -40,6 +40,8 @@ export default () => ({
     postsCollection: process.env.CHROMA_POSTS_COLLECTION ?? 'sync_posts',
     profilesCollection:
       process.env.CHROMA_PROFILES_COLLECTION ?? 'sync_user_profiles',
+    itineraryCollection:
+      process.env.CHROMA_ITINERARY_COLLECTION ?? 'sync_itinerary_performances',
     circuit: {
       failureThreshold: parseInt(
         cleanEnv(process.env.CHROMA_CIRCUIT_FAILURE_THRESHOLD, '3'),
@@ -85,5 +87,29 @@ export default () => ({
     minConfidence: parseFloat(
       cleanEnv(process.env.WRISTBAND_VERIFY_MIN_CONFIDENCE, '0.72'),
     ),
+  },
+
+  itinerary: {
+    cache: {
+      scheduleTtlSec: parseInt(
+        cleanEnv(process.env.ITINERARY_SCHEDULE_CACHE_TTL_SEC, '600'),
+        10,
+      ),
+      generationTtlSec: parseInt(
+        cleanEnv(process.env.ITINERARY_GENERATION_CACHE_TTL_SEC, '3600'),
+        10,
+      ),
+      lockTtlSec: parseInt(
+        cleanEnv(process.env.ITINERARY_GENERATE_LOCK_TTL_SEC, '30'),
+        10,
+      ),
+    },
+    rateLimit: {
+      max: parseInt(cleanEnv(process.env.ITINERARY_RATE_LIMIT_MAX, '8'), 10),
+      windowSec: parseInt(
+        cleanEnv(process.env.ITINERARY_RATE_LIMIT_WINDOW_SEC, '300'),
+        10,
+      ),
+    },
   },
 });

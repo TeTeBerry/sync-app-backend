@@ -81,8 +81,17 @@ export class LlmService {
   }
 
   /** 结构化 JSON 抽取（非 Function Calling，低温度） */
-  async invokeJson<T>(system: string, user: string): Promise<T | null> {
-    return this.invokeJsonWithModel<T>(this.defaultModel, system, user);
+  async invokeJson<T>(
+    system: string,
+    user: string,
+    timeoutMs = 15000,
+  ): Promise<T | null> {
+    return this.invokeJsonWithModel<T>(
+      this.defaultModel,
+      system,
+      user,
+      timeoutMs,
+    );
   }
 
   /** 指定模型做结构化 JSON 抽取（如 post match rerank） */

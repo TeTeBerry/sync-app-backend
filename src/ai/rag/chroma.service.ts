@@ -54,6 +54,23 @@ export interface PostMatchQueryResult {
   degraded?: boolean;
 }
 
+/** Official festival performance slot indexed for itinerary RAG. */
+export interface ItineraryPerformanceRecord {
+  activityLegacyId: number;
+  dateKey: string;
+  dateLabel: string;
+  artistId: string;
+  artistName: string;
+  stage: string;
+  stageLabel: string;
+  startTime: string;
+  endTime: string;
+  startMinutes: number;
+  endMinutes: number;
+  genre: string;
+  genreLabel: string;
+}
+
 @Injectable()
 export class ChromaService implements OnModuleInit {
   private readonly logger = new Logger(ChromaService.name);
@@ -61,6 +78,7 @@ export class ChromaService implements OnModuleInit {
   private collection?: Collection;
   private postsCollection?: Collection;
   private profilesCollection?: Collection;
+  private itineraryCollection?: Collection;
   private enabled = false;
   private consecutiveFailures = 0;
   private circuitOpenUntil = 0;
@@ -140,6 +158,9 @@ export class ChromaService implements OnModuleInit {
     const profilesCollectionName =
       this.config.get<string>('chroma.profilesCollection') ??
       'sync_user_profiles';
+    const itineraryCollectionName =
+      this.config.get<string>('chroma.itineraryCollection') ??
+      'sync_itinerary_performances';
 
     if (!baseUrl) {
       this.enabled = false;
@@ -158,6 +179,7 @@ export class ChromaService implements OnModuleInit {
           collectionName,
           postsCollectionName,
           profilesCollectionName,
+          itineraryCollectionName,
         ),
         new Promise<never>((_, reject) => {
           setTimeout(
@@ -169,7 +191,7 @@ export class ChromaService implements OnModuleInit {
 
       this.enabled = true;
       this.logger.log(
-        `Chroma connected (${baseUrl}), collections="${collectionName}", "${postsCollectionName}", "${profilesCollectionName}"`,
+        `Chroma connected (${baseUrl}), collections="${collectionName}", "${postsCollectionName}", "${profilesCollectionName}", "${itineraryCollectionName}"`,
       );
     } catch (error) {
       this.enabled = false;
@@ -184,6 +206,7 @@ export class ChromaService implements OnModuleInit {
     collectionName: string,
     postsCollectionName: string,
     profilesCollectionName: string,
+    itineraryCollectionName: string,
   ): Promise<void> {
     this.client = new ChromaClient({ path: baseUrl });
 
@@ -201,6 +224,135 @@ export class ChromaService implements OnModuleInit {
       name: profilesCollectionName,
       metadata: { source: 'sync-app-backend', kind: 'user_profiles' },
     });
+
+    this.itineraryCollection = await this.client.getOrCreateCollection({
+      name: itineraryCollectionName,
+      metadata: { source: 'sync-app-backend', kind: 'itinerary_performance' },
+    });
+  }
+
+  itineraryPerformanceId(
+    activityLegacyId: number,
+    dateKey: string,
+    artistId: string,
+  ): string {
+    return `${activityLegacyId}:${dateKey}:${artistId}`;
+  }
+
+  private buildItineraryPerformanceDocument(
+    record: ItineraryPerformanceRecord,
+  ): string {
+    return [
+      record.artistName,
+      record.genreLabel,
+      record.stageLabel,
+      record.dateLabel,
+      `${record.startTime}-${record.endTime}`,
+    ].join(' · ');
+  }
+
+  private mapItineraryMetadata(
+    metadata: Record<string, unknown>,
+  ): ItineraryPerformanceRecord | null {
+    const activityLegacyId = Number(metadata.activityLegacyId);
+    const artistId = String(metadata.artistId ?? '').trim();
+    if (!Number.isFinite(activityLegacyId) || !artistId) return null;
+
+    return {
+      activityLegacyId,
+      dateKey: String(metadata.dateKey ?? ''),
+      dateLabel: String(metadata.dateLabel ?? ''),
+      artistId,
+      artistName: String(metadata.artistName ?? artistId),
+      stage: String(metadata.stage ?? ''),
+      stageLabel: String(metadata.stageLabel ?? ''),
+      startTime: String(metadata.startTime ?? ''),
+      endTime: String(metadata.endTime ?? ''),
+      startMinutes: Number(metadata.startMinutes ?? 0),
+      endMinutes: Number(metadata.endMinutes ?? 0),
+      genre: String(metadata.genre ?? ''),
+      genreLabel: String(metadata.genreLabel ?? ''),
+    };
+  }
+
+  async upsertItineraryPerformances(
+    records: ItineraryPerformanceRecord[],
+  ): Promise<void> {
+    if (!this.itineraryCollection || !records.length) return;
+
+    const ids = records.map(r =>
+      this.itineraryPerformanceId(r.activityLegacyId, r.dateKey, r.artistId),
+    );
+    const documents = records.map(r => this.buildItineraryPerformanceDocument(r));
+    const metadatas = records.map(r => ({
+      kind: 'itinerary_performance',
+      activityLegacyId: String(r.activityLegacyId),
+      dateKey: r.dateKey,
+      dateLabel: r.dateLabel,
+      artistId: r.artistId,
+      artistName: r.artistName,
+      stage: r.stage,
+      stageLabel: r.stageLabel,
+      startTime: r.startTime,
+      endTime: r.endTime,
+      startMinutes: String(r.startMinutes),
+      endMinutes: String(r.endMinutes),
+      genre: r.genre,
+      genreLabel: r.genreLabel,
+    }));
+
+    try {
+      await this.itineraryCollection.upsert({ ids, documents, metadatas });
+    } catch (error) {
+      this.logger.warn(
+        `Chroma itinerary upsert failed: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  async getItineraryPerformances(filter: {
+    activityLegacyId: number;
+    artistIds: string[];
+    dateKey?: string;
+  }): Promise<ItineraryPerformanceRecord[]> {
+    if (!this.itineraryCollection) return [];
+
+    const artistIds = [...new Set(filter.artistIds.map(id => id.trim()).filter(Boolean))];
+    if (artistIds.length === 0) return [];
+
+    const clauses: Where[] = [
+      { kind: 'itinerary_performance' },
+      { activityLegacyId: String(filter.activityLegacyId) },
+    ];
+    if (filter.dateKey?.trim()) {
+      clauses.push({ dateKey: filter.dateKey.trim() });
+    }
+    if (artistIds.length === 1) {
+      clauses.push({ artistId: artistIds[0] });
+    } else {
+      clauses.push({ artistId: { $in: artistIds } });
+    }
+
+    const where: Where =
+      clauses.length === 1 ? clauses[0] : { $and: clauses };
+
+    try {
+      const result = await this.itineraryCollection.get({ where });
+      const metadatas = result.metadatas ?? [];
+      const records: ItineraryPerformanceRecord[] = [];
+
+      for (const metadata of metadatas) {
+        const mapped = this.mapItineraryMetadata(metadata ?? {});
+        if (mapped) records.push(mapped);
+      }
+
+      return records.sort((a, b) => a.startMinutes - b.startMinutes);
+    } catch (error) {
+      this.logger.warn(
+        `Chroma itinerary get failed: ${(error as Error).message}`,
+      );
+      return [];
+    }
   }
 
   private docId(doc: Document, index: number): string {

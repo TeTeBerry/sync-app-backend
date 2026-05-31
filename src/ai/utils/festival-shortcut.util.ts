@@ -183,8 +183,28 @@ export function resolveHomeFestivalShortcutCode(
   return undefined;
 }
 
+/**
+ * Chip / exact submit only. Compound messages like「风暴电音节 找队友」are not shortcuts —
+ * activity may still be inferred via chat for buddy recommend / create_post.
+ */
 export function isHomeFestivalShortcutInput(input: string): boolean {
-  return resolveHomeFestivalShortcutCode(input) != null;
+  const trimmed = input.trim();
+  if (!trimmed) return false;
+
+  const direct = SUBMIT_TEXT_TO_CODE.get(trimmed.toLowerCase());
+  if (direct) return true;
+
+  for (const def of HOME_FESTIVAL_SHORTCUTS) {
+    if (
+      trimmed === def.chipLabel ||
+      trimmed === def.submitText ||
+      trimmed === def.fallbackName
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function findShortcutDef(code: HomeFestivalShortcutCode): HomeFestivalShortcutDef {

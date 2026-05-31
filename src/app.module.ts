@@ -14,6 +14,7 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { PartnerModule } from './modules/partner/partner.module';
 import { ReportModule } from './modules/report/report.module';
 import { LiveInfoModule } from './modules/live-info/live-info.module';
+import { ItineraryModule } from './modules/itinerary/itinerary.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { HealthModule } from './common/health/health.module';
 
@@ -51,6 +52,7 @@ import { HealthModule } from './common/health/health.module';
     NotificationModule,
     ReportModule,
     LiveInfoModule,
+    ItineraryModule,
     UploadModule,
     HealthModule,
   ],

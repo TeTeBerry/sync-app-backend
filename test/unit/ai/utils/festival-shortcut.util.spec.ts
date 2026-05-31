@@ -13,6 +13,11 @@ describe('festival-shortcut.util', () => {
     expect(isHomeFestivalShortcutInput('风暴电音节')).toBe(true);
   });
 
+  it('does not treat compound buddy messages as homepage shortcut chips', () => {
+    expect(resolveHomeFestivalShortcutCode('风暴电音节 找队友')).toBe('storm');
+    expect(isHomeFestivalShortcutInput('风暴电音节 找队友')).toBe(false);
+  });
+
   it('uses exact storm artist lineup', () => {
     expect([...STORM_FESTIVAL_ARTISTS]).toEqual([
       'MARSHMELLO',

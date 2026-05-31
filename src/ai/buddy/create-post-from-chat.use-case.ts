@@ -21,6 +21,7 @@ import {
   parseConversationContext,
 } from '../conversation/conversation-context.parser';
 import {
+  buildExistingPostGuidanceReply,
   isExplicitReplacePostIntent,
   isInformalPostBodyInput,
 } from '../conversation/existing-post-guidance.util';
@@ -147,6 +148,34 @@ export class CreatePostFromChatUseCase {
     const missing = getMissingBuddyFields(ctx, activityLegacyId);
     const hasActivity = Boolean(resolvedActivity?.legacyId);
     const llmReady = parsed?.ready === true && Boolean(parsed.body?.trim());
+
+    if (
+      hasActivity &&
+      resolvedActivity?.legacyId &&
+      userId &&
+      !skipExistingPostGuidance
+    ) {
+      const existing = await this.postService.findOwnerRecruitingPostForActivity(
+        resolvedActivity.legacyId,
+        userId,
+        userName,
+      );
+      if (existing) {
+        const fromSelfPostIntent =
+          trimmedInput === '自己发帖' || isDeclineRecommendationsIntent(trimmedInput);
+        return {
+          kind: 'existing_post',
+          postId: existing.id,
+          activityLegacyId: resolvedActivity.legacyId,
+          replyText: buildExistingPostGuidanceReply({
+            activityLabel:
+              resolvedActivity.name ?? existing.eventTitle ?? '活动',
+            postBody: existing.body,
+            fromSelfPostIntent,
+          }),
+        };
+      }
+    }
 
     if (
       isExplicitReplacePostIntent(trimmedInput) &&

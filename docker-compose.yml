@@ -1,4 +1,4 @@
-# 默认启动 MongoDB + Redis；Chroma 改用本地目录（见 .env 的 CHROMA_PATH），无需 Docker
+# 默认启动 MongoDB + Redis；Chroma 可选：docker compose --profile chroma up -d chroma → :8000
 services:
   mongo:
     image: ${MONGO_IMAGE:-mongo:7}
