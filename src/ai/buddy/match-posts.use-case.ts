@@ -19,6 +19,7 @@ import {
 import { buildMatchCriteriaForSearch } from '../match/buddy-match-criteria.util';
 import type { BuddyMatchCriteria } from '../match/buddy-match.types';
 import { BUDDY_RECOMMEND_LIMIT } from '../match/buddy-match.constants';
+import { AiMatchQuotaService } from '../ai-match-quota.service';
 import { BuddyContextService } from './buddy-context.service';
 import type { PostIntentMatchResult } from './buddy.types';
 
@@ -49,6 +50,7 @@ export class MatchPostsFromChatUseCase {
     private readonly matchAgent: MatchAgent,
     private readonly userProfileAgent: UserProfileAgent,
     private readonly buddyContext: BuddyContextService,
+    private readonly aiMatchQuota: AiMatchQuotaService,
   ) {}
 
   async execute(params: MatchPostsFromChatParams): Promise<PostIntentMatchResult | null> {
@@ -113,6 +115,12 @@ export class MatchPostsFromChatUseCase {
       fromIntentRouter || buddySearchHint?.displayLabel,
     );
 
+    await this.aiMatchQuota.assertCanMatch(
+      userId,
+      authorName,
+      resolvedActivity.legacyId,
+    );
+
     const matchResult = await this.matchAgent.match({
       criteria,
       activityCode: resolvedActivity.code ?? '',
@@ -150,6 +158,13 @@ export class MatchPostsFromChatUseCase {
     const postCards = await this.buddyContext.buildRecommendedPostCards(
       matches,
       resolvedActivity.legacyId,
+    );
+
+    await this.aiMatchQuota.consumeIfMatched(
+      userId,
+      authorName,
+      resolvedActivity.legacyId,
+      postCards.length,
     );
 
     const lines = matches.map(

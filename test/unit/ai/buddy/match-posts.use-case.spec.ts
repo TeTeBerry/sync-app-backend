@@ -41,6 +41,10 @@ describe('MatchPostsFromChatUseCase profile dedupe', () => {
         resolveActivity,
         buildRecommendedPostCards: jest.fn(),
       } as never,
+      {
+        assertCanMatch: jest.fn().mockResolvedValue(undefined),
+        consumeIfMatched: jest.fn().mockResolvedValue(undefined),
+      } as never,
     );
 
     await useCase.execute({

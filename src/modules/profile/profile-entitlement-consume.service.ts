@@ -45,6 +45,28 @@ export class ProfileEntitlementConsumeService {
     private readonly profilePackageService: ProfilePackageService,
   ) {}
 
+  /** Resolve which bucket would be used without consuming (for AI match pre-check). */
+  async peekAiMatchBucket(
+    userId?: string,
+    authorName?: string,
+    activityLegacyId?: number,
+  ): Promise<EntitlementConsumeBucket | null> {
+    if (activityLegacyId == null || Number.isNaN(activityLegacyId)) {
+      throw new BadRequestException('activityLegacyId is required');
+    }
+
+    const ownerId = resolveProfilePackageOwnerId(userId, authorName);
+    const freeUsage =
+      await this.profileFreeQuotaService.getFreeMonthlyForUser(ownerId);
+    const paid = await this.loadPaidEntitlement(ownerId, activityLegacyId);
+
+    return resolveAiMatchConsumeBucket(
+      freeUsage,
+      paid?.limits ?? null,
+      paid?.usage ?? null,
+    );
+  }
+
   async consumeAiMatch(
     userId?: string,
     authorName?: string,
@@ -201,10 +223,14 @@ export class ProfileEntitlementConsumeService {
       throw new BadRequestException('activityLegacyId is required');
     }
 
-    return this.profilePackageService.getEntitlementForActivity(
+    const entitlement = await this.profilePackageService.getEntitlementForActivity(
       userId,
       authorName,
       activityLegacyId,
     );
+    if (!entitlement) {
+      throw new BadRequestException('Entitlement not found for activity');
+    }
+    return entitlement;
   }
 }

@@ -18,7 +18,7 @@ AppModule
 ├── HomeModule               # 首页 BFF
 ├── NotificationModule
 ├── ChatModule               # AI 会话持久化
-└── AiModule                 # SSE 对话 + Agent 编排
+└── AiModule                 # WebSocket 对话 + Agent 编排（AiChatWsServer）
     ├── AgentsModule         # 四 Agent
     ├── OrchestrationModule  # 状态机 / Handler 管道
     ├── RagModule / ChromaModule
@@ -27,7 +27,7 @@ AppModule
         ├── match-posts.use-case.ts
         └── create-post-from-chat.use-case.ts
     ├── orchestration/          # AiTurnPipeline（单轮编排）+ legacy AgentRuntime（仅 DeterministicReply）
-    ├── presentation/           # AiSseBuilder（SSE 事件组装）
+    ├── presentation/           # AiSseBuilder（流式事件组装，经 WS 下发；类名历史遗留）
     ├── gate/ match/ publish/ risk/ intent/  # 原 ai/utils 按域拆分
     ├── PostAgentAdaptersModule # PartnerModule ↔ AgentsModule 端口适配
 ```
@@ -37,14 +37,14 @@ AppModule
 | User | `modules/user/` | `GET/PATCH /users/me`（Query 身份）✅ |
 | Activity | `modules/activity/` | 列表 / 匹配 / 详情 / 报名（`registration/`）✅ |
 | Partner | `modules/partner/` | 帖子 CRUD + `PostInteractionService`（赞/评/申请）✅ |
-| AiAssistant | `ai/` + `modules/chat/` | SSE + Agent ✅ |
+| AiAssistant | `ai/` + `modules/chat/` | WebSocket + Agent ✅ |
 | BFF | `home/`、`profile/` | 聚合读 ✅ |
 
 ---
 
 ## AI 对话流程
 
-`POST /api/ai/chat`（SSE）由 `AiService.streamChat` 处理；单轮逻辑在 `AiTurnPipeline`，SSE 事件由 `AiSseBuilder` 组装：
+`ws://<host>/api/ai/chat/ws`（`AiChatWsServer`）将每轮 `send` 交给 `AiService.streamChat`；单轮逻辑在 `AiTurnPipeline`，流式事件由 `AiSseBuilder` 组装后经 WebSocket 下发：
 
 ```
 用户消息
@@ -69,12 +69,13 @@ AppModule
 | 限流 | `AiRateLimitService` Redis INCR 或内存 fallback；`config.ai.rateLimit`（默认 30 次 / 5 分钟 / userId∥sessionId） |
 | 意图缓存 | `IntentCacheService` Redis SETEX + 进程内 Map 降级；key 含 `sessionId` / `activityLegacyId` / `hasImage` / input hash；`config.ai.intentCache` |
 | Chroma circuit | `config.chroma.circuit`（failureThreshold、cooldownMs）→ `ChromaService` |
-| SSE | `delta` + `message_complete` + `done` |
+| 流式帧 | `delta` + `message_complete` + `done`（WebSocket JSON） |
+| AI 匹配配额 | `MatchPostsFromChatUseCase` 经 `AiMatchQuotaService` 预检；`post_recommendations` 有结果时服务端扣次 |
 | 可观测 | `logAiTurn`：`ms_intent` / `ms_match` / `ms_buddy` / `ms_total`；create-post：`ms_parse` / `ms_risk` |
 
 ### 会话状态机（ConversationState）
 
-结构化状态持久化在 MongoDB `chat.conversationState`，SSE 在状态变更时推送 `conversation_patch`：
+结构化状态持久化在 MongoDB `chat.conversationState`，状态变更时推送 `conversation_patch`：
 
 | flow | 含义 | 附加字段 |
 |------|------|----------|
@@ -108,7 +109,17 @@ AppModule
 | 可观测性 | `X-Request-Id` + `logAiTurn` 结构化日志；`GET /api/health` 报告 mongodb / redis / chroma |
 | 编排澄清 | `orchestration/legacy/` 下 `AgentRuntimeService` / `AgentToolsService`（发帖走 Buddy use cases；DeterministicReply 仍用） |
 | Post 互动 | `PostInteractionService`（赞/评/申请）；`PostWriteService`（写帖 + Chroma） |
-| SSE | `message_complete` 事件（完整回复，前端可跳过打字机） |
+| 流式事件 | `message_complete`（完整回复，前端可跳过打字机） |
+
+### 传输与监控
+
+| 项 | 说明 |
+|----|------|
+| **主通道** | `ws://<host>/api/ai/chat/ws`（`AiChatWsServer` 挂 HTTP `upgrade`） |
+| **无 HTTP SSE** | 未暴露 `POST /api/ai/chat`；`AiService.streamChat` 仅由 WS handler 调用 |
+| **会话 REST** | `GET/DELETE /api/chat/sessions/:id`（历史拉取，非流式） |
+| **健康检查** | `GET /api/health` 含 `ai: { transport: 'websocket', path }` |
+| **日志** | 启动行打印 WS 路径；`logAiTurn` + `X-Request-Id` 按轮次记录 intent/timing |
 
 ---
 
@@ -139,8 +150,8 @@ AppModule
 ## 待办（非阻塞 H5 demo）
 
 - P0：Dev / 微信登录 + JWT
-- P1（AI 优化，已实现）：Intent 规则快路径 + resolve 日志/缓存；`legacy_cascade` 与 `create_post` 合并；推荐门控空结果 + `suggested_replies` SSE；单轮 `syncProfileFromChat`；匹配 `matchReason` + Chroma 降级/circuit breaker；有图仍走 proactive recommend
-- P2（AI 优化，已实现）：关键路径 `Promise.all`（parse∥resolveActivity、profile∥match）；快捷确认发帖 `RiskAgent.rulesOnly` 跳过 LLM；REST/AI 发帖 Chroma upsert 异步 + 失败日志；AI Redis/内存限流 30/5min；SSE `message_complete`；结构化 turn 日志（`ms_intent`/`ms_match`/`ms_buddy`/`ms_total`）；`AgentRuntimeService` 工具链仍为空（发帖走 Buddy use cases）
+- P1（AI 优化，已实现）：Intent 规则快路径 + resolve 日志/缓存；`legacy_cascade` 与 `create_post` 合并；推荐门控空结果 + `suggested_replies` 流式帧；单轮 `syncProfileFromChat`；匹配 `matchReason` + Chroma 降级/circuit breaker；有图仍走 proactive recommend
+- P2（AI 优化，已实现）：关键路径 `Promise.all`（parse∥resolveActivity、profile∥match）；快捷确认发帖 `RiskAgent.rulesOnly` 跳过 LLM；REST/AI 发帖 Chroma upsert 异步 + 失败日志；AI Redis/内存限流 30/5min；WS `message_complete`；结构化 turn 日志（`ms_intent`/`ms_match`/`ms_buddy`/`ms_total`）；`AgentRuntimeService` 工具链仍为空（发帖走 Buddy use cases）
 - ~~P1：Registration 物理迁入 ActivityModule~~ ✅ `modules/activity/registration/`
 - P5：通知 meta 深链、Partner 目录可选 rename
 

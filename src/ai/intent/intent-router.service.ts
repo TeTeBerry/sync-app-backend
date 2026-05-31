@@ -125,7 +125,7 @@ export class IntentRouterService {
     if (!this.llmService.enabled || !trimmed) return null;
 
     const contextLines = messages
-      .slice(-6)
+      .slice(-6) // aligned with CHAT_LLM_CONTEXT_TURNS
       .map(m => `[${m.role}] ${m.content.trim()}`)
       .join('\n');
 

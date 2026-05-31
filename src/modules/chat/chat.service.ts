@@ -12,6 +12,9 @@ import {
 } from '../../ai/conversation';
 import { Chat, ChatDocument } from '../../database/schemas/chat.schema';
 
+/** Max user/assistant turns sent to LLM intent + buddy pipelines per request. */
+export const CHAT_LLM_CONTEXT_TURNS = 6;
+
 export interface ChatSessionDto {
   sessionId: string;
   userId?: string;
@@ -209,7 +212,7 @@ export class ChatService {
 
   truncateToRecentTurns(
     messages: ChatMessageDto[],
-    maxTurns = 6,
+    maxTurns = CHAT_LLM_CONTEXT_TURNS,
   ): ChatMessageDto[] {
     const normalized = this.normalizeHistory(messages);
     if (!normalized.length || maxTurns <= 0) return normalized;

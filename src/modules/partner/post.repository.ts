@@ -109,7 +109,7 @@ export class PostRepository implements IPostRepository {
 
   async deleteById(id: string): Promise<boolean> {
     const result = await this.model.deleteOne({ _id: id });
-    return result.deletedCount > 0;
+    return (result.deletedCount ?? 0) > 0;
   }
 
   async countByOwner(filter: PostQueryFilter): Promise<number> {

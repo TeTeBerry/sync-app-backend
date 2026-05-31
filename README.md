@@ -1,6 +1,6 @@
 # Sync App Backend
 
-NestJS 后端：组队活动、AI 对话 SSE、四 Agent 发帖闭环、Chroma RAG、MongoDB、Redis 热度。
+NestJS 后端：组队活动、AI 对话 WebSocket、四 Agent 发帖闭环、Chroma RAG、MongoDB、Redis 热度。
 
 ## 技术栈
 
@@ -12,7 +12,7 @@ NestJS 后端：组队活动、AI 对话 SSE、四 Agent 发帖闭环、Chroma R
 | 知识库 | Chroma（`sync_knowledge` + `sync_posts`） |
 | 存储 | MongoDB |
 | 缓存 | Redis（热度，可选） |
-| 通信 | SSE（`POST /api/ai/chat`） |
+| 通信 | WebSocket（`ws://<host>/api/ai/chat/ws`） |
 
 架构说明：[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)  
 改造清单：[docs/BACKEND-REFACTOR-CHECKLIST.md](./docs/BACKEND-REFACTOR-CHECKLIST.md)
@@ -62,34 +62,16 @@ npm run start:dev
 
 ## 主要接口
 
-### AI 流式对话
+### AI 流式对话（WebSocket）
 
-```http
-POST /api/ai/chat
-Content-Type: application/json
-Accept: text/event-stream
-X-Activity-Id: 2
-```
+连接：`ws://localhost:3000/api/ai/chat/ws`（生产使用 `wss://` + 合法域名）
 
-```json
-{
-  "messages": [{ "role": "user", "content": "帮我组队 EDC" }],
-  "sessionId": "optional",
-  "userId": "demo-zara",
-  "userName": "Zara Chen",
-  "activityLegacyId": 2,
-  "image": "data:image/jpeg;base64,..."
-}
-```
+1. 客户端发送 `connect`：`{ "type": "connect", "sessionId?", "activityLegacyId?" }`
+2. 服务端回复 `connected`
+3. 客户端发送 `send`：`messages`、`userId`、`userName`、`activityLegacyId`；图片字段为 **上传后的 URL**（`POST /api/uploads/images`），兼容 legacy data URL
+4. 服务端推送 JSON 帧：`delta`、`message_complete`、`post_created`、`post_recommendations`、`conversation_patch`、`done`、`error`
 
-SSE 事件：
-
-```
-data: {"type":"delta","content":"..."}
-data: {"type":"post_created","postId":"...","activityLegacyId":2}
-data: {"type":"done","messageId":"...","sessionId":"..."}
-data: {"type":"error","message":"..."}
-```
+匹配配额：服务端在返回 `post_recommendations`（`posts.length > 0`）时扣减 AI 匹配次数；空结果仅预检不扣次。
 
 - `post_created`：AI 闭环发帖成功
 - 审核拒绝：仅 `delta`（文案含「组队帖暂未发布」），无 `post_created`
@@ -108,7 +90,8 @@ data: {"type":"error","message":"..."}
 | GET | `/api/profile/packages` | 单场套餐档位列表 |
 | GET | `/api/profile/entitlements` | 每月免费额度 + 单场付费权益（合并剩余次数） |
 | POST | `/api/profile/packages/purchase` | 购买 stub（直接发放权益，无微信支付） |
-| POST | `/api/ai/chat` | AI SSE |
+| WS | `/api/ai/chat/ws` | AI 对话（主通道） |
+| POST | `/api/uploads/images` | 聊天/手环图片上传 |
 | GET | `/api/chat/sessions/:id` | 会话历史 |
 
 完整契约：`sync-app/docs/API.md`
@@ -163,10 +146,22 @@ Demo：`legacyId=4`（风暴电音节）启动时 seed **2026-06-13/14 深圳站
 
 ```env
 TARO_APP_API_BASE_URL=/api
-TARO_APP_AI_CHAT_URL=/api/ai/chat
+# 小程序直连后端示例（替换为局域网 IP）：
+TARO_APP_AI_CHAT_WS_URL=ws://127.0.0.1:3000/api/ai/chat/ws
 ```
 
-H5 devServer 将 `/api` 代理到 `http://localhost:3000/api`。
+H5 devServer 将 `/api`（含 WebSocket 升级）代理到 `http://localhost:3000`。契约详见 `sync-app/docs/API.md`。
+
+> **说明**：AI 对话仅走 **WebSocket** `ws(s)://<host>/api/ai/chat/ws`，无 `POST /api/ai/chat` HTTP/SSE 端点。历史文档中的 SSE 指同一套 `AiStreamEvent` 载荷，经 WS JSON 帧下发。
+
+## 运维与监控
+
+| 检查项 | 方式 |
+|--------|------|
+| 进程与基础设施 | `GET /api/health` → `mongodb` / `redis` / `chroma` |
+| AI 传输通道 | 同上响应中的 `ai.transport` = `websocket`，`ai.path` = `/api/ai/chat/ws` |
+| 启动日志 | `✅ AI WebSocket: ws://localhost:<port>/api/ai/chat/ws`（`main.ts` / `AiChatWsServer`） |
+| 单轮 AI 日志 | 结构化 `logAiTurn`（`event=turn_start|turn_complete|turn_error`），请求头 `X-Request-Id` 贯穿 WS 与 REST |
 
 ### 图片上传（手环认证等）
 

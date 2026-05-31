@@ -1,18 +1,19 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
-import { ChatService } from '../modules/chat/chat.service';
+import {
+  CHAT_LLM_CONTEXT_TURNS,
+  ChatService,
+} from '../modules/chat/chat.service';
 import { AiStreamEvent } from './presentation/ai-stream-event.view';
 import { ChatRequestDto } from './presentation/chat-request.dto';
 import { DeterministicReplyService } from './orchestration/deterministic-reply.service';
 import {
-  decodeBase64Payload,
   ImageTooLargeError,
-} from './utils/image-base64.util';
+  validateImageRefSync,
+} from './utils/image-ref.util';
 import { AiRateLimitService } from './ai-rate-limit.service';
 import { logAiTurn } from './utils/log-ai-turn.util';
 import { AiTurnPipeline } from './orchestration/ai-turn.pipeline';
 import { extractAssistantMessageMetadata } from './presentation/chat-message-metadata.util';
-
-export const LLM_CONTEXT_TURNS = 6;
 
 export interface AiChatTurnContext {
   requestId: string;
@@ -37,6 +38,10 @@ function mapAiErrorToUserMessage(error: unknown): string {
     return '当前请求较多，请稍后再试。';
   }
 
+  if (/quota exhausted|匹配次数已用完/i.test(raw)) {
+    return raw.includes('匹配') ? raw : 'AI 匹配次数已用完，请升级套餐';
+  }
+
   return 'AI 对话失败，请稍后重试';
 }
 
@@ -59,17 +64,22 @@ export class AiService {
     const requestId = turnContext?.requestId ?? 'unknown';
     const sessionId = this.chatService.resolveSessionId(dto.sessionId);
     const stored = await this.chatService.getSession(sessionId);
-    const fullMessages = this.chatService.mergeChatHistory(
+    const mergedMessages = this.chatService.mergeChatHistory(
       stored.history,
       dto.messages ?? [],
     );
+    const fullMessages = mergedMessages;
+    const contextMessages = this.chatService.truncateToRecentTurns(
+      mergedMessages,
+      CHAT_LLM_CONTEXT_TURNS,
+    );
 
-    if (!fullMessages.length) {
+    if (!contextMessages.length) {
       yield { type: 'error', message: 'messages 不能为空' };
       return;
     }
 
-    const lastMessage = fullMessages[fullMessages.length - 1];
+    const lastMessage = contextMessages[contextMessages.length - 1];
     if (lastMessage.role !== 'user') {
       yield { type: 'error', message: '最后一条消息必须是用户消息' };
       return;
@@ -88,7 +98,7 @@ export class AiService {
     ];
     for (const img of imagesToValidate) {
       try {
-        decodeBase64Payload(img);
+        validateImageRefSync(img);
       } catch (error) {
         yield {
           type: 'error',
@@ -115,7 +125,7 @@ export class AiService {
 
     let conversationState = this.agenticReplyService.resolveConversationState(
       stored.conversationState,
-      fullMessages.slice(0, -1),
+      contextMessages.slice(0, -1),
     );
 
     logAiTurn(this.logger, {
@@ -127,7 +137,7 @@ export class AiService {
     try {
       const turnResult = await this.turnPipeline.runTurn(
         dto,
-        fullMessages,
+        contextMessages,
         lastInput,
         conversationState,
         requestId,

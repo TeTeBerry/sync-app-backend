@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { FilterQuery, Model } from 'mongoose';
 import { resolveActorUserId } from '../../common/auth/actor-user.util';
 import {
   isResourceOwnedByClient,
@@ -189,11 +189,15 @@ export class PostInteractionService {
       throw new NotFoundException('帖子不存在');
     }
 
+    const topLevelFilter: FilterQuery<PostCommentDocument> = {
+      postId: id,
+      $or: [
+        { parentCommentId: { $exists: false } },
+        { parentCommentId: { $type: 'null' } },
+      ],
+    };
     const topLevel = await this.commentModel
-      .find({
-        postId: id,
-        $or: [{ parentCommentId: { $exists: false } }, { parentCommentId: null }],
-      })
+      .find(topLevelFilter)
       .sort({ createdAt: 1 })
       .lean();
 

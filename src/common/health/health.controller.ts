@@ -9,6 +9,10 @@ export class HealthController {
   health() {
     return {
       ok: true,
+      ai: {
+        transport: 'websocket',
+        path: '/api/ai/chat/ws',
+      },
       ...this.healthService.getInfraHealth(),
     };
   }

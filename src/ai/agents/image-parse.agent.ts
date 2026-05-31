@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { LlmService } from '../llm/llm.service';
-import {
-  decodeBase64Payload,
-  toDataUrl,
-} from '../utils/image-base64.util';
+import { resolveImageInput } from '../utils/image-ref.util';
 import type { AgentParseInput, ParsedPostDraft } from './agent.types';
 
 interface LlmImageParseResult {
@@ -64,8 +61,7 @@ export class ImageParseAgent {
     const imageRaw = input.image?.trim();
     if (!imageRaw) return null;
 
-    const { mimeType, base64 } = decodeBase64Payload(imageRaw);
-    const dataUrl = toDataUrl(mimeType, base64);
+    const dataUrl = await resolveImageInput(imageRaw);
 
     const history = input.messages
       .slice(-6)

@@ -38,11 +38,11 @@
 
 - **PartnerModule**（`modules/partner/`）：`POST/PATCH/DELETE /posts`；`POST .../like|comments|applications`
 - **Schema**：`post-like`、`post-comment`、`post-application`
-- **AiModule**：SSE；`PostIntentService` 编排四 Agent
+- **AiModule**：WebSocket（`/api/ai/chat/ws`）；`PostIntentService` 编排四 Agent
 - **Agents**：`text-parse` / `image-parse` / `match` / `risk`（`src/ai/agents/`）
 - **Chroma**：`sync_knowledge` + `sync_posts`（按活动 metadata 过滤）
 - **Redis**：`HomeService` 热度缓存（graceful degrade）
-- **SSE**：`post_created`；审核拒绝 → `delta` 文案（非 `error`）
+- **WS 流式帧**：`post_created`；审核拒绝 → `delta` 文案（非 `error`）
 
 ### 未实现 / 延后
 
@@ -75,7 +75,7 @@
 
 ### AiAssistantModule ✅ 核心
 
-- [x] `POST /ai/chat` SSE
+- [x] `ws://…/api/ai/chat/ws`（`AiChatWsServer` + `AiService.streamChat`）
 - [x] `ChatModule` 会话持久化
 - [x] AI 注入 `PostService.createPost`，不直接操作 Model
 - [ ] 可选：`ai-assistant.module` 聚合 ai + chat
@@ -149,7 +149,7 @@
 | GET/POST/PATCH/DELETE | `/posts`… | ✅ |
 | POST | `/posts/:id/like|comments|applications` | ✅ |
 | GET | `/profile`… | ✅ |
-| POST | `/ai/chat` | ✅ |
+| WS | `/ai/chat/ws` | ✅ |
 | GET | `/chat/sessions/:id` | ✅ |
 | GET/PATCH | `/notifications/*` | ✅ |
 
@@ -167,7 +167,7 @@
 - [x] AI：Parse → Risk → createPost
 - [x] 带图走 ImageParseAgent
 - [x] 匹配意图走 MatchAgent
-- [x] 拒绝时 SSE `delta` 提示用户
+- [x] 拒绝时 WS `delta` 帧提示用户
 
 ### P4 ✅
 
@@ -195,7 +195,7 @@
 |------|------|------|
 | P0 | 会话状态机 + BuddyModule use cases + Post 端口 | ✅ |
 | P1 | Intent 规则快路径 / Redis+内存意图缓存 / recommend gate / profile dedupe / Chroma breaker | ✅ |
-| P2 | 并行路径 / async Chroma upsert / rate limit / message_complete SSE / 集成测试 / timing logs | ✅ |
+| P2 | 并行路径 / async Chroma upsert / rate limit / message_complete WS 帧 / 集成测试 / timing logs | ✅ |
 | P3 | 测试金字塔 / requestId 日志 / health / PostWriteService / orchestration README | ✅ |
 | P4 | JWT / 微信登录 / ActivityRegistration 物理迁入 / PartnerModule rename | ⬜ 延后 |
 
@@ -204,7 +204,7 @@
 - [x] `IntentRouterService` 集成测试（规则 + mock LLM + 缓存）
 - [x] `AiService` recommend_gate → decline → pending_confirmation 测试
 - [x] `PostWriteService`：Chroma upsert 失败不阻断 create
-- [x] `GET /api/health` → `{ mongodb, redis, chroma }`
+- [x] `GET /api/health` → `{ ai: { transport, path }, mongodb, redis, chroma }`
 - [x] `logAiTurn` + `X-Request-Id` 贯穿 AI 日志
 - [x] `PostWriteService` 应用层；`PostService` 薄门面
 - [x] 前端 `useAiChatStream` 消费 `message_complete`

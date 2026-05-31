@@ -4,7 +4,7 @@
 
 | Flow | Entry | Notes |
 |------|-------|-------|
-| SSE chat turn | `AiService.streamChat` → `AiTurnPipeline` | Intent resolve, buddy flow, match-only, deterministic; `AiSseBuilder` emits SSE events |
+| WS chat turn | `AiChatWsHandler` → `AiService.streamChat` → `AiTurnPipeline` | Intent resolve, buddy flow, match-only, deterministic; `AiSseBuilder` builds `AiStreamEvent` frames sent over WebSocket |
 | Posting from chat | `PostIntentService` → `BuddyModule` use cases | Parse → Risk → `PostWriteService.createPost` |
 | Match / recommend | `MatchPostsFromChatUseCase` | Chroma + ranking |
 | Deterministic replies | `DeterministicReplyService` → `AgentRuntimeService` | Rule handlers only; **no LLM tool runtime for posting** |

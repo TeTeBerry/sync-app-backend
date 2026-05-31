@@ -30,6 +30,7 @@ export class ChatRequestDto {
   @IsString()
   userPhone?: string;
 
+  /** Upload URL or legacy base64 data URL */
   @IsOptional()
   @IsString()
   image?: string;

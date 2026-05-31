@@ -65,6 +65,7 @@ describe('AiService buddy flow', () => {
     resolveSessionId: jest.fn((id?: string) => id ?? 'session-1'),
     getSession: jest.fn(),
     mergeChatHistory: jest.fn(),
+    truncateToRecentTurns: jest.fn((messages: unknown[]) => messages),
     saveTurn: jest.fn().mockResolvedValue('msg-1'),
   };
   const agenticReplyService = {
@@ -129,6 +130,29 @@ describe('AiService buddy flow', () => {
     activityLegacyId: 9,
     messages: [{ role: 'user' as const, content: '组队队友' }],
   };
+
+  it('maps AI match quota ForbiddenException to error stream event', async () => {
+    const { ForbiddenException } = require('@nestjs/common');
+    intentRouter.resolve.mockResolvedValue({
+      kind: 'search_posts',
+      source: 'rules',
+    });
+    postIntentService.tryMatchPostsFromChat.mockRejectedValue(
+      new ForbiddenException('AI 匹配次数已用完，请升级套餐'),
+    );
+
+    const events = await collectEvents(
+      service.streamChat(
+        { ...baseDto, messages: [{ role: 'user', content: '查组队帖' }] },
+        { requestId: 'req-quota' },
+      ),
+    );
+
+    const errorEvent = events.find(e => e.type === 'error');
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent?.type === 'error' && errorEvent.message).toContain('匹配次数');
+    expect(events.some(e => e.type === 'done')).toBe(false);
+  });
 
   it.each([
     {

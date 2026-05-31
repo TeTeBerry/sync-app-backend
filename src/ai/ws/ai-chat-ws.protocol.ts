@@ -9,6 +9,7 @@ export type AiChatWsSimpleClientMessage = {
   userId?: string;
   userName?: string;
   userPhone?: string;
+  /** Upload URL from POST /api/uploads/images, or legacy data URL */
   image?: string;
   images?: string[];
   requestId?: string;
