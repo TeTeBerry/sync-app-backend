@@ -41,7 +41,13 @@ export type AiChatWsClientMessage =
 export type AiChatWsServerMessage =
   | AiStreamEvent
   | { chunk: string; type: 'delta'; content: string }
-  | { type: 'connected'; sessionId?: string; activityLegacyId?: number }
+  | {
+      type: 'connected';
+      sessionId?: string;
+      activityLegacyId?: number;
+      /** Present when upgrade carried a valid Bearer JWT. */
+      auth?: 'jwt' | 'demo';
+    }
   | { type: 'error'; message: string };
 
 export const AI_CHAT_WS_PATH = '/api/ai/chat/ws';

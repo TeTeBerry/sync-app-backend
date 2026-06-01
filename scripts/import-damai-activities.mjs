@@ -116,12 +116,7 @@ async function main() {
     process.exit(0);
   }
 
-  await mongoose.connect(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useCreateIndex: true,
-    useFindAndModify: false,
-  });
+  await mongoose.connect(uri);
 
   const activities = mongoose.connection.db.collection('activities');
   const results = [];

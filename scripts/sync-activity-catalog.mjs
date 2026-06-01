@@ -98,12 +98,7 @@ const DEPRECATED_FILTER = {
 };
 
 async function main() {
-  await mongoose.connect(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useCreateIndex: true,
-    useFindAndModify: false,
-  });
+  await mongoose.connect(uri);
 
   const activities = mongoose.connection.db.collection('activities');
 

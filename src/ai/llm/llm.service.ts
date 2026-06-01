@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import { ChatAlibabaTongyi } from '@langchain/community/chat_models/alibaba_tongyi';
+import { ChatAlibabaTongyiDashScope } from './chat-alibaba-tongyi-dashscope';
 
 const MULTIMODAL_API_URL =
   'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
@@ -33,9 +33,9 @@ function extractMultimodalText(data: DashScopeMultimodalResponse): string {
 @Injectable()
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
-  public readonly llm: ChatAlibabaTongyi;
-  public readonly jsonLlm: ChatAlibabaTongyi;
-  public readonly rerankLlm: ChatAlibabaTongyi;
+  public readonly llm: ChatAlibabaTongyiDashScope;
+  public readonly jsonLlm: ChatAlibabaTongyiDashScope;
+  public readonly rerankLlm: ChatAlibabaTongyiDashScope;
   public readonly vlModel: string;
   public readonly jsonModel: string;
   public readonly rerankModel: string;
@@ -60,19 +60,19 @@ export class LlmService {
       temperature: 0.1,
     };
 
-    this.llm = new ChatAlibabaTongyi({
+    this.llm = new ChatAlibabaTongyiDashScope({
       ...baseOptions,
       model: this.defaultModel,
       streaming: true,
     });
 
-    this.jsonLlm = new ChatAlibabaTongyi({
+    this.jsonLlm = new ChatAlibabaTongyiDashScope({
       ...baseOptions,
       model: this.jsonModel,
       streaming: false,
     });
 
-    this.rerankLlm = new ChatAlibabaTongyi({
+    this.rerankLlm = new ChatAlibabaTongyiDashScope({
       ...baseOptions,
       model: this.rerankModel,
       streaming: false,
@@ -115,7 +115,7 @@ export class LlmService {
           ? this.rerankLlm
           : model === this.defaultModel
             ? this.llm
-            : new ChatAlibabaTongyi({
+            : new ChatAlibabaTongyiDashScope({
                 alibabaApiKey: this.apiKey || 'MISSING_API_KEY',
                 model,
                 streaming: false,

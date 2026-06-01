@@ -1,7 +1,11 @@
 module.exports = {
   parser: '@typescript-eslint/parser',
   parserOptions: {
-    project: ['tsconfig.json', 'tsconfig.eslint.json'],
+    project: [
+      'tsconfig.json',
+      'tsconfig.eslint.json',
+      'tsconfig.scripts.json',
+    ],
     tsconfigRootDir: __dirname,
     sourceType: 'module',
   },
@@ -17,6 +21,12 @@ module.exports = {
     jest: true,
   },
   overrides: [
+    {
+      files: ['scripts/**/*.{mjs,js}'],
+      parserOptions: {
+        project: ['./tsconfig.scripts.json'],
+      },
+    },
     {
       files: ['test/**/*.ts'],
       rules: {

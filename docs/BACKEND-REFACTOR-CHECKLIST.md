@@ -43,10 +43,13 @@
 - **Chroma**：`sync_knowledge` + `sync_posts`（按活动 metadata 过滤）
 - **Redis**：`HomeService` 热度缓存（graceful degrade）
 - **WS 流式帧**：`post_created`；审核拒绝 → `delta` 文案（非 `error`）
+- **WS JWT actor**：upgrade `Authorization: Bearer` → `verifyBearerActor` + `resolveWsChatActor`（`connected.auth`：`jwt` | `demo`）
+- **B2 无效 Bearer**：`classifyBearerAuth` → REST 401；WS `error` + close（不与 demo Query 混用）
+- **`npm run smoke:ws`**：JWT / invalid / demo 三用例
 
 ### 未实现 / 延后
 
-- `AuthModule`、`JwtAuthGuard`、`POST /auth/*`
+- 路由级 `JwtAuthGuard`（全局 middleware 已覆盖读路径）
 - ~~ActivityRegistration 物理迁入 ActivityModule~~ ✅ `activity/registration/`
 - ~~`PartnerModule` 目录 rename~~ ✅ `modules/partner/`
 - `ALL_AGENT_TOOLS` 注册进 `AgentRuntimeService`（发帖走独立编排，非必须）

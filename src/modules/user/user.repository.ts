@@ -25,6 +25,35 @@ export class UserRepository implements IUserRepository {
     return this.model.findOne({ externalId }).lean();
   }
 
+  async findByOpenid(openid: string): Promise<UserRecord | null> {
+    return this.model.findOne({ openid }).lean();
+  }
+
+  async upsertWechatUser(
+    openid: string,
+    data: Partial<UserDocument> & { unionid?: string },
+  ): Promise<UserRecord> {
+    const externalId = `wx_${openid}`;
+    const doc = await this.model
+      .findOneAndUpdate(
+        { openid },
+        {
+          $set: {
+            ...data,
+            openid,
+            externalId,
+            unionid: data.unionid,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      )
+      .lean();
+    if (!doc) {
+      throw new Error(`Failed to upsert WeChat user: ${openid}`);
+    }
+    return doc;
+  }
+
   async upsertDefaultProfile(data: Partial<UserDocument>): Promise<UserRecord> {
     return this.model
       .findOneAndUpdate(

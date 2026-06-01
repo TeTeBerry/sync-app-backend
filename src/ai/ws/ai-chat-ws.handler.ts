@@ -1,8 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
+import type { IncomingMessage } from 'http';
 import { WebSocket } from 'ws';
+import {
+  AUTH_SESSION_EXPIRED_MESSAGE,
+  classifyBearerAuth,
+  type ClassifyBearerAuthResult,
+} from '../../common/auth/jwt-bearer.util';
 import { AiService } from '../ai.service';
+import { resolveWsChatActor } from './ai-chat-ws-actor';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
 import type { AiStreamEvent } from '../presentation/ai-stream-event.view';
 import { createRequestId } from '../utils/log-ai-turn.util';
@@ -73,7 +81,10 @@ export class AiChatWsHandler {
   private readonly logger = new Logger(AiChatWsHandler.name);
   private static connectionSeq = 0;
 
-  constructor(private readonly aiService: AiService) {}
+  constructor(
+    private readonly aiService: AiService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   private isDevLog(): boolean {
     return process.env.NODE_ENV !== 'production';
@@ -89,8 +100,14 @@ export class AiChatWsHandler {
     this.logger.log(`[conn#${connectionId}] ${message}${suffix}`);
   }
 
-  handleConnection(socket: WebSocket): void {
+  handleConnection(socket: WebSocket, request: IncomingMessage): void {
     const connectionId = ++AiChatWsHandler.connectionSeq;
+    const bearerAuth: ClassifyBearerAuthResult = classifyBearerAuth(
+      this.jwtService,
+      request.headers.authorization,
+    );
+    const jwtActor = bearerAuth.kind === 'valid' ? bearerAuth.actor : null;
+    let authRejected = false;
     let busy = false;
     let sessionId: string | undefined;
     let activityLegacyId: number | undefined;
@@ -98,6 +115,12 @@ export class AiChatWsHandler {
 
     this.devLog(connectionId, 'connected', {
       readyState: socket.readyState,
+      auth:
+        bearerAuth.kind === 'valid'
+          ? 'jwt'
+          : bearerAuth.kind === 'invalid'
+            ? 'invalid'
+            : 'demo',
     });
 
     const send = (message: AiChatWsServerMessage) => {
@@ -114,6 +137,16 @@ export class AiChatWsHandler {
         this.devLog(connectionId, 'send', preview as Record<string, unknown>);
       }
       socket.send(JSON.stringify(wire));
+    };
+
+    const rejectInvalidBearer = (): boolean => {
+      if (bearerAuth.kind !== 'invalid' || authRejected) {
+        return authRejected;
+      }
+      authRejected = true;
+      send({ type: 'error', message: AUTH_SESSION_EXPIRED_MESSAGE });
+      socket.close(1008, AUTH_SESSION_EXPIRED_MESSAGE);
+      return true;
     };
 
     const handleMessage = async (
@@ -143,6 +176,10 @@ export class AiChatWsHandler {
         busy,
       });
 
+      if (rejectInvalidBearer()) {
+        return;
+      }
+
       if (isConnectMessage(parsed)) {
         sessionId = parsed.sessionId?.trim() || sessionId;
         activityLegacyId = parsed.activityLegacyId ?? activityLegacyId;
@@ -150,6 +187,7 @@ export class AiChatWsHandler {
           type: 'connected',
           sessionId,
           activityLegacyId,
+          auth: bearerAuth.kind === 'valid' ? 'jwt' : 'demo',
         });
         return;
       }
@@ -165,12 +203,22 @@ export class AiChatWsHandler {
         return;
       }
 
-      const dto = plainToInstance(ChatRequestDto, {
-        messages: sendPayload.messages,
-        sessionId: sendPayload.sessionId?.trim() || sessionId,
+      const actorResult = resolveWsChatActor(jwtActor, {
         userId: sendPayload.userId,
         userName: sendPayload.userName,
         userPhone: sendPayload.userPhone,
+      });
+      if (!actorResult.ok) {
+        send({ type: 'error', message: actorResult.message });
+        return;
+      }
+
+      const dto = plainToInstance(ChatRequestDto, {
+        messages: sendPayload.messages,
+        sessionId: sendPayload.sessionId?.trim() || sessionId,
+        userId: actorResult.actor.userId,
+        userName: actorResult.actor.userName,
+        userPhone: actorResult.actor.userPhone,
         activityLegacyId: sendPayload.activityLegacyId ?? activityLegacyId,
         image: sendPayload.image,
         images: sendPayload.images,
@@ -196,6 +244,7 @@ export class AiChatWsHandler {
         this.devLog(connectionId, 'streamChat start', {
           requestId,
           sessionId: dto.sessionId,
+          actorSource: actorResult.source,
         });
         for await (const event of this.aiService.streamChat(dto, {
           requestId,

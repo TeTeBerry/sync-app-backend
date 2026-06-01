@@ -21,12 +21,7 @@ const HERO_BY_USER_ID = {
 };
 
 async function main() {
-  await mongoose.connect(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useCreateIndex: true,
-    useFindAndModify: false,
-  });
+  await mongoose.connect(uri);
 
   const posts = mongoose.connection.db.collection('posts');
   let updated = 0;

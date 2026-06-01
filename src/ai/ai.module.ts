@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AiService } from './ai.service';
+import { AuthModule } from '../modules/auth/auth.module';
 import { ActivityModule } from '../modules/activity/activity.module';
 import { ChatModule } from '../modules/chat/chat.module';
 import { PartnerModule } from '../modules/partner/partner.module';
@@ -20,6 +21,7 @@ import { AiChatWsServer } from './ws/ai-chat-ws.server';
 
 @Module({
   imports: [
+    AuthModule,
     ActivityModule,
     ChatModule,
     PartnerModule,

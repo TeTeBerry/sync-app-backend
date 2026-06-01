@@ -11,7 +11,7 @@
  *   SMOKE_API_BASE     API root (default http://localhost:3000/api)
  *   SMOKE_ACTIVITY_ID  Demo activity legacyId (default 4 — 风暴电音节)
  *   SMOKE_USER_ID      Query userId (default smoke-<timestamp>)
- *   SMOKE_AUTHOR_NAME  Query authorName (default Smoke)
+ *   SMOKE_AUTHOR_NAME  Query authorName (default Smoke; deprecated — smoke compat only)
  *   SMOKE_TIMEOUT_MS   Per-request timeout (default 30000)
  */
 
@@ -31,6 +31,7 @@ const steps = [];
 /** @typedef {{ baseUrl: string, activityId: number, q: string, postId?: string, djIds?: string[], generateResult?: unknown }} SmokeContext */
 
 function ownerQuery() {
+  // authorName kept for legacy smoke paths; production demo uses userId only.
   const p = new URLSearchParams({ userId, authorName });
   return p.toString();
 }

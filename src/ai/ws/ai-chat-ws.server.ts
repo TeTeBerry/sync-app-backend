@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import type { IncomingMessage } from 'http';
 import type { Server as HttpServer } from 'http';
 import { WebSocketServer } from 'ws';
 import { AiChatWsHandler } from './ai-chat-ws.handler';
@@ -29,8 +30,8 @@ export class AiChatWsServer implements OnModuleDestroy {
       });
     });
 
-    this.wss.on('connection', (ws) => {
-      this.handler.handleConnection(ws);
+    this.wss.on('connection', (ws, request: IncomingMessage) => {
+      this.handler.handleConnection(ws, request);
     });
 
     this.logger.log(`✅ AI WebSocket: ws://localhost:<port>${AI_CHAT_WS_PATH}`);

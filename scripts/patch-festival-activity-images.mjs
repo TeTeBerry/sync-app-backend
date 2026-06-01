@@ -35,12 +35,7 @@ const FESTIVAL_IMAGES = [
 ];
 
 async function main() {
-  await mongoose.connect(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useCreateIndex: true,
-    useFindAndModify: false,
-  });
+  await mongoose.connect(uri);
 
   const activities = mongoose.connection.db.collection('activities');
   const updates = [];

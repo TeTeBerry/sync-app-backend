@@ -55,7 +55,7 @@ export const LIVE_INFO_SEED_UPDATES: LiveInfoSeedUpdate[] = [
       { categoryId: 'water_queue', score: 2 },
       { categoryId: 'smoke_drink', score: 2 },
     ],
-    remark: '下午三点入场很顺，整体不算挤，烟酒摊基本不用排队',
+    remark: '下午三点入场很顺，整体不算挤，安检基本不用排队',
     likedByUserIds: [],
   },
   {
@@ -84,7 +84,7 @@ export const LIVE_INFO_SEED_UPDATES: LiveInfoSeedUpdate[] = [
       { categoryId: 'smoke_drink', score: 1 },
       { categoryId: 'water_queue', score: 1 },
     ],
-    remark: '烟酒区很空，啤酒柜不用排队；免费饮水台在医疗帐篷旁边',
+    remark: '安检区很空，入场很快；免费饮水台在医疗帐篷旁边',
     likedByUserIds: [],
   },
   {

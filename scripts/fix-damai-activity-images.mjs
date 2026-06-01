@@ -66,12 +66,7 @@ async function main() {
   const payload = await readPayloadFromArgs();
   const { items } = parseDamaiSearchPayload(payload, { keyword });
 
-  await mongoose.connect(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useCreateIndex: true,
-    useFindAndModify: false,
-  });
+  await mongoose.connect(uri);
 
   const activities = mongoose.connection.db.collection('activities');
   const updates = [];

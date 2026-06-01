@@ -145,3 +145,160 @@ describe('PostInteractionService.addComment', () => {
     );
   });
 });
+
+describe('PostInteractionService.likePost', () => {
+  const repository = {
+    findById: jest.fn(),
+    incrementCounter: jest.fn(),
+  } as unknown as IPostRepository;
+
+  const likeModel = {
+    findOne: jest.fn(),
+    create: jest.fn(),
+    deleteOne: jest.fn(),
+  };
+
+  const postNotification = {
+    notifyLike: jest.fn(),
+  } as unknown as IPostNotificationPort;
+
+  let service: PostInteractionService;
+
+  const post = {
+    _id: 'post-1',
+    userId: 'demo-zara',
+    authorName: 'Zara Chen',
+    likes: 3,
+    status: 'recruiting',
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new PostInteractionService(
+      repository,
+      likeModel as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      postNotification,
+      {} as never,
+      {} as never,
+    );
+    (repository.findById as jest.Mock).mockResolvedValue(post);
+  });
+
+  it('creates like and increments counter when not yet liked', async () => {
+    (likeModel.findOne as jest.Mock).mockReturnValue({
+      lean: jest.fn().mockResolvedValue(null),
+    });
+    (likeModel.create as jest.Mock).mockResolvedValue({});
+    (repository.incrementCounter as jest.Mock).mockResolvedValue({
+      ...post,
+      likes: 4,
+    });
+
+    const result = await service.likePost('post-1', 'demo-kyle', 'Kyle');
+
+    expect(likeModel.create).toHaveBeenCalledWith({
+      userId: 'demo-kyle',
+      postId: 'post-1',
+    });
+    expect(repository.incrementCounter).toHaveBeenCalledWith('post-1', 'likes');
+    expect(result.liked).toBe(true);
+  });
+
+  it('removes like and decrements counter when already liked', async () => {
+    (likeModel.findOne as jest.Mock).mockReturnValue({
+      lean: jest.fn().mockResolvedValue({ userId: 'demo-kyle', postId: 'post-1' }),
+    });
+    (repository.incrementCounter as jest.Mock).mockResolvedValue({
+      ...post,
+      likes: 2,
+    });
+
+    const result = await service.likePost('post-1', 'demo-kyle', 'Kyle');
+
+    expect(likeModel.deleteOne).toHaveBeenCalledWith({
+      userId: 'demo-kyle',
+      postId: 'post-1',
+    });
+    expect(repository.incrementCounter).toHaveBeenCalledWith('post-1', 'likes', -1);
+    expect(result.liked).toBe(false);
+  });
+});
+
+describe('PostInteractionService.applyToPost', () => {
+  const repository = {
+    findById: jest.fn(),
+  } as unknown as IPostRepository;
+
+  const applicationModel = {
+    findOne: jest.fn(),
+    create: jest.fn(),
+  };
+
+  const postNotification = {
+    notifyApplication: jest.fn(),
+  } as unknown as IPostNotificationPort;
+
+  let service: PostInteractionService;
+
+  const post = {
+    _id: 'post-1',
+    userId: 'demo-zara',
+    authorName: 'Zara Chen',
+    status: 'recruiting',
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new PostInteractionService(
+      repository,
+      {} as never,
+      applicationModel as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      postNotification,
+      {} as never,
+      {} as never,
+    );
+    (repository.findById as jest.Mock).mockResolvedValue(post);
+  });
+
+  it('rejects applying to own post', async () => {
+    await expect(
+      service.applyToPost('post-1', 'demo-zara', 'Zara Chen'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('returns alreadyApplied when duplicate application', async () => {
+    (applicationModel.findOne as jest.Mock).mockReturnValue({
+      lean: jest.fn().mockResolvedValue({ userId: 'demo-kyle', postId: 'post-1' }),
+    });
+
+    const result = await service.applyToPost('post-1', 'demo-kyle', 'Kyle');
+
+    expect(result).toEqual({ ok: true, alreadyApplied: true });
+    expect(applicationModel.create).not.toHaveBeenCalled();
+  });
+
+  it('creates pending application for another user', async () => {
+    (applicationModel.findOne as jest.Mock).mockReturnValue({
+      lean: jest.fn().mockResolvedValue(null),
+    });
+    (applicationModel.create as jest.Mock).mockResolvedValue({});
+
+    const result = await service.applyToPost('post-1', 'demo-kyle', 'Kyle');
+
+    expect(applicationModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'demo-kyle',
+        postId: 'post-1',
+        status: 'pending',
+      }),
+    );
+    expect(result).toEqual({ ok: true, alreadyApplied: false });
+  });
+});

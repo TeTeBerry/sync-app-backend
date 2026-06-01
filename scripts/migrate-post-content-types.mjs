@@ -4,7 +4,10 @@
  */
 import { MongoClient } from 'mongodb';
 
-const MONGO_URI = process.env.MONGODB_URI ?? process.env.MONGO_URI ?? 'mongodb://127.0.0.1:27017/sync';
+const MONGO_URI =
+  process.env.MONGODB_URI ??
+  process.env.MONGO_URI ??
+  'mongodb://127.0.0.1:27017/sync-ai';
 
 /** 标签/快捷词 → 内容类型映射 */
 const TAG_TO_TYPE = {

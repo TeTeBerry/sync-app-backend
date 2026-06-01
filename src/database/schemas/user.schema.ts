@@ -8,6 +8,13 @@ export class User {
   @Prop({ unique: true, sparse: true, index: true })
   externalId?: string;
 
+  /** WeChat mini program openid (unique per app). */
+  @Prop({ unique: true, sparse: true, index: true })
+  openid?: string;
+
+  @Prop({ index: true, sparse: true })
+  unionid?: string;
+
   @Prop()
   name: string;
 

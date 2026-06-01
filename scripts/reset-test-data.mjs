@@ -16,12 +16,7 @@ const uri =
   'mongodb://127.0.0.1:27017/sync-ai';
 
 async function main() {
-  await mongoose.connect(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useCreateIndex: true,
-    useFindAndModify: false,
-  });
+  await mongoose.connect(uri);
 
   const db = mongoose.connection.db;
   const chats = db.collection('chats');

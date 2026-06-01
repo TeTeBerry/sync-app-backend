@@ -1,4 +1,9 @@
-import { Module } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import configuration from './config/configuration';
@@ -17,6 +22,8 @@ import { LiveInfoModule } from './modules/live-info/live-info.module';
 import { ItineraryModule } from './modules/itinerary/itinerary.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { HealthModule } from './common/health/health.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { JwtActorMiddleware } from './common/middleware/jwt-actor.middleware';
 
 @Module({
   imports: [
@@ -34,6 +41,7 @@ import { HealthModule } from './common/health/health.module';
     }),
     RedisModule,
     ActivityModule,
+    AuthModule,
     UserModule,
     ChatModule,
     ProfileModule,
@@ -48,5 +56,17 @@ import { HealthModule } from './common/health/health.module';
     UploadModule,
     HealthModule,
   ],
+  providers: [JwtActorMiddleware],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(JwtActorMiddleware)
+      .exclude(
+        { path: 'auth/wechat', method: RequestMethod.POST },
+        { path: 'auth/dev', method: RequestMethod.POST },
+        { path: 'health', method: RequestMethod.GET },
+      )
+      .forRoutes('*');
+  }
+}

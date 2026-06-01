@@ -86,6 +86,23 @@ export default () => ({
     apiKey: cleanEnv(process.env.WECHAT_PAY_API_KEY, ''),
   },
 
+  auth: {
+    jwtSecret: cleanEnv(process.env.JWT_SECRET, 'sync-dev-jwt-secret-change-me'),
+    jwtExpiresIn: cleanEnv(process.env.JWT_EXPIRES_IN, '30d'),
+    /** `dev` enables POST /auth/dev; `wechat` is production default. */
+    mode: cleanEnv(process.env.AUTH_MODE, 'wechat'),
+    wechatMini: {
+      appId: cleanEnv(
+        process.env.WECHAT_MINI_APP_ID ?? process.env.WX_APP_ID,
+        '',
+      ),
+      appSecret: cleanEnv(
+        process.env.WECHAT_MINI_APP_SECRET ?? process.env.WX_APP_SECRET,
+        '',
+      ),
+    },
+  },
+
   wristband: {
     minConfidence: parseFloat(
       cleanEnv(process.env.WRISTBAND_VERIFY_MIN_CONFIDENCE, '0.72'),
