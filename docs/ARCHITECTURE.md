@@ -1,7 +1,7 @@
 # 后端架构（当前实现）
 
 > 目标架构：Gateway → User / Activity / Partner / AiAssistant → 四 Agent → MongoDB / Chroma / Redis  
-> **现状**：NestJS **单体**，逻辑分层已对齐目标，**未**拆微服务、**无** JWT 网关。
+> **现状**：NestJS **单体**，逻辑分层已对齐目标，**未**拆微服务；REST 使用全局 **JWT Guard** + `RequestActor`（见 [AUTH.md](./AUTH.md)）。
 
 ---
 
@@ -53,7 +53,7 @@ AppModule
        → IntentRouterService.resolve（规则快路径优先，未命中再 qwen-max 意图 JSON）
        → syncProfileOnce（search/create 路径各一次）
        → search_posts：collectMatchOnly
-       → create_post / legacy_cascade：collectBuddyIntentFlow（recommend gate → 发帖）
+       → create_post：collectBuddyIntentFlow（recommend gate → 发帖）
        → quick_reply：collectDeterministicOnly
   → AiSseBuilder：post_created / post_recommendations / conversation_patch / suggested_replies 等
   → AiService：message_complete、ChatService.saveTurn、done
@@ -135,9 +135,12 @@ AppModule
 
 ## 身份与鉴权
 
-- **当前**：Query `userId` / `authorName` → `common/auth/actor-user.util.ts` + `demo-owner.util.ts`
-- **未实现**：`AuthModule`、`JwtAuthGuard`、`POST /auth/dev`、`POST /auth/wechat`
-- AI 请求可带 body `activityLegacyId`；前端另发 Header `X-Activity-Id`（后端 middleware 登录期再统一）
+详见 [AUTH.md](./AUTH.md)。
+
+- **REST**：`JwtAuthGuard`（`AuthCoreModule`）→ `req.actor: RequestActor`；Controller 使用 `@CurrentActor()`
+- **Demo 开发**：`AUTH_ALLOW_DEMO=true` 时 Query `userId` / `authorName` 回退为 demo actor
+- **AI WebSocket**：`resolveWsChatActor` → `ChatRequestDto.actor`（body 仍可带 `userId` 供未登录 demo）
+- **活动上下文**：`ActivityContextMiddleware` 解析 `X-Activity-Id` → `req.scopedActivityLegacyId`；WS upgrade 同头；与 body/query 在调用处 `resolveEffectiveActivityLegacyId` 合并
 
 ---
 
@@ -149,7 +152,7 @@ AppModule
 
 ## 待办（非阻塞 H5 demo）
 
-- P0：Dev / 微信登录 + JWT
+- P0：生产关闭 demo Query（`AUTH_ALLOW_DEMO=false`）；微信登录 E2E 验收
 - P1（AI 优化，已实现）：Intent 规则快路径 + resolve 日志/缓存；`legacy_cascade` 与 `create_post` 合并；推荐门控空结果 + `suggested_replies` 流式帧；单轮 `syncProfileFromChat`；匹配 `matchReason` + Chroma 降级/circuit breaker；有图仍走 proactive recommend
 - P2（AI 优化，已实现）：关键路径 `Promise.all`（parse∥resolveActivity、profile∥match）；快捷确认发帖 `RiskAgent.rulesOnly` 跳过 LLM；REST/AI 发帖 Chroma upsert 异步 + 失败日志；AI Redis/内存限流 30/5min；WS `message_complete`；结构化 turn 日志（`ms_intent`/`ms_match`/`ms_buddy`/`ms_total`）；`AgentRuntimeService` 工具链仍为空（发帖走 Buddy use cases）
 - ~~P1：Registration 物理迁入 ActivityModule~~ ✅ `modules/activity/registration/`

@@ -1,3 +1,4 @@
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
 
 /** TextParseAgent / ImageParseAgent 结构化输出 */
@@ -72,8 +73,7 @@ export interface MatchAgentInput {
   activityCode?: string;
   activityLegacyId?: number;
   limit?: number;
-  userId?: string;
-  authorName?: string;
+  actor?: RequestActor;
   profile?: UserMatchProfile;
   rankingWeights?: MatchRankingWeights;
 }
@@ -85,7 +85,7 @@ export interface RiskAssessOptions {
 
 export interface RiskAgentInput {
   body: string;
-  userId?: string;
+  actor?: RequestActor;
   activityLegacyId?: number;
 }
 
@@ -98,6 +98,6 @@ export interface RiskCommentInput {
 export interface RiskImageInput {
   body: string;
   image: string;
-  userId?: string;
+  actor?: RequestActor;
   activityLegacyId?: number;
 }

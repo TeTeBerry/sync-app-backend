@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { toRequestActor } from '../../common/auth/actor-query.util';
 import { RiskAgent } from '../agents/risk.agent';
 import type {
   IPostModerationPort,
@@ -14,7 +15,7 @@ export class PostModerationAdapter implements IPostModerationPort {
   assessPost(input: PostModerationInput): Promise<PostModerationResult> {
     return this.riskAgent.assess({
       body: input.body,
-      userId: input.userId,
+      actor: input.userId ? toRequestActor(input.userId) : undefined,
       activityLegacyId: input.activityLegacyId,
     });
   }
@@ -25,7 +26,7 @@ export class PostModerationAdapter implements IPostModerationPort {
     return this.riskAgent.assessImage({
       body: input.body,
       image: input.image,
-      userId: input.userId,
+      actor: input.userId ? toRequestActor(input.userId) : undefined,
       activityLegacyId: input.activityLegacyId,
     });
   }

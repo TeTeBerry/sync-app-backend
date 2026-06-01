@@ -1,13 +1,14 @@
-import { inferIntentTagsFromText } from './infer-intent-tags.util';
-import { inferPostContentTypes } from '../../modules/partner/utils/post-content-type.util';
+import { isTicketResaleIntent } from './ticket-publish-policy.util';
+
+export {
+  isTicketResaleIntent,
+  TICKET_PUBLISH_FORBIDDEN_MESSAGE,
+} from './ticket-publish-policy.util';
 
 export interface ActivityScopeContext {
   name?: string;
   date?: string;
 }
-
-const TICKET_RESALE_BODY_RE =
-  /折价|出票|转票|转手|出一张|转让|临时有事.*票|VIP.*票|Stage.*票/i;
 
 /** Cities often used in ticket / travel posts (subset of infer-intent-tags). */
 const SCOPE_CITIES = [
@@ -89,22 +90,6 @@ function collectMonthDayKeys(text: string): Set<string> {
   return keys;
 }
 
-/** User is selling / transferring tickets (not looking for carpool teammates). */
-export function isTicketResaleIntent(input: string): boolean {
-  const text = input.trim();
-  if (!text) return false;
-
-  const tags = inferIntentTagsFromText(text);
-  const types = inferPostContentTypes({ tags, body: text });
-  if (types.includes('ticket')) {
-    return true;
-  }
-
-  return (
-    TICKET_RESALE_BODY_RE.test(text) && /票|VIP|Stage|内场|看台/i.test(text)
-  );
-}
-
 /**
  * True when the user message targets a different event / city / date than the
  * activity-scoped chat (e.g. ASOT Hong Kong 6.12 inside Storm Shenzhen).
@@ -157,23 +142,4 @@ export function shouldSkipActivityScopedBuddyRecommend(
   _activityLegacyId?: number,
 ): boolean {
   return isTicketResaleIntent(userInput);
-}
-
-export function buildTicketResaleScopeIntro(
-  activityLabel: string,
-  mismatch: boolean,
-): string {
-  if (mismatch) {
-    return [
-      `你这条是出票/转票信息，和当前打开的「${activityLabel}」不是同一场活动，我不会在这里推荐组队帖。`,
-      '',
-      '我先按你的描述整理一条转票帖草稿；确认后会在当前活动下发布。若要发到对应活动，请先切换到该活动页再发。',
-    ].join('\n');
-  }
-
-  return [
-    `收到，这是「${activityLabel}」相关的出票/转票信息。`,
-    '',
-    '我先帮你整理帖子草稿：',
-  ].join('\n');
 }

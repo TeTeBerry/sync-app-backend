@@ -1,6 +1,8 @@
+import { isAiShortcutTag, normalizeAiShortcutInput } from '../../common/utils/demo-owner.util';
 import type { PostRecord } from '../../modules/partner/interfaces/post.repository.interface';
 import type { ConversationContext } from '../conversation/conversation-context.parser';
 import type { BuddyMatchCriteria, BuddyMatchIntent } from './buddy-match.types';
+import { intentsForShortcutTag } from './shortcut-post-match.util';
 
 const DEPARTURE_FROM_BODY_RE = /从\s*([^\s，,。]+?)\s*出发/;
 
@@ -64,7 +66,7 @@ export function inferIntentsFromPost(
   const haystack = [...tags, body].join(' ').toLowerCase();
   const intents = new Set<BuddyMatchIntent>();
 
-  if (/拼车|顺风车|包车/.test(haystack)) intents.add('carpool');
+  if (/拼卡|拼车|顺风车|包车/.test(haystack)) intents.add('carpool');
   if (/拼住宿|拼房|住宿/.test(haystack)) intents.add('lodging');
   if (/组队|搭子|同行|缺\d/.test(haystack)) intents.add('team');
   if (/票|内场|看台|区/.test(haystack)) intents.add('ticket');
@@ -170,6 +172,16 @@ export function buildMatchCriteriaForSearch(params: {
     normalizeCityName(params.profileCity) ??
     inferDepartureCityFromText(params.userInput);
 
+  const trimmedInput = params.userInput?.trim() ?? '';
+  const shortcutIntents =
+    trimmedInput && isAiShortcutTag(trimmedInput)
+      ? intentsForShortcutTag(trimmedInput)
+      : undefined;
+  const shortcutTag =
+    trimmedInput && isAiShortcutTag(trimmedInput)
+      ? normalizeAiShortcutInput(trimmedInput)
+      : undefined;
+
   return {
     activityLegacyId: params.activityLegacyId,
     activityName: params.activityName ?? fromOwner?.activityName,
@@ -183,16 +195,27 @@ export function buildMatchCriteriaForSearch(params: {
     headcount: params.conversation?.peopleCount ?? fromOwner?.headcount,
     genderPref: params.conversation?.genderPreference ?? fromOwner?.genderPref,
     intents:
-      fromOwner?.intents ?? inferIntentsFromPost([], params.userInput ?? ''),
+      shortcutIntents ??
+      fromOwner?.intents ??
+      inferIntentsFromPost([], params.userInput ?? ''),
     requesterTags: collectRequesterTags(
       fromOwner?.requesterTags,
       params.ownerPost?.tags,
       params.ownerPost?.body,
+      shortcutTag,
       params.userInput,
       params.zone,
     ),
     requesterBody:
-      params.ownerPost?.body?.trim() ?? fromOwner?.requesterBody ?? undefined,
+      params.ownerPost?.body?.trim() ??
+      fromOwner?.requesterBody ??
+      (shortcutTag === '拼卡' || shortcutTag === '拼车同行'
+        ? '拼卡 拼车 顺风车 顺路 包车 出发'
+        : shortcutTag === '住宿同行'
+          ? '拼住宿 拼房 酒店 同行'
+          : shortcutTag === '组队队友'
+            ? '组队 搭子 同行 缺人'
+            : undefined),
     excludePostIds: params.ownerPost?._id
       ? [String(params.ownerPost._id)]
       : undefined,

@@ -70,6 +70,9 @@ const profileSync: UserProfileSyncResult = {
 };
 
 describe('MatchPostsFromChatUseCase quota', () => {
+  const actorUser1 = toRequestActor('user-1');
+  const actorZara = toRequestActor('user-1', 'Zara');
+
   it('pre-checks quota before matchAgent.match', async () => {
     const { useCase, assertCanMatch, match } = buildUseCase({});
 
@@ -77,12 +80,12 @@ describe('MatchPostsFromChatUseCase quota', () => {
       messages: [{ role: 'user', content: '查组队帖' }],
       input: '查组队帖',
       activityLegacyId: 9,
-      userId: 'user-1',
+      actor: actorUser1,
       fromIntentRouter: true,
       profileSync,
     });
 
-    expect(assertCanMatch).toHaveBeenCalledWith('user-1', undefined, 9);
+    expect(assertCanMatch).toHaveBeenCalledWith(actorUser1, 9);
     expect(match).toHaveBeenCalled();
   });
 
@@ -98,7 +101,7 @@ describe('MatchPostsFromChatUseCase quota', () => {
         messages: [{ role: 'user', content: '查组队帖' }],
         input: '查组队帖',
         activityLegacyId: 9,
-        userId: 'user-1',
+        actor: actorUser1,
         fromIntentRouter: true,
         profileSync,
       }),
@@ -117,13 +120,12 @@ describe('MatchPostsFromChatUseCase quota', () => {
       messages: [{ role: 'user', content: '查组队帖' }],
       input: '查组队帖',
       activityLegacyId: 9,
-      userId: 'user-1',
-      authorName: 'Zara',
+      actor: actorZara,
       fromIntentRouter: true,
       profileSync,
     });
 
-    expect(consumeIfMatched).toHaveBeenCalledWith('user-1', 'Zara', 9, 1);
+    expect(consumeIfMatched).toHaveBeenCalledWith(actorZara, 9, 1);
   });
 
   it('does not consume when match returns empty postCards', async () => {
@@ -136,7 +138,7 @@ describe('MatchPostsFromChatUseCase quota', () => {
       messages: [{ role: 'user', content: '查组队帖' }],
       input: '查组队帖',
       activityLegacyId: 9,
-      userId: 'user-1',
+      actor: toRequestActor('user-1'),
       fromIntentRouter: true,
       profileSync,
     });

@@ -2,7 +2,10 @@ jest.mock('@src/ai/llm/llm.service', () => ({
   LlmService: jest.fn(),
 }));
 
+import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { RiskAgent } from '@src/ai/agents/risk.agent';
+
+const actor = toRequestActor('user-1');
 
 describe('RiskAgent rules-only shortcut path', () => {
   const invokeJson = jest.fn();
@@ -27,7 +30,7 @@ describe('RiskAgent rules-only shortcut path', () => {
     const result = await agent.assess(
       {
         body: '找风暴电音节同行，6月13日上海出发，2人',
-        userId: 'user-1',
+        actor,
         activityLegacyId: 9,
       },
       { rulesOnly: true },
@@ -44,7 +47,7 @@ describe('RiskAgent rules-only shortcut path', () => {
     const result = await agent.assess(
       {
         body: '重复内容',
-        userId: 'user-1',
+        actor,
         activityLegacyId: 9,
       },
       { rulesOnly: true },
@@ -59,7 +62,7 @@ describe('RiskAgent rules-only shortcut path', () => {
     const result = await agent.assess(
       {
         body: '加微信 wx123456 私聊',
-        userId: 'user-1',
+        actor,
         activityLegacyId: 9,
       },
       { rulesOnly: true },

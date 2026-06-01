@@ -142,7 +142,12 @@ describe('AiService buddy flow', () => {
 
   const baseDto = {
     sessionId: 'session-1',
-    userId: 'user-1',
+    actor: {
+      source: 'jwt' as const,
+      clientUserId: 'user-1',
+      displayName: '用户',
+      resolvedUserId: 'user-1',
+    },
     activityLegacyId: 9,
     messages: [{ role: 'user' as const, content: '组队队友' }],
   };
@@ -418,20 +423,14 @@ describe('AiService buddy flow', () => {
       },
     },
     {
-      name: 'ASOT HK ticket in Storm activity → skip recommend gate',
+      name: 'ASOT HK ticket in Storm activity → reject publish',
       input: '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
       intentKind: 'create_post' as const,
       matchResult: null,
       createResult: {
-        kind: 'pending_confirmation',
-        activityLegacyId: 9,
-        replyText: [
-          '你这条是出票/转票信息，和当前打开的「风暴电音节」不是同一场活动，我不会在这里推荐组队帖。',
-          PUBLISH_CONFIRM_PROMPT_MARKER,
-          '草稿',
-        ].join('\n'),
-        draftBody:
-          '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
+        kind: 'rejected',
+        replyText:
+          '平台禁止发布转票、出票、票务相关信息。如需找同行伙伴，请改为组队、拼车或住宿类帖子。',
       } satisfies PostIntentCreateAttempt,
       expectCreate: true,
       assert: (
@@ -448,8 +447,8 @@ describe('AiService buddy flow', () => {
           complete &&
             'content' in complete &&
             !complete.content.includes(RECOMMEND_GATE_MARKER) &&
-            complete.content.includes(PUBLISH_CONFIRM_PROMPT_MARKER) &&
-            complete.content.includes('不是同一场活动'),
+            !complete.content.includes(PUBLISH_CONFIRM_PROMPT_MARKER) &&
+            complete.content.includes('禁止发布'),
         ).toBe(true);
       },
     },

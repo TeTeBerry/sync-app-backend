@@ -63,6 +63,16 @@ describe('intent-router.rules', () => {
     expect(hit?.kind).toBe('search_posts');
   });
 
+  it('routes 拼卡 shortcut with bound activity to search_posts', () => {
+    const hit = resolveChatIntentFastPath('拼卡', {
+      messages: [],
+      input: '拼卡',
+      activityLegacyId: 4,
+    });
+    expect(hit?.kind).toBe('search_posts');
+    expect(hit?.source).toBe('rule');
+  });
+
   it('routes search-existing intent with bound activity to search_posts', () => {
     const hit = resolveChatIntentFastPath('帮我看看有没有类似的组队帖', {
       messages: [],
@@ -98,6 +108,26 @@ describe('intent-router.rules', () => {
       input: '我想交个朋友聊聊天',
     });
     expect(hit).toBeNull();
+  });
+
+  it('routes AI攻略 to quick_reply with bound activity', () => {
+    const hit = resolveChatIntentFastPath('AI攻略', {
+      messages: [],
+      input: 'AI攻略',
+      activityLegacyId: 4,
+    });
+    expect(hit?.kind).toBe('quick_reply');
+    expect(hit?.source).toBe('rule');
+  });
+
+  it('routes 帮我规划行程 to quick_reply with bound activity', () => {
+    const hit = resolveChatIntentFastPath('帮我规划行程', {
+      messages: [],
+      input: '帮我规划行程',
+      activityLegacyId: 4,
+    });
+    expect(hit?.kind).toBe('quick_reply');
+    expect(hit?.source).toBe('rule');
   });
 
   it('routes homepage festival shortcut to quick_reply without binding activity', () => {

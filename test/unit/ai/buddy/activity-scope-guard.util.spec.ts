@@ -1,5 +1,4 @@
 import {
-  buildTicketResaleScopeIntro,
   isActivityScopeMismatch,
   isTicketResaleIntent,
   shouldSkipActivityScopedBuddyRecommend,
@@ -53,14 +52,4 @@ describe('activity-scope-guard.util', () => {
     });
   });
 
-  describe('buildTicketResaleScopeIntro', () => {
-    it('explains mismatch for cross-event ticket', () => {
-      const intro = buildTicketResaleScopeIntro(
-        STORM_SHENZHEN_ACTIVITY.name,
-        true,
-      );
-      expect(intro).toContain('不是同一场活动');
-      expect(intro).not.toContain('【先推荐搭子】');
-    });
-  });
 });

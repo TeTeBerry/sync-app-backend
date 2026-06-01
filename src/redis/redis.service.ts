@@ -53,6 +53,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       enableOfflineQueue: false,
       maxRetriesPerRequest: 1,
       connectTimeout: 4_000,
+      commandTimeout: 5_000,
       retryStrategy: () => null,
     });
 

@@ -98,7 +98,8 @@
     ],
     "rootDir": ".",
     "testMatch": [
-      "<rootDir>/test/unit/**/*.spec.ts"
+      "<rootDir>/test/unit/**/*.spec.ts",
+      "<rootDir>/test/contract/**/*.spec.ts"
     ],
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"

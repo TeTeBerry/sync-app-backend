@@ -30,6 +30,7 @@ const TAG_TO_TYPE: Record<string, PostContentType> = {
   酒店: 'accommodation',
   拼车同行: 'carpool',
   拼车: 'carpool',
+  拼卡: 'carpool',
   顺路: 'carpool',
   顺风车: 'carpool',
   转票: 'ticket',
@@ -54,7 +55,7 @@ const BODY_PATTERNS: Array<{ pattern: RegExp; type: PostContentType }> = [
     type: 'ticket',
   },
   { pattern: /拼房|住宿|酒店|同房|合住/i, type: 'accommodation' },
-  { pattern: /拼车|顺路|顺风车|接送|包车/i, type: 'carpool' },
+  { pattern: /拼卡|拼车|顺路|顺风车|接送|包车/i, type: 'carpool' },
   {
     pattern:
       /组队|找队友|求组队|搭子|结伴|同行|姐妹|兄弟|cpdd|有人吗|有姐妹|缺\d|[A-Za-z]区|\d+号/i,

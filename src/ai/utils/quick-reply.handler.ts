@@ -5,6 +5,10 @@ import {
   buildScopedFindBuddyReply,
 } from './activity-reply.util';
 import { buildHomeFestivalShortcutReplyFromCatalog } from './festival-shortcut.util';
+import {
+  buildActivityGuideReply,
+  isTravelGuideIntent,
+} from './activity-guide.util';
 import { composeReply } from './reply-text.util';
 
 export async function buildQuickReplyResponse(
@@ -16,6 +20,19 @@ export async function buildQuickReplyResponse(
 ): Promise<string | null> {
   const intent = detectUserIntent(input);
   const { activityService } = services;
+
+  if (isTravelGuideIntent(input)) {
+    if (activityLegacyId != null) {
+      const activity = await activityService.findByLegacyId(activityLegacyId);
+      return composeReply([
+        '🗺️ 好的，我来帮你规划出行攻略。',
+        '',
+        '请点下方「AI攻略」填写出发地、人数、预算与是否自驾，即可生成可分享的长图。',
+        activity?.name ? `当前活动：${activity.name.trim()}` : '',
+      ]);
+    }
+    return buildActivityGuideReply(null);
+  }
 
   if (activityLegacyId == null) {
     const festivalReply = await buildHomeFestivalShortcutReplyFromCatalog(

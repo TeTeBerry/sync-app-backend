@@ -16,7 +16,7 @@
 | P3 | 四 Agent + AI 发帖闭环 | ✅ 完成 |
 | P4 | Redis + Chroma 帖子向量 | ✅ 完成 |
 | P5 | 文档 + BFF 清理 | ✅ 完成 |
-| P0-H5 | Dev JWT + Guard | ⬜ 登录之后 |
+| P0-H5 | Dev JWT + Guard | ✅ JwtAuthGuard + RequestActor；生产设 `AUTH_ALLOW_DEMO=false` |
 | P0-Wx | 微信登录 | ⬜ 更晚 |
 
 ---
@@ -49,7 +49,7 @@
 
 ### 未实现 / 延后
 
-- 路由级 `JwtAuthGuard`（全局 middleware 已覆盖读路径）
+- ~~路由级 `JwtAuthGuard`~~ ✅ 全局 `APP_GUARD` + `@Public()` 例外
 - ~~ActivityRegistration 物理迁入 ActivityModule~~ ✅ `activity/registration/`
 - ~~`PartnerModule` 目录 rename~~ ✅ `modules/partner/`
 - `ALL_AGENT_TOOLS` 注册进 `AgentRuntimeService`（发帖走独立编排，非必须）
@@ -129,7 +129,7 @@
 
 - [ ] `POST /auth/dev` + JWT + Guard
 - [ ] Controller 改 `@CurrentUser()`，关闭生产 demo Query
-- [ ] `activity-context.middleware` — `X-Activity-Id`
+- [x] `activity-context.middleware` — `X-Activity-Id` → `req.scopedActivityLegacyId`
 - [ ] 与前端同 PR 切换 Bearer
 
 ## P0-Wx — 更晚
@@ -143,8 +143,8 @@
 
 | 方法 | 路径 | 状态 |
 |------|------|------|
-| POST | `/auth/dev` | ⬜ |
-| POST | `/auth/wechat` | ⬜ |
+| POST | `/auth/dev` | ✅（`AUTH_MODE=dev` 或非 production） |
+| POST | `/auth/wechat` | ✅（需微信 AppId/Secret） |
 | GET/PATCH | `/users/me` | ✅ |
 | GET | `/home` | ✅ |
 | GET | `/activities`… | ✅ |
@@ -179,8 +179,8 @@
 
 ### P0（登录期）
 
-- [ ] JWT 写接口鉴权
-- [ ] 无 Query 身份
+- [x] JWT 写接口鉴权（`JwtAuthGuard`）
+- [ ] 生产无 Query 身份（`AUTH_ALLOW_DEMO=false` + 运维验收）
 
 ---
 

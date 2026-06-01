@@ -57,8 +57,10 @@ npm run start:dev
 | `CHROMA_URL` | Chroma HTTP 基址，如 `http://localhost:8000`（`npm run infra:chroma`）；空则 RAG 降级 Mongo/规则 |
 | `CHROMA_COLLECTION` | 活动知识库，默认 `sync_knowledge` |
 | `CHROMA_POSTS_COLLECTION` | 帖子向量，默认 `sync_posts` |
+| `JWT_SECRET` / `AUTH_MODE` | 登录与 JWT（见 [docs/AUTH.md](./docs/AUTH.md)） |
+| `AUTH_ALLOW_DEMO` | 默认 `false`；本地无登录 H5 可设 `true` |
 
-完整示例见 [.env.example](./.env.example)。
+完整示例见 [.env.example](./.env.example)。鉴权说明：[docs/AUTH.md](./docs/AUTH.md)。
 
 ## 主要接口
 
@@ -132,7 +134,7 @@ npm run db:reset
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/activities/:legacyId/live-info` | 快照：`viewer` / `summary` / `certCount` / `feed` |
-| POST | `/api/uploads/images` |  multipart 上传图片，返回 `{ url }`（本地静态目录，见环境变量） |
+| POST | `/api/uploads/images` |  multipart 上传图片，返回 `{ url }`；配置 `WECHAT_MINI_APP_*` 时先走微信 `img_sec_check`（单张 ≤1MB） |
 | POST | `.../live-info/wristband` | 提交本站上传返回的 `{ imageUrl }`；先查当日同活动是否已有他人用过同一张上传图，再 **Qwen-VL AI 审核**；通过则当日认证，否则 `{ ok: false, message, viewer }`，重复图为 `{ code: "duplicate_image", ... }` |
 | DELETE | `.../live-info/wristband` | 清除当日认证 |
 | POST | `.../live-info/updates` | 发布 `{ ratings: [{ categoryId, score }], remark? }` |

@@ -20,10 +20,12 @@ import { PartnerModule } from './modules/partner/partner.module';
 import { ReportModule } from './modules/report/report.module';
 import { LiveInfoModule } from './modules/live-info/live-info.module';
 import { ItineraryModule } from './modules/itinerary/itinerary.module';
+import { TravelGuideModule } from './modules/travel-guide/travel-guide.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { HealthModule } from './common/health/health.module';
 import { AuthCoreModule } from './common/auth/auth-core.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { ActivityContextMiddleware } from './common/middleware/activity-context.middleware';
 import { RequestActorMiddleware } from './common/middleware/request-actor.middleware';
 
 @Module({
@@ -55,15 +57,16 @@ import { RequestActorMiddleware } from './common/middleware/request-actor.middle
     ReportModule,
     LiveInfoModule,
     ItineraryModule,
+    TravelGuideModule,
     UploadModule,
     HealthModule,
   ],
-  providers: [RequestActorMiddleware],
+  providers: [RequestActorMiddleware, ActivityContextMiddleware],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer
-      .apply(RequestActorMiddleware)
+      .apply(RequestActorMiddleware, ActivityContextMiddleware)
       .exclude(
         { path: 'auth/wechat', method: RequestMethod.POST },
         { path: 'auth/dev', method: RequestMethod.POST },

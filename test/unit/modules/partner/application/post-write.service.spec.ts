@@ -1,4 +1,6 @@
+import { BadRequestException } from '@nestjs/common';
 import { toRequestActor } from '@src/common/auth/actor-query.util';
+import { TICKET_PUBLISH_FORBIDDEN_MESSAGE } from '@src/ai/buddy/ticket-publish-policy.util';
 import { PostWriteService } from '@src/modules/partner/application/post-write.service';
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { UserService } from '@src/modules/user/user.service';
@@ -51,6 +53,28 @@ describe('PostWriteService', () => {
       postNotification,
       postModeration,
     );
+  });
+
+  it('rejects ticket resale posts before persistence', async () => {
+    (userService.resolveProfile as jest.Mock).mockResolvedValue({
+      name: 'Zara Chen',
+    });
+
+    await expect(
+      service.createPost(
+        { body: '急出票两张 VIP', activityLegacyId: 9 },
+        toRequestActor('demo-user', 'Zara Chen'),
+      ),
+    ).rejects.toThrow(BadRequestException);
+
+    await expect(
+      service.createPost(
+        { body: '急出票两张 VIP', activityLegacyId: 9 },
+        toRequestActor('demo-user', 'Zara Chen'),
+      ),
+    ).rejects.toThrow(TICKET_PUBLISH_FORBIDDEN_MESSAGE);
+
+    expect(repository.create).not.toHaveBeenCalled();
   });
 
   it('createPost succeeds when Chroma upsert fails asynchronously', async () => {

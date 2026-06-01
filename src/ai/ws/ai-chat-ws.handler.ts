@@ -9,6 +9,10 @@ import {
   classifyBearerAuth,
   type ClassifyBearerAuthResult,
 } from '../../common/auth/jwt-bearer.util';
+import {
+  parseActivityLegacyIdHeader,
+  resolveEffectiveActivityLegacyId,
+} from '../../common/activity/activity-context.util';
 import { AiService } from '../ai.service';
 import { resolveWsChatActor } from './ai-chat-ws-actor';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
@@ -76,6 +80,8 @@ function resolveSendPayload(
   };
 }
 
+const WS_CHAT_TURN_TIMEOUT_MS = 90_000;
+
 @Injectable()
 export class AiChatWsHandler {
   private readonly logger = new Logger(AiChatWsHandler.name);
@@ -110,7 +116,9 @@ export class AiChatWsHandler {
     let authRejected = false;
     let busy = false;
     let sessionId: string | undefined;
-    let activityLegacyId: number | undefined;
+    let activityLegacyId: number | undefined = parseActivityLegacyIdHeader(
+      request.headers as Record<string, string | string[] | undefined>,
+    );
     let messageChain = Promise.resolve();
 
     this.devLog(connectionId, 'connected', {
@@ -181,8 +189,13 @@ export class AiChatWsHandler {
       }
 
       if (isConnectMessage(parsed)) {
+        // Client opens a fresh socket per turn; reset stale busy from hung handlers.
+        busy = false;
         sessionId = parsed.sessionId?.trim() || sessionId;
-        activityLegacyId = parsed.activityLegacyId ?? activityLegacyId;
+        activityLegacyId = resolveEffectiveActivityLegacyId(
+          parsed.activityLegacyId,
+          activityLegacyId,
+        );
         send({
           type: 'connected',
           sessionId,
@@ -218,7 +231,10 @@ export class AiChatWsHandler {
         sessionId: sendPayload.sessionId?.trim() || sessionId,
         actor: actorResult.actor,
         userPhone: actorResult.userPhone,
-        activityLegacyId: sendPayload.activityLegacyId ?? activityLegacyId,
+        activityLegacyId: resolveEffectiveActivityLegacyId(
+          sendPayload.activityLegacyId,
+          activityLegacyId,
+        ),
         image: sendPayload.image,
         images: sendPayload.images,
       });
@@ -245,9 +261,18 @@ export class AiChatWsHandler {
           sessionId: dto.sessionId,
           actorSource: actorResult.actor.source,
         });
-        for await (const event of this.aiService.streamChat(dto, {
-          requestId,
-        })) {
+        const stream = this.aiService.streamChat(dto, { requestId });
+        const turnTimedOut = new Promise<never>((_, reject) => {
+          setTimeout(
+            () => reject(new Error('AI 回复超时，请检查网络或稍后重试')),
+            WS_CHAT_TURN_TIMEOUT_MS,
+          );
+        });
+
+        while (true) {
+          const next = await Promise.race([stream.next(), turnTimedOut]);
+          if (next.done) break;
+          const event = next.value;
           send(event);
           if (event.type === 'error') {
             break;

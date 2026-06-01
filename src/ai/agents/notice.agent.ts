@@ -7,6 +7,7 @@ import type {
 import { NotificationService } from '../../modules/notification/notification.service';
 import type { NotificationTemplateKey } from '../../modules/notification/notification-templates.util';
 import { toRequestActor } from '../../common/auth/actor-query.util';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { UserService } from '../../modules/user/user.service';
 import type { PostRecord } from '../../modules/partner/interfaces/post.repository.interface';
 import { isResourceOwnedByClient } from '../../common/utils/demo-owner.util';
@@ -143,11 +144,11 @@ export class NoticeAgent {
   }
 
   async notifyPostRejected(
-    userId: string | undefined,
+    actor: RequestActor,
     activityLegacyId: number | undefined,
     reason?: string,
   ): Promise<void> {
-    const uid = userId?.trim();
+    const uid = actor.clientUserId?.trim();
     if (!uid) return;
 
     const reasonText = this.buildRejectionReasonSummary(reason);

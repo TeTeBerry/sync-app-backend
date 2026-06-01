@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
 import { User, UserDocument } from '../../database/schemas/user.schema';
 import { UserBlockService } from '../../modules/user/user-block.service';
@@ -11,7 +12,6 @@ import {
   UserMatchProfile,
 } from '../match/match-ranking.util';
 import { UserService } from '../../modules/user/user.service';
-import { toRequestActor } from '../../common/auth/actor-query.util';
 
 @Injectable()
 export class MatchContextService {
@@ -40,14 +40,11 @@ export class MatchContextService {
   }
 
   async buildFilterContext(
-    userId?: string,
+    actor?: RequestActor,
     profile?: UserMatchProfile,
-    authorName?: string,
   ): Promise<MatchFilterContext> {
-    const requesterUserId = userId?.trim()
-      ? toRequestActor(userId, authorName).resolvedUserId
-      : undefined;
-    const resolvedProfile = await this.resolveProfile(userId, profile);
+    const requesterUserId = actor?.resolvedUserId?.trim() || undefined;
+    const resolvedProfile = await this.resolveProfile(actor, profile);
 
     if (!requesterUserId) {
       return {
@@ -157,14 +154,14 @@ export class MatchContextService {
   }
 
   private async resolveProfile(
-    userId?: string,
+    actor?: RequestActor,
     profile?: UserMatchProfile,
   ): Promise<UserMatchProfile | undefined> {
     if (profile) return profile;
-    if (!userId) return undefined;
+    if (!actor?.clientUserId.trim()) return undefined;
 
     try {
-      const me = await this.userService.getMe(toRequestActor(userId));
+      const me = await this.userService.getMe(actor);
       return {
         city: me.city,
         favorGenres: me.favorGenres,

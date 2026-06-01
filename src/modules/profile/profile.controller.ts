@@ -1,4 +1,9 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
+import { Request } from 'express';
+import {
+  parseActivityLegacyIdQuery,
+  resolveEffectiveActivityLegacyId,
+} from '../../common/activity/activity-context.util';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { ConsumeProfileEntitlementDto } from './dto/consume-profile-entitlement.dto';
@@ -24,11 +29,12 @@ export class ProfileController {
   listEntitlements(
     @CurrentActor() actor: RequestActor,
     @Query('activityLegacyId') activityLegacyId?: string,
+    @Req() req?: Request,
   ) {
-    const legacyId =
-      activityLegacyId != null && activityLegacyId !== ''
-        ? Number(activityLegacyId)
-        : undefined;
+    const legacyId = resolveEffectiveActivityLegacyId(
+      parseActivityLegacyIdQuery(activityLegacyId),
+      req?.scopedActivityLegacyId,
+    );
     return this.profilePackageService.listEntitlements(actor, legacyId);
   }
 
@@ -70,11 +76,12 @@ export class ProfileController {
   summary(
     @CurrentActor() actor: RequestActor,
     @Query('activityLegacyId') activityLegacyId?: string,
+    @Req() req?: Request,
   ) {
-    const legacyId =
-      activityLegacyId != null && activityLegacyId !== ''
-        ? Number(activityLegacyId)
-        : undefined;
+    const legacyId = resolveEffectiveActivityLegacyId(
+      parseActivityLegacyIdQuery(activityLegacyId),
+      req?.scopedActivityLegacyId,
+    );
     return this.profileSummaryService.getSummary(actor, undefined, legacyId);
   }
 

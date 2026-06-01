@@ -118,6 +118,26 @@ export class ChromaService implements OnModuleInit {
     return !this.enabled || !this.postsCollection || this.isCircuitOpen();
   }
 
+  private async withQueryTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number,
+  ): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<T>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error('Chroma query timeout')),
+            timeoutMs,
+          );
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
   /** Chroma JS 客户端的 path 必须是 HTTP 基址，不能是本地目录 */
   private resolveChromaBaseUrl(): string | null {
     const url = this.config.get<string>('chroma.url')?.trim();
@@ -461,12 +481,18 @@ export class ChromaService implements OnModuleInit {
     const n = options.n ?? 5;
     const where = this.buildRecruitingPostWhere(options);
 
+    const queryTimeoutMs =
+      this.config.get<number>('chroma.queryTimeoutMs') ?? 8_000;
+
     try {
-      const result = await this.postsCollection!.query({
-        queryTexts: [text.trim()],
-        nResults: n,
-        ...(where ? { where } : {}),
-      });
+      const result = await this.withQueryTimeout(
+        this.postsCollection!.query({
+          queryTexts: [text.trim()],
+          nResults: n,
+          ...(where ? { where } : {}),
+        }),
+        queryTimeoutMs,
+      );
 
       const matches = this.mapQueryResults(result);
 
@@ -482,11 +508,14 @@ export class ChromaService implements OnModuleInit {
         return { matches };
       }
 
-      const profileResult = await this.postsCollection!.query({
-        queryTexts: [profileText],
-        nResults: n,
-        ...(where ? { where } : {}),
-      });
+      const profileResult = await this.withQueryTimeout(
+        this.postsCollection!.query({
+          queryTexts: [profileText],
+          nResults: n,
+          ...(where ? { where } : {}),
+        }),
+        queryTimeoutMs,
+      );
 
       const profileDistances = new Map<string, number>();
       const profileDocs = profileResult.documents?.[0] ?? [];

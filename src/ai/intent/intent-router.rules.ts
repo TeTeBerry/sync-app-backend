@@ -12,6 +12,7 @@ import {
   isAwaitingActivityEnterSelection,
 } from '../utils/activity-enter.util';
 import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
+import { isTravelGuideIntent } from '../utils/activity-guide.util';
 import { inferBuddySearchHintKind } from '../match/zone-buddy-search.util';
 import type { IntentRouterInput } from './intent-router.service';
 import type { ResolvedChatIntent } from './chat-intent.types';
@@ -32,6 +33,10 @@ export function resolveChatIntentFastPath(
     if (isActivityEnterNameInput(trimmed)) {
       return { kind: 'activity_enter', source: 'rule' };
     }
+  }
+
+  if (isTravelGuideIntent(trimmed)) {
+    return { kind: 'quick_reply', source: 'rule' };
   }
 
   if (params.activityLegacyId == null && isHomeFestivalShortcutInput(trimmed)) {

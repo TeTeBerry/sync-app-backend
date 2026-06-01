@@ -8,6 +8,7 @@ jest.mock('@src/ai/llm/llm.service', () => ({
   LlmService: class MockLlmService {},
 }));
 
+import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { MatchService } from '@src/ai/services/match.service';
 import { BUDDY_RECOMMEND_LIMIT } from '@src/ai/match/buddy-match.constants';
 
@@ -81,7 +82,7 @@ describe('MatchService', () => {
         intents: ['team'],
         requesterBody: '上海出发求拼车',
       },
-      userId: 'user-1',
+      actor: toRequestActor('user-1'),
       limit: BUDDY_RECOMMEND_LIMIT,
     });
 
@@ -138,7 +139,7 @@ describe('MatchService', () => {
         intents: ['food'],
         requesterBody: '有没有人晚上一起宵夜的',
       },
-      userId: 'user-1',
+      actor: toRequestActor('user-1'),
       limit: BUDDY_RECOMMEND_LIMIT,
     });
 
@@ -401,8 +402,7 @@ describe('MatchService', () => {
 
     const result = await service.search({
       criteria: { activityLegacyId: 4, departureCity: '上海' },
-      userId: 'user-1',
-      authorName: 'Alice Wang',
+      actor: toRequestActor('user-1', 'Alice Wang'),
       limit: BUDDY_RECOMMEND_LIMIT,
     });
 
@@ -479,8 +479,7 @@ describe('MatchService', () => {
 
     const result = await service.search({
       criteria: { activityLegacyId: 4, departureCity: '上海' },
-      userId: 'client-session-xyz',
-      authorName: 'Zara Chen',
+      actor: toRequestActor('client-session-xyz', 'Zara Chen'),
       limit: BUDDY_RECOMMEND_LIMIT,
     });
 
@@ -556,7 +555,7 @@ describe('MatchService', () => {
         departureCity: '上海',
         excludePostIds: ['seed-post'],
       },
-      userId: 'user-1',
+      actor: toRequestActor('user-1'),
       limit: BUDDY_RECOMMEND_LIMIT,
     });
 

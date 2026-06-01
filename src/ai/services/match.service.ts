@@ -1,11 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { isResourceOwnedByClient } from '../../common/utils/demo-owner.util';
 import {
   IPostRepository,
   POST_REPOSITORY,
   type PostRecord,
 } from '../../modules/partner/interfaces/post.repository.interface';
-import { resolveActorUserId } from '../../common/auth/actor-user.util';
+import type { RequestActor } from '../../common/auth/request-actor.types';
+import { isResourceOwnedByActor } from '../../common/auth/actor-query.util';
 import { ChromaService } from '../rag/chroma.service';
 import {
   buildRerankUserNeed,
@@ -31,8 +31,7 @@ import { BUDDY_RECOMMEND_LIMIT } from '../match/buddy-match.constants';
 
 export interface MatchSearchParams {
   criteria: BuddyMatchCriteria;
-  userId?: string;
-  authorName?: string;
+  actor?: RequestActor;
   profile?: UserMatchProfile;
   rankingWeights?: import('../match/match-ranking.util').MatchRankingWeights;
   limit?: number;
@@ -76,12 +75,13 @@ export class MatchService {
         .filter(Boolean),
     );
 
-    const hasPersonalization = Boolean(params.userId?.trim() || params.profile);
+    const hasPersonalization = Boolean(
+      params.actor?.clientUserId.trim() || params.profile,
+    );
     const context = hasPersonalization
       ? await this.matchContextService.buildFilterContext(
-          params.userId,
+          params.actor,
           params.profile,
-          params.authorName,
         )
       : undefined;
 
@@ -90,10 +90,7 @@ export class MatchService {
       : undefined;
 
     const requesterUserId =
-      context?.requesterUserId ??
-      (params.userId?.trim()
-        ? resolveActorUserId(params.userId, params.authorName)
-        : undefined);
+      context?.requesterUserId ?? params.actor?.resolvedUserId?.trim();
 
     const excludeUserIds = context
       ? this.matchContextService.buildExcludeUserIds(context)
@@ -115,7 +112,7 @@ export class MatchService {
         activityCode: criteria.activityCode ?? '',
         activityLegacyId: criteria.activityLegacyId,
         excludeUserIds: excludeUserIds.length ? excludeUserIds : undefined,
-        profileUserId: requesterUserId ?? params.userId,
+        profileUserId: requesterUserId ?? params.actor?.clientUserId,
         n: VECTOR_RECALL_N,
       },
     );
@@ -139,8 +136,7 @@ export class MatchService {
         limit,
         {
           requesterUserId,
-          authorName: params.authorName,
-          clientUserId: params.userId,
+          actor: params.actor,
           excludePostIds,
         },
       );
@@ -172,8 +168,7 @@ export class MatchService {
 
     items = this.filterOwnPosts(items, mongoCandidates, {
       requesterUserId,
-      clientUserId: params.userId,
-      authorName: params.authorName,
+      actor: params.actor,
     });
 
     return { items, degraded };
@@ -209,8 +204,7 @@ export class MatchService {
     limit: number,
     isolation: {
       requesterUserId?: string;
-      clientUserId?: string;
-      authorName?: string;
+      actor?: RequestActor;
       excludePostIds: ReadonlySet<string>;
     },
   ): Promise<{ items: MatchedPostItem[]; rerankFailed: boolean }> {
@@ -258,8 +252,7 @@ export class MatchService {
       if (
         this.isOwnRecruitingPost(post, {
           requesterUserId: isolation.requesterUserId,
-          clientUserId: isolation.clientUserId,
-          authorName: isolation.authorName,
+          actor: isolation.actor,
         })
       ) {
         return;
@@ -369,8 +362,7 @@ export class MatchService {
     candidates: PostRecord[],
     isolation: {
       requesterUserId?: string;
-      clientUserId?: string;
-      authorName?: string;
+      actor?: RequestActor;
     },
   ): MatchedPostItem[] {
     const postById = new Map(
@@ -388,8 +380,7 @@ export class MatchService {
     post: Pick<PostRecord, 'userId' | 'authorName' | '_id'>,
     isolation: {
       requesterUserId?: string;
-      clientUserId?: string;
-      authorName?: string;
+      actor?: RequestActor;
     },
   ): boolean {
     const requesterUserId = isolation.requesterUserId?.trim();
@@ -401,11 +392,11 @@ export class MatchService {
       return true;
     }
 
-    return isResourceOwnedByClient(
-      post,
-      isolation.clientUserId,
-      isolation.authorName,
-    );
+    if (isolation.actor) {
+      return isResourceOwnedByActor(post, isolation.actor);
+    }
+
+    return false;
   }
 
   private buildSnippet(document: string): string {

@@ -14,6 +14,7 @@ import {
   isResourceOwnedByActor,
 } from '../../common/auth/actor-query.util';
 import { resolveOwnerFilterFromActor } from '../../common/utils/owner-filter.util';
+import { sumProfilePostLikes } from '../../common/utils/profile-likes.util';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
 import { ActivityService } from '../activity/activity.service';
 import {
@@ -647,9 +648,10 @@ export class PostService implements OnModuleInit {
     );
   }
 
-  sumLikesByOwner(actor: RequestActor) {
-    return this.repository.sumLikesByOwner(
+  async sumLikesByOwner(actor: RequestActor) {
+    const rows = await this.repository.findByOwner(
       resolveOwnerFilterFromActor(actor),
     );
+    return sumProfilePostLikes(rows);
   }
 }

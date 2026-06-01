@@ -15,6 +15,7 @@ import {
   resolveProfileActivityStatus,
   compareActivityDateDesc,
 } from '../../common/utils/activity-date.util';
+import { sumProfilePostLikes } from '../../common/utils/profile-likes.util';
 import type { EventPackageEntitlementDto } from './profile-package.service';
 import { ProfilePackageService } from './profile-package.service';
 
@@ -86,16 +87,14 @@ export class ProfileSummaryService {
     const [
       profile,
       events,
-      likes,
-      posts,
+      ownerPosts,
       completedPosts,
       buddyUserIds,
       packageData,
     ] = await Promise.all([
       this.userService.resolveProfile(actor),
       this.registrationRepository.countByOwner(filter),
-      this.postService.sumLikesByOwner(actor),
-      this.postService.countByOwner(actor),
+      this.postService.listByOwner(actor),
       this.postService.countCompletedByOwner(actor),
       viewerId
         ? this.userBlockService.loadBuddyUserIds(viewerId)
@@ -116,6 +115,9 @@ export class ProfileSummaryService {
       isOwner,
       Boolean(ownerExternalId && buddyUserIds.has(ownerExternalId)),
     );
+
+    const posts = ownerPosts.length;
+    const likes = sumProfilePostLikes(ownerPosts);
 
     const summary: ProfileSummaryDto = {
       name: profile?.name ?? 'Zara Chen',

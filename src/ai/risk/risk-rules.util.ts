@@ -20,7 +20,7 @@ export interface RuleMatchResult {
 const SPAM_PATTERN = /(.)\1{8,}/;
 
 const SCALPER_PATTERN =
-  /黄牛|加价|代抢|出票|倒票|溢价|高价收|高价出|抢票代|囤票|转手|转票/i;
+  /黄牛|加价|代抢|出票|倒票|溢价|高价收|高价出|抢票代|囤票|转手|转票|票务/i;
 
 const TRAFFIC_DIVERSION_PATTERN =
   /(?:微信|vx|wx|wxid|加我|私聊|二维码|引流|进群|代购群|扫码|加v|加V|➕v|➕V)/i;

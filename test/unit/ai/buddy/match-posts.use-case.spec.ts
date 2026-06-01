@@ -54,7 +54,7 @@ describe('MatchPostsFromChatUseCase profile dedupe', () => {
       messages: [{ role: 'user', content: '帮我看看有没有类似的组队帖' }],
       input: '帮我看看有没有类似的组队帖',
       activityLegacyId: 9,
-      userId: 'user-1',
+      actor: toRequestActor('user-1'),
       fromIntentRouter: true,
       profileSync,
     });
@@ -66,5 +66,42 @@ describe('MatchPostsFromChatUseCase profile dedupe', () => {
         rankingWeights: profileSync.weights,
       }),
     );
+  });
+
+  it('skips profile LLM for activity shortcut chips from intent router', async () => {
+    const syncProfileFromChat = jest.fn();
+    const match = jest.fn().mockResolvedValue({ items: [], degraded: false });
+    const resolveActivity = jest.fn().mockResolvedValue({
+      legacyId: 9,
+      name: '风暴电音节',
+      code: 'storm',
+      date: '06/13-14',
+    });
+
+    const useCase = new MatchPostsFromChatUseCase(
+      { match } as never,
+      { syncProfileFromChat } as never,
+      {
+        isMatchExistingPostsIntent: () => false,
+        resolveActivity,
+        buildRecommendedPostCards: jest.fn().mockResolvedValue([]),
+        filterMatchesForShortcutTag: jest.fn().mockResolvedValue([]),
+      } as never,
+      {
+        assertCanMatch: jest.fn().mockResolvedValue(undefined),
+        consumeIfMatched: jest.fn().mockResolvedValue(undefined),
+      } as never,
+    );
+
+    await useCase.execute({
+      messages: [{ role: 'user', content: '组队队友' }],
+      input: '组队队友',
+      activityLegacyId: 9,
+      actor: toRequestActor('user-1'),
+      fromIntentRouter: true,
+    });
+
+    expect(syncProfileFromChat).not.toHaveBeenCalled();
+    expect(match).toHaveBeenCalled();
   });
 });

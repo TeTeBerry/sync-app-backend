@@ -4,7 +4,12 @@ export const DEMO_OWNER_USER_ID = DEFAULT_PROFILE_EXTERNAL_ID;
 export const DEMO_OWNER_DISPLAY_NAME = 'Zara Chen';
 
 /** 活动详情页 AI 快捷标签（与前端 aiShortcutTags.ts 对齐） */
-export const AI_SHORTCUT_TAGS = ['组队队友', '住宿同行', '拼车同行'] as const;
+export const AI_SHORTCUT_TAGS = [
+  '组队队友',
+  '住宿同行',
+  '拼车同行',
+  '拼卡',
+] as const;
 
 /** 历史标签，仍视为快捷标签以兼容旧会话 */
 const LEGACY_AI_SHORTCUT_TAGS = ['拼套票', '拼房同行'] as const;
@@ -15,6 +20,7 @@ export const AI_SHORTCUT_TAG_ALIASES: Record<
   (typeof AI_SHORTCUT_TAGS)[number]
 > = {
   帮我dd: '组队队友',
+  拼车: '拼卡',
 };
 
 export function normalizeAiShortcutInput(input: string): string {

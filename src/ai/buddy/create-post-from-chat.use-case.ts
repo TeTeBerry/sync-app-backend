@@ -43,10 +43,9 @@ import {
 } from '../gate/recommend-gate.util';
 import { BuddyContextService } from './buddy-context.service';
 import {
-  buildTicketResaleScopeIntro,
-  isActivityScopeMismatch,
-  isTicketResaleIntent,
-} from './activity-scope-guard.util';
+  isTicketPublishProhibited,
+  TICKET_PUBLISH_FORBIDDEN_MESSAGE,
+} from './ticket-publish-policy.util';
 import type { PostIntentCreateAttempt } from './buddy.types';
 import { inferPostContentTypes } from '../../modules/partner/utils/post-content-type.util';
 import { TRAVEL_SAFETY_TIP } from '../risk/risk-sanitize.util';
@@ -237,46 +236,25 @@ export class CreatePostFromChatUseCase {
       };
     }
 
+    const publishDraftBody = publishConfirmReady
+      ? resolvePublishDraftBody({ messages, conversationState })
+      : null;
+    const bodyForTicketCheck =
+      publishDraftBody?.trim() || trimmedInput;
     if (
-      hasActivity &&
-      !publishConfirmReady &&
-      !isShortcutWithActivity &&
-      !inSelfPostCollectFlow &&
-      isTicketResaleIntent(trimmedInput)
+      bodyForTicketCheck &&
+      isTicketPublishProhibited({
+        body: bodyForTicketCheck,
+        tags: this.buddyContext.resolveTags(
+          trimmedInput,
+          parsed?.tags,
+          bodyForTicketCheck,
+        ),
+      })
     ) {
-      const activityLabel = resolvedActivity?.name ?? '活动';
-      const mismatch = isActivityScopeMismatch(trimmedInput, {
-        name: resolvedActivity?.name,
-        date: resolvedActivity?.date,
-      });
-      const draftBody = trimmedInput;
-      const draftTags = this.buddyContext.resolveTags(
-        trimmedInput,
-        parsed?.tags,
-        draftBody,
-      );
-
-      onStateChange?.(
-        enterPublishConfirmState({
-          activityLegacyId: resolvedActivity?.legacyId,
-          draftBody,
-        }),
-      );
-
       return {
-        kind: 'pending_confirmation',
-        activityLegacyId: resolvedActivity?.legacyId,
-        replyText: [
-          buildTicketResaleScopeIntro(activityLabel, mismatch),
-          '',
-          buildPublishConfirmReply({
-            activityLabel,
-            draftBody,
-            shortcutTag: '转票',
-            draftTags,
-          }),
-        ].join('\n'),
-        draftBody,
+        kind: 'rejected',
+        replyText: TICKET_PUBLISH_FORBIDDEN_MESSAGE,
       };
     }
 
@@ -335,10 +313,6 @@ export class CreatePostFromChatUseCase {
       return null;
     }
 
-    const publishDraftBody = publishConfirmReady
-      ? resolvePublishDraftBody({ messages, conversationState })
-      : null;
-
     const body = await this.buddyContext.buildPostBody({
       ctx,
       input: trimmedInput,
@@ -360,13 +334,13 @@ export class CreatePostFromChatUseCase {
       ? await this.riskAgent.assessImage({
           body,
           image: image.trim(),
-          userId: actor.clientUserId,
+          actor,
           activityLegacyId: resolvedActivity?.legacyId,
         })
       : await this.riskAgent.assess(
           {
             body,
-            userId: actor.clientUserId,
+            actor,
             activityLegacyId: resolvedActivity?.legacyId,
           },
           { rulesOnly: useRulesOnlyRisk },
@@ -379,7 +353,7 @@ export class CreatePostFromChatUseCase {
 
     if (!risk.publishable) {
       void this.noticeAgent.notifyPostRejected(
-        actor.clientUserId,
+        actor,
         resolvedActivity?.legacyId,
         risk.reason,
       );
@@ -400,6 +374,15 @@ export class CreatePostFromChatUseCase {
     const departureCity = ctx.city?.trim();
 
     const contentTypes = inferPostContentTypes({ tags, body: finalBody });
+
+    if (
+      isTicketPublishProhibited({ body: finalBody, tags, contentTypes })
+    ) {
+      return {
+        kind: 'rejected',
+        replyText: TICKET_PUBLISH_FORBIDDEN_MESSAGE,
+      };
+    }
 
     const dto: CreatePostDto = {
       body: finalBody,

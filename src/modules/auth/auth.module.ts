@@ -4,6 +4,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { WechatAccessTokenService } from './wechat-access-token.service';
+import { WechatContentSecurityService } from './wechat-content-security.service';
 import { WechatMiniService } from './wechat-mini.service';
 
 @Module({
@@ -22,7 +24,17 @@ import { WechatMiniService } from './wechat-mini.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, WechatMiniService],
-  exports: [AuthService, JwtModule],
+  providers: [
+    AuthService,
+    WechatMiniService,
+    WechatAccessTokenService,
+    WechatContentSecurityService,
+  ],
+  exports: [
+    AuthService,
+    JwtModule,
+    WechatAccessTokenService,
+    WechatContentSecurityService,
+  ],
 })
 export class AuthModule {}

@@ -20,8 +20,7 @@ export class MatchAgent {
 
     const result = await this.matchService.search({
       criteria,
-      userId: input.userId,
-      authorName: input.authorName,
+      actor: input.actor,
       profile: input.profile,
       rankingWeights: input.rankingWeights,
       limit: input.limit ?? BUDDY_RECOMMEND_LIMIT,

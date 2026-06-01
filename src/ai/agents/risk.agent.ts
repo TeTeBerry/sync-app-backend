@@ -11,7 +11,6 @@ import {
   IPostRepository,
   POST_REPOSITORY,
 } from '../../modules/partner/interfaces/post.repository.interface';
-import { resolveActorUserId } from '../../common/auth/actor-user.util';
 import {
   buildCommentRiskSystemPrompt,
   buildCommentRiskUserPrompt,
@@ -64,20 +63,21 @@ export class RiskAgent {
     const ruleMatch = matchRiskRules(body);
     if (ruleMatch) return fromRuleMatch(ruleMatch);
 
-    const actorUserId = resolveActorUserId(input.userId);
-
-    const isDuplicate = await this.postRepository.existsDuplicateBody(
-      actorUserId,
-      body,
-      input.activityLegacyId,
-    );
-    if (isDuplicate) {
-      return {
-        publishable: false,
-        reason: '你已发布过相同内容的组队帖，请勿重复刷屏或抄袭',
-        violationType: 'duplicate',
-        severity: 'medium',
-      };
+    const actorUserId = input.actor?.resolvedUserId?.trim();
+    if (actorUserId) {
+      const isDuplicate = await this.postRepository.existsDuplicateBody(
+        actorUserId,
+        body,
+        input.activityLegacyId,
+      );
+      if (isDuplicate) {
+        return {
+          publishable: false,
+          reason: '你已发布过相同内容的组队帖，请勿重复刷屏或抄袭',
+          violationType: 'duplicate',
+          severity: 'medium',
+        };
+      }
     }
 
     if (options?.rulesOnly) {
@@ -129,7 +129,7 @@ export class RiskAgent {
 
     const textRisk = await this.assess({
       body: input.body,
-      userId: input.userId,
+      actor: input.actor,
       activityLegacyId: input.activityLegacyId,
     });
     if (!textRisk.publishable) return textRisk;

@@ -21,6 +21,7 @@ import {
   isHomeFestivalShortcutInput,
   resolveHomeFestivalShortcutCode,
 } from '../utils/festival-shortcut.util';
+import { isTravelGuideIntent } from '../utils/activity-guide.util';
 import { shouldSkipActivityScopedBuddyRecommend } from '../buddy/activity-scope-guard.util';
 import { BuddyContextService } from '../buddy/buddy-context.service';
 import {
@@ -144,7 +145,6 @@ export class AiTurnPipeline {
         );
         break;
       case 'create_post':
-      case 'legacy_cascade':
         events = await this.collectBuddyIntentFlow(
           dto,
           fullMessages,
@@ -202,11 +202,12 @@ export class AiTurnPipeline {
     input: string,
     actor: ChatRequestDto['actor'],
   ): Promise<UserProfileSyncResult | null> {
-    if (
-      kind !== 'search_posts' &&
-      kind !== 'create_post' &&
-      kind !== 'legacy_cascade'
-    ) {
+    if (kind !== 'search_posts' && kind !== 'create_post') {
+      return null;
+    }
+
+    // Activity shortcut chips (组队队友/拼车等) only need post search — skip profile LLM.
+    if (kind === 'search_posts' && isAiShortcutTag(input)) {
       return null;
     }
 
@@ -387,6 +388,7 @@ export class AiTurnPipeline {
   ): boolean {
     const trimmed = lastInput.trim();
     if (effectiveActivityLegacyId == null) return true;
+    if (isTravelGuideIntent(trimmed)) return true;
     if (
       shouldSkipActivityScopedBuddyRecommend(trimmed, effectiveActivityLegacyId)
     ) {

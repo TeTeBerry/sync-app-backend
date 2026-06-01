@@ -5,8 +5,7 @@ export type ChatIntentKind =
   | 'search_posts'
   | 'create_post'
   | 'quick_reply'
-  | 'activity_enter'
-  | 'legacy_cascade';
+  | 'activity_enter';
 
 export type ChatIntentSource = 'rule' | 'llm' | 'default';
 

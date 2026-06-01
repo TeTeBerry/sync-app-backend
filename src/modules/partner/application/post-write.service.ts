@@ -1,4 +1,14 @@
-import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+import {
+  isTicketPublishProhibited,
+  TICKET_PUBLISH_FORBIDDEN_MESSAGE,
+} from '../../../ai/buddy/ticket-publish-policy.util';
 import { ActivityService } from '../../activity/activity.service';
 import { ChromaService } from '../../../ai/rag/chroma.service';
 import type { PostStatus } from '../../../database/schemas/post.schema';
@@ -55,6 +65,16 @@ export class PostWriteService {
     let status: PostStatus = 'recruiting';
     let bodyToSave = dto.body.trim();
     let rejectionReason: string | undefined;
+
+    if (
+      isTicketPublishProhibited({
+        body: bodyToSave,
+        tags: dto.tags,
+        contentTypes: dto.contentTypes,
+      })
+    ) {
+      throw new BadRequestException(TICKET_PUBLISH_FORBIDDEN_MESSAGE);
+    }
 
     if (!options?.skipRiskCheck) {
       const risk = await this.postModeration.assessPost({

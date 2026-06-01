@@ -29,8 +29,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
   };
 
   const baseParams = {
-    userId: 'user-1',
-    userName: 'Test User',
+    actor: toRequestActor('user-1', 'Test User'),
     activityLegacyId: 9,
     conversationState: enterRecommendGateState({
       activityLegacyId: 9,

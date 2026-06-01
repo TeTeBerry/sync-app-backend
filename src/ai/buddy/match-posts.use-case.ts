@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
+import {
+  isAiShortcutTag,
+  normalizeAiShortcutInput,
+} from '../../common/utils/demo-owner.util';
 import { MatchAgent, UserProfileAgent } from '../agents';
 import type { UserProfileSyncResult } from '../agents/user-profile.agent';
 import type { ConversationState } from '../conversation';
@@ -78,15 +81,21 @@ export class MatchPostsFromChatUseCase {
     }
 
     const ctx = parseConversationContext(messages, trimmed);
+    const isShortcutSearch = isAiShortcutTag(trimmed);
 
     // Profile sync and activity lookup are independent — run in parallel when possible.
+    const skipProfileLlm =
+      fromIntentRouter && isShortcutSearch && profileSync === undefined;
+
     const [resolvedProfileSync, resolvedActivity] = await Promise.all([
       profileSync ??
-        this.userProfileAgent.syncProfileFromChat({
-          messages,
-          input: trimmed,
-          actor,
-        }),
+        (skipProfileLlm
+          ? Promise.resolve(null)
+          : this.userProfileAgent.syncProfileFromChat({
+              messages,
+              input: trimmed,
+              actor,
+            })),
       params.preResolvedActivity != null
         ? Promise.resolve(params.preResolvedActivity)
         : this.buddyContext.resolveActivity(ctx, activityLegacyId),
@@ -123,8 +132,7 @@ export class MatchPostsFromChatUseCase {
       activityCode: resolvedActivity.code ?? '',
       activityLegacyId: resolvedActivity.legacyId,
       limit: BUDDY_RECOMMEND_LIMIT,
-      userId: actor.clientUserId,
-      authorName: actor.displayName,
+      actor,
       profile: resolvedProfileSync?.profile,
       rankingWeights: resolvedProfileSync?.weights,
     });
@@ -136,7 +144,15 @@ export class MatchPostsFromChatUseCase {
       matches = filterMatchesByBuddySearchHint(matches, hintDisplay, hintKind);
     }
 
+    if (isShortcutSearch) {
+      matches = await this.buddyContext.filterMatchesForShortcutTag(
+        matches,
+        trimmed,
+      );
+    }
+
     if (!matches.length) {
+      const emptyShortcutLabel = normalizeAiShortcutInput(trimmed);
       return {
         matches: [],
         postCards: [],
@@ -144,11 +160,17 @@ export class MatchPostsFromChatUseCase {
         degraded: matchResult.degraded,
         replyText: isStructuredSearch
           ? buildZoneMatchEmptyReply(activityLabel, hintDisplay, hintKind)
-          : [
-              `暂未找到「${activityLabel}」相关的组队帖。`,
-              '',
-              MATCH_EMPTY_POST_BODY_PROMPT,
-            ].join('\n'),
+          : isShortcutSearch
+            ? [
+                `暂未找到「${activityLabel}」下其他用户发布的「${emptyShortcutLabel}」相关帖子。`,
+                '',
+                MATCH_EMPTY_POST_BODY_PROMPT,
+              ].join('\n')
+            : [
+                `暂未找到「${activityLabel}」相关的组队帖。`,
+                '',
+                MATCH_EMPTY_POST_BODY_PROMPT,
+              ].join('\n'),
       };
     }
 
@@ -168,19 +190,37 @@ export class MatchPostsFromChatUseCase {
     );
     const cardsOnly = postCards.length > 0;
 
+    const shortcutLabel = isShortcutSearch
+      ? normalizeAiShortcutInput(trimmed)
+      : '';
+
     const replyText = isStructuredSearch
       ? buildZoneMatchFoundReply(activityLabel, hintDisplay, lines, hintKind, {
           cardsOnly,
         })
-      : cardsOnly
-        ? buildMatchRecommendCardsIntro(activityLabel, matches.length)
-        : [
-            `在「${activityLabel}」下找到 ${matches.length} 条相近组队帖：`,
-            '',
-            ...lines,
-            '',
-            '可在活动详情页查看帖子并申请加入。',
-          ].join('\n');
+      : isShortcutSearch
+        ? cardsOnly
+          ? buildMatchRecommendCardsIntro(
+              activityLabel,
+              matches.length,
+              `「${shortcutLabel}」`,
+            )
+          : [
+              `在「${activityLabel}」找到 ${matches.length} 条其他用户发布的「${shortcutLabel}」相关帖子：`,
+              '',
+              ...lines,
+              '',
+              '可在活动详情页查看帖子并申请加入。',
+            ].join('\n')
+        : cardsOnly
+          ? buildMatchRecommendCardsIntro(activityLabel, matches.length)
+          : [
+              `在「${activityLabel}」下找到 ${matches.length} 条相近组队帖：`,
+              '',
+              ...lines,
+              '',
+              '可在活动详情页查看帖子并申请加入。',
+            ].join('\n');
 
     return {
       matches: matches.map((match) => ({

@@ -61,14 +61,14 @@ export class IntentRouterService {
       return cached.result;
     }
 
-    const activityMeta = await this.loadActivityMeta(params.activityLegacyId);
-
     const ruleHit = resolveChatIntentFastPath(trimmed, params);
     if (ruleHit) {
       await this.intentCache.set(cacheKey, ruleHit);
       this.logIntentResolve(params, ruleHit, Date.now() - startedAt, 'miss');
       return ruleHit;
     }
+
+    const activityMeta = await this.loadActivityMeta(params.activityLegacyId);
 
     const llmHit = await this.resolveByLlm(
       params.messages,

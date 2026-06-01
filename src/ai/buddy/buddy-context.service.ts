@@ -34,6 +34,8 @@ import { ChatMessageDto } from '../presentation/chat-message.dto';
 import { isTicketResaleIntent } from './activity-scope-guard.util';
 import { inferIntentTagsFromText } from './infer-intent-tags.util';
 import { extractActivityLookupKeywords } from './resolve-activity-from-chat.util';
+import type { MatchedPostItem } from '../agents/agent.types';
+import { postMatchesShortcutTag } from '../match/shortcut-post-match.util';
 
 interface ResolvedActivity {
   legacyId?: number;
@@ -184,6 +186,24 @@ export class BuddyContextService {
       return normalized;
     }
     return `${normalized.slice(0, BUDDY_RECOMMEND_CARD_SNIPPET_MAX)}…`;
+  }
+
+  /** 快捷标签检索：只保留对应类型（如拼卡/拼车）的他人帖子 */
+  async filterMatchesForShortcutTag(
+    matches: MatchedPostItem[],
+    shortcut: string,
+  ): Promise<MatchedPostItem[]> {
+    if (!isAiShortcutTag(shortcut) || !matches.length) {
+      return matches;
+    }
+
+    const resolved = await Promise.all(
+      matches.map(async (match) => {
+        const post = await this.postService.findPostById(match.postId);
+        return post && postMatchesShortcutTag(post, shortcut) ? match : null;
+      }),
+    );
+    return resolved.filter((match): match is MatchedPostItem => match != null);
   }
 
   async buildRecommendedPostCards(

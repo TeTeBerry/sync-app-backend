@@ -102,6 +102,10 @@ export default () => ({
         process.env.WECHAT_MINI_APP_SECRET ?? process.env.WX_APP_SECRET,
         '',
       ),
+      /** When true and AppId/Secret set, POST /uploads/images runs wxa/img_sec_check. */
+      contentSecurityEnabled:
+        cleanEnv(process.env.WECHAT_CONTENT_SECURITY_ENABLED, 'true') ===
+        'true',
     },
   },
 
@@ -109,6 +113,10 @@ export default () => ({
     minConfidence: parseFloat(
       cleanEnv(process.env.WRISTBAND_VERIFY_MIN_CONFIDENCE, '0.72'),
     ),
+  },
+
+  tencentMap: {
+    key: cleanEnv(process.env.TENCENT_MAP_KEY ?? process.env.QQ_MAP_KEY),
   },
 
   itinerary: {
