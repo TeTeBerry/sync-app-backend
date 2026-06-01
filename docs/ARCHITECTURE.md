@@ -107,7 +107,7 @@ AppModule
 |----|------|
 | 测试金字塔 | `IntentRouterService` / `AiService` recommend_gate 流 / `PostWriteService` Chroma 降级 |
 | 可观测性 | `X-Request-Id` + `logAiTurn` 结构化日志；`GET /api/health` 报告 mongodb / redis / chroma |
-| 编排澄清 | `orchestration/legacy/` 下 `AgentRuntimeService` / `AgentToolsService`（发帖走 Buddy use cases；DeterministicReply 仍用） |
+| 编排澄清 | `orchestration/agent-runtime.service` + `agent-tools.service`（发帖走 Buddy use cases；DeterministicReply 仍用） |
 | Post 互动 | `PostInteractionService`（赞/评/申请）；`PostWriteService`（写帖 + Chroma） |
 | 流式事件 | `message_complete`（完整回复，前端可跳过打字机） |
 

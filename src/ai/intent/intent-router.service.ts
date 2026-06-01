@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ActivityService } from '../../modules/activity/activity.service';
 import { LlmService } from '../llm/llm.service';
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 import {
   formatActivityCatalogDayLabels,
   inferBuddySearchHintKind,

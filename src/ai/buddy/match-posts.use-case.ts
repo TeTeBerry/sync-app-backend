@@ -8,7 +8,7 @@ import { MatchAgent, UserProfileAgent } from '../agents';
 import type { UserProfileSyncResult } from '../agents/user-profile.agent';
 import type { ConversationState } from '../conversation';
 import type { BuddySearchHintPayload } from '../intent/chat-intent.types';
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 import { parseConversationContext } from '../conversation/conversation-context.parser';
 import {
   buildMatchRecommendCardsIntro,

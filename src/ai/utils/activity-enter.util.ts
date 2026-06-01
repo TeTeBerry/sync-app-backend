@@ -1,5 +1,5 @@
 import type { Activity } from '../../database/schemas/activity.schema';
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 import type { RecommendedActivityCard } from '../presentation/ai-stream-event.view';
 import {
   ACTIVITY_PICKER_PROMPT,

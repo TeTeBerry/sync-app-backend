@@ -1,5 +1,5 @@
 import { applyFlowSwitch } from './conversation-state.flow';
-import type { ConversationState } from './conversation-state.types';
+import type { ConversationState } from '../../shared/chat/conversation-state.types';
 
 export { applyFlowSwitch, resetToIdle } from './conversation-state.flow';
 

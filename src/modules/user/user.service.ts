@@ -18,6 +18,9 @@ import { UpdateUserMeDto } from './dto/update-user-me.dto';
 import { ChromaService } from '../../ai/rag/chroma.service';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { toRequestActor } from '../../common/auth/actor-query.util';
+import type { StoredAuthorRecord } from './stored-author.types';
+
+export type { StoredAuthorRecord } from './stored-author.types';
 
 export interface UserMeDto {
   id: string;
@@ -84,9 +87,16 @@ export class UserService implements OnModuleInit {
     return this.repository.findDefaultProfile();
   }
 
-  /** Resolve profile for stored userId/authorName (comments, notifications). */
+  /** Resolve profile for stored post/comment author fields. */
+  resolveProfileFromStoredAuthor(record: StoredAuthorRecord) {
+    return this.resolveProfile(
+      toRequestActor(record.userId, record.authorName),
+    );
+  }
+
+  /** @deprecated Use `resolveProfileFromStoredAuthor`. */
   resolveProfileFromLegacy(userId?: string, authorName?: string) {
-    return this.resolveProfile(toRequestActor(userId, authorName));
+    return this.resolveProfileFromStoredAuthor({ userId, authorName });
   }
 
   private resolveExternalId(actor: RequestActor): string {

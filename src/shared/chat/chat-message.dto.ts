@@ -23,10 +23,10 @@ export class ChatMessageImageContextDto {
 
 export class ChatMessageDto {
   @IsIn(['user', 'assistant', 'system'])
-  role: 'user' | 'assistant' | 'system';
+  role!: 'user' | 'assistant' | 'system';
 
   @IsString()
-  content: string;
+  content!: string;
 
   @IsOptional()
   @ValidateNested()

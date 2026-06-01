@@ -1,4 +1,4 @@
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 
 export const ACTIVITY_PICKER_PROMPT = '你想参加哪个活动？';
 

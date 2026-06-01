@@ -34,14 +34,3 @@ export function resolveDemoActorFromQuery(
 export function resolveRequestActor(req: Request): RequestActor {
   return req.actor ?? resolveDemoActorFromQuery(req.query);
 }
-
-/** @deprecated Services accept `RequestActor` directly. */
-export function actorToLegacyQuery(actor: RequestActor): {
-  userId: string;
-  authorName: string;
-} {
-  return {
-    userId: actor.clientUserId,
-    authorName: actor.displayName,
-  };
-}

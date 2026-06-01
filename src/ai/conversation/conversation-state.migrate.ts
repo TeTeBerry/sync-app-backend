@@ -1,4 +1,4 @@
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 import {
   RECOMMEND_GATE_MARKER,
   SELF_POST_COLLECT_BODY_MARKER,
@@ -13,7 +13,7 @@ import {
   enterPublishConfirmState,
   enterRecommendGateState,
   type ConversationState,
-} from './conversation-state.types';
+} from '../../shared/chat/conversation-state.types';
 
 function findLastAssistantMessage(
   messages: ChatMessageDto[],

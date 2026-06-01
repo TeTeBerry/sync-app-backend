@@ -5,7 +5,7 @@ import {
   createIdleState,
   enterCollectPostBodyState,
   type ConversationState,
-} from './conversation-state.types';
+} from '../../shared/chat/conversation-state.types';
 
 export function resetToIdle(): ConversationState {
   return createIdleState();

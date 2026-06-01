@@ -17,7 +17,7 @@ import {
   enterCollectPostBodyState,
   enterPublishConfirmState,
 } from '../conversation';
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 import {
   getMissingBuddyFields,
   isFindBuddyThread,

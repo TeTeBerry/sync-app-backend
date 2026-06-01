@@ -79,7 +79,7 @@ export class PostWriteService {
     if (!options?.skipRiskCheck) {
       const risk = await this.postModeration.assessPost({
         body: bodyToSave,
-        userId: actor.clientUserId,
+        actor,
         activityLegacyId: dto.activityLegacyId ?? activity?.legacyId,
       });
       if (!risk.publishable) {

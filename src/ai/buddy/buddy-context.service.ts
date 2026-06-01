@@ -30,7 +30,7 @@ import {
   isAwaitingPublishConfirmation,
   isPublishConfirmIntent,
 } from '../publish/publish-confirm.util';
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 import { isTicketResaleIntent } from './activity-scope-guard.util';
 import { inferIntentTagsFromText } from './infer-intent-tags.util';
 import { extractActivityLookupKeywords } from './resolve-activity-from-chat.util';

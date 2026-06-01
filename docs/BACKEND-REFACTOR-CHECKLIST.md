@@ -18,6 +18,7 @@
 | P5 | 文档 + BFF 清理 | ✅ 完成 |
 | P0-H5 | Dev JWT + Guard | ✅ JwtAuthGuard + RequestActor；生产设 `AUTH_ALLOW_DEMO=false` |
 | P0-Wx | 微信登录 | ⬜ 更晚 |
+| **P2-debt** | **可迭代技术债**（契约 / import / 废弃路径） | ✅ 完成（2025-06） |
 
 ---
 
@@ -122,6 +123,55 @@
 - [x] Profile BFF 委托清晰（`ProfileSummaryService` → Activity / Post / User）
 - [x] `db:reset` / seed 文档化（见 `README.md`）
 - [ ] E2E：发帖 → 点赞（可选）
+
+---
+
+## P2 — 可迭代技术债 ✅（2025-06）
+
+> 与上文 **「P2 — Partner 互动」** 不同：此处指架构评审后的**维护性 / 契约收敛**，可分批迭代。  
+> 对照：[`AUTH.md`](AUTH.md)、[`ARCHITECTURE.md`](ARCHITECTURE.md)、前端 [`API.md`](../../sync-app/docs/API.md)。
+
+### 身份与废弃路径
+
+- [x] 删除未使用的 `actorToLegacyQuery`（`resolve-request-actor.ts`）
+- [x] 删除 `jwt-actor.middleware.ts`（`JwtActorMiddleware` 别名）；文档改为 `JwtAuthGuard` + `req.actor`
+- [x] 删除 `ai/utils/actor-user.util.ts`（统一 `common/auth/actor-user.util`）
+- [x] 删除 `orchestration/legacy/*` 重导出；编排真源为 `orchestration/agent-runtime.service`
+
+### Chat 契约与 import
+
+- [x] `ChatMessageDto`：AI 层 import 迁至 `src/shared/chat`（不再引 `ai/presentation/chat-message.dto`）
+- [x] `ai/conversation`：`conversation-state.types` 重导出移除；`index` 导出 `shared/chat` 类型
+- [x] 删除 `conversation-state.bootstrap.ts`（仅用 `migrateConversationStateFromHistory`）
+- [x] 保留 `ai/presentation/chat-message.dto.ts` 薄 re-export（兼容外部旧路径）
+
+### Partner / 历史作者 / 风控
+
+- [x] `StoredAuthorRecord` + `UserService.resolveProfileFromStoredAuthor`（评论头像等）
+- [x] `PostModerationPort`：`assessPost` / `assessComment` 收 `RequestActor`
+- [x] `RiskCommentInput`：`actor?`（与发帖 `RiskAgentInput` 一致）
+- [x] `resolveProfileFromLegacy` 保留为 `@deprecated` 别名（无新调用方）
+
+### 前端对齐（同批）
+
+- [x] `requestContext` / `API.md`：Bearer → `JwtAuthGuard`，不再描述 Query 注入 actor
+- [x] `postOwnership`：有 `authorUserId` 时只比 id；`authorName` 仅无 id 旧数据回退
+
+### 仍有意保留 / 未做
+
+| 项 | 说明 |
+|----|------|
+| `resolveProfileFromLegacy` | 无调用方可删别名 |
+| `GET /posts/:id/comments` 列表 | 产品未消费 |
+| 生产 `AUTH_ALLOW_DEMO=false` | P0 运维验收，非代码债 |
+| 微信 E2E、JWT-only smoke | P0 验收 |
+| 跨模块 E2E（发帖 → 点赞 → 通知） | P3 / 可选 |
+
+### 关联已完成（架构 P1，非本表 P2 Partner）
+
+- [x] `X-Activity-Id` → `activity-context.middleware` / `req.scopedActivityLegacyId`
+- [x] `ConversationState` + `@sync/chat-contracts` + contract test
+- [x] 出行攻略出发地：后端单源，前端只信 `place-suggestions` API
 
 ---
 

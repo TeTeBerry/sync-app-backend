@@ -1,4 +1,4 @@
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 
 export const RECENT_TURN_LIMIT = 12;
 

@@ -228,17 +228,18 @@ export class PostInteractionService {
 
     const items = await Promise.all(
       topLevel.map(async (comment) => {
-        const profile = await this.userService.resolveProfileFromLegacy(
-          comment.userId,
-          comment.authorName,
-        );
+        const profile = await this.userService.resolveProfileFromStoredAuthor({
+          userId: comment.userId,
+          authorName: comment.authorName,
+        });
         const childRows = repliesByParent.get(String(comment._id)) ?? [];
         const replies = await Promise.all(
           childRows.map(async (reply) => {
-            const replyProfile = await this.userService.resolveProfileFromLegacy(
-              reply.userId,
-              reply.authorName,
-            );
+            const replyProfile =
+              await this.userService.resolveProfileFromStoredAuthor({
+                userId: reply.userId,
+                authorName: reply.authorName,
+              });
             return PostMapper.toCommentItem({
               ...reply,
               authorAvatar: replyProfile?.avatar,
@@ -279,7 +280,7 @@ export class PostInteractionService {
 
     const risk = await this.postModeration.assessComment({
       body: trimmed,
-      userId: actor.clientUserId,
+      actor,
       postId: id,
     });
     if (!risk.publishable) {

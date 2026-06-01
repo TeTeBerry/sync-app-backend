@@ -1,7 +1,7 @@
 import {
   enterPublishConfirmState,
   enterRecommendGateState,
-} from '@src/ai/conversation/conversation-state.types';
+} from '@src/shared/chat/conversation-state.types';
 import {
   applyFlowSwitch,
   resetToIdle,

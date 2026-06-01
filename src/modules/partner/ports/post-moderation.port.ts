@@ -1,13 +1,15 @@
+import type { RequestActor } from '../../../common/auth/request-actor.types';
+
 export interface PostModerationInput {
   body: string;
-  userId?: string;
+  actor: RequestActor;
   activityLegacyId?: number;
   image?: string;
 }
 
 export interface PostCommentModerationInput {
   body: string;
-  userId?: string;
+  actor: RequestActor;
   postId?: string;
 }
 

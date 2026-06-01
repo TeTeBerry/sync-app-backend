@@ -1,5 +1,5 @@
 import type { ConversationState } from '../conversation';
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 
 /** 助手已展示搭子推荐、等待用户决定是否自己发帖 */
 export const RECOMMEND_GATE_MARKER = '【先推荐搭子】';

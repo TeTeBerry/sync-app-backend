@@ -8,7 +8,7 @@ import {
   type ConversationContext,
 } from '../conversation/conversation-context.parser';
 import { formatConversationHistory } from '../utils/conversation-format.util';
-import type { ChatMessageDto } from '../presentation/chat-message.dto';
+import type { ChatMessageDto } from '../../shared/chat';
 import type { AgentParseInput, ParsedPostDraft } from './agent.types';
 
 interface LlmTextParseResult {

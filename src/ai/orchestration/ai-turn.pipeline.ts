@@ -32,7 +32,7 @@ import type { ConversationState } from '../conversation';
 import { enterCollectPostBodyState } from '../conversation';
 import { logAiTurn } from '../utils/log-ai-turn.util';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 import type { AiStreamEvent } from '../presentation/ai-stream-event.view';
 import {
   AiStreamEventBuilder,

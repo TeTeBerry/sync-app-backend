@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 import type { ConversationState } from '../conversation';
 import { ConversationStateService } from './conversation-state.service';
 import { AgentRuntimeService } from './agent-runtime.service';

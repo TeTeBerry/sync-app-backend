@@ -8,7 +8,7 @@ import {
   isDeclineRecommendationsIntent,
   RECOMMEND_GATE_SUGGESTED_REPLIES,
 } from '@src/ai/gate/recommend-gate.util';
-import { ChatMessageDto } from '@src/ai/presentation/chat-message.dto';
+import { ChatMessageDto } from '@src/shared/chat';
 import {
   enterCollectPostBodyState,
   enterRecommendGateState,

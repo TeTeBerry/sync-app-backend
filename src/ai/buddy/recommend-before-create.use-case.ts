@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import type { ConversationState } from '../conversation';
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 import { parseConversationContext } from '../conversation/conversation-context.parser';
 import { isExplicitReplacePostIntent } from '../conversation/existing-post-guidance.util';
 import {

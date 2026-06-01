@@ -1,4 +1,4 @@
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 import type { ConversationState } from '../conversation';
 import {
   getMissingBuddyFields,

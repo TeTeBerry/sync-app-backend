@@ -1,5 +1,5 @@
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 
 /** TextParseAgent / ImageParseAgent 结构化输出 */
 export interface ParsedPostDraft {
@@ -91,7 +91,7 @@ export interface RiskAgentInput {
 
 export interface RiskCommentInput {
   body: string;
-  userId?: string;
+  actor?: RequestActor;
   postId?: string;
 }
 

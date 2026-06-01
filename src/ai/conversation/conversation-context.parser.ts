@@ -1,4 +1,4 @@
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import {
   ACTIVITY_PICKER_PROMPT,

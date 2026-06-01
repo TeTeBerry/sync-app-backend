@@ -8,7 +8,7 @@ import {
   PUBLISH_CONFIRM_PROMPT_MARKER,
 } from '@src/ai/publish/publish-confirm.util';
 import { SELF_POST_COLLECT_BODY_MARKER } from '@src/ai/gate/recommend-gate.util';
-import type { ChatMessageDto } from '@src/ai/presentation/chat-message.dto';
+import type { ChatMessageDto } from '@src/shared/chat';
 
 describe('migrateConversationStateFromHistory', () => {
   it('migrates recommend_gate from assistant marker', () => {

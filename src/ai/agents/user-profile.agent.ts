@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { UserService } from '../../modules/user/user.service';
 import { LlmService } from '../llm/llm.service';
-import { ChatMessageDto } from '../presentation/chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat';
 import { formatConversationHistory } from '../utils/conversation-format.util';
 import {
   buildKnownFactsSummary,

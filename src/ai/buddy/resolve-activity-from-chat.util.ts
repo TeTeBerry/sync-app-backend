@@ -1,7 +1,7 @@
 import { parseConversationContext } from '../conversation/conversation-context.parser';
 import { resolveActivityId } from '../utils/activity-id.util';
 import { resolveFestivalBrand } from '../rag/festival-brand.util';
-import type { ChatMessageDto } from '../presentation/chat-message.dto';
+import type { ChatMessageDto } from '../../shared/chat';
 
 /** Extra tokens → catalog lookup keyword (name / alias / code). */
 const EVENT_HINT_KEYWORDS: Array<{ pattern: RegExp; keyword: string }> = [
