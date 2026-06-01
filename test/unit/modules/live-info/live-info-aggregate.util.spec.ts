@@ -18,11 +18,11 @@ describe('aggregateLiveInfoSummary', () => {
     ]);
 
     expect(result.certCount).toBe(2);
-    expect(result.summary.find((r) => r.categoryId === 'entry_crowd')?.score).toBe(
-      3,
-    );
-    expect(result.summary.find((r) => r.categoryId === 'smoke_drink')?.score).toBe(
-      3,
-    );
+    expect(
+      result.summary.find((r) => r.categoryId === 'entry_crowd')?.score,
+    ).toBe(3);
+    expect(
+      result.summary.find((r) => r.categoryId === 'smoke_drink')?.score,
+    ).toBe(3);
   });
 });

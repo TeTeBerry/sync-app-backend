@@ -46,7 +46,10 @@ export class AgentRuntimeService {
 
       const plannedToolCalls = handler.getPlannedToolCalls?.(ctx) ?? [];
       const stateProgression = handler.getStateProgression?.(ctx) ?? null;
-      const toolResults = await this.agentToolsService.executeAll(ctx, plannedToolCalls);
+      const toolResults = await this.agentToolsService.executeAll(
+        ctx,
+        plannedToolCalls,
+      );
 
       const runtimeCtx: ReplyContext = {
         ...ctx,

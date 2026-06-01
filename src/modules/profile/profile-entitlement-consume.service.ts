@@ -184,7 +184,8 @@ export class ProfileEntitlementConsumeService {
     limits: ReturnType<typeof getPackageTierDefinition>['limits'];
     usage: EventEntitlementUsage;
   } | null> {
-    const activity = await this.activityService.findByLegacyId(activityLegacyId);
+    const activity =
+      await this.activityService.findByLegacyId(activityLegacyId);
     if (!activity) {
       throw new NotFoundException(`Activity not found: ${activityLegacyId}`);
     }
@@ -223,11 +224,12 @@ export class ProfileEntitlementConsumeService {
       throw new BadRequestException('activityLegacyId is required');
     }
 
-    const entitlement = await this.profilePackageService.getEntitlementForActivity(
-      userId,
-      authorName,
-      activityLegacyId,
-    );
+    const entitlement =
+      await this.profilePackageService.getEntitlementForActivity(
+        userId,
+        authorName,
+        activityLegacyId,
+      );
     if (!entitlement) {
       throw new BadRequestException('Entitlement not found for activity');
     }

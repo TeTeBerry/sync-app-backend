@@ -21,8 +21,6 @@ describe('AppModule (e2e)', () => {
   });
 
   it('/api/home (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/api/home')
-      .expect(200);
+    return request(app.getHttpServer()).get('/api/home').expect(200);
   });
 });

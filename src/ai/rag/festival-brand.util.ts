@@ -112,7 +112,9 @@ function regionHint(text: string): 'thailand' | 'china' | undefined {
 }
 
 /** Resolve a festival brand from free-text event name or keyword */
-export function resolveFestivalBrand(text: string): FestivalBrandMatch | undefined {
+export function resolveFestivalBrand(
+  text: string,
+): FestivalBrandMatch | undefined {
   const trimmed = text.trim();
   if (!trimmed) return undefined;
 
@@ -120,18 +122,23 @@ export function resolveFestivalBrand(text: string): FestivalBrandMatch | undefin
   const compact = compactText(trimmed);
   const region = regionHint(trimmed);
 
-  let best: { brand: FestivalBrand; matchedKeyword: string; score: number } | undefined;
+  let best:
+    | { brand: FestivalBrand; matchedKeyword: string; score: number }
+    | undefined;
 
   for (const brand of FESTIVAL_BRANDS) {
     if (brand.code === 'edc' && region === 'thailand') continue;
     if (brand.code === 'edc-thailand' && region === 'china') continue;
-    if (brand.code === 'edc' && /vac|vision|colour|珠海|hilton|希尔顿/.test(lower)) {
+    if (
+      brand.code === 'edc' &&
+      /vac|vision|colour|珠海|hilton|希尔顿/.test(lower)
+    ) {
       continue;
     }
     if (
       (brand.code === 'edc' || brand.code === 'edc-thailand') &&
       !/edc/.test(compact) &&
-      !brand.aliases.some(alias => alias === 'edc' && compact.includes('edc'))
+      !brand.aliases.some((alias) => alias === 'edc' && compact.includes('edc'))
     ) {
       continue;
     }
@@ -156,7 +163,9 @@ export function resolveFestivalBrand(text: string): FestivalBrandMatch | undefin
     }
   }
 
-  return best ? { brand: best.brand, matchedKeyword: best.matchedKeyword } : undefined;
+  return best
+    ? { brand: best.brand, matchedKeyword: best.matchedKeyword }
+    : undefined;
 }
 
 /** Extract city/venue hint from event title (e.g. 深圳站) */

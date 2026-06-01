@@ -14,7 +14,11 @@ export function isInformalPostBodyInput(input: string): boolean {
   if (isExplicitReplacePostIntent(text)) return false;
   if (isAiShortcutTag(text) || isExactQuickReply(text)) return false;
 
-  if (/(有人吗|有没有人|有没有\s*搭子|看看|搜一下|查一下|类似的|相似的)/.test(text)) {
+  if (
+    /(有人吗|有没有人|有没有\s*搭子|看看|搜一下|查一下|类似的|相似的)/.test(
+      text,
+    )
+  ) {
     return false;
   }
 
@@ -50,8 +54,7 @@ export function buildExistingPostGuidanceReply(params: {
   fromSelfPostIntent?: boolean;
 }): string {
   const { activityLabel, postBody, supplement, fromSelfPostIntent } = params;
-  const snippet =
-    postBody.length > 80 ? `${postBody.slice(0, 80)}…` : postBody;
+  const snippet = postBody.length > 80 ? `${postBody.slice(0, 80)}…` : postBody;
 
   const lines: string[] = [];
 

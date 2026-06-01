@@ -10,11 +10,17 @@ import {
 
 jest.mock('chromadb', () => require('../../mocks/chromadb'));
 
-jest.mock('@langchain/core/documents', () => require('../../mocks/langchain-documents'));
+jest.mock('@langchain/core/documents', () =>
+  require('../../mocks/langchain-documents'),
+);
 
-jest.mock('@langchain/core/messages', () => require('../../mocks/langchain-messages'));
+jest.mock('@langchain/core/messages', () =>
+  require('../../mocks/langchain-messages'),
+);
 
-jest.mock('@langchain/community/chat_models/alibaba_tongyi', () => require('../../mocks/alibaba-tongyi'));
+jest.mock('@langchain/community/chat_models/alibaba_tongyi', () =>
+  require('../../mocks/alibaba-tongyi'),
+);
 
 jest.mock('@src/ai/llm/llm.service', () => ({
   LlmService: mockLlmService,
@@ -51,9 +57,12 @@ import { PUBLISH_CONFIRM_SUGGESTED_REPLIES } from '@src/ai/publish/publish-confi
 import { PUBLISH_CONFIRM_PROMPT_MARKER } from '@src/ai/publish/publish-confirm.util';
 
 async function collectEvents(
-  generator: AsyncGenerator<import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent>,
+  generator: AsyncGenerator<
+    import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent
+  >,
 ) {
-  const events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[] = [];
+  const events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[] =
+    [];
   for await (const event of generator) {
     events.push(event);
   }
@@ -69,7 +78,9 @@ describe('AiService buddy flow', () => {
     saveTurn: jest.fn().mockResolvedValue('msg-1'),
   };
   const agenticReplyService = {
-    resolveConversationState: jest.fn().mockReturnValue({ version: 1, flow: 'idle' }),
+    resolveConversationState: jest
+      .fn()
+      .mockReturnValue({ version: 1, flow: 'idle' }),
     resolve: jest.fn(),
   };
   const postIntentService = {
@@ -91,7 +102,9 @@ describe('AiService buddy flow', () => {
     resolveActivityLegacyIdFromChat: jest.fn().mockResolvedValue(undefined),
   };
   const activityService = {
-    findByCode: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+    findByCode: jest
+      .fn()
+      .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
     matchActivity: jest.fn().mockResolvedValue(null),
   };
 
@@ -114,7 +127,10 @@ describe('AiService buddy flow', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    chatService.getSession.mockResolvedValue({ history: [], conversationState: null });
+    chatService.getSession.mockResolvedValue({
+      history: [],
+      conversationState: null,
+    });
     chatService.mergeChatHistory.mockImplementation(
       (_stored: unknown, incoming: unknown[]) => incoming,
     );
@@ -148,10 +164,12 @@ describe('AiService buddy flow', () => {
       ),
     );
 
-    const errorEvent = events.find(e => e.type === 'error');
+    const errorEvent = events.find((e) => e.type === 'error');
     expect(errorEvent).toBeDefined();
-    expect(errorEvent?.type === 'error' && errorEvent.message).toContain('匹配次数');
-    expect(events.some(e => e.type === 'done')).toBe(false);
+    expect(errorEvent?.type === 'error' && errorEvent.message).toContain(
+      '匹配次数',
+    );
+    expect(events.some((e) => e.type === 'done')).toBe(false);
   });
 
   it.each([
@@ -160,20 +178,33 @@ describe('AiService buddy flow', () => {
       input: '组队队友',
       intentKind: 'search_posts' as const,
       matchResult: {
-        postCards: [{ postId: 'p1', snippet: '找搭子', authorName: 'A', eventTitle: '风暴' }],
+        postCards: [
+          {
+            postId: 'p1',
+            snippet: '找搭子',
+            authorName: 'A',
+            eventTitle: '风暴',
+          },
+        ],
         activityLabel: '风暴电音节',
         replyText: 'found',
         matches: [],
         degraded: false,
       } satisfies PostIntentMatchResult,
       expectCreate: false,
-      assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
-        expect(events.some(e => e.type === 'post_recommendations')).toBe(true);
-        expect(events.some(e => e.type === 'suggested_replies')).toBe(true);
-        const delta = events.find(e => e.type === 'delta');
-        expect(delta && 'content' in delta && delta.content.includes(RECOMMEND_GATE_MARKER)).toBe(
+      assert: (
+        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
+      ) => {
+        expect(events.some((e) => e.type === 'post_recommendations')).toBe(
           true,
         );
+        expect(events.some((e) => e.type === 'suggested_replies')).toBe(true);
+        const delta = events.find((e) => e.type === 'delta');
+        expect(
+          delta &&
+            'content' in delta &&
+            delta.content.includes(RECOMMEND_GATE_MARKER),
+        ).toBe(true);
       },
     },
     {
@@ -188,13 +219,19 @@ describe('AiService buddy flow', () => {
         degraded: false,
       } satisfies PostIntentMatchResult,
       expectCreate: false,
-      assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
-        expect(events.some(e => e.type === 'post_recommendations')).toBe(false);
-        expect(events.some(e => e.type === 'suggested_replies')).toBe(true);
-        const delta = events.find(e => e.type === 'delta');
-        expect(delta && 'content' in delta && delta.content.includes(RECOMMEND_GATE_MARKER)).toBe(
-          true,
+      assert: (
+        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
+      ) => {
+        expect(events.some((e) => e.type === 'post_recommendations')).toBe(
+          false,
         );
+        expect(events.some((e) => e.type === 'suggested_replies')).toBe(true);
+        const delta = events.find((e) => e.type === 'delta');
+        expect(
+          delta &&
+            'content' in delta &&
+            delta.content.includes(RECOMMEND_GATE_MARKER),
+        ).toBe(true);
       },
     },
     {
@@ -212,9 +249,11 @@ describe('AiService buddy flow', () => {
         flow: 'recommend_gate' as const,
         gate: { activityLegacyId: 9, shownPostIds: ['p1'], empty: false },
       },
-      assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
-        expect(events.some(e => e.type === 'post_created')).toBe(false);
-        const complete = events.find(e => e.type === 'message_complete');
+      assert: (
+        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
+      ) => {
+        expect(events.some((e) => e.type === 'post_created')).toBe(false);
+        const complete = events.find((e) => e.type === 'message_complete');
         expect(
           complete &&
             'content' in complete &&
@@ -227,7 +266,14 @@ describe('AiService buddy flow', () => {
       input: '13号 A区 dd',
       intentKind: 'search_posts' as const,
       matchResult: {
-        postCards: [{ postId: 'p1', snippet: '长帖文'.repeat(20), authorName: 'A', eventTitle: '风暴' }],
+        postCards: [
+          {
+            postId: 'p1',
+            snippet: '长帖文'.repeat(20),
+            authorName: 'A',
+            eventTitle: '风暴',
+          },
+        ],
         activityLabel: '风暴电音节',
         replyText: '不应使用',
         matches: [],
@@ -245,14 +291,22 @@ describe('AiService buddy flow', () => {
         flow: 'collect_post_body' as const,
         publishDraft: { activityLegacyId: 9, fromSelfPost: true },
       },
-      assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
+      assert: (
+        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
+      ) => {
         expect(postIntentService.tryMatchPostsFromChat).not.toHaveBeenCalled();
-        expect(postIntentService.tryProactiveRecommendBeforeCreate).not.toHaveBeenCalled();
-        expect(events.some(e => e.type === 'post_recommendations')).toBe(false);
-        expect(events.some(e => e.type === 'post_created')).toBe(true);
-        const complete = events.find(e => e.type === 'message_complete');
         expect(
-          complete && 'content' in complete && complete.content.includes('已为你发布'),
+          postIntentService.tryProactiveRecommendBeforeCreate,
+        ).not.toHaveBeenCalled();
+        expect(events.some((e) => e.type === 'post_recommendations')).toBe(
+          false,
+        );
+        expect(events.some((e) => e.type === 'post_created')).toBe(true);
+        const complete = events.find((e) => e.type === 'message_complete');
+        expect(
+          complete &&
+            'content' in complete &&
+            complete.content.includes('已为你发布'),
         ).toBe(true);
       },
     },
@@ -261,7 +315,14 @@ describe('AiService buddy flow', () => {
       input: '13号 dd 一个女生',
       intentKind: 'create_post' as const,
       matchResult: {
-        postCards: [{ postId: 'p1', snippet: '找搭子', authorName: 'A', eventTitle: '风暴' }],
+        postCards: [
+          {
+            postId: 'p1',
+            snippet: '找搭子',
+            authorName: 'A',
+            eventTitle: '风暴',
+          },
+        ],
         activityLabel: '风暴电音节',
         replyText: 'found',
         matches: [],
@@ -279,11 +340,17 @@ describe('AiService buddy flow', () => {
         flow: 'collect_post_body' as const,
         publishDraft: { activityLegacyId: 9 },
       },
-      assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
-        expect(postIntentService.tryProactiveRecommendBeforeCreate).not.toHaveBeenCalled();
-        expect(events.some(e => e.type === 'post_recommendations')).toBe(false);
-        expect(events.some(e => e.type === 'post_created')).toBe(true);
-        const complete = events.find(e => e.type === 'message_complete');
+      assert: (
+        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
+      ) => {
+        expect(
+          postIntentService.tryProactiveRecommendBeforeCreate,
+        ).not.toHaveBeenCalled();
+        expect(events.some((e) => e.type === 'post_recommendations')).toBe(
+          false,
+        );
+        expect(events.some((e) => e.type === 'post_created')).toBe(true);
+        const complete = events.find((e) => e.type === 'message_complete');
         expect(
           complete &&
             'content' in complete &&
@@ -309,11 +376,15 @@ describe('AiService buddy flow', () => {
         flow: 'collect_post_body' as const,
         publishDraft: { activityLegacyId: 9, fromSelfPost: true },
       },
-      assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
-        expect(events.some(e => e.type === 'post_created')).toBe(true);
-        const complete = events.find(e => e.type === 'message_complete');
+      assert: (
+        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
+      ) => {
+        expect(events.some((e) => e.type === 'post_created')).toBe(true);
+        const complete = events.find((e) => e.type === 'message_complete');
         expect(
-          complete && 'content' in complete && complete.content.includes('已为你发布'),
+          complete &&
+            'content' in complete &&
+            complete.content.includes('已为你发布'),
         ).toBe(true);
       },
     },
@@ -334,9 +405,11 @@ describe('AiService buddy flow', () => {
         flow: 'recommend_gate' as const,
         gate: { activityLegacyId: 9, shownPostIds: ['p1'], empty: false },
       },
-      assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
-        expect(events.some(e => e.type === 'conversation_patch')).toBe(true);
-        const complete = events.find(e => e.type === 'message_complete');
+      assert: (
+        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
+      ) => {
+        expect(events.some((e) => e.type === 'conversation_patch')).toBe(true);
+        const complete = events.find((e) => e.type === 'message_complete');
         expect(
           complete &&
             'content' in complete &&
@@ -346,8 +419,7 @@ describe('AiService buddy flow', () => {
     },
     {
       name: 'ASOT HK ticket in Storm activity → skip recommend gate',
-      input:
-        '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
+      input: '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
       intentKind: 'create_post' as const,
       matchResult: null,
       createResult: {
@@ -362,10 +434,16 @@ describe('AiService buddy flow', () => {
           '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
       } satisfies PostIntentCreateAttempt,
       expectCreate: true,
-      assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
-        expect(postIntentService.tryProactiveRecommendBeforeCreate).not.toHaveBeenCalled();
-        expect(events.some(e => e.type === 'post_recommendations')).toBe(false);
-        const complete = events.find(e => e.type === 'message_complete');
+      assert: (
+        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
+      ) => {
+        expect(
+          postIntentService.tryProactiveRecommendBeforeCreate,
+        ).not.toHaveBeenCalled();
+        expect(events.some((e) => e.type === 'post_recommendations')).toBe(
+          false,
+        );
+        const complete = events.find((e) => e.type === 'message_complete');
         expect(
           complete &&
             'content' in complete &&
@@ -392,10 +470,14 @@ describe('AiService buddy flow', () => {
         flow: 'publish_confirm' as const,
         publishDraft: { activityLegacyId: 9, draftBody: '草稿' },
       },
-      assert: (events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[]) => {
-        expect(postIntentService.tryProactiveRecommendBeforeCreate).not.toHaveBeenCalled();
+      assert: (
+        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
+      ) => {
+        expect(
+          postIntentService.tryProactiveRecommendBeforeCreate,
+        ).not.toHaveBeenCalled();
         expect(postIntentService.tryMatchPostsFromChat).not.toHaveBeenCalled();
-        expect(events.some(e => e.type === 'post_created')).toBe(true);
+        expect(events.some((e) => e.type === 'post_created')).toBe(true);
       },
     },
   ])(
@@ -440,8 +522,12 @@ describe('AiService buddy flow', () => {
       );
 
       postIntentService.tryMatchPostsFromChat.mockResolvedValue(matchResult);
-      postIntentService.tryProactiveRecommendBeforeCreate.mockResolvedValue(matchResult);
-      postIntentService.tryCreatePostFromChat.mockResolvedValue(createResult ?? null);
+      postIntentService.tryProactiveRecommendBeforeCreate.mockResolvedValue(
+        matchResult,
+      );
+      postIntentService.tryCreatePostFromChat.mockResolvedValue(
+        createResult ?? null,
+      );
 
       const events = await collectEvents(
         service.streamChat(
@@ -457,8 +543,8 @@ describe('AiService buddy flow', () => {
       }
 
       assert(events);
-      expect(events.some(e => e.type === 'message_complete')).toBe(true);
-      expect(events.some(e => e.type === 'done')).toBe(true);
+      expect(events.some((e) => e.type === 'message_complete')).toBe(true);
+      expect(events.some((e) => e.type === 'done')).toBe(true);
     },
   );
 });

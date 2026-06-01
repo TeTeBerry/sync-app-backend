@@ -9,7 +9,10 @@ import {
   RECOMMEND_GATE_SUGGESTED_REPLIES,
 } from '@src/ai/gate/recommend-gate.util';
 import { ChatMessageDto } from '@src/ai/presentation/chat-message.dto';
-import { enterCollectPostBodyState, enterRecommendGateState } from '@src/ai/conversation';
+import {
+  enterCollectPostBodyState,
+  enterRecommendGateState,
+} from '@src/ai/conversation';
 
 describe('recommend-gate.util', () => {
   it('detects decline to self-post intents', () => {
@@ -32,9 +35,7 @@ describe('recommend-gate.util', () => {
   });
 
   it('does not treat gate as active before assistant marker', () => {
-    const messages: ChatMessageDto[] = [
-      { role: 'user', content: '帮我dd' },
-    ];
+    const messages: ChatMessageDto[] = [{ role: 'user', content: '帮我dd' }];
     expect(isAwaitingRecommendationsGate(messages)).toBe(false);
   });
 

@@ -8,7 +8,10 @@ export interface AgentTool {
   /** Unique tool identifier, e.g. 'post.create' */
   readonly name: string;
   /** Execute the tool with the given context and arguments */
-  execute(ctx: ReplyContext, args?: Record<string, unknown>): Promise<Record<string, unknown> | void>;
+  execute(
+    ctx: ReplyContext,
+    args?: Record<string, unknown>,
+  ): Promise<Record<string, unknown> | void>;
 }
 
 /**

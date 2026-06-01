@@ -25,7 +25,9 @@ export interface IActivityRegistrationRepository {
     filter: ActivityRegistrationQueryFilter,
     activityLegacyId: number,
   ): Promise<ActivityRegistrationRecord | null>;
-  create(input: CreateActivityRegistrationInput): Promise<ActivityRegistrationRecord>;
+  create(
+    input: CreateActivityRegistrationInput,
+  ): Promise<ActivityRegistrationRecord>;
   deleteByOwnerAndActivity(
     filter: ActivityRegistrationQueryFilter,
     activityLegacyId: number,

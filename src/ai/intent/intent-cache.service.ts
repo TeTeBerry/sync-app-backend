@@ -43,7 +43,10 @@ export class IntentCacheService {
         ? String(params.activityLegacyId)
         : '0';
     const imagePart = params.hasImage ? '1' : '0';
-    const inputHash = createHash('sha256').update(input).digest('hex').slice(0, 16);
+    const inputHash = createHash('sha256')
+      .update(input)
+      .digest('hex')
+      .slice(0, 16);
 
     return `ai:intent:v1:${sessionId}:${activityPart}:${imagePart}:${inputHash}`;
   }

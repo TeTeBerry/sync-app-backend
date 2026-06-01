@@ -8,7 +8,9 @@ import type { IPostModerationPort } from '@src/modules/partner/ports/post-modera
 
 jest.mock('chromadb', () => require('../../../../mocks/chromadb'));
 
-jest.mock('@langchain/core/documents', () => require('../../../../mocks/langchain-documents'));
+jest.mock('@langchain/core/documents', () =>
+  require('../../../../mocks/langchain-documents'),
+);
 
 describe('PostWriteService', () => {
   const repository = {
@@ -91,6 +93,6 @@ describe('PostWriteService', () => {
     expect(repository.create).toHaveBeenCalled();
     expect(chromaService.syncPostEmbeddingStatus).toHaveBeenCalled();
 
-    await new Promise(resolve => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
   });
 });

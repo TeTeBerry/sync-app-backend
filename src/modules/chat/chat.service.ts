@@ -102,7 +102,7 @@ export class ChatService {
   ): ChatMessageDto['recommendedPosts'] | undefined {
     if (!posts?.length) return undefined;
     const normalized = posts.filter(
-      post =>
+      (post) =>
         typeof post?.postId === 'string' &&
         post.postId.trim() &&
         typeof post?.snippet === 'string' &&
@@ -155,7 +155,7 @@ export class ChatService {
   ): ChatMessageDto['suggestedReplies'] | undefined {
     if (!replies?.length) return undefined;
     const normalized = replies
-      .map(reply => reply?.trim())
+      .map((reply) => reply?.trim())
       .filter((reply): reply is string => Boolean(reply));
     return normalized.length ? normalized : undefined;
   }
@@ -165,7 +165,7 @@ export class ChatService {
   ): ChatMessageDto[] {
     if (!history?.length) return [];
     return history
-      .map(item => this.normalizeMessage(item))
+      .map((item) => this.normalizeMessage(item))
       .filter((item): item is ChatMessageDto => Boolean(item));
   }
 
@@ -190,7 +190,7 @@ export class ChatService {
 
     const lastIncomingUser = [...incomingNorm]
       .reverse()
-      .find(message => message.role === 'user');
+      .find((message) => message.role === 'user');
     if (!lastIncomingUser) return storedNorm;
 
     const lastStored = storedNorm[storedNorm.length - 1];
@@ -238,10 +238,9 @@ export class ChatService {
       turns.push(current);
     }
 
-    return turns.slice(-maxTurns).reduce<ChatMessageDto[]>(
-      (acc, turn) => acc.concat(turn),
-      [],
-    );
+    return turns
+      .slice(-maxTurns)
+      .reduce<ChatMessageDto[]>((acc, turn) => acc.concat(turn), []);
   }
 
   private normalizeConversationState(raw: unknown): ConversationState {
@@ -265,7 +264,9 @@ export class ChatService {
     const history = this.normalizeHistory(
       doc?.history as Array<Partial<ChatMessageDto>> | undefined,
     );
-    let conversationState = this.normalizeConversationState(doc?.conversationState);
+    let conversationState = this.normalizeConversationState(
+      doc?.conversationState,
+    );
 
     if (!conversationState.flow && history.length > 0) {
       const migrated = migrateConversationStateFromHistory(history);

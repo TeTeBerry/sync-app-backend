@@ -1,9 +1,11 @@
+import { formatMinutesAsClock } from '../../../common/utils/day-time.util';
 import type { ArtistPerformance } from '../../../database/schemas/artist-performance.schema';
 import type {
   ItineraryDay,
   ItineraryTimelineItem,
 } from '../../../database/schemas/user-itinerary.schema';
 import type { FestivalSession } from '../../../database/schemas/festival-session.schema';
+import { parseTimeToMinutes } from './time-minutes.util';
 
 const DOT_ROTATION = ['pink', 'cyan', 'purple'] as const;
 
@@ -44,19 +46,19 @@ export function buildFallbackItinerary(input: {
       ? [
           input.primaryDateKey,
           ...input.sessions
-            .map(s => s.dateKey)
-            .filter(k => k !== input.primaryDateKey),
+            .map((s) => s.dateKey)
+            .filter((k) => k !== input.primaryDateKey),
         ]
-      : input.sessions.map(s => s.dateKey).sort();
+      : input.sessions.map((s) => s.dateKey).sort();
 
   const uniqueDateKeys = [...new Set(dateKeys)];
 
   const days: ItineraryDay[] = [];
 
   for (const dateKey of uniqueDateKeys) {
-    const session = input.sessions.find(s => s.dateKey === dateKey);
+    const session = input.sessions.find((s) => s.dateKey === dateKey);
     const dayPerfs = input.performances
-      .filter(p => p.dateKey === dateKey && selected.has(p.artistId))
+      .filter((p) => p.dateKey === dateKey && selected.has(p.artistId))
       .sort((a, b) => a.startMinutes - b.startMinutes);
 
     if (dayPerfs.length === 0) continue;
@@ -65,13 +67,10 @@ export function buildFallbackItinerary(input: {
 
     if (dateKey === input.primaryDateKey || dateKey === uniqueDateKeys[0]) {
       const firstStart = dayPerfs[0]?.startTime ?? '18:00';
-      const [h, m] = firstStart.split(':').map(Number);
-      const departMinutes = Math.max(0, (h ?? 18) * 60 + (m ?? 0) - 90);
-      const departH = Math.floor(departMinutes / 60);
-      const departM = departMinutes % 60;
+      const departMinutes = Math.max(0, parseTimeToMinutes(firstStart) - 90);
       items.push({
         id: `depart-${dateKey}`,
-        time: `${String(departH).padStart(2, '0')}:${String(departM).padStart(2, '0')}`,
+        time: formatMinutesAsClock(departMinutes),
         dotColor: 'pink',
         title: '出发前往场馆',
         subtitle: '建议提前 1.5 小时出发，预留安检与入场时间',

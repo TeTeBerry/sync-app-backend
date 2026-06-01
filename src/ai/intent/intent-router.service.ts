@@ -52,7 +52,12 @@ export class IntentRouterService {
 
     const cached = await this.intentCache.get(cacheKey);
     if (cached) {
-      this.logIntentResolve(params, cached.result, Date.now() - startedAt, cached.layer);
+      this.logIntentResolve(
+        params,
+        cached.result,
+        Date.now() - startedAt,
+        cached.layer,
+      );
       return cached.result;
     }
 
@@ -76,7 +81,10 @@ export class IntentRouterService {
       return llmHit;
     }
 
-    const fallback: ResolvedChatIntent = { kind: 'create_post', source: 'default' };
+    const fallback: ResolvedChatIntent = {
+      kind: 'create_post',
+      source: 'default',
+    };
     await this.intentCache.set(cacheKey, fallback);
     this.logIntentResolve(params, fallback, Date.now() - startedAt, 'miss');
     return fallback;
@@ -105,7 +113,8 @@ export class IntentRouterService {
     if (activityLegacyId == null || Number.isNaN(activityLegacyId)) {
       return undefined;
     }
-    const activity = await this.activityService.findByLegacyId(activityLegacyId);
+    const activity =
+      await this.activityService.findByLegacyId(activityLegacyId);
     if (!activity) return undefined;
     return {
       name: activity.name,
@@ -126,7 +135,7 @@ export class IntentRouterService {
 
     const contextLines = messages
       .slice(-6) // aligned with CHAT_LLM_CONTEXT_TURNS
-      .map(m => `[${m.role}] ${m.content.trim()}`)
+      .map((m) => `[${m.role}] ${m.content.trim()}`)
       .join('\n');
 
     const parsed = await this.llmService.invokeJson<LlmIntentRouteResult>(

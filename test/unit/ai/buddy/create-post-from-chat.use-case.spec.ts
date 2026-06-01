@@ -4,7 +4,9 @@ jest.mock('@langchain/core/documents', () =>
   require('../../../mocks/langchain-documents'),
 );
 
-jest.mock('@langchain/core/messages', () => require('../../../mocks/langchain-messages'));
+jest.mock('@langchain/core/messages', () =>
+  require('../../../mocks/langchain-messages'),
+);
 
 jest.mock('@langchain/community/chat_models/alibaba_tongyi', () =>
   require('../../../mocks/alibaba-tongyi'),
@@ -53,9 +55,17 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
   }) {
     const buildPostBody =
       overrides?.buildPostBody ??
-      jest.fn().mockImplementation(async ({ parsedBody, input }: { parsedBody?: string; input: string }) =>
-        parsedBody?.trim() || input.trim(),
-      );
+      jest
+        .fn()
+        .mockImplementation(
+          async ({
+            parsedBody,
+            input,
+          }: {
+            parsedBody?: string;
+            input: string;
+          }) => parsedBody?.trim() || input.trim(),
+        );
     const createPost =
       overrides?.createPost ?? jest.fn().mockResolvedValue({ id: 'post-new' });
 
@@ -81,16 +91,18 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
         shouldAttemptPostCreation: () => true,
         resolveActivity: jest.fn().mockResolvedValue(activity),
         buildPostBody,
-        buildRecommendedPostCards: jest.fn().mockImplementation(
-          async (matches: Array<{ postId: string; snippet: string }>) =>
-            matches.map(match => ({
-              postId: match.postId,
-              snippet: match.snippet,
-              authorName: 'Test User',
-              eventTitle: activity.name ?? '活动',
-              activityLegacyId: activity.legacyId,
-            })),
-        ),
+        buildRecommendedPostCards: jest
+          .fn()
+          .mockImplementation(
+            async (matches: Array<{ postId: string; snippet: string }>) =>
+              matches.map((match) => ({
+                postId: match.postId,
+                snippet: match.snippet,
+                authorName: 'Test User',
+                eventTitle: activity.name ?? '活动',
+                activityLegacyId: activity.legacyId,
+              })),
+          ),
         buildRejectionReply: jest.fn(),
         resolveTags: jest.fn().mockReturnValue([]),
       } as never,
@@ -126,7 +138,10 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
   it('publishes immediately when user sends custom body after decline', async () => {
     const buildPostBody = jest
       .fn()
-      .mockImplementation(async ({ parsedBody }: { parsedBody?: string }) => parsedBody?.trim() ?? '');
+      .mockImplementation(
+        async ({ parsedBody }: { parsedBody?: string }) =>
+          parsedBody?.trim() ?? '',
+      );
     const useCase = createUseCase({ buildPostBody });
     const onStateChange = jest.fn();
     const customBody = '13号A区求组队，3人从上海出发';
@@ -170,7 +185,10 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
     const informalBody = '13号 dd 一个女生';
     const buildPostBody = jest
       .fn()
-      .mockImplementation(async ({ parsedBody }: { parsedBody?: string }) => parsedBody?.trim() ?? '');
+      .mockImplementation(
+        async ({ parsedBody }: { parsedBody?: string }) =>
+          parsedBody?.trim() ?? '',
+      );
     const useCase = createUseCase({ buildPostBody });
     const onStateChange = jest.fn();
 
@@ -232,7 +250,10 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
     const customBody = '13号 A区 dd';
     const buildPostBody = jest
       .fn()
-      .mockImplementation(async ({ parsedBody }: { parsedBody?: string }) => parsedBody?.trim() ?? '');
+      .mockImplementation(
+        async ({ parsedBody }: { parsedBody?: string }) =>
+          parsedBody?.trim() ?? '',
+      );
     const useCase = createUseCase({
       buildPostBody,
       createPost,
@@ -278,7 +299,10 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
     const customBody = '13号 A区 dd';
     const buildPostBody = jest
       .fn()
-      .mockImplementation(async ({ parsedBody }: { parsedBody?: string }) => parsedBody?.trim() ?? '');
+      .mockImplementation(
+        async ({ parsedBody }: { parsedBody?: string }) =>
+          parsedBody?.trim() ?? '',
+      );
     const useCase = createUseCase({
       buildPostBody,
       createPost,
@@ -347,7 +371,10 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
   it('publishes cpdd verbatim after repost flow', async () => {
     const buildPostBody = jest
       .fn()
-      .mockImplementation(async ({ parsedBody }: { parsedBody?: string }) => parsedBody?.trim() ?? '');
+      .mockImplementation(
+        async ({ parsedBody }: { parsedBody?: string }) =>
+          parsedBody?.trim() ?? '',
+      );
     const useCase = createUseCase({ buildPostBody });
     const onStateChange = jest.fn();
 
@@ -388,7 +415,10 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
   it('publishes cpdd when stuck in clarify_buddy state', async () => {
     const buildPostBody = jest
       .fn()
-      .mockImplementation(async ({ parsedBody }: { parsedBody?: string }) => parsedBody?.trim() ?? '');
+      .mockImplementation(
+        async ({ parsedBody }: { parsedBody?: string }) =>
+          parsedBody?.trim() ?? '',
+      );
     const useCase = createUseCase({ buildPostBody });
     const onStateChange = jest.fn();
 

@@ -102,7 +102,8 @@ async function bootstrap() {
   app.useGlobalInterceptors(new TransformInterceptor());
 
   const port = process.env.PORT || 3000;
-  const mongoUri = process.env.MONGODB_URI ?? process.env.MONGO_URI ?? '(default)';
+  const mongoUri =
+    process.env.MONGODB_URI ?? process.env.MONGO_URI ?? '(default)';
   const logger = new Logger('Bootstrap');
 
   try {
@@ -125,7 +126,9 @@ async function bootstrap() {
       logger.error('并确保只保留一个后端终端窗口');
     } else {
       logger.error('❌ 服务启动失败:', message);
-      logger.error('提示: 先运行 npm run infra:up 或 npm run dev:all 启动 MongoDB');
+      logger.error(
+        '提示: 先运行 npm run infra:up 或 npm run dev:all 启动 MongoDB',
+      );
     }
     process.exit(1);
   }

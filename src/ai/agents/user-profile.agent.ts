@@ -55,7 +55,9 @@ function normalizeGenres(raw?: string[]): string[] {
     const trimmed = item.trim();
     if (!trimmed) continue;
     const normalized = trimmed.replace(/^#/, '');
-    genres.add(normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase());
+    genres.add(
+      normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase(),
+    );
   }
   return [...genres];
 }
@@ -103,8 +105,14 @@ function profilesEqual(
   const rightCity = right.city?.trim() ?? '';
   if (leftCity !== rightCity) return false;
 
-  const leftGenres = (left?.favorGenres ?? []).map(g => g.toLowerCase()).sort().join(',');
-  const rightGenres = (right.favorGenres ?? []).map(g => g.toLowerCase()).sort().join(',');
+  const leftGenres = (left?.favorGenres ?? [])
+    .map((g) => g.toLowerCase())
+    .sort()
+    .join(',');
+  const rightGenres = (right.favorGenres ?? [])
+    .map((g) => g.toLowerCase())
+    .sort()
+    .join(',');
   if (leftGenres !== rightGenres) return false;
 
   if (Boolean(left?.likeMate) !== Boolean(right.likeMate)) return false;
@@ -171,9 +179,7 @@ export class UserProfileAgent {
       `【已知信息摘要】\n${knownFacts}`,
       history ? `【多轮对话】\n${history}` : '',
       trimmedInput ? `【最新用户消息】${trimmedInput}` : '',
-      existingProfile
-        ? `【已有画像】${JSON.stringify(existingProfile)}`
-        : '',
+      existingProfile ? `【已有画像】${JSON.stringify(existingProfile)}` : '',
     ]
       .filter(Boolean)
       .join('\n\n');
@@ -228,9 +234,9 @@ export class UserProfileAgent {
 
     const hasSignal = Boolean(
       profile.city ||
-        (profile.favorGenres?.length ?? 0) > 0 ||
-        profile.likeMate != null ||
-        profile.budgetLevel,
+      (profile.favorGenres?.length ?? 0) > 0 ||
+      profile.likeMate != null ||
+      profile.budgetLevel,
     );
     if (!hasSignal) return null;
 

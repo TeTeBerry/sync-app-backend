@@ -34,7 +34,9 @@ export function normalizeCityName(value?: string): string | undefined {
   return normalized.length >= 2 ? normalized : undefined;
 }
 
-export function inferDepartureCityFromText(...texts: Array<string | undefined>): string | undefined {
+export function inferDepartureCityFromText(
+  ...texts: Array<string | undefined>
+): string | undefined {
   for (const raw of texts) {
     const text = raw?.trim();
     if (!text) continue;
@@ -66,8 +68,10 @@ export function inferIntentsFromPost(
   if (/拼住宿|拼房|住宿/.test(haystack)) intents.add('lodging');
   if (/组队|搭子|同行|缺\d/.test(haystack)) intents.add('team');
   if (/票|内场|看台|区/.test(haystack)) intents.add('ticket');
-  if (/宵夜|夜宵|吃饭|聚餐|美食|烧烤|火锅|餐厅|吃货/.test(haystack)) intents.add('food');
-  if (/喝酒|蹦迪|派对|afterparty|酒局|酒吧|微醺|\bap\b/.test(haystack)) intents.add('social');
+  if (/宵夜|夜宵|吃饭|聚餐|美食|烧烤|火锅|餐厅|吃货/.test(haystack))
+    intents.add('food');
+  if (/喝酒|蹦迪|派对|afterparty|酒局|酒吧|微醺|\bap\b/.test(haystack))
+    intents.add('social');
 
   if (!intents.size) intents.add('team');
   return [...intents];
@@ -171,11 +175,15 @@ export function buildMatchCriteriaForSearch(params: {
     activityName: params.activityName ?? fromOwner?.activityName,
     activityCode: params.activityCode ?? fromOwner?.activityCode,
     departureCity,
-    eventDate: params.conversation?.eventDate ?? params.activityDate ?? fromOwner?.eventDate,
+    eventDate:
+      params.conversation?.eventDate ??
+      params.activityDate ??
+      fromOwner?.eventDate,
     zone: params.zone ?? fromOwner?.zone,
     headcount: params.conversation?.peopleCount ?? fromOwner?.headcount,
     genderPref: params.conversation?.genderPreference ?? fromOwner?.genderPref,
-    intents: fromOwner?.intents ?? inferIntentsFromPost([], params.userInput ?? ''),
+    intents:
+      fromOwner?.intents ?? inferIntentsFromPost([], params.userInput ?? ''),
     requesterTags: collectRequesterTags(
       fromOwner?.requesterTags,
       params.ownerPost?.tags,
@@ -184,9 +192,7 @@ export function buildMatchCriteriaForSearch(params: {
       params.zone,
     ),
     requesterBody:
-      params.ownerPost?.body?.trim() ??
-      fromOwner?.requesterBody ??
-      undefined,
+      params.ownerPost?.body?.trim() ?? fromOwner?.requesterBody ?? undefined,
     excludePostIds: params.ownerPost?._id
       ? [String(params.ownerPost._id)]
       : undefined,
@@ -238,10 +244,11 @@ export function buildRerankUserNeed(criteria: BuddyMatchCriteria): string {
 
   const structured: string[] = [];
   if (criteria.activityName) structured.push(`活动：${criteria.activityName}`);
-  if (criteria.departureCity) structured.push(`出发地：${criteria.departureCity}`);
+  if (criteria.departureCity)
+    structured.push(`出发地：${criteria.departureCity}`);
   if (criteria.requesterTags?.length) {
     structured.push(
-      `标签：${criteria.requesterTags.map(tag => `#${tag}`).join(' ')}`,
+      `标签：${criteria.requesterTags.map((tag) => `#${tag}`).join(' ')}`,
     );
   }
   if (criteria.intents?.length) {
@@ -275,7 +282,7 @@ export function criteriaToEmbeddingText(criteria: BuddyMatchCriteria): string {
     criteria.headcount ? `${criteria.headcount}人` : '',
     criteria.genderPref,
     criteria.intents?.join(' '),
-    criteria.requesterTags?.map(tag => `#${tag}`).join(' '),
+    criteria.requesterTags?.map((tag) => `#${tag}`).join(' '),
   ];
   return parts.filter(Boolean).join(' ');
 }

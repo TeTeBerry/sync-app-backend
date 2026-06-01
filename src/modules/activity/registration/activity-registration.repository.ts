@@ -18,9 +18,7 @@ function buildOwnerFilter(filter: ActivityRegistrationQueryFilter) {
 }
 
 @Injectable()
-export class ActivityRegistrationRepository
-  implements IActivityRegistrationRepository
-{
+export class ActivityRegistrationRepository implements IActivityRegistrationRepository {
   constructor(
     @InjectModel(ActivityRegistration.name)
     private readonly model: Model<ActivityRegistrationDocument>,
@@ -29,7 +27,10 @@ export class ActivityRegistrationRepository
   async findByOwner(
     filter: ActivityRegistrationQueryFilter,
   ): Promise<ActivityRegistrationRecord[]> {
-    return this.model.find(buildOwnerFilter(filter)).sort({ createdAt: -1 }).lean();
+    return this.model
+      .find(buildOwnerFilter(filter))
+      .sort({ createdAt: -1 })
+      .lean();
   }
 
   async countByOwner(filter: ActivityRegistrationQueryFilter): Promise<number> {
@@ -57,7 +58,7 @@ export class ActivityRegistrationRepository
       .find({ activityLegacyId, status: 'registered' })
       .select('userId')
       .lean();
-    return [...new Set(rows.map(row => row.userId).filter(Boolean))];
+    return [...new Set(rows.map((row) => row.userId).filter(Boolean))];
   }
 
   async deleteByOwnerAndActivity(

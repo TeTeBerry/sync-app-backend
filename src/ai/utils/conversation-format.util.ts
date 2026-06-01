@@ -5,7 +5,7 @@ export const RECENT_TURN_LIMIT = 12;
 export function formatConversationHistory(messages: ChatMessageDto[]): string {
   return messages
     .slice(-RECENT_TURN_LIMIT)
-    .map(message => {
+    .map((message) => {
       const roleLabel =
         message.role === 'assistant'
           ? '助手'

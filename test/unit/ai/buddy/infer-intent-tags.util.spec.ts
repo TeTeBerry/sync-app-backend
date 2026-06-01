@@ -43,8 +43,8 @@ describe('inferIntentTagsFromText', () => {
 
   it('infers ticket content type for折价出票 post (user example)', () => {
     const tags = inferIntentTagsFromText(TICKET_RESALE_EXAMPLE);
-    expect(inferPostContentTypes({ tags, body: TICKET_RESALE_EXAMPLE })).toEqual([
-      'ticket',
-    ]);
+    expect(
+      inferPostContentTypes({ tags, body: TICKET_RESALE_EXAMPLE }),
+    ).toEqual(['ticket']);
   });
 });

@@ -71,16 +71,15 @@ export const INTENT_ROUTER_FEW_SHOTS: Array<{
 ];
 
 export function buildIntentRouterSystemPrompt(): string {
-  const fewShotBlock = INTENT_ROUTER_FEW_SHOTS.map(
-    (ex, i) =>
-      [
-        `示例${i + 1}:`,
-        `用户: ${ex.user}`,
-        ex.activity ? `活动: ${ex.activity}` : '',
-        `→ {"intent":"${ex.intent}"${ex.searchHint ? `,"searchHint":"${ex.searchHint}"` : ''}}`,
-      ]
-        .filter(Boolean)
-        .join('\n'),
+  const fewShotBlock = INTENT_ROUTER_FEW_SHOTS.map((ex, i) =>
+    [
+      `示例${i + 1}:`,
+      `用户: ${ex.user}`,
+      ex.activity ? `活动: ${ex.activity}` : '',
+      `→ {"intent":"${ex.intent}"${ex.searchHint ? `,"searchHint":"${ex.searchHint}"` : ''}}`,
+    ]
+      .filter(Boolean)
+      .join('\n'),
   ).join('\n\n');
 
   return [

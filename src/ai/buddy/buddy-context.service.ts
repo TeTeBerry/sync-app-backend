@@ -55,7 +55,8 @@ export class BuddyContextService {
     llmKeyword?: string,
   ): Promise<ResolvedActivity | null> {
     if (requestLegacyId != null) {
-      const activity = await this.activityService.findByLegacyId(requestLegacyId);
+      const activity =
+        await this.activityService.findByLegacyId(requestLegacyId);
       if (activity) {
         return {
           legacyId: activity.legacyId,
@@ -137,7 +138,11 @@ export class BuddyContextService {
     const parts: string[] = [];
     if (isAiShortcutTag(input)) {
       parts.push(normalizeAiShortcutInput(input));
-    } else if (input && !isShortContextReply(input) && !isExactQuickReply(input)) {
+    } else if (
+      input &&
+      !isShortContextReply(input) &&
+      !isExactQuickReply(input)
+    ) {
       parts.push(input);
     }
 
@@ -203,9 +208,7 @@ export class BuddyContextService {
 
       cards.push({
         postId: match.postId,
-        snippet: this.truncateRecommendSnippet(
-          match.snippet || post.body,
-        ),
+        snippet: this.truncateRecommendSnippet(match.snippet || post.body),
         authorName: post.authorName,
         authorHandle: post.authorHandle,
         authorAvatar: post.authorAvatar,
@@ -231,11 +234,11 @@ export class BuddyContextService {
 
     const reasonHints: Record<string, string> = {
       '内容疑似重复字符 spam': '内容格式异常，请用自然语言重新描述组队需求。',
-      '你已在此活动发布过组队帖':
+      你已在此活动发布过组队帖:
         '你在此活动已有招募中的组队帖。请打开「我的」→ 我的帖子编辑，或在活动详情页查看；若要重发请说「重新发帖」。',
-      '你已发布过相同内容的组队帖':
+      你已发布过相同内容的组队帖:
         '你已经发布过相同内容的帖子，可在个人主页或活动详情页查看。',
-      '内容疑似黄牛倒票或加价引流':
+      内容疑似黄牛倒票或加价引流:
         '平台禁止黄牛倒票、加价出票等行为，请修改后重试。',
       '内容疑似站外引流（如微信导流）':
         '请勿在帖子中引导至微信等站外渠道，请修改后重试。',
@@ -250,7 +253,11 @@ export class BuddyContextService {
     return hint;
   }
 
-  resolveTags(input: string, llmTags?: string[], bodyForIntent?: string): string[] {
+  resolveTags(
+    input: string,
+    llmTags?: string[],
+    bodyForIntent?: string,
+  ): string[] {
     const tags = new Set<string>();
     const sourceText = [bodyForIntent, input].filter(Boolean).join('\n');
 
@@ -284,14 +291,20 @@ export class BuddyContextService {
     }
 
     if (isAwaitingRecommendationsGate(messages, state)) {
-      if (isPublishConfirmIntent(input) || isDeclineRecommendationsIntent(input)) {
+      if (
+        isPublishConfirmIntent(input) ||
+        isDeclineRecommendationsIntent(input)
+      ) {
         return true;
       }
       return Boolean(input.trim());
     }
 
     if (isAwaitingSelfPostBodyCollection(messages, state)) {
-      if (isPublishConfirmIntent(input) || isDeclineRecommendationsIntent(input)) {
+      if (
+        isPublishConfirmIntent(input) ||
+        isDeclineRecommendationsIntent(input)
+      ) {
         return true;
       }
       return Boolean(input.trim());
@@ -313,7 +326,9 @@ export class BuddyContextService {
       return false;
     }
 
-    const userTurns = messages.filter(message => message.role === 'user').length;
+    const userTurns = messages.filter(
+      (message) => message.role === 'user',
+    ).length;
     if (
       activityLegacyId == null &&
       isQuickReplyIntent(input) &&

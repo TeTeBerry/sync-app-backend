@@ -4,17 +4,16 @@ export const DEMO_OWNER_USER_ID = DEFAULT_PROFILE_EXTERNAL_ID;
 export const DEMO_OWNER_DISPLAY_NAME = 'Zara Chen';
 
 /** 活动详情页 AI 快捷标签（与前端 aiShortcutTags.ts 对齐） */
-export const AI_SHORTCUT_TAGS = [
-  '组队队友',
-  '住宿同行',
-  '拼车同行',
-] as const;
+export const AI_SHORTCUT_TAGS = ['组队队友', '住宿同行', '拼车同行'] as const;
 
 /** 历史标签，仍视为快捷标签以兼容旧会话 */
 const LEGACY_AI_SHORTCUT_TAGS = ['拼套票', '拼房同行'] as const;
 
 /** 展示文案别名 → 标准快捷标签（与前端 aiShortcutTags 对齐） */
-export const AI_SHORTCUT_TAG_ALIASES: Record<string, (typeof AI_SHORTCUT_TAGS)[number]> = {
+export const AI_SHORTCUT_TAG_ALIASES: Record<
+  string,
+  (typeof AI_SHORTCUT_TAGS)[number]
+> = {
   帮我dd: '组队队友',
 };
 
@@ -42,7 +41,10 @@ function authorNameMatches(stored: string, client?: string): boolean {
 }
 
 /** 当前客户端是否对应演示账号：仅通过 userId 确认，不通过 authorName 推断 */
-export function isDemoOwnerClient(userId?: string, _authorName?: string): boolean {
+export function isDemoOwnerClient(
+  userId?: string,
+  _authorName?: string,
+): boolean {
   const uid = userId?.trim();
   return uid === DEMO_OWNER_USER_ID;
 }

@@ -5,7 +5,10 @@ import {
   ContentReport,
   ContentReportDocument,
 } from '../../database/schemas/content-report.schema';
-import { DEMO_OWNER_USER_ID, isDemoOwnerClient } from '../../common/utils/demo-owner.util';
+import {
+  DEMO_OWNER_USER_ID,
+  isDemoOwnerClient,
+} from '../../common/utils/demo-owner.util';
 import { CreateReportDto } from './dto/create-report.dto';
 
 function resolveReporterUserId(userId?: string, authorName?: string): string {

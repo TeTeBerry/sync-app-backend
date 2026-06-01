@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ActivityService } from '../../../modules/activity/activity.service';
 import { buildQuickReplyResponse } from '../../utils/quick-reply.handler';
-import type { ReplyContext, ReplyExecutor } from '../../handler-pipeline/handler-pipeline.types';
+import type {
+  ReplyContext,
+  ReplyExecutor,
+} from '../../handler-pipeline/handler-pipeline.types';
 
 @Injectable()
 export class QuickReplyExecutor implements ReplyExecutor {

@@ -11,7 +11,10 @@ import {
 @ValidatorConstraint({ name: 'notDataUrl', async: false })
 class NotDataUrlConstraint implements ValidatorConstraintInterface {
   validate(value: string): boolean {
-    return typeof value === 'string' && !value.trim().toLowerCase().startsWith('data:');
+    return (
+      typeof value === 'string' &&
+      !value.trim().toLowerCase().startsWith('data:')
+    );
   }
 
   defaultMessage(): string {

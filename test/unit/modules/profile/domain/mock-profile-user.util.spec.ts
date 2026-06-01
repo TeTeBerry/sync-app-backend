@@ -26,9 +26,9 @@ describe('mock-profile-user.util', () => {
   });
 
   it('maps Zara author name to demo-zara for package entitlements', () => {
-    expect(
-      resolveProfilePackageOwnerId('random-session-id', 'Zara Chen'),
-    ).toBe(DEMO_OWNER_USER_ID);
+    expect(resolveProfilePackageOwnerId('random-session-id', 'Zara Chen')).toBe(
+      DEMO_OWNER_USER_ID,
+    );
     expect(resolveProfilePackageOwnerId(undefined, 'Zara')).toBe(
       DEMO_OWNER_USER_ID,
     );

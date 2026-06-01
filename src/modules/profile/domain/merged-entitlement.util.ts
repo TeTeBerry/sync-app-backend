@@ -1,4 +1,7 @@
-import type { EventEntitlementQuotas, QuotaSlot } from './event-entitlement.util';
+import type {
+  EventEntitlementQuotas,
+  QuotaSlot,
+} from './event-entitlement.util';
 import { buildQuotaSlot } from './event-entitlement.util';
 import type { PackageTierLimits } from './package-tier.config';
 import type { EventEntitlementUsage } from './event-entitlement.util';

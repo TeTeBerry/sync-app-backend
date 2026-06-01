@@ -1,7 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
-export type ActivityRegistrationDocument = HydratedDocument<ActivityRegistration>;
+export type ActivityRegistrationDocument =
+  HydratedDocument<ActivityRegistration>;
 
 @Schema({ timestamps: true })
 export class ActivityRegistration {
@@ -18,9 +19,8 @@ export class ActivityRegistration {
   status: 'registered';
 }
 
-export const ActivityRegistrationSchema = SchemaFactory.createForClass(
-  ActivityRegistration,
-);
+export const ActivityRegistrationSchema =
+  SchemaFactory.createForClass(ActivityRegistration);
 ActivityRegistrationSchema.index(
   { userId: 1, activityLegacyId: 1 },
   { unique: true },

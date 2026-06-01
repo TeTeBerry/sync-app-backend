@@ -25,7 +25,10 @@ describe('buddy-match-criteria.util', () => {
       status: 'recruiting',
     } as PostRecord;
 
-    const criteria = criteriaFromPostRecord(post, { name: '风暴', code: 'storm' });
+    const criteria = criteriaFromPostRecord(post, {
+      name: '风暴',
+      code: 'storm',
+    });
     expect(criteria.departureCity).toBe('上海');
     expect(criteria.activityLegacyId).toBe(4);
   });
@@ -102,7 +105,9 @@ describe('buddy-match-criteria.util', () => {
     });
 
     it('detects food intent', () => {
-      expect(inferIntentsFromPost([], '有没有人晚上一起宵夜的')).toContain('food');
+      expect(inferIntentsFromPost([], '有没有人晚上一起宵夜的')).toContain(
+        'food',
+      );
       expect(inferIntentsFromPost([], '求夜宵搭子')).toContain('food');
       expect(inferIntentsFromPost([], '一起聚餐吃火锅')).toContain('food');
       expect(inferIntentsFromPost([], '想找人吃烧烤')).toContain('food');

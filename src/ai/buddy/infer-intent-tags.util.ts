@@ -129,10 +129,12 @@ function inferTicketResaleTags(text: string, tags: Set<string>): void {
 /**
  * Infer display tags from post body / user message (MVP rule + synonym map).
  */
-export function inferIntentTagsFromText(...texts: Array<string | undefined>): string[] {
+export function inferIntentTagsFromText(
+  ...texts: Array<string | undefined>
+): string[] {
   const tags = new Set<string>();
   const haystack = texts
-    .map(t => t?.trim())
+    .map((t) => t?.trim())
     .filter((t): t is string => Boolean(t))
     .join('\n');
 

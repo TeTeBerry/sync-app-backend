@@ -78,7 +78,9 @@ export function inferContentTypesFromTags(tags: string[]): PostContentType[] {
 /**
  * 从 buddyType 推断内容类型
  */
-export function inferContentTypeFromBuddyType(buddyType?: string): PostContentType | null {
+export function inferContentTypeFromBuddyType(
+  buddyType?: string,
+): PostContentType | null {
   if (!buddyType) return null;
   return BUDDY_TYPE_TO_TYPE[buddyType.trim()] ?? null;
 }

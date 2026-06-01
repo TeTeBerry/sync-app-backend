@@ -20,7 +20,10 @@ import { RECOMMEND_GATE_MARKER } from '@src/ai/gate/recommend-gate.util';
 
 describe('AiTurnPipeline homepage activity gating', () => {
   const agenticReplyService = {
-    resolve: jest.fn().mockResolvedValue({ text: 'fallback', nextState: { version: 1, flow: 'idle' } }),
+    resolve: jest.fn().mockResolvedValue({
+      text: 'fallback',
+      nextState: { version: 1, flow: 'idle' },
+    }),
   };
   const postIntentService = {
     tryProactiveRecommendBeforeCreate: jest.fn(),
@@ -31,13 +34,17 @@ describe('AiTurnPipeline homepage activity gating', () => {
     syncProfileFromChat: jest.fn().mockResolvedValue(null),
   };
   const intentRouter = {
-    resolve: jest.fn().mockResolvedValue({ kind: 'create_post', source: 'rule' }),
+    resolve: jest
+      .fn()
+      .mockResolvedValue({ kind: 'create_post', source: 'rule' }),
   };
   const buddyContext = {
     resolveActivityLegacyIdFromChat: jest.fn(),
   };
   const activityService = {
-    findByCode: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+    findByCode: jest
+      .fn()
+      .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
     matchActivity: jest.fn().mockResolvedValue(null),
   };
 
@@ -59,7 +66,10 @@ describe('AiTurnPipeline homepage activity gating', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    intentRouter.resolve.mockResolvedValue({ kind: 'create_post', source: 'rule' });
+    intentRouter.resolve.mockResolvedValue({
+      kind: 'create_post',
+      source: 'rule',
+    });
     postIntentService.tryMatchPostsFromChat.mockResolvedValue(null);
     postIntentService.tryProactiveRecommendBeforeCreate.mockResolvedValue(null);
   });
@@ -76,13 +86,22 @@ describe('AiTurnPipeline homepage activity gating', () => {
       'home-session',
     );
 
-    expect(postIntentService.tryProactiveRecommendBeforeCreate).not.toHaveBeenCalled();
+    expect(
+      postIntentService.tryProactiveRecommendBeforeCreate,
+    ).not.toHaveBeenCalled();
   });
 
   it('runs proactive recommend on home when storm activity is inferred', async () => {
     buddyContext.resolveActivityLegacyIdFromChat.mockResolvedValue(4);
     postIntentService.tryProactiveRecommendBeforeCreate.mockResolvedValue({
-      postCards: [{ postId: 'p1', snippet: '找搭子', authorName: 'A', eventTitle: '风暴' }],
+      postCards: [
+        {
+          postId: 'p1',
+          snippet: '找搭子',
+          authorName: 'A',
+          eventTitle: '风暴',
+        },
+      ],
       activityLabel: '风暴电音节',
       replyText: 'found',
       matches: [],
@@ -101,13 +120,15 @@ describe('AiTurnPipeline homepage activity gating', () => {
       'home-session',
     );
 
-    expect(postIntentService.tryProactiveRecommendBeforeCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ activityLegacyId: 4 }),
+    expect(
+      postIntentService.tryProactiveRecommendBeforeCreate,
+    ).toHaveBeenCalledWith(expect.objectContaining({ activityLegacyId: 4 }));
+    expect(result.events.some((e) => e.type === 'post_recommendations')).toBe(
+      true,
     );
-    expect(result.events.some(e => e.type === 'post_recommendations')).toBe(true);
     expect(
       result.events.some(
-        e =>
+        (e) =>
           e.type === 'delta' &&
           'content' in e &&
           e.content.includes(RECOMMEND_GATE_MARKER),
@@ -142,7 +163,9 @@ describe('AiTurnPipeline homepage activity gating', () => {
       'home-session',
     );
 
-    expect(postIntentService.tryProactiveRecommendBeforeCreate).not.toHaveBeenCalled();
+    expect(
+      postIntentService.tryProactiveRecommendBeforeCreate,
+    ).not.toHaveBeenCalled();
   });
 
   it('skips proactive recommend on home for ASOT ticket without catalog match', async () => {
@@ -173,7 +196,9 @@ describe('AiTurnPipeline homepage activity gating', () => {
     );
 
     expect(buddyContext.resolveActivityLegacyIdFromChat).toHaveBeenCalled();
-    expect(postIntentService.tryProactiveRecommendBeforeCreate).not.toHaveBeenCalled();
+    expect(
+      postIntentService.tryProactiveRecommendBeforeCreate,
+    ).not.toHaveBeenCalled();
   });
 
   it('enters collect_post_body when search_posts finds no matches on event detail', async () => {
@@ -186,7 +211,8 @@ describe('AiTurnPipeline homepage activity gating', () => {
       postCards: [],
       activityLabel: '风暴电音节',
       degraded: false,
-      replyText: '暂未在「风暴电音节」找到相近的组队帖。\n\n你可以：告诉我内容帮你发布帖子',
+      replyText:
+        '暂未在「风暴电音节」找到相近的组队帖。\n\n你可以：告诉我内容帮你发布帖子',
     });
 
     const result = await pipeline.runTurn(
@@ -205,11 +231,16 @@ describe('AiTurnPipeline homepage activity gating', () => {
     expect(result.conversationState.flow).toBe('collect_post_body');
     expect(result.conversationState.publishDraft?.activityLegacyId).toBe(9);
     expect(result.conversationState.publishDraft?.fromSelfPost).toBe(true);
-    expect(result.events.some(e => e.type === 'conversation_patch')).toBe(true);
+    expect(result.events.some((e) => e.type === 'conversation_patch')).toBe(
+      true,
+    );
   });
 
   it('emits activity card when user confirms festival enter by name', async () => {
-    intentRouter.resolve.mockResolvedValue({ kind: 'activity_enter', source: 'rule' });
+    intentRouter.resolve.mockResolvedValue({
+      kind: 'activity_enter',
+      source: 'rule',
+    });
     activityService.findByCode.mockReturnValue({
       exec: jest.fn().mockResolvedValue({
         legacyId: 4,
@@ -237,9 +268,15 @@ describe('AiTurnPipeline homepage activity gating', () => {
       'home-session',
     );
 
-    expect(result.events.some(e => e.type === 'activity_recommendation')).toBe(true);
-    const cardEvent = result.events.find(e => e.type === 'activity_recommendation');
-    expect(cardEvent && 'activity' in cardEvent && cardEvent.activity).toMatchObject({
+    expect(
+      result.events.some((e) => e.type === 'activity_recommendation'),
+    ).toBe(true);
+    const cardEvent = result.events.find(
+      (e) => e.type === 'activity_recommendation',
+    );
+    expect(
+      cardEvent && 'activity' in cardEvent && cardEvent.activity,
+    ).toMatchObject({
       activityLegacyId: 4,
       title: '风暴电音节 深圳站',
     });
@@ -264,8 +301,8 @@ describe('AiTurnPipeline homepage activity gating', () => {
     );
 
     expect(buddyContext.resolveActivityLegacyIdFromChat).not.toHaveBeenCalled();
-    expect(postIntentService.tryProactiveRecommendBeforeCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ activityLegacyId: 9 }),
-    );
+    expect(
+      postIntentService.tryProactiveRecommendBeforeCreate,
+    ).toHaveBeenCalledWith(expect.objectContaining({ activityLegacyId: 9 }));
   });
 });

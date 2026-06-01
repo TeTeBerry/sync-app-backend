@@ -53,7 +53,9 @@ export class MatchPostsFromChatUseCase {
     private readonly aiMatchQuota: AiMatchQuotaService,
   ) {}
 
-  async execute(params: MatchPostsFromChatParams): Promise<PostIntentMatchResult | null> {
+  async execute(
+    params: MatchPostsFromChatParams,
+  ): Promise<PostIntentMatchResult | null> {
     const {
       messages,
       input,
@@ -173,13 +175,9 @@ export class MatchPostsFromChatUseCase {
     const cardsOnly = postCards.length > 0;
 
     const replyText = isStructuredSearch
-      ? buildZoneMatchFoundReply(
-          activityLabel,
-          hintDisplay,
-          lines,
-          hintKind,
-          { cardsOnly },
-        )
+      ? buildZoneMatchFoundReply(activityLabel, hintDisplay, lines, hintKind, {
+          cardsOnly,
+        })
       : cardsOnly
         ? buildMatchRecommendCardsIntro(activityLabel, matches.length)
         : [
@@ -191,7 +189,7 @@ export class MatchPostsFromChatUseCase {
           ].join('\n');
 
     return {
-      matches: matches.map(match => ({
+      matches: matches.map((match) => ({
         postId: match.postId,
         snippet: match.snippet,
         matchReason: match.matchReason,

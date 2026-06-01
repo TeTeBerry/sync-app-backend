@@ -6,7 +6,9 @@ import { RiskAgent } from '@src/ai/agents/risk.agent';
 
 describe('RiskAgent rules-only shortcut path', () => {
   const invokeJson = jest.fn();
-  const existsOwnerRecruitingPostForActivity = jest.fn().mockResolvedValue(false);
+  const existsOwnerRecruitingPostForActivity = jest
+    .fn()
+    .mockResolvedValue(false);
   const existsDuplicateBody = jest.fn().mockResolvedValue(false);
 
   const agent = new RiskAgent(

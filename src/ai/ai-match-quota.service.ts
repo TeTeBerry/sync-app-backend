@@ -1,11 +1,7 @@
-import {
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ProfileEntitlementConsumeService } from '../modules/profile/profile-entitlement-consume.service';
 
-export const AI_MATCH_QUOTA_EXHAUSTED_MESSAGE =
-  'AI 匹配次数已用完，请升级套餐';
+export const AI_MATCH_QUOTA_EXHAUSTED_MESSAGE = 'AI 匹配次数已用完，请升级套餐';
 
 @Injectable()
 export class AiMatchQuotaService {

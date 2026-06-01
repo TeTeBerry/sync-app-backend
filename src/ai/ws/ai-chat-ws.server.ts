@@ -24,12 +24,12 @@ export class AiChatWsServer implements OnModuleDestroy {
         return;
       }
 
-      this.wss?.handleUpgrade(request, socket, head, ws => {
+      this.wss?.handleUpgrade(request, socket, head, (ws) => {
         this.wss?.emit('connection', ws, request);
       });
     });
 
-    this.wss.on('connection', ws => {
+    this.wss.on('connection', (ws) => {
       this.handler.handleConnection(ws);
     });
 

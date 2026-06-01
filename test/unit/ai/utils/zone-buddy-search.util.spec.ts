@@ -28,7 +28,9 @@ describe('zone-buddy-search.util', () => {
   });
 
   it('infers hint kind from display label', () => {
-    expect(inferBuddySearchHintKind('6月13日（或 13号A区）')).toBe('day_or_zone');
+    expect(inferBuddySearchHintKind('6月13日（或 13号A区）')).toBe(
+      'day_or_zone',
+    );
     expect(inferBuddySearchHintKind('6月13日')).toBe('event_day');
     expect(inferBuddySearchHintKind('13号A区')).toBe('zone');
   });

@@ -1,5 +1,7 @@
 import {
   IsArray,
+  IsBoolean,
+  IsIn,
   IsOptional,
   IsString,
   MaxLength,
@@ -12,7 +14,7 @@ class ItineraryTimelinePillDto {
   @MaxLength(64)
   label!: string;
 
-  @IsString()
+  @IsIn(['green', 'pink'])
   variant!: 'green' | 'pink';
 }
 
@@ -22,10 +24,10 @@ class ItineraryTimelineItemDto {
   id!: string;
 
   @IsString()
-  @MaxLength(8)
+  @MaxLength(32)
   time!: string;
 
-  @IsString()
+  @IsIn(['pink', 'cyan', 'purple'])
   dotColor!: 'pink' | 'cyan' | 'purple';
 
   @IsString()
@@ -39,10 +41,11 @@ class ItineraryTimelineItemDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(32)
   timeTag?: string;
 
   @IsOptional()
-  @IsString()
+  @IsIn(['pink', 'cyan', 'purple'])
   timeTagColor?: 'pink' | 'cyan' | 'purple';
 
   @IsOptional()
@@ -51,6 +54,7 @@ class ItineraryTimelineItemDto {
   pill?: ItineraryTimelinePillDto;
 
   @IsOptional()
+  @IsBoolean()
   highlighted?: boolean;
 }
 

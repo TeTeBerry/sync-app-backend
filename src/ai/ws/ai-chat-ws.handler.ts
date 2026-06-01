@@ -197,7 +197,9 @@ export class AiChatWsHandler {
           requestId,
           sessionId: dto.sessionId,
         });
-        for await (const event of this.aiService.streamChat(dto, { requestId })) {
+        for await (const event of this.aiService.streamChat(dto, {
+          requestId,
+        })) {
           send(event);
           if (event.type === 'error') {
             break;
@@ -223,7 +225,7 @@ export class AiChatWsHandler {
     socket.on('message', (raw: Buffer | ArrayBuffer | Buffer[] | string) => {
       messageChain = messageChain
         .then(() => handleMessage(raw))
-        .catch(error => {
+        .catch((error) => {
           this.logger.warn(
             `WS message handler failed: ${
               error instanceof Error ? error.message : String(error)
@@ -240,7 +242,7 @@ export class AiChatWsHandler {
       });
     });
 
-    socket.on('error', error => {
+    socket.on('error', (error) => {
       this.logger.warn(
         `[conn#${connectionId}] WS socket error: ${
           error instanceof Error ? error.message : String(error)

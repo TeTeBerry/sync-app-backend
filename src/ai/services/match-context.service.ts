@@ -73,14 +73,25 @@ export class MatchContextService {
 
   async enrichCandidates(
     raw: PostMatchResult[],
-    postById?: Map<string, Pick<PostDocument, 'userId' | 'location' | 'tags' | 'body' | 'departureCity'>>,
+    postById?: Map<
+      string,
+      Pick<
+        PostDocument,
+        'userId' | 'location' | 'tags' | 'body' | 'departureCity'
+      >
+    >,
   ): Promise<RankablePostCandidate[]> {
-    const postIds = [...new Set(raw.map(item => item.postId).filter(Boolean))];
+    const postIds = [
+      ...new Set(raw.map((item) => item.postId).filter(Boolean)),
+    ];
     if (!postIds.length) return [];
 
     const resolvedPostMap = new Map<
       string,
-      Pick<PostDocument, 'userId' | 'location' | 'tags' | 'body' | 'departureCity'>
+      Pick<
+        PostDocument,
+        'userId' | 'location' | 'tags' | 'body' | 'departureCity'
+      >
     >();
 
     if (postById) {
@@ -101,7 +112,7 @@ export class MatchContextService {
     const authorIds = [
       ...new Set(
         [...resolvedPostMap.values()]
-          .map(post => post.userId)
+          .map((post) => post.userId)
           .filter(Boolean),
       ),
     ];
@@ -115,11 +126,11 @@ export class MatchContextService {
 
     const userMap = new Map(
       users
-        .filter(user => user.externalId)
-        .map(user => [String(user.externalId), user]),
+        .filter((user) => user.externalId)
+        .map((user) => [String(user.externalId), user]),
     );
 
-    return raw.map(item => {
+    return raw.map((item) => {
       const post = resolvedPostMap.get(item.postId);
       const author = post?.userId ? userMap.get(post.userId) : undefined;
 
@@ -164,5 +175,4 @@ export class MatchContextService {
       return undefined;
     }
   }
-
 }

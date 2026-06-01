@@ -27,7 +27,10 @@ export class AgentToolsService {
     return this.registry.has(name);
   }
 
-  async executeAll(ctx: ReplyContext, calls: AgentToolCall[]): Promise<AgentToolResult[]> {
+  async executeAll(
+    ctx: ReplyContext,
+    calls: AgentToolCall[],
+  ): Promise<AgentToolResult[]> {
     const results: AgentToolResult[] = [];
 
     for (const call of calls) {

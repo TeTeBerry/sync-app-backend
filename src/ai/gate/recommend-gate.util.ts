@@ -57,7 +57,9 @@ export function isAwaitingSelfPostBodyCollection(
   return state?.flow === 'collect_post_body';
 }
 
-export function buildDeclineRecommendCollectBodyReply(activityLabel: string): string {
+export function buildDeclineRecommendCollectBodyReply(
+  activityLabel: string,
+): string {
   return `想发什么直接说，我帮你发～`;
 }
 

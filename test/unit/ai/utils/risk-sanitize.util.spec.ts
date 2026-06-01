@@ -22,7 +22,9 @@ describe('risk-sanitize.util', () => {
   });
 
   it('strips llm desensitization placeholders', () => {
-    expect(stripDesensitizationMarkers('13 号 A区 【已脱敏】')).toBe('13 号 A区');
+    expect(stripDesensitizationMarkers('13 号 A区 【已脱敏】')).toBe(
+      '13 号 A区',
+    );
   });
 
   it('detects travel safety keywords', () => {
@@ -31,7 +33,10 @@ describe('risk-sanitize.util', () => {
   });
 
   it('appends safety tip for carpool posts', () => {
-    const result = appendTravelSafetyTip('上海出发，2人拼车', '上海出发，2人拼车');
+    const result = appendTravelSafetyTip(
+      '上海出发，2人拼车',
+      '上海出发，2人拼车',
+    );
     expect(result).toContain(TRAVEL_SAFETY_TIP);
   });
 

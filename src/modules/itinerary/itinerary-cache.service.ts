@@ -12,9 +12,15 @@ export class ItineraryCacheService {
   private readonly rateMax: number;
   private readonly rateWindowSec: number;
 
-  private readonly memoryCache = new Map<string, { value: string; expiresAt: number }>();
+  private readonly memoryCache = new Map<
+    string,
+    { value: string; expiresAt: number }
+  >();
   private readonly memoryLocks = new Map<string, number>();
-  private readonly memoryRate = new Map<string, { count: number; resetAt: number }>();
+  private readonly memoryRate = new Map<
+    string,
+    { count: number; resetAt: number }
+  >();
 
   constructor(
     private readonly redis: RedisService,
@@ -183,7 +189,11 @@ export class ItineraryCacheService {
     return mem.value;
   }
 
-  private async setRaw(key: string, value: string, ttlSec: number): Promise<void> {
+  private async setRaw(
+    key: string,
+    value: string,
+    ttlSec: number,
+  ): Promise<void> {
     await this.redis.setCacheValueEx(key, value, ttlSec);
     this.memoryCache.set(key, {
       value,

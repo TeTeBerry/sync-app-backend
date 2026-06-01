@@ -34,14 +34,17 @@ describe('package entitlement validity (30 days from purchase)', () => {
       isPackageEntitlementActive(validUntil, addUtcDays(validUntil, 1)),
     ).toBe(false);
     expect(
-      isPackageEntitlementActive(validUntil, new Date(validUntil.getTime() - 1)),
+      isPackageEntitlementActive(
+        validUntil,
+        new Date(validUntil.getTime() - 1),
+      ),
     ).toBe(true);
   });
 
   it('resolveRecordValidUntil falls back to purchasedAt + 30d', () => {
-    expect(
-      resolveRecordValidUntil({ purchasedAt }).toISOString(),
-    ).toBe('2026-05-31T12:00:00.000Z');
+    expect(resolveRecordValidUntil({ purchasedAt }).toISOString()).toBe(
+      '2026-05-31T12:00:00.000Z',
+    );
     expect(
       resolveRecordValidUntil({
         purchasedAt,

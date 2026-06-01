@@ -46,10 +46,17 @@ export class NoticeAgent {
     actorUserId: string,
     actorName?: string,
   ): Promise<void> {
-    await this.notifyPostOwnerInteraction(post, postId, actorUserId, actorName, 'like', {
-      templateKey: 'like',
-      templateParams: { actor: actorName?.trim() || '有人' },
-    });
+    await this.notifyPostOwnerInteraction(
+      post,
+      postId,
+      actorUserId,
+      actorName,
+      'like',
+      {
+        templateKey: 'like',
+        templateParams: { actor: actorName?.trim() || '有人' },
+      },
+    );
   }
 
   async notifyComment(
@@ -60,10 +67,17 @@ export class NoticeAgent {
     preview: string,
   ): Promise<void> {
     const actorLabel = actorName?.trim() || '有人';
-    await this.notifyPostOwnerInteraction(post, postId, actorUserId, actorName, 'comment', {
-      templateKey: 'comment',
-      templateParams: { actor: actorLabel, preview },
-    });
+    await this.notifyPostOwnerInteraction(
+      post,
+      postId,
+      actorUserId,
+      actorName,
+      'comment',
+      {
+        templateKey: 'comment',
+        templateParams: { actor: actorLabel, preview },
+      },
+    );
   }
 
   async notifyCommentReply(
@@ -179,11 +193,13 @@ export class NoticeAgent {
     activityName: string,
     changeSummary: string,
   ): Promise<void> {
-    const recipients = [...new Set(userIds.map(id => id.trim()).filter(Boolean))];
+    const recipients = [
+      ...new Set(userIds.map((id) => id.trim()).filter(Boolean)),
+    ];
     if (!recipients.length) return;
 
     await Promise.all(
-      recipients.map(userId =>
+      recipients.map((userId) =>
         this.dispatch({
           userId,
           category: 'system',
@@ -289,11 +305,11 @@ export class NoticeAgent {
     const normalized = reason?.trim() ?? '';
     const reasonHints: Record<string, string> = {
       '内容疑似重复字符 spam': '内容格式异常，请用自然语言重新描述组队需求。',
-      '你已在此活动发布过组队帖':
+      你已在此活动发布过组队帖:
         '你在此活动已有招募中的组队帖。请打开「我的」→ 我的帖子编辑，或在活动详情页查看。',
-      '你已发布过相同内容的组队帖':
+      你已发布过相同内容的组队帖:
         '你已经发布过相同内容的帖子，可在个人主页或活动详情页查看。',
-      '内容疑似黄牛倒票或加价引流':
+      内容疑似黄牛倒票或加价引流:
         '平台禁止黄牛倒票、加价出票等行为，请修改后重试。',
       '内容疑似站外引流（如微信导流）':
         '请勿在帖子中引导至微信等站外渠道，请修改后重试。',
@@ -310,10 +326,8 @@ export class NoticeAgent {
   private buildHiddenReasonSummary(reason?: string): string {
     const normalized = reason?.trim() ?? '';
     const reasonHints: Record<string, string> = {
-      '内容疑似黄牛倒票或加价引流':
-        '帖子因疑似黄牛倒票或加价引流已被自动隐藏。',
-      '内容疑似站外引流（如微信导流）':
-        '帖子因疑似站外引流已被自动隐藏。',
+      内容疑似黄牛倒票或加价引流: '帖子因疑似黄牛倒票或加价引流已被自动隐藏。',
+      '内容疑似站外引流（如微信导流）': '帖子因疑似站外引流已被自动隐藏。',
     };
 
     return (

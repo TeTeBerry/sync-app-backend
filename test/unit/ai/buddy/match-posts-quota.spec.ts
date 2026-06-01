@@ -20,8 +20,10 @@ function buildUseCase(deps: {
   matchItems?: Array<{ postId: string; snippet: string; matchReason?: string }>;
   postCards?: Array<{ postId: string; snippet: string }>;
 }) {
-  const assertCanMatch = deps.assertCanMatch ?? jest.fn().mockResolvedValue(undefined);
-  const consumeIfMatched = deps.consumeIfMatched ?? jest.fn().mockResolvedValue(undefined);
+  const assertCanMatch =
+    deps.assertCanMatch ?? jest.fn().mockResolvedValue(undefined);
+  const consumeIfMatched =
+    deps.consumeIfMatched ?? jest.fn().mockResolvedValue(undefined);
   const match = jest.fn().mockResolvedValue({
     items: deps.matchItems ?? [],
     degraded: false,
@@ -45,7 +47,13 @@ function buildUseCase(deps: {
     { assertCanMatch, consumeIfMatched } as unknown as AiMatchQuotaService,
   );
 
-  return { useCase, assertCanMatch, consumeIfMatched, match, buildRecommendedPostCards };
+  return {
+    useCase,
+    assertCanMatch,
+    consumeIfMatched,
+    match,
+    buildRecommendedPostCards,
+  };
 }
 
 const profileSync: UserProfileSyncResult = {

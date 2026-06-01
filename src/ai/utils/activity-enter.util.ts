@@ -39,7 +39,9 @@ export function isActivityEnterNameInput(input: string): boolean {
   return isActivityKeywordInput(trimmed);
 }
 
-export function buildActivityEnterConfirmationReply(activityName: string): string {
+export function buildActivityEnterConfirmationReply(
+  activityName: string,
+): string {
   return `好的，点下方卡片进入「${activityName}」，我可以帮你找队友或发帖。`;
 }
 

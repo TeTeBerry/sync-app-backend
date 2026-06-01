@@ -45,7 +45,7 @@ export class PostRecruitmentService {
       status: 'completed' as PostStatus,
     }) as PostRecord;
 
-    void this.chromaService.deprecatePostEmbedding(postId).catch(error => {
+    void this.chromaService.deprecatePostEmbedding(postId).catch((error) => {
       this.logger.warn(
         `Chroma deprecate failed for post ${postId}: ${(error as Error).message}`,
       );

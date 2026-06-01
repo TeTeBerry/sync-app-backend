@@ -38,10 +38,7 @@ describe('detectPerformanceConflicts', () => {
   ];
 
   it('detects overlap between SLANDER and LAYZ', () => {
-    const conflicts = detectPerformanceConflicts(base, [
-      'slander',
-      'layz',
-    ]);
+    const conflicts = detectPerformanceConflicts(base, ['slander', 'layz']);
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0].artistNames).toEqual(['SLANDER', 'LAYZ']);
     expect(conflicts[0].message).toContain('SLANDER');

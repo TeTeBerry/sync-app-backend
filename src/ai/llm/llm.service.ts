@@ -23,7 +23,7 @@ function extractMultimodalText(data: DashScopeMultimodalResponse): string {
   if (typeof content === 'string') return content.trim();
   if (Array.isArray(content)) {
     return content
-      .map(part => (typeof part === 'string' ? part : part?.text ?? ''))
+      .map((part) => (typeof part === 'string' ? part : (part?.text ?? '')))
       .join('')
       .trim();
   }
@@ -34,8 +34,10 @@ function extractMultimodalText(data: DashScopeMultimodalResponse): string {
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
   public readonly llm: ChatAlibabaTongyi;
+  public readonly jsonLlm: ChatAlibabaTongyi;
   public readonly rerankLlm: ChatAlibabaTongyi;
   public readonly vlModel: string;
+  public readonly jsonModel: string;
   public readonly rerankModel: string;
   private readonly defaultModel: string;
   private readonly apiKey: string;
@@ -48,22 +50,30 @@ export class LlmService {
     this.visionEnabled = this.enabled;
     this.vlModel = this.config.get<string>('llm.vlModel') ?? 'qwen-vl-plus';
     this.defaultModel = this.config.get<string>('llm.model') ?? 'qwen-max';
+    this.jsonModel = this.config.get<string>('llm.jsonModel') ?? 'qwen-plus';
     this.rerankModel =
       this.config.get<string>('llm.rerankModel') ?? 'qwen-plus';
 
-    const llmOptions = {
-      alibabaApiKey: this.apiKey || 'MISSING_API_KEY',
-      streaming: true,
+    const apiKey = this.apiKey || 'MISSING_API_KEY';
+    const baseOptions = {
+      alibabaApiKey: apiKey,
       temperature: 0.1,
     };
 
     this.llm = new ChatAlibabaTongyi({
-      ...llmOptions,
+      ...baseOptions,
       model: this.defaultModel,
+      streaming: true,
+    });
+
+    this.jsonLlm = new ChatAlibabaTongyi({
+      ...baseOptions,
+      model: this.jsonModel,
+      streaming: false,
     });
 
     this.rerankLlm = new ChatAlibabaTongyi({
-      ...llmOptions,
+      ...baseOptions,
       model: this.rerankModel,
       streaming: false,
     });
@@ -86,12 +96,7 @@ export class LlmService {
     user: string,
     timeoutMs = 15000,
   ): Promise<T | null> {
-    return this.invokeJsonWithModel<T>(
-      this.defaultModel,
-      system,
-      user,
-      timeoutMs,
-    );
+    return this.invokeJsonWithModel<T>(this.jsonModel, system, user, timeoutMs);
   }
 
   /** 指定模型做结构化 JSON 抽取（如 post match rerank） */
@@ -104,23 +109,33 @@ export class LlmService {
     if (!this.enabled) return null;
 
     const llm =
-      model === this.defaultModel
-        ? this.llm
+      model === this.jsonModel
+        ? this.jsonLlm
         : model === this.rerankModel
-        ? this.rerankLlm
-        : new ChatAlibabaTongyi({
-            alibabaApiKey: this.apiKey || 'MISSING_API_KEY',
-            model,
-            streaming: true,
-            temperature: 0.1,
-          });
+          ? this.rerankLlm
+          : model === this.defaultModel
+            ? this.llm
+            : new ChatAlibabaTongyi({
+                alibabaApiKey: this.apiKey || 'MISSING_API_KEY',
+                model,
+                streaming: false,
+                temperature: 0.1,
+              });
 
-    const response = await this.withTimeout(
-      llm.invoke([new SystemMessage(system), new HumanMessage(user)]),
-      timeoutMs,
-    );
-
-    return this.parseJsonFromText<T>(String(response.content ?? '').trim());
+    try {
+      const response = await this.withTimeout(
+        llm.invoke([new SystemMessage(system), new HumanMessage(user)]),
+        timeoutMs,
+      );
+      return this.parseJsonFromText<T>(String(response.content ?? '').trim());
+    } catch (error) {
+      this.logger.warn(
+        `invokeJsonWithModel failed (${model}): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return null;
+    }
   }
 
   private async withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {

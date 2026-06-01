@@ -38,7 +38,9 @@ export function parseActivityDateRange(
 
   const year = Number(yearHint ?? new Date().getFullYear());
 
-  const sameMonthRange = trimmed.match(/(\d{1,2})\/(\d{1,2})\s*[–-]\s*(\d{1,2})/);
+  const sameMonthRange = trimmed.match(
+    /(\d{1,2})\/(\d{1,2})\s*[–-]\s*(\d{1,2})/,
+  );
   if (sameMonthRange) {
     const month = Number(sameMonthRange[1]);
     const startDay = Number(sameMonthRange[2]);
@@ -94,7 +96,9 @@ export function resolveProfileActivityStatus(
   now?: Date,
 ): ProfileActivityDisplayStatus {
   const yearHint = extractYearFromText(title) ?? extractYearFromText(dateStr);
-  return isActivityEnded(dateStr, { yearHint, now }) ? 'attended' : 'registered';
+  return isActivityEnded(dateStr, { yearHint, now })
+    ? 'attended'
+    : 'registered';
 }
 
 export function getActivitySortTimestamp(

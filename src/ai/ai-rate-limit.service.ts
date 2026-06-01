@@ -20,7 +20,8 @@ export class AiRateLimitService {
     private readonly redis: RedisService,
     config: ConfigService,
   ) {
-    this.windowMs = config.get<number>('ai.rateLimit.windowMs') ?? 5 * 60 * 1000;
+    this.windowMs =
+      config.get<number>('ai.rateLimit.windowMs') ?? 5 * 60 * 1000;
     this.maxRequests = config.get<number>('ai.rateLimit.maxRequests') ?? 30;
   }
 

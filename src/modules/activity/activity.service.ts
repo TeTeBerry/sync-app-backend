@@ -100,10 +100,7 @@ export class ActivityService implements OnModuleInit {
   }
 
   findAll() {
-    return this.model
-      .find()
-      .sort({ legacyId: 1 })
-      .lean();
+    return this.model.find().sort({ legacyId: 1 }).lean();
   }
 
   findByLegacyId(legacyId: number) {
@@ -212,7 +209,7 @@ export class ActivityService implements OnModuleInit {
           .toLowerCase();
 
         if (
-          festival.brand.aliases.some(alias =>
+          festival.brand.aliases.some((alias) =>
             haystack.includes(alias.toLowerCase()),
           )
         ) {
@@ -225,10 +222,7 @@ export class ActivityService implements OnModuleInit {
   }
 
   private async nextLegacyId() {
-    const latest = await this.model
-      .findOne()
-      .sort({ legacyId: -1 })
-      .lean();
+    const latest = await this.model.findOne().sort({ legacyId: -1 }).lean();
     return (latest?.legacyId ?? 0) + 1;
   }
 
@@ -299,9 +293,9 @@ export class ActivityService implements OnModuleInit {
 
     const preferredCode = isSpecificEvent
       ? slugifyActivityCode(keyword)
-      : input.activityId ??
+      : (input.activityId ??
         festival?.brand.code ??
-        slugifyActivityCode(keyword);
+        slugifyActivityCode(keyword));
 
     const alias = [
       keyword,

@@ -23,7 +23,11 @@ function mapAiErrorToUserMessage(error: unknown): string {
   if (error instanceof HttpException) {
     const response = error.getResponse();
     if (typeof response === 'string') return response;
-    if (typeof response === 'object' && response !== null && 'message' in response) {
+    if (
+      typeof response === 'object' &&
+      response !== null &&
+      'message' in response
+    ) {
       return String((response as Record<string, unknown>).message ?? '');
     }
   }
@@ -86,7 +90,8 @@ export class AiService {
     }
 
     const lastInput = lastMessage.content ?? '';
-    const hasImages = Boolean(dto.image?.trim()) || (dto.images?.length ?? 0) > 0;
+    const hasImages =
+      Boolean(dto.image?.trim()) || (dto.images?.length ?? 0) > 0;
     if (!lastInput.trim() && !hasImages) {
       yield { type: 'error', message: 'messages 不能为空' };
       return;
@@ -106,8 +111,8 @@ export class AiService {
             error instanceof ImageTooLargeError
               ? error.message
               : error instanceof Error
-              ? error.message
-              : '图片格式无效',
+                ? error.message
+                : '图片格式无效',
         };
         return;
       }

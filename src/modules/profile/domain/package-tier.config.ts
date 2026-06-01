@@ -106,7 +106,7 @@ export const PROFILE_PACKAGE_TIERS: PackageTierDefinition[] = [
 ];
 
 const TIER_BY_ID = new Map<PackageTierId, PackageTierDefinition>(
-  PROFILE_PACKAGE_TIERS.map(tier => [tier.id, tier]),
+  PROFILE_PACKAGE_TIERS.map((tier) => [tier.id, tier]),
 );
 
 export function getPackageTierDefinition(
@@ -120,5 +120,8 @@ export function getPackageTierDefinition(
 }
 
 export function listPackageTierDefinitions(): PackageTierDefinition[] {
-  return PROFILE_PACKAGE_TIERS.map(tier => ({ ...tier, limits: { ...tier.limits } }));
+  return PROFILE_PACKAGE_TIERS.map((tier) => ({
+    ...tier,
+    limits: { ...tier.limits },
+  }));
 }

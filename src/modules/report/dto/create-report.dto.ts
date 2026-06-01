@@ -1,5 +1,14 @@
-import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import type { ReportCategory, ReportTargetType } from '../../../database/schemas/content-report.schema';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import type {
+  ReportCategory,
+  ReportTargetType,
+} from '../../../database/schemas/content-report.schema';
 
 export class CreateReportDto {
   @IsIn(['post', 'user', 'comment'])

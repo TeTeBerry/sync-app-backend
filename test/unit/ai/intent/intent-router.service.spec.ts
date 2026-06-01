@@ -1,6 +1,8 @@
 jest.mock('chromadb', () => require('../../../mocks/chromadb'));
 
-jest.mock('@langchain/core/documents', () => require('../../../mocks/langchain-documents'));
+jest.mock('@langchain/core/documents', () =>
+  require('../../../mocks/langchain-documents'),
+);
 
 jest.mock('@src/ai/llm/llm.service', () => ({
   LlmService: class MockLlmService {},

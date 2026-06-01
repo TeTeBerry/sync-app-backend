@@ -1,6 +1,8 @@
 jest.mock('chromadb', () => require('../../../mocks/chromadb'));
 
-jest.mock('@langchain/core/documents', () => require('../../../mocks/langchain-documents-page-content'));
+jest.mock('@langchain/core/documents', () =>
+  require('../../../mocks/langchain-documents-page-content'),
+);
 
 import { ChromaService } from '@src/ai/rag/chroma.service';
 
@@ -8,7 +10,9 @@ describe('ChromaService circuit breaker', () => {
   it('marks queries degraded and opens circuit after consecutive failures', async () => {
     const service = new ChromaService({ get: jest.fn() } as never);
     (service as unknown as { enabled: boolean }).enabled = true;
-    (service as unknown as { postsCollection: { query: jest.Mock } }).postsCollection = {
+    (
+      service as unknown as { postsCollection: { query: jest.Mock } }
+    ).postsCollection = {
       query: jest.fn().mockRejectedValue(new Error('boom')),
     };
 
@@ -24,7 +28,8 @@ describe('ChromaService circuit breaker', () => {
     expect(skipped.matches).toEqual([]);
     expect(skipped.degraded).toBe(true);
     expect(
-      (service as unknown as { postsCollection: { query: jest.Mock } }).postsCollection.query,
+      (service as unknown as { postsCollection: { query: jest.Mock } })
+        .postsCollection.query,
     ).toHaveBeenCalledTimes(3);
   });
 });

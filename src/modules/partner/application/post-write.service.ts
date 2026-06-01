@@ -51,10 +51,7 @@ export class PostWriteService {
         ? await this.activityService.findByLegacyId(dto.activityLegacyId)
         : null;
 
-    const eventTitle =
-      dto.eventTitle?.trim() ||
-      activity?.name ||
-      '组队帖';
+    const eventTitle = dto.eventTitle?.trim() || activity?.name || '组队帖';
 
     let status: PostStatus = 'recruiting';
     let bodyToSave = dto.body.trim();
@@ -163,7 +160,7 @@ export class PostWriteService {
     activityLegacyId?: number;
     status?: PostStatus;
   }): void {
-    void this.chromaService.syncPostEmbeddingStatus(input).catch(error => {
+    void this.chromaService.syncPostEmbeddingStatus(input).catch((error) => {
       this.logger.warn(
         `Chroma upsert failed for post ${input.postId}: ${(error as Error).message}`,
       );

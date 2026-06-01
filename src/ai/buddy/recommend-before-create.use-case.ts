@@ -25,7 +25,9 @@ export interface RecommendBeforeCreateParams {
   userId?: string;
   authorName?: string;
   conversationState?: ConversationState | null;
-  profileSync?: import('../agents/user-profile.agent').UserProfileSyncResult | null;
+  profileSync?:
+    | import('../agents/user-profile.agent').UserProfileSyncResult
+    | null;
 }
 
 @Injectable()
@@ -39,8 +41,15 @@ export class RecommendBeforeCreateUseCase {
   async execute(
     params: RecommendBeforeCreateParams,
   ): Promise<PostIntentMatchResult | null> {
-    const { messages, input, activityLegacyId, userId, authorName, conversationState, profileSync } =
-      params;
+    const {
+      messages,
+      input,
+      activityLegacyId,
+      userId,
+      authorName,
+      conversationState,
+      profileSync,
+    } = params;
     if (activityLegacyId == null) return null;
     if (shouldSkipActivityScopedBuddyRecommend(input, activityLegacyId)) {
       return null;

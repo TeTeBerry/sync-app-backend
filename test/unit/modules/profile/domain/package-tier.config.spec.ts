@@ -6,7 +6,7 @@ import {
 
 describe('package-tier.config', () => {
   it('defines pro, pro_plus, ultra with expected limits', () => {
-    expect(PROFILE_PACKAGE_TIERS.map(t => t.id)).toEqual([
+    expect(PROFILE_PACKAGE_TIERS.map((t) => t.id)).toEqual([
       'pro',
       'pro_plus',
       'ultra',

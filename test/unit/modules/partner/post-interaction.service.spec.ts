@@ -2,9 +2,8 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
 jest.mock('chromadb', () => require('../../../mocks/chromadb'));
 
-jest.mock(
-  '@langchain/core/documents',
-  () => require('../../../mocks/langchain-documents'),
+jest.mock('@langchain/core/documents', () =>
+  require('../../../mocks/langchain-documents'),
 );
 
 import { PostInteractionService } from '@src/modules/partner/post-interaction.service';
@@ -79,7 +78,9 @@ describe('PostInteractionService.addComment', () => {
       ...zaraPost,
       comments: 1,
     });
-    (commentModel.create as jest.Mock).mockResolvedValue({ _id: 'new-comment' });
+    (commentModel.create as jest.Mock).mockResolvedValue({
+      _id: 'new-comment',
+    });
   });
 
   it('rejects reply from non-post-author', async () => {

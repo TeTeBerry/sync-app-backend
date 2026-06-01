@@ -5,7 +5,9 @@ export const HANDLER_REGISTRY_TOKEN = 'HANDLER_REGISTRY_TOKEN';
 
 @Injectable()
 export class HandlerRegistryService {
-  constructor(@Inject(HANDLER_REGISTRY_TOKEN) private readonly handlers: ReplyHandler[]) {}
+  constructor(
+    @Inject(HANDLER_REGISTRY_TOKEN) private readonly handlers: ReplyHandler[],
+  ) {}
 
   async findMatching(ctx: ReplyContext): Promise<ReplyHandler | null> {
     for (const handler of this.handlers) {

@@ -22,7 +22,11 @@ describe('merged-entitlement.util', () => {
     const tier = getPackageTierDefinition('pro_plus');
     const purchasedAt = new Date('2026-05-01T00:00:00.000Z');
     const mapExpiresAt = addMapDays(purchasedAt, tier.limits.mapDays);
-    const usage = { ...createEmptyUsage(), aiMatchUsed: 5, contactUnlockUsed: 2 };
+    const usage = {
+      ...createEmptyUsage(),
+      aiMatchUsed: 5,
+      contactUnlockUsed: 2,
+    };
 
     const quotas = mergeFreeAndPaidQuotas(
       { period: '2026-05', aiMatchUsed: 1, contactUnlockUsed: 1 },

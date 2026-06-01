@@ -77,11 +77,11 @@ export class AiTurnPipeline {
     let conversationState = initialState;
 
     const sink: ReplySink = {
-      setReply: text => {
+      setReply: (text) => {
         assistantReply = text;
       },
       getReply: () => assistantReply,
-      setState: state => {
+      setState: (state) => {
         conversationState = state;
       },
       getState: () => conversationState,
@@ -96,7 +96,7 @@ export class AiTurnPipeline {
       isDeclineRecommendationsIntent(lastInput.trim());
 
     const routed = forceCreatePostIntent
-      ? ({ kind: 'create_post' as const, source: 'rule' as const })
+      ? { kind: 'create_post' as const, source: 'rule' as const }
       : await this.intentRouter.resolve({
           messages: fullMessages,
           input: lastInput,
@@ -161,11 +161,7 @@ export class AiTurnPipeline {
         );
         break;
       case 'activity_enter':
-        events = await this.collectActivityEnter(
-          fullMessages,
-          lastInput,
-          sink,
-        );
+        events = await this.collectActivityEnter(fullMessages, lastInput, sink);
         if (events.length === 0) {
           events = await this.collectDeterministicOnly(
             dto,
@@ -300,11 +296,8 @@ export class AiTurnPipeline {
     profileSync: UserProfileSyncResult | null,
     timings: AiTurnTimings,
   ): Promise<AiStreamEvent[]> {
-    const effectiveActivityLegacyId = await this.resolveEffectiveActivityLegacyId(
-      dto,
-      fullMessages,
-      lastInput,
-    );
+    const effectiveActivityLegacyId =
+      await this.resolveEffectiveActivityLegacyId(dto, fullMessages, lastInput);
 
     if (
       this.shouldSkipRecommendBeforeCreate(
@@ -396,13 +389,18 @@ export class AiTurnPipeline {
   ): boolean {
     const trimmed = lastInput.trim();
     if (effectiveActivityLegacyId == null) return true;
-    if (shouldSkipActivityScopedBuddyRecommend(trimmed, effectiveActivityLegacyId)) {
+    if (
+      shouldSkipActivityScopedBuddyRecommend(trimmed, effectiveActivityLegacyId)
+    ) {
       return true;
     }
     if (isPublishConfirmIntent(trimmed)) return true;
     if (isExplicitReplacePostIntent(trimmed)) return true;
     if (isDeclineRecommendationsIntent(trimmed)) return true;
-    if (state.flow === 'collect_post_body' || state.flow === 'publish_confirm') {
+    if (
+      state.flow === 'collect_post_body' ||
+      state.flow === 'publish_confirm'
+    ) {
       return true;
     }
     if (isAwaitingSelfPostBodyCollection(messages, state)) {
@@ -494,7 +492,7 @@ export class AiTurnPipeline {
       image: dto.image,
       images: dto.images,
       conversationState: sink.getState(),
-      onStateChange: state => sink.setState(state),
+      onStateChange: (state) => sink.setState(state),
     });
 
     return this.sseBuilder.eventsFromPostAttempt(postAttempt, sink);

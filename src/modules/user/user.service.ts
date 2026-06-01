@@ -118,10 +118,7 @@ export class UserService implements OnModuleInit {
     const map = new Map<string, 'public' | 'friends' | 'private'>();
     for (const row of rows) {
       if (!row.externalId) continue;
-      map.set(
-        row.externalId,
-        row.privacyLevel ?? DEMO_PROFILE.privacyLevel,
-      );
+      map.set(row.externalId, row.privacyLevel ?? DEMO_PROFILE.privacyLevel);
     }
     return map;
   }

@@ -78,10 +78,10 @@ export function inferAuthorGenderFromPost(post: {
   if (!name) return undefined;
 
   const firstToken = name.split(/\s+/)[0] ?? name;
-  if (FEMALE_NAME_HINTS.some(hint => firstToken.includes(hint))) {
+  if (FEMALE_NAME_HINTS.some((hint) => firstToken.includes(hint))) {
     return 'female';
   }
-  if (MALE_NAME_HINTS.some(hint => firstToken.includes(hint))) {
+  if (MALE_NAME_HINTS.some((hint) => firstToken.includes(hint))) {
     return 'male';
   }
 

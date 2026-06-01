@@ -1,6 +1,8 @@
 jest.mock('chromadb', () => require('../../../mocks/chromadb'));
 
-jest.mock('@langchain/core/documents', () => require('../../../mocks/langchain-documents-page-content'));
+jest.mock('@langchain/core/documents', () =>
+  require('../../../mocks/langchain-documents-page-content'),
+);
 
 jest.mock('@src/ai/agents', () => ({
   MatchAgent: jest.fn(),

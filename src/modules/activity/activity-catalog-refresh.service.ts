@@ -22,9 +22,9 @@ type LlmCatalogPatch = {
 
 function knowledgeForCode(code: string): string {
   return KNOWLEDGE_DOCUMENTS.filter(
-    doc => String(doc.metadata?.code ?? '') === code,
+    (doc) => String(doc.metadata?.code ?? '') === code,
   )
-    .map(doc => doc.pageContent)
+    .map((doc) => doc.pageContent)
     .join('\n');
 }
 
@@ -46,7 +46,9 @@ export class ActivityCatalogRefreshService implements OnModuleInit {
     setInterval(() => void this.refreshIfDue(), DAILY_CHECK_MS);
   }
 
-  async refreshIfDue(force = false): Promise<{ refreshed: boolean; updated: number }> {
+  async refreshIfDue(
+    force = false,
+  ): Promise<{ refreshed: boolean; updated: number }> {
     if (this.refreshInFlight) {
       return { refreshed: false, updated: 0 };
     }

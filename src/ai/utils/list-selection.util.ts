@@ -16,10 +16,7 @@ function parseIndexToken(raw: string, max: number): number | null {
 }
 
 /** 解析「第一个」「2」「第 3 条」等列表序号（1-based） */
-export function parseListSelectionIndex(
-  input: string,
-  max = 8,
-): number | null {
+export function parseListSelectionIndex(input: string, max = 8): number | null {
   const text = input.trim();
   if (!text) return null;
 

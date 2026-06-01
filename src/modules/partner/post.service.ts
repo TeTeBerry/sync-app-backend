@@ -10,9 +10,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { resolveActorUserId } from '../../common/auth/actor-user.util';
-import {
-  isResourceOwnedByClient,
-} from '../../common/utils/demo-owner.util';
+import { isResourceOwnedByClient } from '../../common/utils/demo-owner.util';
 import { resolveOwnerFilter } from '../../common/utils/owner-filter.util';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
 import { ActivityService } from '../activity/activity.service';
@@ -88,7 +86,9 @@ export class PostService implements OnModuleInit {
     try {
       await this.ensureStormDemoPosts();
     } catch (error) {
-      this.logger.warn(`Storm demo posts init failed: ${(error as Error).message}`);
+      this.logger.warn(
+        `Storm demo posts init failed: ${(error as Error).message}`,
+      );
     }
 
     try {
@@ -102,13 +102,17 @@ export class PostService implements OnModuleInit {
     try {
       await this.patchStormDemoDepartureCities();
     } catch (error) {
-      this.logger.warn(`Departure city patch failed: ${(error as Error).message}`);
+      this.logger.warn(
+        `Departure city patch failed: ${(error as Error).message}`,
+      );
     }
 
     try {
       await this.reindexRecruitingEmbeddings();
     } catch (error) {
-      this.logger.warn(`Recruiting reindex failed: ${(error as Error).message}`);
+      this.logger.warn(
+        `Recruiting reindex failed: ${(error as Error).message}`,
+      );
     }
 
     try {
@@ -161,26 +165,31 @@ export class PostService implements OnModuleInit {
   }
 
   private async syncPostEmbeddings(posts: PostDocument[]) {
-    const recruitingPosts = posts.filter(p => p.status === 'recruiting');
+    const recruitingPosts = posts.filter((p) => p.status === 'recruiting');
     if (!recruitingPosts.length) return;
 
     // 批量并行查询活动，避免 N+1
     const uniqueLegacyIds = [
-      ...new Set(recruitingPosts.map(p => p.activityLegacyId).filter((id): id is number => id != null)),
+      ...new Set(
+        recruitingPosts
+          .map((p) => p.activityLegacyId)
+          .filter((id): id is number => id != null),
+      ),
     ];
     const activityResults = await Promise.all(
-      uniqueLegacyIds.map(id => this.activityService.findByLegacyId(id)),
+      uniqueLegacyIds.map((id) => this.activityService.findByLegacyId(id)),
     );
     const activityMap = new Map(
-      activityResults.filter(Boolean).map(a => [a!.legacyId, a]),
+      activityResults.filter(Boolean).map((a) => [a!.legacyId, a]),
     );
 
     // 并行同步向量
     await Promise.all(
-      recruitingPosts.map(post => {
-        const activity = post.activityLegacyId != null
-          ? activityMap.get(post.activityLegacyId)
-          : null;
+      recruitingPosts.map((post) => {
+        const activity =
+          post.activityLegacyId != null
+            ? activityMap.get(post.activityLegacyId)
+            : null;
         return this.chromaService.syncPostEmbeddingStatus({
           postId: String(post._id),
           userId: post.userId,
@@ -230,7 +239,7 @@ export class PostService implements OnModuleInit {
       .lean();
     await this.postWriteService.reindexRecruitingEmbeddings(
       recruiting as PostRecord[],
-      async legacyId => {
+      async (legacyId) => {
         if (legacyId == null) return undefined;
         const activity = await this.activityService.findByLegacyId(legacyId);
         return activity?.code;
@@ -271,31 +280,29 @@ export class PostService implements OnModuleInit {
     authorName?: string,
   ): Promise<PostRecord[]> {
     const actorUserId = resolveActorUserId(userId, authorName);
-    const excluded = await this.userBlockService.getBlockExclusionSet(actorUserId);
+    const excluded =
+      await this.userBlockService.getBlockExclusionSet(actorUserId);
     if (!excluded.size) return posts;
-    return posts.filter(post => !excluded.has(post.userId));
+    return posts.filter((post) => !excluded.has(post.userId));
   }
 
-  private async applyPrivacyToFeedItems<T extends {
-    userId?: string;
-    location?: string;
-    name?: string;
-    handle?: string;
-  }>(
-    items: T[],
-    viewerUserId: string,
-    buddyUserIds: Set<string>,
-  ): Promise<T[]> {
+  private async applyPrivacyToFeedItems<
+    T extends {
+      userId?: string;
+      location?: string;
+      name?: string;
+      handle?: string;
+    },
+  >(items: T[], viewerUserId: string, buddyUserIds: Set<string>): Promise<T[]> {
     const authorIds = [
-      ...new Set(items.map(item => item.userId).filter(Boolean) as string[]),
+      ...new Set(items.map((item) => item.userId).filter(Boolean) as string[]),
     ];
     if (!authorIds.length) return items;
 
-    const privacyMap = await this.userService.findPrivacyLevelsByExternalIds(
-      authorIds,
-    );
+    const privacyMap =
+      await this.userService.findPrivacyLevelsByExternalIds(authorIds);
 
-    return items.map(item => {
+    return items.map((item) => {
       const authorId = item.userId?.trim();
       if (!authorId || authorId === viewerUserId) return item;
 
@@ -315,12 +322,14 @@ export class PostService implements OnModuleInit {
     });
   }
 
-  private async mapPostsWithLiked<T extends {
-    userId?: string;
-    location?: string;
-    name?: string;
-    handle?: string;
-  }>(
+  private async mapPostsWithLiked<
+    T extends {
+      userId?: string;
+      location?: string;
+      name?: string;
+      handle?: string;
+    },
+  >(
     posts: PostRecord[],
     mapper: (post: PostRecord, liked: boolean) => T,
     userId?: string,
@@ -329,12 +338,17 @@ export class PostService implements OnModuleInit {
     if (!posts.length) return [];
 
     const actorUserId = resolveActorUserId(userId, authorName);
-    const visiblePosts = await this.filterPostsForViewer(posts, userId, authorName);
-    const postIds = visiblePosts.map(post => String(post._id));
+    const visiblePosts = await this.filterPostsForViewer(
+      posts,
+      userId,
+      authorName,
+    );
+    const postIds = visiblePosts.map((post) => String(post._id));
     const likedIds = await this.findLikedPostIds(actorUserId, postIds);
-    const buddyUserIds = await this.userBlockService.loadBuddyUserIds(actorUserId);
+    const buddyUserIds =
+      await this.userBlockService.loadBuddyUserIds(actorUserId);
 
-    const mapped = visiblePosts.map(post =>
+    const mapped = visiblePosts.map((post) =>
       mapper(post, likedIds.has(String(post._id))),
     );
 
@@ -422,10 +436,7 @@ export class PostService implements OnModuleInit {
           authorName,
         );
         if (anchorItem) {
-          items = [
-            anchorItem,
-            ...items.filter((post) => post.id !== anchorId),
-          ];
+          items = [anchorItem, ...items.filter((post) => post.id !== anchorId)];
         }
       }
     }
@@ -442,7 +453,7 @@ export class PostService implements OnModuleInit {
     const filter = resolveOwnerFilter(userId, authorName);
     return this.repository
       .findByOwner(filter)
-      .then(rows => rows.map(PostMapper.toProfileItem));
+      .then((rows) => rows.map(PostMapper.toProfileItem));
   }
 
   async findPostById(id: string): Promise<PostRecord | null> {
@@ -546,7 +557,8 @@ export class PostService implements OnModuleInit {
     if (dto.body?.trim()) patch.body = dto.body.trim();
     if (dto.eventTitle?.trim()) patch.eventTitle = dto.eventTitle.trim();
     if (dto.location?.trim()) patch.location = dto.location.trim();
-    if (dto.departureCity?.trim()) patch.departureCity = dto.departureCity.trim();
+    if (dto.departureCity?.trim())
+      patch.departureCity = dto.departureCity.trim();
     if (dto.images) patch.images = dto.images;
 
     if (dto.body?.trim() || dto.departureCity?.trim() || dto.location?.trim()) {

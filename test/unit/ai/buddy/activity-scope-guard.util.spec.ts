@@ -43,9 +43,9 @@ describe('activity-scope-guard.util', () => {
 
   describe('shouldSkipActivityScopedBuddyRecommend', () => {
     it('skips buddy recommend for ticket resale in activity chat', () => {
-      expect(
-        shouldSkipActivityScopedBuddyRecommend(ASOT_HK_TICKET, 9),
-      ).toBe(true);
+      expect(shouldSkipActivityScopedBuddyRecommend(ASOT_HK_TICKET, 9)).toBe(
+        true,
+      );
     });
 
     it('skips ticket resale on homepage without bound activity', () => {

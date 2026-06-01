@@ -35,10 +35,7 @@ const ID_PATTERN = /\d{17}[\dXx]/g;
 
 function desensitizeText(value?: string): string {
   if (!value?.trim()) return '';
-  return value
-    .replace(PHONE_PATTERN, '***')
-    .replace(ID_PATTERN, '***')
-    .trim();
+  return value.replace(PHONE_PATTERN, '***').replace(ID_PATTERN, '***').trim();
 }
 
 function normalizeTags(raw?: string[]): string[] {
@@ -65,7 +62,7 @@ export class ImageParseAgent {
 
     const history = input.messages
       .slice(-6)
-      .map(message => `${message.role}: ${message.content}`)
+      .map((message) => `${message.role}: ${message.content}`)
       .join('\n');
 
     const userPrompt = [

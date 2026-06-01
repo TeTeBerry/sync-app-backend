@@ -61,11 +61,12 @@ function toDto(doc: {
     body: doc.body,
     read: Boolean(doc.read),
     meta: doc.meta,
-    createdAt: doc.createdAt instanceof Date
-      ? doc.createdAt.toISOString()
-      : typeof doc.createdAt === 'string'
-        ? doc.createdAt
-        : new Date().toISOString(),
+    createdAt:
+      doc.createdAt instanceof Date
+        ? doc.createdAt.toISOString()
+        : typeof doc.createdAt === 'string'
+          ? doc.createdAt
+          : new Date().toISOString(),
   };
 }
 
@@ -114,7 +115,7 @@ export class NotificationService {
 
   async createMany(inputs: CreateNotificationInput[]): Promise<void> {
     const rows = inputs
-      .map(input => ({
+      .map((input) => ({
         userId: resolveUserId(input.userId),
         type: input.type,
         title: input.title,
@@ -122,7 +123,7 @@ export class NotificationService {
         read: false,
         meta: input.meta ?? {},
       }))
-      .filter(row => row.userId !== 'anonymous');
+      .filter((row) => row.userId !== 'anonymous');
 
     if (rows.length === 0) return;
     await this.notificationModel.insertMany(rows);
@@ -136,7 +137,7 @@ export class NotificationService {
       .limit(100)
       .lean();
 
-    return rows.map(row => toDto(row));
+    return rows.map((row) => toDto(row));
   }
 
   async unreadCount(userId?: string): Promise<number> {
@@ -172,7 +173,10 @@ export class NotificationService {
 
   async deleteOne(id: string, userId?: string): Promise<{ ok: true }> {
     const uid = resolveUserId(userId);
-    const result = await this.notificationModel.deleteOne({ _id: id, userId: uid });
+    const result = await this.notificationModel.deleteOne({
+      _id: id,
+      userId: uid,
+    });
     if (result.deletedCount === 0) {
       throw new NotFoundException('通知不存在');
     }

@@ -18,7 +18,9 @@ describe('per-activity entitlement quotas', () => {
     expect(quotas.aiMatch.limit).toBe(FREE_MONTHLY_AI_MATCH_LIMIT);
     expect(quotas.aiMatch.remaining).toBe(FREE_MONTHLY_AI_MATCH_LIMIT);
     expect(quotas.contactUnlock.limit).toBe(FREE_MONTHLY_CONTACT_UNLOCK_LIMIT);
-    expect(quotas.contactUnlock.remaining).toBe(FREE_MONTHLY_CONTACT_UNLOCK_LIMIT);
+    expect(quotas.contactUnlock.remaining).toBe(
+      FREE_MONTHLY_CONTACT_UNLOCK_LIMIT,
+    );
     expect(quotas.map.active).toBe(false);
   });
 

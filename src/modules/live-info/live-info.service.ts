@@ -29,10 +29,7 @@ import {
   shanghaiEndOfEventDate,
   shanghaiEventDate,
 } from './domain/live-info-date.util';
-import {
-  toLiveInfoFeedItemDto,
-  toLiveInfoViewerDto,
-} from './live-info.mapper';
+import { toLiveInfoFeedItemDto, toLiveInfoViewerDto } from './live-info.mapper';
 import { LIVE_INFO_SEED_UPDATES } from './live-info.seed';
 import {
   wristbandImageFileKey,

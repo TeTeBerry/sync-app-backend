@@ -4,7 +4,10 @@ module.exports = {
     pageContent: string;
     metadata: Record<string, unknown>;
 
-    constructor(init: { pageContent: string; metadata?: Record<string, unknown> }) {
+    constructor(init: {
+      pageContent: string;
+      metadata?: Record<string, unknown>;
+    }) {
       this.pageContent = init.pageContent;
       this.metadata = init.metadata ?? {};
     }

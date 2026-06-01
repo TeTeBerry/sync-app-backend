@@ -11,10 +11,14 @@ describe('notification-templates.util', () => {
   });
 
   it('renders like notification with category in meta', () => {
-    const built = buildNotificationFromTemplate('like', { actor: 'Alex' }, {
-      postId: 'post-1',
-      type: 'like',
-    });
+    const built = buildNotificationFromTemplate(
+      'like',
+      { actor: 'Alex' },
+      {
+        postId: 'post-1',
+        type: 'like',
+      },
+    );
 
     expect(built.type).toBe('interaction');
     expect(built.title).toContain('赞');
@@ -22,5 +26,4 @@ describe('notification-templates.util', () => {
     expect(built.meta.category).toBe('like');
     expect(built.meta.templateKey).toBe('notifications.types.like');
   });
-
 });

@@ -44,10 +44,14 @@ function countSharedTags(
   requesterTags: string[] | undefined,
   post: PostFitSnapshot,
 ): string[] {
-  const requester = [...new Set((requesterTags ?? []).map(normalizeTag).filter(Boolean))];
+  const requester = [
+    ...new Set((requesterTags ?? []).map(normalizeTag).filter(Boolean)),
+  ];
   if (!requester.length) return [];
 
-  const postTagSet = new Set((post.tags ?? []).map(normalizeTag).filter(Boolean));
+  const postTagSet = new Set(
+    (post.tags ?? []).map(normalizeTag).filter(Boolean),
+  );
   const haystack = [
     post.body,
     post.location,
@@ -59,7 +63,7 @@ function countSharedTags(
     .toLowerCase();
 
   return requester.filter(
-    tag =>
+    (tag) =>
       postTagSet.has(tag) ||
       haystack.includes(`#${tag}`) ||
       haystack.includes(tag),
@@ -79,7 +83,7 @@ export function buildPostFitMatchReason(params: {
   if (params.matchedTags.length) {
     const labels = params.matchedTags
       .slice(0, 3)
-      .map(tag => `#${tag.startsWith('#') ? tag.slice(1) : tag}`);
+      .map((tag) => `#${tag.startsWith('#') ? tag.slice(1) : tag}`);
     return `标签契合：${labels.join('、')}`;
   }
 
@@ -152,8 +156,8 @@ function lexicalFallbackScore(
 
   const tokens = requesterText
     .split(/[\s#，,。、]+/)
-    .map(token => token.trim())
-    .filter(token => token.length >= 2);
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
 
   for (const token of tokens) {
     if (postText.includes(token)) score += 0.5;
@@ -174,7 +178,7 @@ export function rankPostsByCriteria(
   _profile?: PostFitUserProfile,
 ): CriteriaRankedPost[] {
   const scored = posts
-    .map(post => {
+    .map((post) => {
       const snapshot = postRecordToFitSnapshot(post);
       const tie = applyLightTieBreak(criteria, snapshot);
       const score = lexicalFallbackScore(criteria, snapshot);
@@ -183,8 +187,7 @@ export function rankPostsByCriteria(
         snippet: buildSnippet(snapshot),
         score,
         matchReason:
-          tie.matchReason ??
-          (score > tie.boost ? '同活动招募帖' : undefined),
+          tie.matchReason ?? (score > tie.boost ? '同活动招募帖' : undefined),
       };
     })
     .sort((left, right) => right.score - left.score);
@@ -210,7 +213,13 @@ export function scorePostFit(
   criteria: BuddyMatchCriteria,
   profile: PostFitUserProfile | undefined,
   post: PostFitSnapshot,
-): { score: number; matchReason?: string; matchedTags: string[]; matchedIntents: never[]; matchedContentTokens: never[] } {
+): {
+  score: number;
+  matchReason?: string;
+  matchedTags: string[];
+  matchedIntents: never[];
+  matchedContentTokens: never[];
+} {
   const tie = applyLightTieBreak(criteria, post);
   let score = tie.boost;
 
@@ -218,7 +227,11 @@ export function scorePostFit(
     const target = normalizeCityName(profile.city);
     const postCity =
       normalizeCityName(post.departureCity) ?? normalizeCityName(post.location);
-    if (target && postCity && (postCity === target || postCity.includes(target))) {
+    if (
+      target &&
+      postCity &&
+      (postCity === target || postCity.includes(target))
+    ) {
       score += 0.5;
     }
   }

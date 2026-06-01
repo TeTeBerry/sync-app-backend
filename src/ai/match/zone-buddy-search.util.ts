@@ -33,7 +33,8 @@ export function formatActivityEventDayLabel(
     const month = Number(range[1]);
     return `${month}月${day}日`;
   }
-  const year = extractYearFromText(activityName) ?? String(new Date().getFullYear());
+  const year =
+    extractYearFromText(activityName) ?? String(new Date().getFullYear());
   const iso = catalogDateToIso(catalogDate, year);
   if (iso) {
     const [, m, d] = iso.split('-');
@@ -50,7 +51,7 @@ export function formatActivityCatalogDayLabels(
   const days = parseActivityCatalogDays(catalogDate);
   if (!days.length || !catalogDate?.trim()) return '';
   return days
-    .map(day => formatActivityEventDayLabel(catalogDate, day, activityName))
+    .map((day) => formatActivityEventDayLabel(catalogDate, day, activityName))
     .join('、');
 }
 
@@ -75,7 +76,10 @@ export interface BuddySearchQueryInput {
   activityName?: string;
 }
 
-function activityIncludesDay(catalogDate: string | undefined, day: number): boolean {
+function activityIncludesDay(
+  catalogDate: string | undefined,
+  day: number,
+): boolean {
   return parseActivityCatalogDays(catalogDate).includes(day);
 }
 
@@ -115,7 +119,9 @@ export function buildBuddySearchQuery(input: BuddySearchQueryInput): string {
   const terms = new Set<string>([base, '搭子', '同行', '组队']);
   if (hint) terms.add(hint);
 
-  for (const text of [hint, base].filter((s): s is string => Boolean(s?.trim()))) {
+  for (const text of [hint, base].filter((s): s is string =>
+    Boolean(s?.trim()),
+  )) {
     addDayZoneTerms(terms, text, input.activityDate, input.activityName);
   }
 
@@ -159,9 +165,7 @@ export function formatZoneMatchScope(
   hintLabel: string,
   hintKind?: BuddySearchHintKind,
 ): string {
-  return hintKind === 'event_day'
-    ? `「${hintLabel}」这场`
-    : `「${hintLabel}」`;
+  return hintKind === 'event_day' ? `「${hintLabel}」这场` : `「${hintLabel}」`;
 }
 
 export interface BuddySearchHintConstraints {
@@ -172,7 +176,9 @@ export interface BuddySearchHintConstraints {
 }
 
 function collectRegexMatches(text: string, pattern: RegExp): RegExpExecArray[] {
-  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+  const flags = pattern.flags.includes('g')
+    ? pattern.flags
+    : `${pattern.flags}g`;
   const re = new RegExp(pattern.source, flags);
   const matches: RegExpExecArray[] = [];
   let match: RegExpExecArray | null = re.exec(text);
@@ -190,24 +196,35 @@ export function parseBuddySearchHintConstraints(
 ): BuddySearchHintConstraints | null {
   const label = hintLabel.trim();
   if (!label || !hintKind) return null;
-  if (hintKind !== 'event_day' && hintKind !== 'zone' && hintKind !== 'day_or_zone') {
+  if (
+    hintKind !== 'event_day' &&
+    hintKind !== 'zone' &&
+    hintKind !== 'day_or_zone'
+  ) {
     return null;
   }
 
-  const eventDayLabels = collectRegexMatches(label, /(\d{1,2})月(\d{1,2})日/g).map(
-    match => `${match[1]}月${match[2]}日`,
-  );
+  const eventDayLabels = collectRegexMatches(
+    label,
+    /(\d{1,2})月(\d{1,2})日/g,
+  ).map((match) => `${match[1]}月${match[2]}日`);
   const catalogDayNumbers = new Set<number>();
   for (const match of collectRegexMatches(label, /(\d{1,2})月(\d{1,2})日/g)) {
     catalogDayNumbers.add(Number(match[2]));
   }
-  for (const match of collectRegexMatches(label, /(\d{1,2})\s*号\s*([A-Za-z])?\s*区?/g)) {
+  for (const match of collectRegexMatches(
+    label,
+    /(\d{1,2})\s*号\s*([A-Za-z])?\s*区?/g,
+  )) {
     catalogDayNumbers.add(Number(match[1]));
   }
 
   const zoneLabels: string[] = [];
   const zoneLetters = new Set<string>();
-  for (const match of collectRegexMatches(label, /(\d{1,2})\s*号\s*([A-Za-z])\s*区/gi)) {
+  for (const match of collectRegexMatches(
+    label,
+    /(\d{1,2})\s*号\s*([A-Za-z])\s*区/gi,
+  )) {
     const day = match[1];
     const letter = (match[2] ?? '').toUpperCase();
     zoneLabels.push(`${day}号${letter}区`);
@@ -217,7 +234,12 @@ export function parseBuddySearchHintConstraints(
     zoneLetters.add(match[1].toUpperCase());
   }
 
-  if (!eventDayLabels.length && !catalogDayNumbers.size && !zoneLabels.length && !zoneLetters.size) {
+  if (
+    !eventDayLabels.length &&
+    !catalogDayNumbers.size &&
+    !zoneLabels.length &&
+    !zoneLetters.size
+  ) {
     return null;
   }
 
@@ -245,7 +267,8 @@ export function postTextMatchesBuddySearchHint(
     );
   };
 
-  const mentionsEventDayLabel = (label: string): boolean => haystack.includes(label);
+  const mentionsEventDayLabel = (label: string): boolean =>
+    haystack.includes(label);
 
   const dayMatched =
     constraints.eventDayLabels.some(mentionsEventDayLabel) ||
@@ -253,8 +276,8 @@ export function postTextMatchesBuddySearchHint(
 
   if (constraints.catalogDayNumbers.length) {
     const conflictingDays = constraints.catalogDayNumbers
-      .map(day => day + 1)
-      .filter(nextDay => mentionsDay(nextDay) && !mentionsDay(nextDay - 1));
+      .map((day) => day + 1)
+      .filter((nextDay) => mentionsDay(nextDay) && !mentionsDay(nextDay - 1));
 
     if (conflictingDays.length && !dayMatched) {
       return false;
@@ -276,13 +299,13 @@ export function postTextMatchesBuddySearchHint(
 
   if (constraints.zoneLabels.length || constraints.zoneLetters.length) {
     const zoneMatched =
-      constraints.zoneLabels.some(zone =>
+      constraints.zoneLabels.some((zone) =>
         haystack.toUpperCase().includes(zone.toUpperCase()),
       ) ||
-      constraints.zoneLetters.some(letter => {
+      constraints.zoneLetters.some((letter) => {
         if (!new RegExp(`${letter}\\s*区`, 'i').test(haystack)) return false;
         if (dayMatched) return true;
-        return constraints.catalogDayNumbers.some(day =>
+        return constraints.catalogDayNumbers.some((day) =>
           new RegExp(`${day}\\s*号`).test(haystack),
         );
       });
@@ -301,7 +324,7 @@ export function filterMatchesByBuddySearchHint<T extends { snippet: string }>(
   const constraints = parseBuddySearchHintConstraints(hintLabel, hintKind);
   if (!constraints) return matches;
 
-  const filtered = matches.filter(match =>
+  const filtered = matches.filter((match) =>
     postTextMatchesBuddySearchHint(match.snippet, constraints),
   );
 

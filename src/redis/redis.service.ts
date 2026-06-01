@@ -56,7 +56,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       retryStrategy: () => null,
     });
 
-    client.on('error', error => {
+    client.on('error', (error) => {
       if (this.enabled) {
         this.logger.warn(`Redis error: ${error.message}`);
       }
@@ -160,7 +160,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       return await this.client.get(key);
     } catch (error) {
-      this.logger.warn(`Redis get failed (${key}): ${(error as Error).message}`);
+      this.logger.warn(
+        `Redis get failed (${key}): ${(error as Error).message}`,
+      );
       return null;
     }
   }
@@ -171,7 +173,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       await this.client.set(key, value);
     } catch (error) {
-      this.logger.warn(`Redis set failed (${key}): ${(error as Error).message}`);
+      this.logger.warn(
+        `Redis set failed (${key}): ${(error as Error).message}`,
+      );
     }
   }
 
@@ -193,7 +197,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** Fixed-window counter; returns null when Redis unavailable (caller should fallback). */
-  async incrementRateLimit(key: string, windowSec: number): Promise<number | null> {
+  async incrementRateLimit(
+    key: string,
+    windowSec: number,
+  ): Promise<number | null> {
     if (!this.client || !this.enabled) return null;
 
     try {

@@ -1,9 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { LlmService } from '../llm/llm.service';
-import {
-  decodeBase64Payload,
-  toDataUrl,
-} from '../utils/image-base64.util';
+import { decodeBase64Payload, toDataUrl } from '../utils/image-base64.util';
 import { matchRiskRules } from '../risk/risk-rules.util';
 import {
   buildPublishableBody,

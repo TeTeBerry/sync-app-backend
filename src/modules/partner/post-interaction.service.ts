@@ -9,9 +9,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import { resolveActorUserId } from '../../common/auth/actor-user.util';
-import {
-  isResourceOwnedByClient,
-} from '../../common/utils/demo-owner.util';
+import { isResourceOwnedByClient } from '../../common/utils/demo-owner.util';
 import {
   PostApplication,
   PostApplicationDocument,
@@ -175,7 +173,12 @@ export class PostInteractionService {
       throw error;
     }
 
-    void this.postNotification.notifyApplication(post, id, actorUserId, authorName);
+    void this.postNotification.notifyApplication(
+      post,
+      id,
+      actorUserId,
+      authorName,
+    );
 
     return { ok: true as const, alreadyApplied: false };
   }
@@ -201,7 +204,7 @@ export class PostInteractionService {
       .sort({ createdAt: 1 })
       .lean();
 
-    const parentIds = topLevel.map(row => String(row._id));
+    const parentIds = topLevel.map((row) => String(row._id));
     const replyRows =
       parentIds.length > 0
         ? await this.commentModel
@@ -452,6 +455,6 @@ export class PostInteractionService {
       .select('postId')
       .lean();
 
-    return new Set(rows.map(row => row.postId));
+    return new Set(rows.map((row) => row.postId));
   }
 }

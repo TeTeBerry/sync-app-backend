@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import type { ReplyContext, ReplyMatcher } from '../../handler-pipeline/handler-pipeline.types';
+import type {
+  ReplyContext,
+  ReplyMatcher,
+} from '../../handler-pipeline/handler-pipeline.types';
 import { shouldHandleStructuredReply } from '../../utils/structured-reply.handler';
 
 @Injectable()

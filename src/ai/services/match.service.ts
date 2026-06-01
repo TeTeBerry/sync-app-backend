@@ -1,7 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import {
-  isResourceOwnedByClient,
-} from '../../common/utils/demo-owner.util';
+import { isResourceOwnedByClient } from '../../common/utils/demo-owner.util';
 import {
   IPostRepository,
   POST_REPOSITORY,
@@ -74,7 +72,7 @@ export class MatchService {
 
     const excludePostIds = new Set(
       (criteria.excludePostIds ?? [])
-        .map(id => String(id).trim())
+        .map((id) => String(id).trim())
         .filter(Boolean),
     );
 
@@ -111,13 +109,16 @@ export class MatchService {
 
     const queryText = criteriaToEmbeddingText(criteria);
 
-    const chromaResult = await this.chromaService.queryPostsForMatch(queryText, {
-      activityCode: criteria.activityCode ?? '',
-      activityLegacyId: criteria.activityLegacyId,
-      excludeUserIds: excludeUserIds.length ? excludeUserIds : undefined,
-      profileUserId: requesterUserId ?? params.userId,
-      n: VECTOR_RECALL_N,
-    });
+    const chromaResult = await this.chromaService.queryPostsForMatch(
+      queryText,
+      {
+        activityCode: criteria.activityCode ?? '',
+        activityLegacyId: criteria.activityLegacyId,
+        excludeUserIds: excludeUserIds.length ? excludeUserIds : undefined,
+        profileUserId: requesterUserId ?? params.userId,
+        n: VECTOR_RECALL_N,
+      },
+    );
 
     let degraded = Boolean(chromaResult.degraded);
     let items: MatchedPostItem[] = [];
@@ -125,7 +126,8 @@ export class MatchService {
 
     // Filter out semantically unrelated matches by cosine distance.
     const relevantMatches = chromaResult.matches.filter(
-      m => (m.distance ?? Number.POSITIVE_INFINITY) <= CHROMA_DISTANCE_THRESHOLD,
+      (m) =>
+        (m.distance ?? Number.POSITIVE_INFINITY) <= CHROMA_DISTANCE_THRESHOLD,
     );
 
     if (relevantMatches.length > 0) {
@@ -150,7 +152,8 @@ export class MatchService {
     // When the user has a specific non-buddy intent (food/social) and
     // no relevant vector matches were found, skip the MongoDB lexical fallback.
     // This prevents pushing carpool/lodging posts to a user looking for supper.
-    const hasSpecificIntent = criteria.intents?.some(i => i === 'food' || i === 'social') ?? false;
+    const hasSpecificIntent =
+      criteria.intents?.some((i) => i === 'food' || i === 'social') ?? false;
 
     if (!items.length && !hasSpecificIntent) {
       const mongoRanked = rankPostsByCriteria(
@@ -159,7 +162,7 @@ export class MatchService {
         limit,
         params.profile,
       );
-      items = mongoRanked.map(row => ({
+      items = mongoRanked.map((row) => ({
         postId: row.postId,
         snippet: row.snippet,
         matchReason: row.matchReason ?? '同活动招募帖',
@@ -182,9 +185,10 @@ export class MatchService {
     excludePostIds: ReadonlySet<string>,
   ): Promise<PostRecord[]> {
     const excluded = new Set(excludeUserIds.filter(Boolean));
-    const rows = await this.postRepository.findByActivityLegacyId(activityLegacyId);
+    const rows =
+      await this.postRepository.findByActivityLegacyId(activityLegacyId);
     return rows.filter(
-      post =>
+      (post) =>
         post.status === 'recruiting' &&
         post.userId &&
         !excluded.has(String(post.userId)) &&
@@ -211,7 +215,7 @@ export class MatchService {
     },
   ): Promise<{ items: MatchedPostItem[]; rerankFailed: boolean }> {
     const postById = new Map(
-      mongoCandidates.map(post => [String(post._id), post]),
+      mongoCandidates.map((post) => [String(post._id), post]),
     );
 
     const enriched = context
@@ -219,7 +223,7 @@ export class MatchService {
       : undefined;
 
     const enrichedById = new Map(
-      (enriched ?? []).map(candidate => [candidate.postId, candidate]),
+      (enriched ?? []).map((candidate) => [candidate.postId, candidate]),
     );
 
     type Prepared = {
@@ -238,7 +242,11 @@ export class MatchService {
       }
 
       const enrichedCandidate = enrichedById.get(match.postId);
-      if (context && enrichedCandidate && shouldFilterChromaCandidate(enrichedCandidate, context)) {
+      if (
+        context &&
+        enrichedCandidate &&
+        shouldFilterChromaCandidate(enrichedCandidate, context)
+      ) {
         return;
       }
 
@@ -265,7 +273,8 @@ export class MatchService {
             location: enrichedCandidate?.postCity,
           };
 
-      const snippetSource = post?.body ?? enrichedCandidate?.postBody ?? match.document;
+      const snippetSource =
+        post?.body ?? enrichedCandidate?.postBody ?? match.document;
 
       prepared.push({
         postId: match.postId,
@@ -285,7 +294,7 @@ export class MatchService {
 
     const rerankedIds = await this.postMatchRerankService.rerank(
       userNeed,
-      rerankInput.map(item => ({
+      rerankInput.map((item) => ({
         postId: item.postId,
         snippet: item.snippet,
         tags: item.snapshot.tags,
@@ -310,7 +319,7 @@ export class MatchService {
       prepared.forEach((item, index) => orderIndex.set(item.postId, index));
     }
 
-    const withTieBreak = prepared.map(item => {
+    const withTieBreak = prepared.map((item) => {
       const tie = applyLightTieBreak(criteria, item.snapshot);
       const rerankRank = orderIndex.get(item.postId) ?? prepared.length;
       const isTopRerank = rerankRank === 0 && !rerankFailed;
@@ -337,20 +346,19 @@ export class MatchService {
       if (left.rerankRank !== right.rerankRank) {
         return left.rerankRank - right.rerankRank;
       }
-      if (right.tieBoost !== left.tieBoost) return right.tieBoost - left.tieBoost;
+      if (right.tieBoost !== left.tieBoost)
+        return right.tieBoost - left.tieBoost;
       const leftDistance = left.distance ?? Number.POSITIVE_INFINITY;
       const rightDistance = right.distance ?? Number.POSITIVE_INFINITY;
       return leftDistance - rightDistance;
     });
 
-    const items = withTieBreak
-      .slice(0, limit)
-      .map(item => ({
-        postId: item.postId,
-        snippet: item.snippet,
-        distance: item.distance,
-        matchReason: item.matchReason,
-      }));
+    const items = withTieBreak.slice(0, limit).map((item) => ({
+      postId: item.postId,
+      snippet: item.snippet,
+      distance: item.distance,
+      matchReason: item.matchReason,
+    }));
 
     return { items, rerankFailed };
   }
@@ -365,9 +373,11 @@ export class MatchService {
       authorName?: string;
     },
   ): MatchedPostItem[] {
-    const postById = new Map(candidates.map(post => [String(post._id), post]));
+    const postById = new Map(
+      candidates.map((post) => [String(post._id), post]),
+    );
 
-    return items.filter(item => {
+    return items.filter((item) => {
       const post = postById.get(item.postId);
       if (!post) return false;
       return !this.isOwnRecruitingPost(post, isolation);
@@ -383,7 +393,11 @@ export class MatchService {
     },
   ): boolean {
     const requesterUserId = isolation.requesterUserId?.trim();
-    if (requesterUserId && post.userId && String(post.userId) === requesterUserId) {
+    if (
+      requesterUserId &&
+      post.userId &&
+      String(post.userId) === requesterUserId
+    ) {
       return true;
     }
 

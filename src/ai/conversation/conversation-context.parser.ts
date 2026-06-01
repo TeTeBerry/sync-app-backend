@@ -123,7 +123,7 @@ export function isShortContextReply(input: string): boolean {
   if (/^\d+\s*个?$/.test(text)) return true;
   if (/^\d{3,5}$/.test(text)) return true;
   if (/(\d{4})[.\-/年]/.test(text)) return true;
-  return CITY_NAMES.some(city => text === city || text.includes(city));
+  return CITY_NAMES.some((city) => text === city || text.includes(city));
 }
 
 export function parseConversationContext(
@@ -187,7 +187,9 @@ export function buildKnownFactsSummary(
     ctx.activityKeyword ||
     ctx.activityPickerIndex
   ) {
-    lines.push(`· 活动：${activityName ?? ctx.activityKeyword ?? ctx.activityId}`);
+    lines.push(
+      `· 活动：${activityName ?? ctx.activityKeyword ?? ctx.activityId}`,
+    );
   }
   if (ctx.eventDate) lines.push(`· 日期：${ctx.eventDate}`);
   if (ctx.peopleCount) lines.push(`· 人数：${ctx.peopleCount} 人`);

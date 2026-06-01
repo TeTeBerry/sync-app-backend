@@ -14,10 +14,13 @@ const EVENT_HINT_KEYWORDS: Array<{ pattern: RegExp; keyword: string }> = [
   { pattern: /creamfields|百威/i, keyword: 'creamfields' },
 ];
 
-function collectUserHaystack(messages: ChatMessageDto[], input: string): string {
+function collectUserHaystack(
+  messages: ChatMessageDto[],
+  input: string,
+): string {
   const parts = messages
-    .filter(message => message.role === 'user')
-    .map(message => message.content?.trim())
+    .filter((message) => message.role === 'user')
+    .map((message) => message.content?.trim())
     .filter((content): content is string => Boolean(content));
   const trimmed = input.trim();
   if (trimmed) parts.push(trimmed);

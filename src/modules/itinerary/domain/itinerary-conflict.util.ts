@@ -52,7 +52,14 @@ export function detectPerformanceConflicts(
       for (let j = i + 1; j < slots.length; j += 1) {
         const a = slots[i];
         const b = slots[j];
-        if (!rangesOverlap(a.startMinutes, a.endMinutes, b.startMinutes, b.endMinutes)) {
+        if (
+          !rangesOverlap(
+            a.startMinutes,
+            a.endMinutes,
+            b.startMinutes,
+            b.endMinutes,
+          )
+        ) {
           continue;
         }
         const key = conflictPairKey(a.artistId, b.artistId, dateKey);

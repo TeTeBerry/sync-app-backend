@@ -1,3 +1,7 @@
+import {
+  formatDateLabel,
+  formatTimeAgo,
+} from '../../common/utils/day-time.util';
 import { PostRecord } from './interfaces/post.repository.interface';
 
 const STATUS_LABEL: Record<string, '招募中' | '已组队' | '已隐藏'> = {
@@ -7,32 +11,7 @@ const STATUS_LABEL: Record<string, '招募中' | '已组队' | '已隐藏'> = {
 };
 
 function formatRelativeTime(value?: Date | string): string {
-  if (!value) return '';
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-
-  const diffMs = Date.now() - date.getTime();
-  const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 1) return '刚刚';
-  if (minutes < 60) return `${minutes}分钟前`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}小时前`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}天前`;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate(),
-  )}`;
-}
-
-function formatDateLabel(value?: Date | string): string {
-  if (!value) return '';
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate(),
-  )}`;
+  return formatTimeAgo(value, { absoluteAfterDays: 30, compact: true });
 }
 
 export class PostMapper {

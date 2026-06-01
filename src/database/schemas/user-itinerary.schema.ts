@@ -50,7 +50,4 @@ export class UserItinerary {
 
 export const UserItinerarySchema = SchemaFactory.createForClass(UserItinerary);
 
-UserItinerarySchema.index(
-  { userId: 1, activityLegacyId: 1 },
-  { unique: true },
-);
+UserItinerarySchema.index({ userId: 1, activityLegacyId: 1 }, { unique: true });

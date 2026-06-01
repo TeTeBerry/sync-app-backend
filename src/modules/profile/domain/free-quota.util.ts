@@ -37,9 +37,10 @@ export function normalizeFreeMonthlyUsage(
   };
 }
 
-export function buildFreeMonthlyQuotaSlots(
-  usage: FreeMonthlyUsage,
-): { aiMatch: QuotaSlot; contactUnlock: QuotaSlot } {
+export function buildFreeMonthlyQuotaSlots(usage: FreeMonthlyUsage): {
+  aiMatch: QuotaSlot;
+  contactUnlock: QuotaSlot;
+} {
   return {
     aiMatch: buildQuotaSlot(FREE_MONTHLY_AI_MATCH_LIMIT, usage.aiMatchUsed),
     contactUnlock: buildQuotaSlot(

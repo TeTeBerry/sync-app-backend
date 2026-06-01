@@ -12,7 +12,10 @@ import {
   TextParseAgent,
 } from '../agents';
 import type { ConversationState } from '../conversation';
-import { enterCollectPostBodyState, enterPublishConfirmState } from '../conversation';
+import {
+  enterCollectPostBodyState,
+  enterPublishConfirmState,
+} from '../conversation';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
 import {
   getMissingBuddyFields,
@@ -72,7 +75,9 @@ export class CreatePostFromChatUseCase {
     private readonly buddyContext: BuddyContextService,
   ) {}
 
-  async execute(params: CreatePostFromChatParams): Promise<PostIntentCreateAttempt> {
+  async execute(
+    params: CreatePostFromChatParams,
+  ): Promise<PostIntentCreateAttempt> {
     const {
       messages,
       input,
@@ -155,14 +160,16 @@ export class CreatePostFromChatUseCase {
       userId &&
       !skipExistingPostGuidance
     ) {
-      const existing = await this.postService.findOwnerRecruitingPostForActivity(
-        resolvedActivity.legacyId,
-        userId,
-        userName,
-      );
+      const existing =
+        await this.postService.findOwnerRecruitingPostForActivity(
+          resolvedActivity.legacyId,
+          userId,
+          userName,
+        );
       if (existing) {
         const fromSelfPostIntent =
-          trimmedInput === '自己发帖' || isDeclineRecommendationsIntent(trimmedInput);
+          trimmedInput === '自己发帖' ||
+          isDeclineRecommendationsIntent(trimmedInput);
         return {
           kind: 'existing_post',
           postId: existing.id,
@@ -198,7 +205,11 @@ export class CreatePostFromChatUseCase {
 
     // 缺失字段不再阻断发帖，仅作为建议信息融入帖子内容
 
-    if (isDeclineRecommendationsIntent(trimmedInput) && hasActivity && !publishConfirmReady) {
+    if (
+      isDeclineRecommendationsIntent(trimmedInput) &&
+      hasActivity &&
+      !publishConfirmReady
+    ) {
       onStateChange?.(
         enterCollectPostBodyState({
           activityLegacyId: resolvedActivity?.legacyId,
@@ -326,9 +337,8 @@ export class CreatePostFromChatUseCase {
       return null;
     }
 
-    const publishDraftBody =
-      publishConfirmReady ?
-        resolvePublishDraftBody({ messages, conversationState })
+    const publishDraftBody = publishConfirmReady
+      ? resolvePublishDraftBody({ messages, conversationState })
       : null;
 
     const body = await this.buddyContext.buildPostBody({
@@ -382,7 +392,11 @@ export class CreatePostFromChatUseCase {
     }
 
     const finalBody = risk.sanitizedBody ?? body;
-    const tags = this.buddyContext.resolveTags(trimmedInput, parsed?.tags, finalBody);
+    const tags = this.buddyContext.resolveTags(
+      trimmedInput,
+      parsed?.tags,
+      finalBody,
+    );
     // Post location metadata = user's departure city / profile location.
     // Zone/area parsed from body (e.g. "A区") stays in body only.
     const departureCity = ctx.city?.trim();

@@ -6,12 +6,12 @@ import {
 
 describe('free-quota.util', () => {
   it('formats period as YYYY-MM in UTC', () => {
-    expect(
-      formatQuotaPeriod(new Date('2026-05-15T12:00:00.000Z')),
-    ).toBe('2026-05');
-    expect(
-      formatQuotaPeriod(new Date('2026-01-02T00:00:00.000Z')),
-    ).toBe('2026-01');
+    expect(formatQuotaPeriod(new Date('2026-05-15T12:00:00.000Z'))).toBe(
+      '2026-05',
+    );
+    expect(formatQuotaPeriod(new Date('2026-01-02T00:00:00.000Z'))).toBe(
+      '2026-01',
+    );
   });
 
   it('resets usage when calendar month changes', () => {

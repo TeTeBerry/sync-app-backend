@@ -202,7 +202,7 @@ describe('MatchService', () => {
     });
 
     // far-post (distance 1.2 > 0.8 threshold) should be filtered out.
-    expect(result.items.map(i => i.postId)).toEqual(['close-post']);
+    expect(result.items.map((i) => i.postId)).toEqual(['close-post']);
     expect(result.degraded).toBe(false);
   });
 
@@ -406,7 +406,7 @@ describe('MatchService', () => {
       limit: BUDDY_RECOMMEND_LIMIT,
     });
 
-    expect(result.items.map(item => item.postId)).not.toContain('own-post');
+    expect(result.items.map((item) => item.postId)).not.toContain('own-post');
     expect(result.items[0]?.postId).toBe('other-post');
     expect(chromaService.queryPostsForMatch).toHaveBeenCalledWith(
       expect.any(String),
@@ -445,7 +445,11 @@ describe('MatchService', () => {
     const chromaService = {
       queryPostsForMatch: jest.fn().mockResolvedValue({
         matches: [
-          { postId: 'demo-post', document: 'Zara 自己的组队帖', distance: 0.05 },
+          {
+            postId: 'demo-post',
+            document: 'Zara 自己的组队帖',
+            distance: 0.05,
+          },
           { postId: 'other-post', document: '他人组队帖', distance: 0.2 },
         ],
         degraded: false,
@@ -480,7 +484,7 @@ describe('MatchService', () => {
       limit: BUDDY_RECOMMEND_LIMIT,
     });
 
-    expect(result.items.map(item => item.postId)).not.toContain('demo-post');
+    expect(result.items.map((item) => item.postId)).not.toContain('demo-post');
     expect(result.items[0]?.postId).toBe('other-post');
     expect(chromaService.queryPostsForMatch).toHaveBeenCalledWith(
       expect.any(String),
@@ -518,7 +522,11 @@ describe('MatchService', () => {
     const chromaService = {
       queryPostsForMatch: jest.fn().mockResolvedValue({
         matches: [
-          { postId: 'seed-post', document: '他人但用作 seed 的帖', distance: 0.05 },
+          {
+            postId: 'seed-post',
+            document: '他人但用作 seed 的帖',
+            distance: 0.05,
+          },
           { postId: 'other-post', document: '另一条组队帖', distance: 0.2 },
         ],
         degraded: false,
@@ -552,7 +560,7 @@ describe('MatchService', () => {
       limit: BUDDY_RECOMMEND_LIMIT,
     });
 
-    expect(result.items.map(item => item.postId)).not.toContain('seed-post');
+    expect(result.items.map((item) => item.postId)).not.toContain('seed-post');
     expect(result.items[0]?.postId).toBe('other-post');
   });
 });

@@ -106,7 +106,7 @@ describe('match-ranking.util', () => {
       },
       3,
       DEFAULT_MATCH_RANKING_WEIGHTS,
-    ).map(item => item.postId);
+    ).map((item) => item.postId);
 
     const userTwo = rerankMatchCandidates(
       candidates,
@@ -117,7 +117,7 @@ describe('match-ranking.util', () => {
       },
       3,
       DEFAULT_MATCH_RANKING_WEIGHTS,
-    ).map(item => item.postId);
+    ).map((item) => item.postId);
 
     expect(userOne).not.toEqual(userTwo);
   });

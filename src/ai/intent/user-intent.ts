@@ -1,10 +1,7 @@
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
 
-export type UserIntent =
-  | 'find_buddy'
-  | 'near_events'
-  | 'general';
+export type UserIntent = 'find_buddy' | 'near_events' | 'general';
 
 const QUICK_REPLIES: Record<UserIntent, string> = {
   find_buddy: '帮我组队',
@@ -26,11 +23,16 @@ export function detectUserIntent(input: string): UserIntent {
     isAiShortcutTag(text) ||
     text === QUICK_REPLIES.find_buddy ||
     text === '帮我找搭子' ||
-    /找.*搭子|找伙伴|匹配搭子|组局|帮我结伴|帮我组队|找同行|结伴|组队/.test(text)
+    /找.*搭子|找伙伴|匹配搭子|组局|帮我结伴|帮我组队|找同行|结伴|组队/.test(
+      text,
+    )
   ) {
     return 'find_buddy';
   }
-  if (text === QUICK_REPLIES.near_events || /最近活动|查活动|有什么活动|近期活动/.test(text)) {
+  if (
+    text === QUICK_REPLIES.near_events ||
+    /最近活动|查活动|有什么活动|近期活动/.test(text)
+  ) {
     return 'near_events';
   }
 
@@ -41,7 +43,7 @@ export function isExactQuickReply(input: string): boolean {
   const text = input.trim();
   if (text === '帮我dd') return true;
   if (isHomeFestivalShortcutInput(text)) return true;
-  return Object.values(QUICK_REPLIES).some(reply => reply && reply === text);
+  return Object.values(QUICK_REPLIES).some((reply) => reply && reply === text);
 }
 
 export function isQuickReplyIntent(input: string): boolean {

@@ -48,7 +48,9 @@ export function findAssistantBeforeIndex(
   return undefined;
 }
 
-export function isAwaitingActivitySelection(messages: ChatMessageDto[]): boolean {
+export function isAwaitingActivitySelection(
+  messages: ChatMessageDto[],
+): boolean {
   const lastUser = messages[messages.length - 1];
   if (lastUser?.role !== 'user') return false;
 

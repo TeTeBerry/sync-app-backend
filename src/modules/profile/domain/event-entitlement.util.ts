@@ -162,11 +162,6 @@ export function buildEntitlementView(
     tierId,
     tierName: tier.name,
     purchasedAt: purchasedAt.toISOString(),
-    quotas: buildEventEntitlementQuotas(
-      tier.limits,
-      usage,
-      mapExpiresAt,
-      now,
-    ),
+    quotas: buildEventEntitlementQuotas(tier.limits, usage, mapExpiresAt, now),
   };
 }

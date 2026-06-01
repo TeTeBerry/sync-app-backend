@@ -7,7 +7,11 @@ import { getPackageTierDefinition } from '@src/modules/profile/domain/package-ti
 
 describe('entitlement-consume.util', () => {
   const freeFresh = { period: '2026-05', aiMatchUsed: 0, contactUnlockUsed: 0 };
-  const freeExhausted = { period: '2026-05', aiMatchUsed: 3, contactUnlockUsed: 3 };
+  const freeExhausted = {
+    period: '2026-05',
+    aiMatchUsed: 3,
+    contactUnlockUsed: 3,
+  };
   const proLimits = getPackageTierDefinition('pro').limits;
 
   it('prefers free bucket when monthly AI match remains', () => {

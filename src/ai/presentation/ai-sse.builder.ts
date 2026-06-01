@@ -33,10 +33,10 @@ export class AiSseBuilder {
   ): AiStreamEvent[] {
     const content = replyText.trim();
     if (!content) return events;
-    if (events.some(event => event.type === 'message_complete')) {
+    if (events.some((event) => event.type === 'message_complete')) {
       return events;
     }
-    const hasDelta = events.some(event => event.type === 'delta');
+    const hasDelta = events.some((event) => event.type === 'delta');
     if (!hasDelta) return events;
     return [...events, { type: 'message_complete', content }];
   }
@@ -84,7 +84,7 @@ export class AiSseBuilder {
     sink.setState(
       enterRecommendGateState({
         activityLegacyId,
-        shownPostIds: postCards.map(card => card.postId),
+        shownPostIds: postCards.map((card) => card.postId),
         empty: false,
       }),
     );
@@ -129,7 +129,9 @@ export class AiSseBuilder {
 
     const patchIfNeeded = (): AiStreamEvent[] => {
       const state = sink.getState();
-      return state.flow !== createIdleState().flow || state.gate || state.publishDraft
+      return state.flow !== createIdleState().flow ||
+        state.gate ||
+        state.publishDraft
         ? [this.conversationPatchEvent(sink)]
         : [];
     };

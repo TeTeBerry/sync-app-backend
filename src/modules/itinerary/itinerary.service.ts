@@ -11,6 +11,7 @@ import { ItineraryScheduleService } from './itinerary-schedule.service';
 import type { ItineraryDay } from '../../database/schemas/user-itinerary.schema';
 import type { SaveItineraryDto } from './dto/save-itinerary.dto';
 import type { GenerateItineraryDto } from './dto/generate-itinerary.dto';
+import { normalizeItineraryDaysForSave } from './domain/itinerary-save-normalize.util';
 
 @Injectable()
 export class ItineraryService {
@@ -33,7 +34,10 @@ export class ItineraryService {
     void query.userId;
     void query.authorName;
     const selectedDjIds = query.selectedDjIds
-      ? query.selectedDjIds.split(',').map(s => s.trim()).filter(Boolean)
+      ? query.selectedDjIds
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
       : undefined;
 
     return this.scheduleService.getSchedule(activityLegacyId, {
@@ -64,12 +68,15 @@ export class ItineraryService {
     authorName?: string,
   ) {
     const actorId = resolveActorUserId(userId, authorName);
-    const days: ItineraryDay[] = body.days.map(day => ({
+    const normalizedDays = normalizeItineraryDaysForSave(
+      body.days as ItineraryDay[],
+    );
+    const days: ItineraryDay[] = normalizedDays.map((day) => ({
       id: day.id,
       label: day.label,
       bannerDateLabel: day.bannerDateLabel,
       nodeCount: day.nodeCount ?? day.items.length,
-      items: day.items.map(item => ({
+      items: day.items.map((item) => ({
         id: item.id,
         time: item.time,
         dotColor: item.dotColor,

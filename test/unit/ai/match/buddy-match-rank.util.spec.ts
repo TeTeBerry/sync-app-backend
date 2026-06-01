@@ -6,10 +6,7 @@ import {
 import type { BuddyMatchCriteria } from '@src/ai/match/buddy-match.types';
 import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
 
-function post(
-  id: string,
-  overrides: Partial<PostRecord> = {},
-): PostRecord {
+function post(id: string, overrides: Partial<PostRecord> = {}): PostRecord {
   return {
     _id: id,
     userId: `user-${id}`,

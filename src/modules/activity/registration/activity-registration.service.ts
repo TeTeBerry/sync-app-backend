@@ -76,11 +76,7 @@ export class ActivityRegistrationService {
 
     const profile = await this.userService.resolveProfile(userId, authorName);
     const actorUserId = resolveActorUserId(userId, authorName);
-    const actorName = resolveActorAuthorName(
-      userId,
-      authorName,
-      profile?.name,
-    );
+    const actorName = resolveActorAuthorName(userId, authorName, profile?.name);
 
     try {
       await this.registrationRepository.create({
@@ -119,7 +115,9 @@ export class ActivityRegistrationService {
   ): Promise<Set<number>> {
     const filter = resolveOwnerFilter(userId, authorName);
     const registrations = await this.registrationRepository.findByOwner(filter);
-    return new Set(registrations.map(registration => registration.activityLegacyId));
+    return new Set(
+      registrations.map((registration) => registration.activityLegacyId),
+    );
   }
 
   async unregister(

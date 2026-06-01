@@ -32,7 +32,7 @@ export class ActivityKnowledgeService {
     const yearHint =
       extractYearFromText(activityKeyword) ??
       extractYearFromText(
-        KNOWLEDGE_DOCUMENTS.find(doc => doc.metadata?.code === code)
+        KNOWLEDGE_DOCUMENTS.find((doc) => doc.metadata?.code === code)
           ?.pageContent,
       );
 

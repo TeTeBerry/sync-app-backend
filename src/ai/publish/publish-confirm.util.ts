@@ -34,7 +34,9 @@ export function extractDraftBodyFromPublishConfirmContent(
   }
 
   const lines = content.split('\n');
-  const markerIndex = lines.findIndex(line => line.includes(PUBLISH_CONFIRM_PROMPT_MARKER));
+  const markerIndex = lines.findIndex((line) =>
+    line.includes(PUBLISH_CONFIRM_PROMPT_MARKER),
+  );
   if (markerIndex < 0) {
     return null;
   }
@@ -76,9 +78,8 @@ export function buildPublishConfirmReply(params: {
   draftTags?: string[];
 }): string {
   const { activityLabel, draftBody, shortcutTag, draftTags } = params;
-  const tagLine =
-    draftTags?.length ?
-      `${PUBLISH_CONFIRM_TAGS_MARKER}${draftTags.join(' ')}`
+  const tagLine = draftTags?.length
+    ? `${PUBLISH_CONFIRM_TAGS_MARKER}${draftTags.join(' ')}`
     : '';
 
   return [

@@ -83,14 +83,19 @@ function citiesMatch(
   if (!target) return false;
 
   const author = normalizeCity(authorCity);
-  if (author && (author === target || author.includes(target) || target.includes(author))) {
+  if (
+    author &&
+    (author === target || author.includes(target) || target.includes(author))
+  ) {
     return true;
   }
 
   const location = normalizeCity(postCity);
   return Boolean(
     location &&
-      (location === target || location.includes(target) || target.includes(location)),
+    (location === target ||
+      location.includes(target) ||
+      target.includes(location)),
   );
 }
 
@@ -126,10 +131,7 @@ function genreOverlapRatio(
   return overlap / requester.size;
 }
 
-function likeMateCompatibility(
-  requester?: boolean,
-  author?: boolean,
-): number {
+function likeMateCompatibility(requester?: boolean, author?: boolean): number {
   if (requester == null || author == null) return 0.5;
   if (requester && author) return 1;
   if (!requester && !author) return 0.75;
@@ -170,9 +172,7 @@ export function computeProfileBoost(
 
   let boost = 0;
 
-  if (
-    citiesMatch(profile.city, candidate.author?.city, candidate.postCity)
-  ) {
+  if (citiesMatch(profile.city, candidate.author?.city, candidate.postCity)) {
     boost += weights.city;
   }
 
@@ -228,13 +228,15 @@ export function buildMatchReason(
   criteria?: BuddyMatchCriteria,
 ): string | undefined {
   if (criteria) {
-    const tie = applyLightTieBreak(criteria, candidateToPostFitSnapshot(candidate));
+    const tie = applyLightTieBreak(
+      criteria,
+      candidateToPostFitSnapshot(candidate),
+    );
     const reason = buildPostFitMatchReason({
       matchedTags: tie.matchedTags,
       departureCity: criteria.departureCity,
       departureCityExact: tie.departureCityExact,
-      topRerank:
-        candidate.distance != null && candidate.distance < 0.35,
+      topRerank: candidate.distance != null && candidate.distance < 0.35,
     });
     if (reason) return reason;
   }
@@ -261,10 +263,7 @@ export function buildMatchReason(
     reasons.push('都想找搭子');
   }
 
-  if (
-    candidate.profileDistance != null &&
-    candidate.profileDistance < 0.5
-  ) {
+  if (candidate.profileDistance != null && candidate.profileDistance < 0.5) {
     reasons.push('画像匹配');
   }
 
@@ -292,7 +291,11 @@ export function rerankMatchCandidates(
 
     const base = vectorScore(candidate.distance);
     const vectorWeighted =
-      base * profileVectorWeightBoost(candidate.profileDistance, weights.profileVector);
+      base *
+      profileVectorWeightBoost(
+        candidate.profileDistance,
+        weights.profileVector,
+      );
     const personalization =
       requesterId && weights.personalization > 0
         ? hashPersonalization(requesterId, candidate.postId) *
@@ -312,7 +315,11 @@ export function rerankMatchCandidates(
         tie.matchReason ??
         buildMatchReason(candidate, context.profile, context.criteria);
     } else {
-      const profileBoost = computeProfileBoost(context.profile, candidate, weights);
+      const profileBoost = computeProfileBoost(
+        context.profile,
+        candidate,
+        weights,
+      );
       score += profileBoost;
       matchReason = buildMatchReason(candidate, context.profile);
     }

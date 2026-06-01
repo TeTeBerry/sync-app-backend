@@ -27,7 +27,10 @@ export interface IPostRepository {
   findByOwner(filter: PostQueryFilter): Promise<PostRecord[]>;
   findById(id: string): Promise<PostRecord | null>;
   create(data: Partial<PostRecord>): Promise<PostRecord>;
-  updateById(id: string, patch: Partial<PostRecord>): Promise<PostRecord | null>;
+  updateById(
+    id: string,
+    patch: Partial<PostRecord>,
+  ): Promise<PostRecord | null>;
   incrementCounter(
     id: string,
     field: 'likes' | 'comments',

@@ -30,7 +30,9 @@ export class PostModerationAdapter implements IPostModerationPort {
     });
   }
 
-  assessComment(input: PostCommentModerationInput): Promise<PostModerationResult> {
+  assessComment(
+    input: PostCommentModerationInput,
+  ): Promise<PostModerationResult> {
     return this.riskAgent.assessComment({
       body: input.body,
       userId: input.userId,

@@ -10,7 +10,10 @@ import { ACTIVITY_PICKER_PROMPT } from '@src/ai/utils/activity-reply.util';
 describe('activity-enter.util', () => {
   it('detects awaiting enter after festival info', () => {
     const messages = [
-      { role: 'assistant' as const, content: `阵容介绍\n${HOME_FESTIVAL_ENTER_ACTIVITY_PROMPT}` },
+      {
+        role: 'assistant' as const,
+        content: `阵容介绍\n${HOME_FESTIVAL_ENTER_ACTIVITY_PROMPT}`,
+      },
       { role: 'user' as const, content: '风暴电音节' },
     ];
     expect(isAwaitingActivityEnterSelection(messages)).toBe(true);

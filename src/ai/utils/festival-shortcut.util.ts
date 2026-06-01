@@ -128,10 +128,7 @@ export const HOME_FESTIVAL_SHORTCUTS: readonly HomeFestivalShortcutDef[] = [
     fallbackName: 'EDC Thailand 2026',
     fallbackDate: '12/18-20',
     fallbackLocation: '普吉岛 Rhythm Park',
-    artists: [
-      '阵容陆续公布中',
-      '可关注 EDC Thailand 官方渠道',
-    ],
+    artists: ['阵容陆续公布中', '可关注 EDC Thailand 官方渠道'],
   },
 ] as const;
 
@@ -160,13 +157,24 @@ export function resolveHomeFestivalShortcutCode(
     if (trimmed.includes(def.chipLabel) || trimmed.includes(def.fallbackName)) {
       return def.code;
     }
-    if (def.code === 'edc' && /\bedc\b/i.test(trimmed) && !/泰国|thailand/i.test(trimmed)) {
+    if (
+      def.code === 'edc' &&
+      /\bedc\b/i.test(trimmed) &&
+      !/泰国|thailand/i.test(trimmed)
+    ) {
       return def.code;
     }
-    if (def.code === 'edc-thailand' && /edc/i.test(trimmed) && /泰国|thailand/i.test(trimmed)) {
+    if (
+      def.code === 'edc-thailand' &&
+      /edc/i.test(trimmed) &&
+      /泰国|thailand/i.test(trimmed)
+    ) {
       return def.code;
     }
-    if (def.code === 'tomorrowland' && /tomorrowland|tml|明日世界|tmw/i.test(trimmed)) {
+    if (
+      def.code === 'tomorrowland' &&
+      /tomorrowland|tml|明日世界|tmw/i.test(trimmed)
+    ) {
       return def.code;
     }
     if (def.code === 'vac-zhuhai' && /vac|横琴|vision/i.test(trimmed)) {
@@ -207,8 +215,10 @@ export function isHomeFestivalShortcutInput(input: string): boolean {
   return false;
 }
 
-function findShortcutDef(code: HomeFestivalShortcutCode): HomeFestivalShortcutDef {
-  const def = HOME_FESTIVAL_SHORTCUTS.find(item => item.code === code);
+function findShortcutDef(
+  code: HomeFestivalShortcutCode,
+): HomeFestivalShortcutDef {
+  const def = HOME_FESTIVAL_SHORTCUTS.find((item) => item.code === code);
   if (!def) {
     throw new Error(`Unknown festival shortcut code: ${code}`);
   }

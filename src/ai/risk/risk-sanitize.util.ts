@@ -2,17 +2,17 @@
 export const TRAVEL_SAFETY_TIP =
   '【安全提醒：线下拼车、拼住宿存在人身及财产风险，请务必核实对方身份，尽量多人同行，保护个人隐私与财物安全】';
 
-const PHONE_PATTERN =
-  /(?<!\d)1[3-9]\d(?:[\s-]?\d){8}(?!\d)/g;
+const PHONE_PATTERN = /(?<!\d)1[3-9]\d(?:[\s-]?\d){8}(?!\d)/g;
 
 const QQ_PATTERN = /(?:QQ|qq)(?:号|：|:)?[\s]*\d{5,12}/gi;
 
-const WECHAT_ID_PATTERN =
-  /(?:微信号|微信ID|wxid|WXID)[：:\s]*[\w-]{4,}/gi;
+const WECHAT_ID_PATTERN = /(?:微信号|微信ID|wxid|WXID)[：:\s]*[\w-]{4,}/gi;
 
-const ID_CARD_PATTERN = /\b\d{6}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx]\b/g;
+const ID_CARD_PATTERN =
+  /\b\d{6}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx]\b/g;
 
-const BANK_CARD_PATTERN = /\b(?:62\d{14,17}|4\d{15}|5[1-5]\d{14}|3[47]\d{13})\b/g;
+const BANK_CARD_PATTERN =
+  /\b(?:62\d{14,17}|4\d{15}|5[1-5]\d{14}|3[47]\d{13})\b/g;
 
 const URL_PATTERN = /https?:\/\/[^\s]+|www\.[^\s]+/gi;
 
@@ -53,7 +53,10 @@ export function needsTravelSafetyTip(text: string): boolean {
   return TRAVEL_SAFETY_KEYWORDS.test(text);
 }
 
-export function appendTravelSafetyTip(content: string, sourceHint: string): string {
+export function appendTravelSafetyTip(
+  content: string,
+  sourceHint: string,
+): string {
   if (!needsTravelSafetyTip(sourceHint)) return content.trim();
   if (content.includes('安全提醒：线下拼车')) return content.trim();
   const trimmed = content.trim();

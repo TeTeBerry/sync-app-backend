@@ -71,7 +71,10 @@ function renderTemplate(
   template: string,
   params: Record<string, string>,
 ): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => params[key] ?? '');
+  return template.replace(
+    /\{\{(\w+)\}\}/g,
+    (_, key: string) => params[key] ?? '',
+  );
 }
 
 export function buildNotificationFromTemplate(

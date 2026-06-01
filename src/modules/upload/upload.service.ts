@@ -1,7 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { mkdirSync, writeFileSync } from 'fs';
 import { extname, join } from 'path';
 

@@ -46,10 +46,7 @@ function isAllowedUploadUrl(raw: string): boolean {
     // ignore
   }
 
-  if (
-    parsed.hostname === '127.0.0.1' ||
-    parsed.hostname === 'localhost'
-  ) {
+  if (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost') {
     return true;
   }
 
@@ -63,13 +60,10 @@ async function fetchUploadAsDataUrl(url: string): Promise<string> {
   }
 
   const buffer = Buffer.from(await response.arrayBuffer());
-  decodeBase64Payload(
-    `data:image/jpeg;base64,${buffer.toString('base64')}`,
-  );
+  decodeBase64Payload(`data:image/jpeg;base64,${buffer.toString('base64')}`);
 
   const contentType =
-    response.headers.get('content-type')?.split(';')[0]?.trim() ||
-    'image/jpeg';
+    response.headers.get('content-type')?.split(';')[0]?.trim() || 'image/jpeg';
   if (!contentType.startsWith('image/')) {
     throw new BadRequestException('仅支持图片文件');
   }

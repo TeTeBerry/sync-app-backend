@@ -59,7 +59,10 @@ export class UserBlockService {
     return { blockedUserIds };
   }
 
-  async blockUser(userId: string, blockedUserId: string): Promise<{ ok: true }> {
+  async blockUser(
+    userId: string,
+    blockedUserId: string,
+  ): Promise<{ ok: true }> {
     const actorId = userId.trim();
     const targetId = blockedUserId.trim();
     if (!actorId || !targetId) {
@@ -70,7 +73,10 @@ export class UserBlockService {
     }
 
     try {
-      await this.blockModel.create({ userId: actorId, blockedUserId: targetId });
+      await this.blockModel.create({
+        userId: actorId,
+        blockedUserId: targetId,
+      });
     } catch (error) {
       if ((error as { code?: number }).code === 11000) {
         throw new ConflictException('已拉黑该用户');
@@ -100,7 +106,7 @@ export class UserBlockService {
       .find({ userId: userId.trim() })
       .select('blockedUserId')
       .lean();
-    return rows.map(row => row.blockedUserId).filter(Boolean);
+    return rows.map((row) => row.blockedUserId).filter(Boolean);
   }
 
   /** Users the requester blocked plus users who blocked the requester. */
@@ -139,7 +145,7 @@ export class UserBlockService {
       .lean();
 
     const appliedPostIds = acceptedApplications
-      .map(row => row.postId)
+      .map((row) => row.postId)
       .filter(Boolean);
     if (appliedPostIds.length) {
       const posts = await this.postModel
@@ -157,7 +163,7 @@ export class UserBlockService {
       .select('_id')
       .lean();
 
-    const ownedPostIds = ownedPosts.map(post => String(post._id));
+    const ownedPostIds = ownedPosts.map((post) => String(post._id));
     if (ownedPostIds.length) {
       const acceptedOnOwnedPosts = await this.applicationModel
         .find({ postId: { $in: ownedPostIds }, status: 'accepted' })

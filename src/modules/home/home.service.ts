@@ -17,7 +17,7 @@ export class HomeService {
       this.registrationService.listRegisteredLegacyIds(userId, authorName),
     ]);
 
-    const signupEvents = activities.map(item => ({
+    const signupEvents = activities.map((item) => ({
       id: item.legacyId,
       title: item.name,
       date: item.date ?? '',
@@ -36,7 +36,7 @@ export class HomeService {
 
     if (this.redisService.isEnabled()) {
       await Promise.all(
-        activities.map(activity =>
+        activities.map((activity) =>
           this.redisService.setActivityHeat(
             activity.legacyId,
             activity.attendees ?? 0,

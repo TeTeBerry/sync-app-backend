@@ -1,7 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
-export type ItineraryGenerationLogDocument = HydratedDocument<ItineraryGenerationLog>;
+export type ItineraryGenerationLogDocument =
+  HydratedDocument<ItineraryGenerationLog>;
 
 @Schema({ collection: 'itinerary_generation_logs', timestamps: true })
 export class ItineraryGenerationLog {
@@ -16,9 +17,6 @@ export class ItineraryGenerationLog {
 
   @Prop({ default: false })
   cached!: boolean;
-
-  @Prop({ default: false })
-  llmUsed!: boolean;
 
   @Prop({ type: Object })
   meta?: Record<string, unknown>;

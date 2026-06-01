@@ -86,14 +86,15 @@ export class WristbandVerifyService {
       };
     }
 
-    const parsed = await this.llmService.invokeVisionJson<LlmWristbandVerifyResult>(
-      buildWristbandVerifySystemPrompt(),
-      buildWristbandVerifyUserPrompt({
-        activityName: input.activityName,
-        activityAliases: input.activityAliases,
-      }),
-      input.imageDataUrl,
-    );
+    const parsed =
+      await this.llmService.invokeVisionJson<LlmWristbandVerifyResult>(
+        buildWristbandVerifySystemPrompt(),
+        buildWristbandVerifyUserPrompt({
+          activityName: input.activityName,
+          activityAliases: input.activityAliases,
+        }),
+        input.imageDataUrl,
+      );
 
     if (!parsed) {
       return {
@@ -105,7 +106,8 @@ export class WristbandVerifyService {
     }
 
     const confidence =
-      typeof parsed.confidence === 'number' && Number.isFinite(parsed.confidence)
+      typeof parsed.confidence === 'number' &&
+      Number.isFinite(parsed.confidence)
         ? Math.min(1, Math.max(0, parsed.confidence))
         : parsed.isWristband
           ? 0.8
@@ -117,9 +119,7 @@ export class WristbandVerifyService {
 
     const reason =
       parsed.reason?.trim() ||
-      (approved
-        ? '已识别为佩戴的活动入场腕带'
-        : '未识别为有效的手环佩戴照片');
+      (approved ? '已识别为佩戴的活动入场腕带' : '未识别为有效的手环佩戴照片');
 
     const rejectCode = approved
       ? null

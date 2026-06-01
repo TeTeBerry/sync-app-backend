@@ -9,8 +9,7 @@ export const POST_SEED = [
     activityLegacyId: 1,
     eventTitle: 'Tomorrowland Thailand 2026',
     location: '芭提雅',
-    body:
-      '12月芭提雅场求组队！想拼 Wisdom Valley 附近酒店，已有2人，还差1个女生～',
+    body: '12月芭提雅场求组队！想拼 Wisdom Valley 附近酒店，已有2人，还差1个女生～',
     tags: ['#住宿', '#芭提雅', '#女生优先'],
     status: 'recruiting',
     likes: 47,
@@ -179,8 +178,7 @@ export const STORM_DEMO_POST_SEED = [
     eventTitle: '风暴电音节 深圳站',
     location: '上海',
     departureCity: '上海',
-    body:
-      '6月13日场 13号A区 内场票已出，上海出发求拼车到深圳，2人女生，可拼住宿～',
+    body: '6月13日场 13号A区 内场票已出，上海出发求拼车到深圳，2人女生，可拼住宿～',
     tags: ['#13号A区', '#拼车', '#拼住宿', '#女生优先'],
     status: 'recruiting',
     likes: 52,
@@ -205,8 +203,7 @@ export const STORM_DEMO_POST_SEED = [
     eventTitle: '风暴电音节 深圳站',
     location: '北京',
     departureCity: '北京',
-    body:
-      '北京EDC，从广州出发，求同行！主图是去年压轴时刻，下面4张记录了一整天的旅程，今年2人求再拼同路人🚗',
+    body: '北京EDC，从广州出发，求同行！主图是去年压轴时刻，下面4张记录了一整天的旅程，今年2人求再拼同路人🚗',
     tags: ['#北京', '#拼车', '#广州出发'],
     status: 'recruiting',
     likes: 35,
@@ -230,8 +227,7 @@ export const STORM_DEMO_POST_SEED = [
     eventTitle: '风暴电音节 深圳站',
     location: '广州',
     departureCity: '广州',
-    body:
-      '风暴 STORM 深圳站 6月14日，B区看台，3缺1男生，广州拼车出发，有人吗？',
+    body: '风暴 STORM 深圳站 6月14日，B区看台，3缺1男生，广州拼车出发，有人吗？',
     tags: ['#组队', '#B区', '#6月14日'],
     status: 'recruiting',
     likes: 41,
@@ -248,8 +244,7 @@ export const STORM_DEMO_POST_SEED = [
     eventTitle: '风暴电音节 深圳站',
     location: '深圳',
     departureCity: '深圳',
-    body:
-      '13号 A区 有没有人一起进场？本地土著带路，可分享检票口和接驳攻略，求搭子同行。',
+    body: '13号 A区 有没有人一起进场？本地土著带路，可分享检票口和接驳攻略，求搭子同行。',
     tags: ['#13号A区', '#搭子', '#深圳'],
     status: 'recruiting',
     likes: 36,
@@ -266,8 +261,7 @@ export const STORM_DEMO_POST_SEED = [
     eventTitle: '风暴电音节 深圳站',
     location: '东莞',
     departureCity: '东莞',
-    body:
-      '6月13-14 连刷两场 STORM，已订会展中心附近酒店，求2人拼房，男生女生都可聊。',
+    body: '6月13-14 连刷两场 STORM，已订会展中心附近酒店，求2人拼房，男生女生都可聊。',
     tags: ['#拼住宿', '#6月13日', '#6月14日'],
     status: 'recruiting',
     likes: 28,
@@ -283,8 +277,7 @@ export const STORM_DEMO_POST_SEED = [
     activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
     eventTitle: '风暴电音节 深圳站',
     location: '深圳',
-    body:
-      '13号A 区附近集合，预售票在手，缺1个会拍照的搭子，主舞台前排区域～',
+    body: '13号A 区附近集合，预售票在手，缺1个会拍照的搭子，主舞台前排区域～',
     tags: ['#13号A区', '#组队'],
     status: 'recruiting',
     likes: 22,
@@ -301,8 +294,7 @@ export const STORM_DEMO_POST_SEED = [
     eventTitle: '风暴电音节 深圳站',
     location: '杭州',
     departureCity: '杭州',
-    body:
-      '杭州飞深圳，6月13日风暴电音节，女生优先结伴，可AA拼酒店和打车，佛系不熬夜。',
+    body: '杭州飞深圳，6月13日风暴电音节，女生优先结伴，可AA拼酒店和打车，佛系不熬夜。',
     tags: ['#女生优先', '#拼住宿', '#6月13日'],
     status: 'recruiting',
     likes: 19,
@@ -318,8 +310,7 @@ export const STORM_DEMO_POST_SEED = [
     activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
     eventTitle: '风暴电音节 深圳站',
     location: '深圳',
-    body:
-      'A区 6月13日场，2人组队缺1，已熟悉场馆动线，欢迎 STORMer 私聊结伴（平台内沟通即可）。',
+    body: 'A区 6月13日场，2人组队缺1，已熟悉场馆动线，欢迎 STORMer 私聊结伴（平台内沟通即可）。',
     tags: ['#A区', '#6月13日', '#缺1人'],
     status: 'recruiting',
     likes: 15,
@@ -336,8 +327,7 @@ export const STORM_DEMO_POST_SEED = [
     eventTitle: '风暴电音节 深圳站',
     location: '北京',
     departureCity: '北京',
-    body:
-      '北京出发深圳 STORM，6月14日场，求同行搭子一起看压轴，可拼车可拼票区附近酒店。',
+    body: '北京出发深圳 STORM，6月14日场，求同行搭子一起看压轴，可拼车可拼票区附近酒店。',
     tags: ['#拼车', '#6月14日', '#搭子'],
     status: 'recruiting',
     likes: 14,
@@ -353,8 +343,7 @@ export const STORM_DEMO_POST_SEED = [
     activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
     eventTitle: '风暴电音节 深圳站',
     location: '深圳',
-    body:
-      '有没有 13号 搭子？第一次来风暴电音节，想找人带一下换票区和储物柜流程，女生更好。',
+    body: '有没有 13号 搭子？第一次来风暴电音节，想找人带一下换票区和储物柜流程，女生更好。',
     tags: ['#13号', '#新手友好', '#女生优先'],
     status: 'recruiting',
     likes: 33,
@@ -375,8 +364,7 @@ export const STORM_COMPLETED_DEMO_POST_SEED = [
     eventTitle: '风暴电音节 深圳站',
     location: '深圳',
     departureCity: '深圳',
-    body:
-      '6月13日 A区 4人小队已满员，组队成功！评论区可约集合时间和接驳点，欢迎同区 STORMer 面基。',
+    body: '6月13日 A区 4人小队已满员，组队成功！评论区可约集合时间和接驳点，欢迎同区 STORMer 面基。',
     tags: ['#13号A区', '#组队完成', '#深圳'],
     contentTypes: ['team'],
     status: 'completed',
@@ -397,8 +385,7 @@ export const STORM_COMPLETED_DEMO_POST_SEED = [
     eventTitle: '风暴电音节 深圳站',
     location: '上海',
     departureCity: '上海',
-    body:
-      '上海飞深圳 STORM 拼房搭子已齐，酒店在会展中心 2km 内，组队成功～后续只聊集合不改人数。',
+    body: '上海飞深圳 STORM 拼房搭子已齐，酒店在会展中心 2km 内，组队成功～后续只聊集合不改人数。',
     tags: ['#拼住宿', '#女生优先', '#6月14日'],
     contentTypes: ['accommodation', 'team'],
     status: 'completed',
@@ -420,8 +407,7 @@ export const STORM_COMPLETED_DEMO_POST_SEED = [
     eventTitle: '风暴电音节 深圳站',
     location: '广州',
     departureCity: '广州',
-    body:
-      '广州→深圳拼车 3/3 已满，司机位+2乘客组队完成，出发时间 6月13日 10:30 福田集合。',
+    body: '广州→深圳拼车 3/3 已满，司机位+2乘客组队完成，出发时间 6月13日 10:30 福田集合。',
     tags: ['#拼车', '#广州出发', '#已满'],
     contentTypes: ['carpool'],
     status: 'completed',
@@ -439,8 +425,7 @@ export const STORM_COMPLETED_DEMO_POST_SEED = [
     eventTitle: '风暴电音节 深圳站',
     location: '北京',
     departureCity: '北京',
-    body:
-      'B区看台连座已转出并找到观演搭子，票款结清，标记组队完成，感谢平台匹配～',
+    body: 'B区看台连座已转出并找到观演搭子，票款结清，标记组队完成，感谢平台匹配～',
     tags: ['#B区', '#转票', '#组队完成'],
     contentTypes: ['ticket', 'team'],
     status: 'completed',
@@ -458,8 +443,7 @@ export const STORM_COMPLETED_DEMO_POST_SEED = [
     eventTitle: '风暴电音节 深圳站',
     location: '杭州',
     departureCity: '杭州',
-    body:
-      '杭州小队 6月14日场 2缺1 已补齐，全员确认到场，组队成功！主舞台前排区域见。',
+    body: '杭州小队 6月14日场 2缺1 已补齐，全员确认到场，组队成功！主舞台前排区域见。',
     tags: ['#6月14日', '#缺1人', '#STORM'],
     contentTypes: ['team'],
     status: 'completed',

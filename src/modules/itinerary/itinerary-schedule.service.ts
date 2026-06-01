@@ -16,7 +16,6 @@ import {
   ITINERARY_DEMO_ACTIVITY_LEGACY_ID,
 } from './itinerary.seed';
 import { ItineraryCacheService } from './itinerary-cache.service';
-import { ItineraryChromaService } from './itinerary-chroma.service';
 import {
   detectPerformanceConflicts,
   type ItineraryConflict,
@@ -72,7 +71,6 @@ export class ItineraryScheduleService implements OnModuleInit {
     private readonly sessionModel: Model<FestivalSessionDocument>,
     private readonly activityService: ActivityService,
     private readonly cache: ItineraryCacheService,
-    private readonly chroma: ItineraryChromaService,
   ) {}
 
   async onModuleInit() {
@@ -105,17 +103,11 @@ export class ItineraryScheduleService implements OnModuleInit {
 
     await this.performanceModel.deleteMany({
       activityLegacyId: ITINERARY_DEMO_ACTIVITY_LEGACY_ID,
-      $nor: ARTIST_PERFORMANCE_SEED.map(p => ({
+      $nor: ARTIST_PERFORMANCE_SEED.map((p) => ({
         dateKey: p.dateKey,
         artistId: p.artistId,
       })),
     });
-
-    const all = await this.performanceModel
-      .find({ activityLegacyId: ITINERARY_DEMO_ACTIVITY_LEGACY_ID })
-      .lean()
-      .exec();
-    await this.chroma.indexPerformances(all as ArtistPerformance[]);
   }
 
   async getSchedule(
@@ -133,7 +125,8 @@ export class ItineraryScheduleService implements OnModuleInit {
       return cached;
     }
 
-    const activity = await this.activityService.findByLegacyId(activityLegacyId);
+    const activity =
+      await this.activityService.findByLegacyId(activityLegacyId);
     if (!activity) {
       throw new NotFoundException(`Activity ${activityLegacyId} not found`);
     }
@@ -146,7 +139,11 @@ export class ItineraryScheduleService implements OnModuleInit {
     }
 
     const [sessions, performances] = await Promise.all([
-      this.sessionModel.find(sessionFilter).sort({ sortOrder: 1 }).lean().exec(),
+      this.sessionModel
+        .find(sessionFilter)
+        .sort({ sortOrder: 1 })
+        .lean()
+        .exec(),
       this.performanceModel.find(perfFilter).lean().exec(),
     ]);
 
@@ -160,13 +157,13 @@ export class ItineraryScheduleService implements OnModuleInit {
     const dto: ItineraryScheduleDto = {
       activityLegacyId,
       eventMeta,
-      sessions: sessions.map(s => ({
+      sessions: sessions.map((s) => ({
         dateKey: s.dateKey,
         label: s.label,
         bannerDateLabel: s.bannerDateLabel,
       })),
       djs,
-      performances: (performances as ArtistPerformance[]).map(p => ({
+      performances: (performances as ArtistPerformance[]).map((p) => ({
         artistId: p.artistId,
         artistName: p.artistName,
         dateKey: p.dateKey,
@@ -187,7 +184,11 @@ export class ItineraryScheduleService implements OnModuleInit {
     };
 
     if (!options?.selectedDjIds?.length) {
-      await this.cache.setScheduleCache(activityLegacyId, dto, options?.dateKey);
+      await this.cache.setScheduleCache(
+        activityLegacyId,
+        dto,
+        options?.dateKey,
+      );
     }
 
     return dto;
@@ -251,7 +252,7 @@ export class ItineraryScheduleService implements OnModuleInit {
   private toPerformanceSlots(
     performances: ArtistPerformance[],
   ): PerformanceSlot[] {
-    return performances.map(p => ({
+    return performances.map((p) => ({
       artistId: p.artistId,
       artistName: p.artistName,
       dateKey: p.dateKey,

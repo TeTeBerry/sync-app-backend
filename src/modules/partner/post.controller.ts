@@ -109,7 +109,13 @@ export class PostController {
     @Query('userId') userId?: string,
     @Query('authorName') authorName?: string,
   ) {
-    return this.postService.addComment(id, body.body, userId, authorName, body.parentCommentId);
+    return this.postService.addComment(
+      id,
+      body.body,
+      userId,
+      authorName,
+      body.parentCommentId,
+    );
   }
 
   @Patch(':id')

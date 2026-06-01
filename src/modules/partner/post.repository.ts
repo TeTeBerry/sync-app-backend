@@ -92,9 +92,7 @@ export class PostRepository implements IPostRepository {
     id: string,
     patch: Partial<PostRecord>,
   ): Promise<PostRecord | null> {
-    return this.model
-      .findByIdAndUpdate(id, patch, { new: true })
-      .lean();
+    return this.model.findByIdAndUpdate(id, patch, { new: true }).lean();
   }
 
   async incrementCounter(
@@ -125,7 +123,9 @@ export class PostRepository implements IPostRepository {
 
   async sumLikesByOwner(filter: PostQueryFilter): Promise<number> {
     const rows = await this.model
-      .aggregate<{ total: number }>([
+      .aggregate<{
+        total: number;
+      }>([
         { $match: buildOwnerFilter(filter) },
         { $group: { _id: null, total: { $sum: '$likes' } } },
       ])
@@ -193,7 +193,7 @@ export class PostRepository implements IPostRepository {
 
     if (!existing) return { exists: false };
 
-    const matched = contentTypes.find(t =>
+    const matched = contentTypes.find((t) =>
       (existing.contentTypes ?? []).includes(t),
     );
     return { exists: true, matchedType: matched };

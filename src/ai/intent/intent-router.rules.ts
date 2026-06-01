@@ -25,16 +25,16 @@ export function resolveChatIntentFastPath(
     return { kind: 'create_post', source: 'rule' };
   }
 
-  if (params.activityLegacyId == null && isAwaitingActivityEnterSelection(params.messages)) {
+  if (
+    params.activityLegacyId == null &&
+    isAwaitingActivityEnterSelection(params.messages)
+  ) {
     if (isActivityEnterNameInput(trimmed)) {
       return { kind: 'activity_enter', source: 'rule' };
     }
   }
 
-  if (
-    params.activityLegacyId == null &&
-    isHomeFestivalShortcutInput(trimmed)
-  ) {
+  if (params.activityLegacyId == null && isHomeFestivalShortcutInput(trimmed)) {
     return { kind: 'quick_reply', source: 'rule' };
   }
 
@@ -42,7 +42,10 @@ export function resolveChatIntentFastPath(
     return { kind: 'create_post', source: 'rule' };
   }
 
-  if (isDeclineRecommendationsIntent(trimmed) && params.activityLegacyId != null) {
+  if (
+    isDeclineRecommendationsIntent(trimmed) &&
+    params.activityLegacyId != null
+  ) {
     return { kind: 'create_post', source: 'rule' };
   }
 

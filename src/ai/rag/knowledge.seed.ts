@@ -53,8 +53,7 @@ export const KNOWLEDGE_DOCUMENTS: Document[] = [
     metadata: { topic: 'activity', code: 'mysteryland' },
   }),
   new Document({
-    pageContent:
-      'Untold Festival 是罗马尼亚大型电音节。别名：untold。',
+    pageContent: 'Untold Festival 是罗马尼亚大型电音节。别名：untold。',
     metadata: { topic: 'activity', code: 'untold' },
   }),
   new Document({

@@ -20,10 +20,7 @@ import {
   type EventEntitlementQuotas,
   type EventEntitlementUsage,
 } from './domain/event-entitlement.util';
-import {
-  FREE_TIER_ID,
-  FREE_TIER_NAME,
-} from './domain/free-tier.config';
+import { FREE_TIER_ID, FREE_TIER_NAME } from './domain/free-tier.config';
 import {
   isMockProfileUser,
   MOCK_PROFILE_SEED_ACTIVITY_LEGACY_ID,
@@ -109,9 +106,8 @@ export class ProfilePackageService implements OnModuleInit {
     activityLegacyId?: number,
   ): Promise<EventPackageEntitlementDto[]> {
     const ownerId = resolveProfilePackageOwnerId(userId, authorName);
-    const freeUsage = await this.profileFreeQuotaService.getFreeMonthlyForUser(
-      ownerId,
-    );
+    const freeUsage =
+      await this.profileFreeQuotaService.getFreeMonthlyForUser(ownerId);
 
     const filter: Record<string, unknown> = { userId: ownerId };
     if (activityLegacyId != null && !Number.isNaN(activityLegacyId)) {
@@ -132,9 +128,7 @@ export class ProfilePackageService implements OnModuleInit {
       return [this.buildFreeOnlyDto(legacyId, freeUsage)];
     }
 
-    return records.map(record =>
-      this.toEntitlementDto(record, freeUsage),
-    );
+    return records.map((record) => this.toEntitlementDto(record, freeUsage));
   }
 
   async getEntitlementForActivity(
@@ -143,9 +137,8 @@ export class ProfilePackageService implements OnModuleInit {
     activityLegacyId: number,
   ): Promise<EventPackageEntitlementDto | null> {
     const ownerId = resolveProfilePackageOwnerId(userId, authorName);
-    const freeUsage = await this.profileFreeQuotaService.getFreeMonthlyForUser(
-      ownerId,
-    );
+    const freeUsage =
+      await this.profileFreeQuotaService.getFreeMonthlyForUser(ownerId);
 
     const record = await this.entitlementModel
       .findOne({ userId: ownerId, activityLegacyId })
@@ -172,16 +165,16 @@ export class ProfilePackageService implements OnModuleInit {
       throw new BadRequestException(`Invalid tierId: ${tierId}`);
     }
 
-    const activity = await this.activityService.findByLegacyId(activityLegacyId);
+    const activity =
+      await this.activityService.findByLegacyId(activityLegacyId);
     if (!activity) {
       throw new NotFoundException(`Activity not found: ${activityLegacyId}`);
     }
 
     const tier = getPackageTierDefinition(tierId);
     const ownerId = resolveProfilePackageOwnerId(userId, authorName);
-    const freeUsage = await this.profileFreeQuotaService.getFreeMonthlyForUser(
-      ownerId,
-    );
+    const freeUsage =
+      await this.profileFreeQuotaService.getFreeMonthlyForUser(ownerId);
     const purchasedAt = new Date();
     const validFrom = purchasedAt;
     const validUntil = computePackageValidUntil(purchasedAt);

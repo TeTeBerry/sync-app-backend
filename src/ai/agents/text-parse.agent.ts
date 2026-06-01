@@ -106,10 +106,10 @@ function resolveReady(
 
   const hasActivity = Boolean(
     activityLegacyId ??
-      ctx.activityId ??
-      ctx.activityKeyword ??
-      ctx.activityPickerIndex ??
-      activityKeyword,
+    ctx.activityId ??
+    ctx.activityKeyword ??
+    ctx.activityPickerIndex ??
+    activityKeyword,
   );
   if (!hasActivity) return false;
 
@@ -158,12 +158,9 @@ export class TextParseAgent {
     const activityKeyword =
       parsed.activityKeyword?.trim() || ctx.activityKeyword?.trim();
     const eventTime =
-      parsed.eventTime?.trim() ||
-      parsed.time?.trim() ||
-      ctx.eventDate;
+      parsed.eventTime?.trim() || parsed.time?.trim() || ctx.eventDate;
     const location = parsed.location?.trim() || ctx.city;
-    const activityLegacyId =
-      parsed.activityLegacyId ?? input.activityLegacyId;
+    const activityLegacyId = parsed.activityLegacyId ?? input.activityLegacyId;
     const description = buildMergedDescription(
       parsed,
       ctx,

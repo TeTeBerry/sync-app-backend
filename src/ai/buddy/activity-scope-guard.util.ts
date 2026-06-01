@@ -100,7 +100,9 @@ export function isTicketResaleIntent(input: string): boolean {
     return true;
   }
 
-  return TICKET_RESALE_BODY_RE.test(text) && /票|VIP|Stage|内场|看台/i.test(text);
+  return (
+    TICKET_RESALE_BODY_RE.test(text) && /票|VIP|Stage|内场|看台/i.test(text)
+  );
 }
 
 /**
@@ -122,11 +124,11 @@ export function isActivityScopeMismatch(
   const msgEvents = collectEventTokens(input);
   const activityEvents = collectEventTokens(activityHaystack);
   if (msgEvents.size > 0 && activityEvents.size > 0) {
-    const overlaps = [...msgEvents].some(token => activityEvents.has(token));
+    const overlaps = [...msgEvents].some((token) => activityEvents.has(token));
     if (!overlaps) return true;
   } else if (msgEvents.size > 0) {
     const activityLower = activityHaystack.toLowerCase();
-    const mentionedInActivity = [...msgEvents].some(token =>
+    const mentionedInActivity = [...msgEvents].some((token) =>
       activityLower.includes(token),
     );
     if (!mentionedInActivity) return true;
@@ -135,14 +137,14 @@ export function isActivityScopeMismatch(
   const msgCities = collectCities(input);
   const activityCities = collectCities(activityHaystack);
   if (msgCities.size > 0 && activityCities.size > 0) {
-    const overlaps = [...msgCities].some(city => activityCities.has(city));
+    const overlaps = [...msgCities].some((city) => activityCities.has(city));
     if (!overlaps) return true;
   }
 
   const msgDays = collectMonthDayKeys(input);
   const activityDays = collectMonthDayKeys(activityHaystack);
   if (msgDays.size > 0 && activityDays.size > 0) {
-    const overlaps = [...msgDays].some(day => activityDays.has(day));
+    const overlaps = [...msgDays].some((day) => activityDays.has(day));
     if (!overlaps) return true;
   }
 

@@ -29,4 +29,18 @@ npm run test:e2e            # e2e
 CI=true npm test -- --watchman=false
 ```
 
+### REST smoke (live server)
+
+Requires a running API (`npm run dev` / `dev:all`):
+
+```bash
+npm run smoke:api           # hit http://localhost:3000/api
+npm run smoke:api:wait      # wait for :3000, then smoke
+
+# remote / staging
+SMOKE_API_BASE=https://your-host/api SMOKE_ACTIVITY_ID=4 npm run smoke:api
+```
+
+Script: `scripts/smoke-api.mjs` — health, home, activities, posts, profile, user, register, itinerary (schedule→generate→save→saved), live-info, notifications, optional post like, register cleanup.
+
 Production code lives only under `src/`; specs are not co-located with sources.

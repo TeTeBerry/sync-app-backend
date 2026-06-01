@@ -24,6 +24,11 @@ export default () => ({
         process.env.DASHSCOPE_API_KEY,
     ),
     model: cleanEnv(process.env.QWEN_MODEL, 'qwen-max'),
+    /** 意图/解析/画像等短 JSON 任务；未设时与 rerank 相同 */
+    jsonModel: cleanEnv(
+      process.env.QWEN_JSON_MODEL,
+      cleanEnv(process.env.QWEN_RERANK_MODEL, 'qwen-plus'),
+    ),
     rerankModel: cleanEnv(process.env.QWEN_RERANK_MODEL, 'qwen-plus'),
     rerankTimeoutMs: parseInt(
       cleanEnv(process.env.QWEN_RERANK_TIMEOUT_MS, '6000'),
@@ -40,8 +45,6 @@ export default () => ({
     postsCollection: process.env.CHROMA_POSTS_COLLECTION ?? 'sync_posts',
     profilesCollection:
       process.env.CHROMA_PROFILES_COLLECTION ?? 'sync_user_profiles',
-    itineraryCollection:
-      process.env.CHROMA_ITINERARY_COLLECTION ?? 'sync_itinerary_performances',
     circuit: {
       failureThreshold: parseInt(
         cleanEnv(process.env.CHROMA_CIRCUIT_FAILURE_THRESHOLD, '3'),
