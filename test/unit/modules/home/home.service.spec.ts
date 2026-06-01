@@ -1,3 +1,4 @@
+import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { HomeService } from '@src/modules/home/home.service';
 import type { ActivityService } from '@src/modules/activity/activity.service';
 import type { ActivityRegistrationService } from '@src/modules/activity/registration/activity-registration.service';
@@ -56,7 +57,8 @@ describe('HomeService', () => {
   });
 
   it('returns heat and signup events with going flags', async () => {
-    const result = await service.getSummary('user-1', 'Berry');
+    const actor = toRequestActor('user-1', 'Berry');
+    const result = await service.getSummary(actor);
 
     expect(result.heat).toEqual({ people: 150, growthPercent: 12 });
     expect(result.signupEvents).toEqual([
@@ -76,13 +78,12 @@ describe('HomeService', () => {
       }),
     ]);
     expect(registrationService.listRegisteredLegacyIds).toHaveBeenCalledWith(
-      'user-1',
-      'Berry',
+      actor,
     );
   });
 
   it('writes per-activity heat to redis when enabled', async () => {
-    await service.getSummary();
+    await service.getSummary(toRequestActor());
 
     expect(redisService.setActivityHeat).toHaveBeenCalledTimes(2);
     expect(redisService.setActivityHeat).toHaveBeenCalledWith(4, 120);
@@ -92,7 +93,7 @@ describe('HomeService', () => {
   it('skips redis heat writes when redis is disabled', async () => {
     (redisService.isEnabled as jest.Mock).mockReturnValue(false);
 
-    await service.getSummary();
+    await service.getSummary(toRequestActor());
 
     expect(redisService.setActivityHeat).not.toHaveBeenCalled();
     expect(redisService.getHeat).toHaveBeenCalledWith(150);

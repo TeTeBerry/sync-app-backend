@@ -1,4 +1,6 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { CurrentActor } from '../../common/auth/current-actor.decorator';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { ConsumeProfileEntitlementDto } from './dto/consume-profile-entitlement.dto';
 import { PurchaseProfilePackageDto } from './dto/purchase-profile-package.dto';
 import { ProfileEntitlementConsumeService } from './profile-entitlement-consume.service';
@@ -20,30 +22,23 @@ export class ProfileController {
 
   @Get('entitlements')
   listEntitlements(
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
+    @CurrentActor() actor: RequestActor,
     @Query('activityLegacyId') activityLegacyId?: string,
   ) {
     const legacyId =
       activityLegacyId != null && activityLegacyId !== ''
         ? Number(activityLegacyId)
         : undefined;
-    return this.profilePackageService.listEntitlements(
-      userId,
-      authorName,
-      legacyId,
-    );
+    return this.profilePackageService.listEntitlements(actor, legacyId);
   }
 
   @Post('entitlements/consume/ai-match')
   consumeAiMatch(
     @Body() body: ConsumeProfileEntitlementDto,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
+    @CurrentActor() actor: RequestActor,
   ) {
     return this.profileEntitlementConsumeService.consumeAiMatch(
-      userId,
-      authorName,
+      actor,
       body.activityLegacyId,
     );
   }
@@ -51,12 +46,10 @@ export class ProfileController {
   @Post('entitlements/consume/contact-unlock')
   consumeContactUnlock(
     @Body() body: ConsumeProfileEntitlementDto,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
+    @CurrentActor() actor: RequestActor,
   ) {
     return this.profileEntitlementConsumeService.consumeContactUnlock(
-      userId,
-      authorName,
+      actor,
       body.activityLegacyId,
     );
   }
@@ -64,49 +57,34 @@ export class ProfileController {
   @Post('packages/purchase')
   purchasePackage(
     @Body() body: PurchaseProfilePackageDto,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
+    @CurrentActor() actor: RequestActor,
   ) {
     return this.profilePackageService.purchasePackage(
       body.tierId,
       body.activityLegacyId,
-      userId,
-      authorName,
+      actor,
     );
   }
 
   @Get()
   summary(
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
+    @CurrentActor() actor: RequestActor,
     @Query('activityLegacyId') activityLegacyId?: string,
   ) {
     const legacyId =
       activityLegacyId != null && activityLegacyId !== ''
         ? Number(activityLegacyId)
         : undefined;
-    return this.profileSummaryService.getSummary(
-      userId,
-      authorName,
-      undefined,
-      undefined,
-      legacyId,
-    );
+    return this.profileSummaryService.getSummary(actor, undefined, legacyId);
   }
 
   @Get('activities')
-  listActivities(
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
-  ) {
-    return this.profileSummaryService.listActivities(userId, authorName);
+  listActivities(@CurrentActor() actor: RequestActor) {
+    return this.profileSummaryService.listActivities(actor);
   }
 
   @Get('posts')
-  listPosts(
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
-  ) {
-    return this.profileSummaryService.listPosts(userId, authorName);
+  listPosts(@CurrentActor() actor: RequestActor) {
+    return this.profileSummaryService.listPosts(actor);
   }
 }

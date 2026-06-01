@@ -8,8 +8,11 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
-import { resolveActorUserId } from '../../common/auth/actor-user.util';
-import { isResourceOwnedByClient } from '../../common/utils/demo-owner.util';
+import type { RequestActor } from '../../common/auth/request-actor.types';
+import {
+  isResourceOwnedByActor,
+  toRequestActor,
+} from '../../common/auth/actor-query.util';
 import {
   PostApplication,
   PostApplicationDocument,
@@ -65,8 +68,7 @@ export class PostInteractionService {
   async acceptPostApplication(
     postId: string,
     applicantUserId: string,
-    ownerUserId?: string,
-    ownerAuthorName?: string,
+    owner?: RequestActor,
   ): Promise<{ ok: true }> {
     const post = await this.repository.findById(postId);
     if (!post) {
@@ -74,11 +76,10 @@ export class PostInteractionService {
     }
 
     if (
-      ownerUserId != null &&
-      !isResourceOwnedByClient(
+      owner != null &&
+      !isResourceOwnedByActor(
         { userId: post.userId, authorName: post.authorName },
-        ownerUserId,
-        ownerAuthorName,
+        owner,
       )
     ) {
       throw new ForbiddenException('无权处理该帖子的申请');
@@ -105,13 +106,13 @@ export class PostInteractionService {
     return { ok: true };
   }
 
-  async likePost(id: string, userId?: string, authorName?: string) {
+  async likePost(id: string, actor: RequestActor) {
     const post = await this.repository.findById(id);
     if (!post) {
       throw new NotFoundException('帖子不存在');
     }
 
-    const actorUserId = resolveActorUserId(userId, authorName);
+    const actorUserId = actor.resolvedUserId;
     const existing = await this.likeModel
       .findOne({ userId: actorUserId, postId: id })
       .lean();
@@ -131,22 +132,26 @@ export class PostInteractionService {
 
     const updated =
       (await this.repository.incrementCounter(id, 'likes')) ?? post;
-    void this.postNotification.notifyLike(post, id, actorUserId, authorName);
+    void this.postNotification.notifyLike(
+      post,
+      id,
+      actorUserId,
+      actor.displayName,
+    );
     return PostMapper.toEventDetailItem(updated, true);
   }
 
-  async applyToPost(id: string, userId?: string, authorName?: string) {
+  async applyToPost(id: string, actor: RequestActor) {
     const post = await this.repository.findById(id);
     if (!post) {
       throw new NotFoundException('帖子不存在');
     }
 
-    const actorUserId = resolveActorUserId(userId, authorName);
+    const actorUserId = actor.resolvedUserId;
     if (
-      isResourceOwnedByClient(
+      isResourceOwnedByActor(
         { userId: post.userId, authorName: post.authorName },
-        userId,
-        authorName,
+        actor,
       )
     ) {
       throw new BadRequestException('不能申请加入自己的帖子');
@@ -162,7 +167,7 @@ export class PostInteractionService {
     try {
       await this.applicationModel.create({
         userId: actorUserId,
-        authorName: authorName?.trim(),
+        authorName: actor.displayName?.trim(),
         postId: id,
         status: 'pending',
       });
@@ -177,7 +182,7 @@ export class PostInteractionService {
       post,
       id,
       actorUserId,
-      authorName,
+      actor.displayName,
     );
 
     return { ok: true as const, alreadyApplied: false };
@@ -223,14 +228,14 @@ export class PostInteractionService {
 
     const items = await Promise.all(
       topLevel.map(async (comment) => {
-        const profile = await this.userService.resolveProfile(
+        const profile = await this.userService.resolveProfileFromLegacy(
           comment.userId,
           comment.authorName,
         );
         const childRows = repliesByParent.get(String(comment._id)) ?? [];
         const replies = await Promise.all(
           childRows.map(async (reply) => {
-            const replyProfile = await this.userService.resolveProfile(
+            const replyProfile = await this.userService.resolveProfileFromLegacy(
               reply.userId,
               reply.authorName,
             );
@@ -256,8 +261,7 @@ export class PostInteractionService {
   async addComment(
     id: string,
     body: string,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
     parentCommentId?: string,
   ) {
     const post = await this.repository.findById(id);
@@ -275,7 +279,7 @@ export class PostInteractionService {
 
     const risk = await this.postModeration.assessComment({
       body: trimmed,
-      userId,
+      userId: actor.clientUserId,
       postId: id,
     });
     if (!risk.publishable) {
@@ -284,7 +288,7 @@ export class PostInteractionService {
 
     const finalBody = risk.sanitizedBody ?? trimmed;
 
-    const actorUserId = resolveActorUserId(userId, authorName);
+    const actorUserId = actor.resolvedUserId;
     const trimmedParentId = parentCommentId?.trim();
     let parentComment: {
       _id?: unknown;
@@ -299,22 +303,20 @@ export class PostInteractionService {
         throw new BadRequestException('回复的评论不存在');
       }
       if (
-        !isResourceOwnedByClient(
+        !isResourceOwnedByActor(
           { userId: post.userId, authorName: post.authorName },
-          userId,
-          authorName,
+          actor,
         )
       ) {
         throw new ForbiddenException('仅发帖人可以回复评论');
       }
       if (
-        isResourceOwnedByClient(
+        isResourceOwnedByActor(
           {
             userId: parentComment.userId,
             authorName: parentComment.authorName,
           },
-          post.userId,
-          post.authorName,
+          toRequestActor(post.userId, post.authorName),
         )
       ) {
         throw new BadRequestException('不能回复自己的评论');
@@ -323,7 +325,7 @@ export class PostInteractionService {
 
     await this.commentModel.create({
       userId: actorUserId,
-      authorName: authorName?.trim(),
+      authorName: actor.displayName?.trim(),
       postId: id,
       parentCommentId: trimmedParentId,
       body: finalBody,
@@ -338,7 +340,7 @@ export class PostInteractionService {
       post,
       id,
       actorUserId,
-      authorName,
+      actor.displayName,
       preview,
     );
 
@@ -348,12 +350,15 @@ export class PostInteractionService {
         id,
         parentComment,
         actorUserId,
-        authorName,
+        actor.displayName,
         preview,
       );
     }
 
-    return PostMapper.toEventDetailItem(updated);
+    const liked = Boolean(
+      await this.likeModel.exists({ userId: actorUserId, postId: id }),
+    );
+    return PostMapper.toEventDetailItem(updated, liked);
   }
 
   /** Idempotent demo replies for seeded posts (matched by body substring). */

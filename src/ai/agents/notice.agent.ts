@@ -6,6 +6,7 @@ import type {
 } from '../../database/schemas/notification.schema';
 import { NotificationService } from '../../modules/notification/notification.service';
 import type { NotificationTemplateKey } from '../../modules/notification/notification-templates.util';
+import { toRequestActor } from '../../common/auth/actor-query.util';
 import { UserService } from '../../modules/user/user.service';
 import type { PostRecord } from '../../modules/partner/interfaces/post.repository.interface';
 import { isResourceOwnedByClient } from '../../common/utils/demo-owner.util';
@@ -257,7 +258,7 @@ export class NoticeAgent {
   }
 
   private async shouldNotify(userId: string): Promise<boolean> {
-    return this.userService.isNotificationsEnabled(userId);
+    return this.userService.isNotificationsEnabled(toRequestActor(userId));
   }
 
   private async notifyPostOwnerInteraction(

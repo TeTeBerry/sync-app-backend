@@ -6,6 +6,7 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
+import { RequestActorDto } from '../../common/auth/request-actor.dto';
 import { ChatMessageDto } from './chat-message.dto';
 
 export class ChatRequestDto {
@@ -18,13 +19,10 @@ export class ChatRequestDto {
   @IsString()
   sessionId?: string;
 
-  @IsOptional()
-  @IsString()
-  userId?: string;
-
-  @IsOptional()
-  @IsString()
-  userName?: string;
+  /** Resolved by WS handler from JWT + body; required before `AiService.streamChat`. */
+  @ValidateNested()
+  @Type(() => RequestActorDto)
+  actor!: RequestActorDto;
 
   @IsOptional()
   @IsString()

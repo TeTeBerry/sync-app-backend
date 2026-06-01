@@ -33,7 +33,10 @@ import { logAiTurn } from '../utils/log-ai-turn.util';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
 import type { AiStreamEvent } from '../presentation/ai-stream-event.view';
-import { AiSseBuilder, type ReplySink } from '../presentation/ai-sse.builder';
+import {
+  AiStreamEventBuilder,
+  type ReplySink,
+} from '../presentation/ai-sse.builder';
 
 export interface AiTurnTimings {
   ms_intent?: number;
@@ -60,7 +63,7 @@ export class AiTurnPipeline {
     private readonly postIntentService: PostIntentService,
     private readonly userProfileAgent: UserProfileAgent,
     private readonly intentRouter: IntentRouterService,
-    private readonly sseBuilder: AiSseBuilder,
+    private readonly sseBuilder: AiStreamEventBuilder,
     private readonly buddyContext: BuddyContextService,
     private readonly activityService: ActivityService,
   ) {}
@@ -121,8 +124,7 @@ export class AiTurnPipeline {
       routed.kind,
       fullMessages,
       lastInput,
-      dto.userId,
-      dto.userName,
+      dto.actor,
     );
     timings.ms_profile = Date.now() - profileStartedAt;
 
@@ -198,8 +200,7 @@ export class AiTurnPipeline {
     kind: string,
     messages: ChatMessageDto[],
     input: string,
-    userId?: string,
-    authorName?: string,
+    actor: ChatRequestDto['actor'],
   ): Promise<UserProfileSyncResult | null> {
     if (
       kind !== 'search_posts' &&
@@ -212,8 +213,7 @@ export class AiTurnPipeline {
     return this.userProfileAgent.syncProfileFromChat({
       messages,
       input,
-      userId,
-      authorName,
+      actor,
     });
   }
 
@@ -231,8 +231,7 @@ export class AiTurnPipeline {
       messages: fullMessages,
       input: lastInput,
       activityLegacyId: dto.activityLegacyId,
-      userId: dto.userId,
-      authorName: dto.userName,
+      actor: dto.actor,
       buddySearchHint: routed.buddySearchHint,
       fromIntentRouter: true,
       profileSync,
@@ -324,8 +323,7 @@ export class AiTurnPipeline {
         messages: fullMessages,
         input: lastInput,
         activityLegacyId: effectiveActivityLegacyId,
-        userId: dto.userId,
-        authorName: dto.userName,
+        actor: dto.actor,
         conversationState: sink.getState(),
         profileSync,
       });
@@ -454,8 +452,7 @@ export class AiTurnPipeline {
       fullMessages,
       lastInput,
       {
-        userId: dto.userId,
-        userName: dto.userName,
+        actor: dto.actor,
         userPhone: dto.userPhone,
         image: dto.image,
         activityLegacyId: dto.activityLegacyId,
@@ -486,8 +483,7 @@ export class AiTurnPipeline {
     const postAttempt = await this.postIntentService.tryCreatePostFromChat({
       messages: fullMessages,
       input: lastInput,
-      userId: dto.userId,
-      userName: dto.userName,
+      actor: dto.actor,
       activityLegacyId: effectiveActivityLegacyId ?? dto.activityLegacyId,
       image: dto.image,
       images: dto.images,

@@ -1,4 +1,5 @@
 import { resolveActorUserId } from '../../../common/auth/actor-user.util';
+import type { RequestActor } from '../../../common/auth/request-actor.types';
 import {
   DEMO_OWNER_DISPLAY_NAME,
   DEMO_OWNER_USER_ID,
@@ -37,4 +38,15 @@ export function resolveProfilePackageOwnerId(
     return MOCK_PROFILE_SEED_USER_ID;
   }
   return resolveActorUserId(userId, authorName);
+}
+
+export function isMockProfileActor(actor: RequestActor): boolean {
+  return isMockProfileUser(actor.clientUserId, actor.displayName);
+}
+
+export function resolveProfilePackageOwnerFromActor(actor: RequestActor): string {
+  if (isMockProfileActor(actor)) {
+    return MOCK_PROFILE_SEED_USER_ID;
+  }
+  return actor.resolvedUserId;
 }

@@ -1,12 +1,17 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { resolveActorUserId } from '../../common/auth/actor-user.util';
+import type { RequestActor } from '../../common/auth/request-actor.types';
+import {
+  IUserRepository,
+  USER_REPOSITORY,
+} from './interfaces/user.repository.interface';
 import {
   PostApplication,
   PostApplicationDocument,
@@ -17,6 +22,17 @@ import {
   UserBlockDocument,
 } from '../../database/schemas/user-block.schema';
 
+export type BlockedUserItemDto = {
+  userId: string;
+  name: string;
+  avatar?: string;
+};
+
+export type BlockListDto = {
+  blockedUserIds: string[];
+  items: BlockedUserItemDto[];
+};
+
 @Injectable()
 export class UserBlockService {
   constructor(
@@ -26,37 +42,50 @@ export class UserBlockService {
     private readonly postModel: Model<PostDocument>,
     @InjectModel(PostApplication.name)
     private readonly applicationModel: Model<PostApplicationDocument>,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: IUserRepository,
   ) {}
 
   blockForClient(
     blockedUserId: string,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ): Promise<{ ok: true }> {
-    return this.blockUser(
-      resolveActorUserId(userId, authorName),
-      blockedUserId,
-    );
+    return this.blockUser(actor.resolvedUserId, blockedUserId);
   }
 
   unblockForClient(
     blockedUserId: string,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ): Promise<{ ok: true }> {
-    return this.unblockUser(
-      resolveActorUserId(userId, authorName),
-      blockedUserId,
-    );
+    return this.unblockUser(actor.resolvedUserId, blockedUserId);
   }
 
-  async listBlocksForClient(
-    userId?: string,
-    authorName?: string,
-  ): Promise<{ blockedUserIds: string[] }> {
-    const actorId = resolveActorUserId(userId, authorName);
-    const blockedUserIds = await this.listBlockedUserIds(actorId);
-    return { blockedUserIds };
+  async listBlocksForClient(actor: RequestActor): Promise<BlockListDto> {
+    const blockedUserIds = await this.listBlockedUserIds(actor.resolvedUserId);
+    if (!blockedUserIds.length) {
+      return { blockedUserIds: [], items: [] };
+    }
+
+    const profiles = await this.userRepository.findSummariesByExternalIds(
+      blockedUserIds,
+    );
+    const profileById = new Map(
+      profiles
+        .filter((row) => row.externalId)
+        .map((row) => [String(row.externalId), row]),
+    );
+
+    const items = blockedUserIds.map((userId) => {
+      const profile = profileById.get(userId);
+      const name = profile?.name?.trim();
+      return {
+        userId,
+        name: name || profile?.handle?.trim() || '用户',
+        avatar: profile?.avatar?.trim() || undefined,
+      };
+    });
+
+    return { blockedUserIds, items };
   }
 
   async blockUser(

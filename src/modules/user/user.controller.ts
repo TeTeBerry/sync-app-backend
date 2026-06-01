@@ -6,8 +6,10 @@ import {
   Param,
   Patch,
   Post,
-  Query,
 } from '@nestjs/common';
+import { CurrentActor } from '../../common/auth/current-actor.decorator';
+import { Public } from '../../common/auth/public.decorator';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { BlockUserDto } from './dto/block-user.dto';
 import { UpdateUserMeDto } from './dto/update-user-me.dto';
 import { UserBlockService } from './user-block.service';
@@ -20,59 +22,37 @@ export class UserController {
     private readonly userBlockService: UserBlockService,
   ) {}
 
+  @Public()
   @Get('health')
   health() {
     return this.userService.ping();
   }
 
   @Get('me')
-  me(
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
-  ) {
-    return this.userService.getMe(userId, authorName);
+  me(@CurrentActor() actor: RequestActor) {
+    return this.userService.getMe(actor);
   }
 
   @Patch('me')
-  updateMe(
-    @Body() body: UpdateUserMeDto,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
-  ) {
-    return this.userService.patchMe(body, userId, authorName);
+  updateMe(@Body() body: UpdateUserMeDto, @CurrentActor() actor: RequestActor) {
+    return this.userService.patchMe(body, actor);
   }
 
   @Get('blocks')
-  listBlocks(
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
-  ) {
-    return this.userBlockService.listBlocksForClient(userId, authorName);
+  listBlocks(@CurrentActor() actor: RequestActor) {
+    return this.userBlockService.listBlocksForClient(actor);
   }
 
   @Post('blocks')
-  blockUser(
-    @Body() body: BlockUserDto,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
-  ) {
-    return this.userBlockService.blockForClient(
-      body.blockedUserId,
-      userId,
-      authorName,
-    );
+  blockUser(@Body() body: BlockUserDto, @CurrentActor() actor: RequestActor) {
+    return this.userBlockService.blockForClient(body.blockedUserId, actor);
   }
 
   @Delete('blocks/:blockedUserId')
   unblockUser(
     @Param('blockedUserId') blockedUserId: string,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
+    @CurrentActor() actor: RequestActor,
   ) {
-    return this.userBlockService.unblockForClient(
-      blockedUserId,
-      userId,
-      authorName,
-    );
+    return this.userBlockService.unblockForClient(blockedUserId, actor);
   }
 }

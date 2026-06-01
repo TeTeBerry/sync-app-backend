@@ -4,18 +4,20 @@
 
 | Flow | Entry | Notes |
 |------|-------|-------|
-| WS chat turn | `AiChatWsHandler` → `AiService.streamChat` → `AiTurnPipeline` | Intent resolve, buddy flow, match-only, deterministic; `AiSseBuilder` builds `AiStreamEvent` frames sent over WebSocket |
+| WS chat turn | `AiChatWsHandler` → `AiService.streamChat` → `AiTurnPipeline` | Intent resolve, buddy flow, match-only, deterministic; `AiStreamEventBuilder` builds `AiStreamEvent` frames sent over WebSocket |
 | Posting from chat | `PostIntentService` → `BuddyModule` use cases | Parse → Risk → `PostWriteService.createPost` |
 | Match / recommend | `MatchPostsFromChatUseCase` | Chroma + ranking |
 | Deterministic replies | `DeterministicReplyService` → `AgentRuntimeService` | Rule handlers only; **no LLM tool runtime for posting** |
 
-Posting **does not** go through `AgentToolsService` or registered `ALL_AGENT_TOOLS`. Those services exist for the deterministic reply handler pipeline (quick replies, slot filling).
+Posting **does not** go through `AgentToolsService` or registered posting tools. `AgentToolsService` exists for the deterministic reply handler pipeline (quick replies, slot filling); the registry is empty for create/match flows.
 
-## Legacy (deterministic reply only)
+## Deterministic reply runtime
 
-Located under `legacy/`:
+- `AgentRuntimeService` — rule-based handler pipeline for quick replies (not buddy posting)
+- `AgentToolsService` — optional tool execution for handlers; no posting tools registered
 
-- `AgentRuntimeService` — used by deterministic reply handlers, not by buddy posting use cases
-- `AgentToolsService` — tool registry is empty for posting; handlers may plan tools but none are registered for create/match flows
+When adding new posting behavior, extend `BuddyModule` use cases or `PostIntentService`, not `AgentRuntimeService`.
 
-When adding new posting behavior, extend `BuddyModule` use cases or `PostIntentService`, not the agent tool runtime.
+## Shared chat contracts
+
+Session persistence and AI both use `src/shared/chat/` (`ChatMessageDto`, `ConversationState`). AI-specific flow helpers remain under `src/ai/conversation/`.

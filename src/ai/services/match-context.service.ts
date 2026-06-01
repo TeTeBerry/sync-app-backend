@@ -11,7 +11,7 @@ import {
   UserMatchProfile,
 } from '../match/match-ranking.util';
 import { UserService } from '../../modules/user/user.service';
-import { resolveActorUserId } from '../../common/auth/actor-user.util';
+import { toRequestActor } from '../../common/auth/actor-query.util';
 
 @Injectable()
 export class MatchContextService {
@@ -45,7 +45,7 @@ export class MatchContextService {
     authorName?: string,
   ): Promise<MatchFilterContext> {
     const requesterUserId = userId?.trim()
-      ? resolveActorUserId(userId, authorName)
+      ? toRequestActor(userId, authorName).resolvedUserId
       : undefined;
     const resolvedProfile = await this.resolveProfile(userId, profile);
 
@@ -164,7 +164,7 @@ export class MatchContextService {
     if (!userId) return undefined;
 
     try {
-      const me = await this.userService.getMe(userId);
+      const me = await this.userService.getMe(toRequestActor(userId));
       return {
         city: me.city,
         favorGenres: me.favorGenres,

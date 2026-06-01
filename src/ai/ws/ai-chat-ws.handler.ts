@@ -216,9 +216,8 @@ export class AiChatWsHandler {
       const dto = plainToInstance(ChatRequestDto, {
         messages: sendPayload.messages,
         sessionId: sendPayload.sessionId?.trim() || sessionId,
-        userId: actorResult.actor.userId,
-        userName: actorResult.actor.userName,
-        userPhone: actorResult.actor.userPhone,
+        actor: actorResult.actor,
+        userPhone: actorResult.userPhone,
         activityLegacyId: sendPayload.activityLegacyId ?? activityLegacyId,
         image: sendPayload.image,
         images: sendPayload.images,
@@ -244,7 +243,7 @@ export class AiChatWsHandler {
         this.devLog(connectionId, 'streamChat start', {
           requestId,
           sessionId: dto.sessionId,
-          actorSource: actorResult.source,
+          actorSource: actorResult.actor.source,
         });
         for await (const event of this.aiService.streamChat(dto, {
           requestId,

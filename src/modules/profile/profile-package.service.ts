@@ -25,8 +25,10 @@ import {
   isMockProfileUser,
   MOCK_PROFILE_SEED_ACTIVITY_LEGACY_ID,
   MOCK_PROFILE_SEED_USER_ID,
+  resolveProfilePackageOwnerFromActor,
   resolveProfilePackageOwnerId,
 } from './domain/mock-profile-user.util';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { mergeFreeAndPaidQuotas } from './domain/merged-entitlement.util';
 import {
   getPackageTierDefinition,
@@ -101,11 +103,10 @@ export class ProfilePackageService implements OnModuleInit {
   }
 
   async listEntitlements(
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
     activityLegacyId?: number,
   ): Promise<EventPackageEntitlementDto[]> {
-    const ownerId = resolveProfilePackageOwnerId(userId, authorName);
+    const ownerId = resolveProfilePackageOwnerFromActor(actor);
     const freeUsage =
       await this.profileFreeQuotaService.getFreeMonthlyForUser(ownerId);
 
@@ -132,11 +133,10 @@ export class ProfilePackageService implements OnModuleInit {
   }
 
   async getEntitlementForActivity(
-    userId: string | undefined,
-    authorName: string | undefined,
+    actor: RequestActor,
     activityLegacyId: number,
   ): Promise<EventPackageEntitlementDto | null> {
-    const ownerId = resolveProfilePackageOwnerId(userId, authorName);
+    const ownerId = resolveProfilePackageOwnerFromActor(actor);
     const freeUsage =
       await this.profileFreeQuotaService.getFreeMonthlyForUser(ownerId);
 
@@ -158,8 +158,7 @@ export class ProfilePackageService implements OnModuleInit {
   async purchasePackage(
     tierId: string,
     activityLegacyId: number,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ): Promise<PurchaseProfilePackageResultDto> {
     if (!isPackageTierId(tierId)) {
       throw new BadRequestException(`Invalid tierId: ${tierId}`);
@@ -172,7 +171,7 @@ export class ProfilePackageService implements OnModuleInit {
     }
 
     const tier = getPackageTierDefinition(tierId);
-    const ownerId = resolveProfilePackageOwnerId(userId, authorName);
+    const ownerId = resolveProfilePackageOwnerFromActor(actor);
     const freeUsage =
       await this.profileFreeQuotaService.getFreeMonthlyForUser(ownerId);
     const purchasedAt = new Date();
@@ -183,7 +182,7 @@ export class ProfilePackageService implements OnModuleInit {
       tier.limits.mapDays,
       validUntil,
     );
-    const author = authorName?.trim();
+    const author = actor.displayName?.trim();
 
     const record = await this.entitlementModel
       .findOneAndUpdate(
@@ -327,7 +326,7 @@ export class ProfilePackageService implements OnModuleInit {
   }
 
   /** Whether the request should resolve to the seeded demo entitlement. */
-  isMockProfileRequest(userId?: string, authorName?: string): boolean {
-    return isMockProfileUser(userId, authorName);
+  isMockProfileRequest(actor: RequestActor): boolean {
+    return isMockProfileUser(actor.clientUserId, actor.displayName);
   }
 }

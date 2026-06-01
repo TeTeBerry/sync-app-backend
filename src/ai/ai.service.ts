@@ -118,7 +118,7 @@ export class AiService {
       }
     }
 
-    const rateKey = dto.userId?.trim() || sessionId;
+    const rateKey = dto.actor.clientUserId.trim() || sessionId;
     const { allowed } = await this.rateLimit.checkLimit(rateKey);
     if (!allowed) {
       yield {
@@ -166,7 +166,7 @@ export class AiService {
 
       const messageId = await this.chatService.saveTurn({
         sessionId,
-        userId: dto.userId,
+        userId: dto.actor.clientUserId,
         messages: fullMessages,
         assistantReply,
         conversationState,

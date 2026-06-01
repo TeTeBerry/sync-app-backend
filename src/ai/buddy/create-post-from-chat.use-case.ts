@@ -3,6 +3,7 @@ import {
   isAiShortcutTag,
   normalizeAiShortcutInput,
 } from '../../common/utils/demo-owner.util';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { CreatePostDto } from '../../modules/partner/dto/create-post.dto';
 import { PostService } from '../../modules/partner/post.service';
 import {
@@ -53,8 +54,7 @@ import { TRAVEL_SAFETY_TIP } from '../risk/risk-sanitize.util';
 export interface CreatePostFromChatParams {
   messages: ChatMessageDto[];
   input: string;
-  userId?: string;
-  userName?: string;
+  actor: RequestActor;
   activityLegacyId?: number;
   image?: string;
   images?: string[];
@@ -81,8 +81,7 @@ export class CreatePostFromChatUseCase {
     const {
       messages,
       input,
-      userId,
-      userName,
+      actor,
       activityLegacyId,
       image,
       images,
@@ -157,14 +156,13 @@ export class CreatePostFromChatUseCase {
     if (
       hasActivity &&
       resolvedActivity?.legacyId &&
-      userId &&
+      actor.clientUserId &&
       !skipExistingPostGuidance
     ) {
       const existing =
         await this.postService.findOwnerRecruitingPostForActivity(
           resolvedActivity.legacyId,
-          userId,
-          userName,
+          actor,
         );
       if (existing) {
         const fromSelfPostIntent =
@@ -362,13 +360,13 @@ export class CreatePostFromChatUseCase {
       ? await this.riskAgent.assessImage({
           body,
           image: image.trim(),
-          userId,
+          userId: actor.clientUserId,
           activityLegacyId: resolvedActivity?.legacyId,
         })
       : await this.riskAgent.assess(
           {
             body,
-            userId,
+            userId: actor.clientUserId,
             activityLegacyId: resolvedActivity?.legacyId,
           },
           { rulesOnly: useRulesOnlyRisk },
@@ -381,7 +379,7 @@ export class CreatePostFromChatUseCase {
 
     if (!risk.publishable) {
       void this.noticeAgent.notifyPostRejected(
-        userId,
+        actor.clientUserId,
         resolvedActivity?.legacyId,
         risk.reason,
       );
@@ -413,7 +411,7 @@ export class CreatePostFromChatUseCase {
       images: images?.length ? images : undefined,
     };
 
-    const post = await this.postService.createPost(dto, userId, userName, {
+    const post = await this.postService.createPost(dto, actor, {
       skipRiskCheck: true,
     });
     const activityLabel = resolvedActivity?.name ?? '活动';

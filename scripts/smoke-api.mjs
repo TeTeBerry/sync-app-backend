@@ -28,7 +28,7 @@ const timeoutMs = Number(process.env.SMOKE_TIMEOUT_MS || 30_000);
 /** @type {{ name: string, run: (ctx: SmokeContext) => Promise<void> }[]} */
 const steps = [];
 
-/** @typedef {{ baseUrl: string, activityId: number, q: string, postId?: string, djIds?: string[], generateResult?: unknown }} SmokeContext */
+/** @typedef {{ baseUrl: string, activityId: number, q: string, postId?: string, postAuthorUserId?: string, blockTargetUserId?: string, djIds?: string[], generateResult?: unknown }} SmokeContext */
 
 function ownerQuery() {
   // authorName kept for legacy smoke paths; production demo uses userId only.
@@ -39,7 +39,7 @@ function ownerQuery() {
 /**
  * @param {string} method
  * @param {string} path path after /api (no leading slash) or full URL
- * @param {{ body?: unknown, expectStatus?: number }} [opts]
+ * @param {{ body?: unknown, expectStatus?: number, expectCode?: number }} [opts]
  */
 async function request(method, path, opts = {}) {
   const url = path.startsWith('http')
@@ -64,7 +64,9 @@ async function request(method, path, opts = {}) {
       throw new Error(`${method} ${url} → non-JSON (${res.status}): ${text.slice(0, 200)}`);
     }
 
-    const expectStatus = opts.expectStatus;
+    const expectCode = opts.expectCode ?? 200;
+    const expectStatus = opts.expectStatus ?? (expectCode === 200 ? undefined : expectCode);
+
     if (expectStatus != null) {
       if (res.status !== expectStatus) {
         throw new Error(
@@ -78,10 +80,10 @@ async function request(method, path, opts = {}) {
     }
 
     if (json && typeof json === 'object' && 'code' in json) {
-      if (json.code !== 200) {
+      if (json.code !== expectCode) {
         throw new Error(`${method} ${url} → code ${json.code}: ${json.message ?? ''}`);
       }
-      return json.data;
+      return expectCode === 200 ? json.data : json;
     }
 
     return json;
@@ -135,6 +137,13 @@ step(`GET /posts?activityLegacyId=${activityId}`, async (ctx) => {
   assert(Array.isArray(items), 'posts page should have items array');
   if (items.length > 0 && items[0]?.id) {
     ctx.postId = String(items[0].id);
+    ctx.postAuthorUserId = items[0].userId ? String(items[0].userId) : undefined;
+  }
+  const blockCandidate = items.find(
+    (p) => p?.userId && String(p.userId) !== userId,
+  );
+  if (blockCandidate?.userId) {
+    ctx.blockTargetUserId = String(blockCandidate.userId);
   }
 });
 
@@ -229,7 +238,89 @@ step('GET /notifications/unread-count', async (ctx) => {
 });
 
 step('GET /users/blocks', async (ctx) => {
-  await request('GET', `users/blocks?${ctx.q}`);
+  const data = await request('GET', `users/blocks?${ctx.q}`);
+  assert(Array.isArray(data?.blockedUserIds), 'blockedUserIds should be an array');
+  assert(Array.isArray(data?.items), 'items should be an array');
+});
+
+step('POST /reports (post)', async (ctx) => {
+  if (!ctx.postId) {
+    console.log('    ↷ skip — no postId');
+    return;
+  }
+  const data = await request('POST', `reports?${ctx.q}`, {
+    body: {
+      targetType: 'post',
+      targetId: ctx.postId,
+      ...(ctx.postAuthorUserId
+        ? { targetUserId: ctx.postAuthorUserId }
+        : {}),
+      category: 'ads',
+    },
+  });
+  assert(data?.ok === true && data?.id, 'report should return ok and id');
+});
+
+step('POST /reports duplicate → 409', async (ctx) => {
+  if (!ctx.postId) {
+    console.log('    ↷ skip — no postId');
+    return;
+  }
+  await request('POST', `reports?${ctx.q}`, {
+    body: {
+      targetType: 'post',
+      targetId: ctx.postId,
+      category: 'ads',
+    },
+    expectCode: 409,
+    expectStatus: 409,
+  });
+});
+
+step('POST /users/blocks', async (ctx) => {
+  if (!ctx.blockTargetUserId) {
+    console.log('    ↷ skip — no block target user');
+    return;
+  }
+  await request('POST', `users/blocks?${ctx.q}`, {
+    body: { blockedUserId: ctx.blockTargetUserId },
+  });
+  const list = await request('GET', `users/blocks?${ctx.q}`);
+  assert(
+    list.blockedUserIds.includes(ctx.blockTargetUserId),
+    'blocked user should appear in list',
+  );
+});
+
+step('POST /users/blocks duplicate → 409', async (ctx) => {
+  if (!ctx.blockTargetUserId) {
+    console.log('    ↷ skip — no block target user');
+    return;
+  }
+  await request('POST', `users/blocks?${ctx.q}`, {
+    body: { blockedUserId: ctx.blockTargetUserId },
+    expectCode: 409,
+    expectStatus: 409,
+  });
+});
+
+step('DELETE /users/blocks/:id (cleanup)', async (ctx) => {
+  if (!ctx.blockTargetUserId) {
+    console.log('    ↷ skip — no block target user');
+    return;
+  }
+  await request(
+    'DELETE',
+    `users/blocks/${encodeURIComponent(ctx.blockTargetUserId)}?${ctx.q}`,
+  );
+});
+
+step('POST /users/blocks self → 400', async (ctx) => {
+  await request('POST', `users/blocks?${ctx.q}`, {
+    body: { blockedUserId: userId },
+    expectCode: 400,
+    expectStatus: 400,
+  });
 });
 
 step('POST /posts/:id/like (optional)', async (ctx) => {

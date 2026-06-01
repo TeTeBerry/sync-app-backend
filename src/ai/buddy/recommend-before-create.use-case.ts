@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import type { ConversationState } from '../conversation';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
 import { parseConversationContext } from '../conversation/conversation-context.parser';
@@ -22,8 +23,7 @@ export interface RecommendBeforeCreateParams {
   messages: ChatMessageDto[];
   input: string;
   activityLegacyId?: number;
-  userId?: string;
-  authorName?: string;
+  actor: RequestActor;
   conversationState?: ConversationState | null;
   profileSync?:
     | import('../agents/user-profile.agent').UserProfileSyncResult
@@ -45,8 +45,7 @@ export class RecommendBeforeCreateUseCase {
       messages,
       input,
       activityLegacyId,
-      userId,
-      authorName,
+      actor,
       conversationState,
       profileSync,
     } = params;
@@ -72,11 +71,10 @@ export class RecommendBeforeCreateUseCase {
     );
     if (!resolvedActivity?.legacyId) return null;
 
-    const ownerPost = userId
+    const ownerPost = actor.clientUserId
       ? await this.postService.findOwnerRecruitingPostRecord(
           resolvedActivity.legacyId,
-          userId,
-          authorName,
+          actor,
         )
       : null;
 
@@ -95,8 +93,7 @@ export class RecommendBeforeCreateUseCase {
       messages,
       input: trimmed,
       activityLegacyId: resolvedActivity.legacyId,
-      userId,
-      authorName,
+      actor,
       fromIntentRouter: true,
       profileSync,
       preResolvedActivity: resolvedActivity,

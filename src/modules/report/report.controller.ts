@@ -1,4 +1,6 @@
-import { Body, Controller, Post, Query } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
+import { CurrentActor } from '../../common/auth/current-actor.decorator';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { CreateReportDto } from './dto/create-report.dto';
 import { ReportService } from './report.service';
 
@@ -7,11 +9,7 @@ export class ReportController {
   constructor(private readonly reportService: ReportService) {}
 
   @Post()
-  create(
-    @Body() body: CreateReportDto,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
-  ) {
-    return this.reportService.submit(body, userId, authorName);
+  create(@Body() body: CreateReportDto, @CurrentActor() actor: RequestActor) {
+    return this.reportService.submit(body, actor);
   }
 }

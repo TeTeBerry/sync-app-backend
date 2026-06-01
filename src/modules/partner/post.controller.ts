@@ -8,6 +8,8 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { CurrentActor } from '../../common/auth/current-actor.decorator';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { CreatePostCommentDto } from './dto/create-post-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
@@ -19,34 +21,28 @@ export class PostController {
 
   @Get('popular')
   listPopular(
+    @CurrentActor() actor: RequestActor,
     @Query('limit') limit?: string,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
   ) {
     const parsed = limit ? Number(limit) : 20;
     return this.postService.listPopular(
       Number.isNaN(parsed) ? 20 : parsed,
-      userId,
-      authorName,
+      actor,
     );
   }
 
   @Get('all')
-  listAll(
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
-  ) {
-    return this.postService.listAll(userId, authorName);
+  listAll(@CurrentActor() actor: RequestActor) {
+    return this.postService.listAll(actor);
   }
 
   @Get()
   list(
+    @CurrentActor() actor: RequestActor,
     @Query('activityLegacyId') activityLegacyId?: string,
     @Query('limit') limit?: string,
     @Query('cursor') cursor?: string,
     @Query('anchorPostId') anchorPostId?: string,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
   ) {
     if (activityLegacyId) {
       const id = Number(activityLegacyId);
@@ -62,39 +58,26 @@ export class PostController {
             cursor,
             anchorPostId,
           },
-          userId,
-          authorName,
+          actor,
         );
       }
     }
-    return this.postService.listByOwner(userId, authorName);
+    return this.postService.listByOwner(actor);
   }
 
   @Post()
-  create(
-    @Body() body: CreatePostDto,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
-  ) {
-    return this.postService.createPost(body, userId, authorName);
+  create(@Body() body: CreatePostDto, @CurrentActor() actor: RequestActor) {
+    return this.postService.createPost(body, actor);
   }
 
   @Post(':id/like')
-  like(
-    @Param('id') id: string,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
-  ) {
-    return this.postService.likePost(id, userId, authorName);
+  like(@Param('id') id: string, @CurrentActor() actor: RequestActor) {
+    return this.postService.likePost(id, actor);
   }
 
   @Post(':id/applications')
-  apply(
-    @Param('id') id: string,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
-  ) {
-    return this.postService.applyToPost(id, userId, authorName);
+  apply(@Param('id') id: string, @CurrentActor() actor: RequestActor) {
+    return this.postService.applyToPost(id, actor);
   }
 
   @Get(':id/comments')
@@ -106,14 +89,12 @@ export class PostController {
   comment(
     @Param('id') id: string,
     @Body() body: CreatePostCommentDto,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
+    @CurrentActor() actor: RequestActor,
   ) {
     return this.postService.addComment(
       id,
       body.body,
-      userId,
-      authorName,
+      actor,
       body.parentCommentId,
     );
   }
@@ -122,18 +103,13 @@ export class PostController {
   update(
     @Param('id') id: string,
     @Body() body: UpdatePostDto,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
+    @CurrentActor() actor: RequestActor,
   ) {
-    return this.postService.updateOwnedPost(id, body, userId, authorName);
+    return this.postService.updateOwnedPost(id, body, actor);
   }
 
   @Delete(':id')
-  remove(
-    @Param('id') id: string,
-    @Query('userId') userId?: string,
-    @Query('authorName') authorName?: string,
-  ) {
-    return this.postService.deleteOwnedPost(id, userId, authorName);
+  remove(@Param('id') id: string, @CurrentActor() actor: RequestActor) {
+    return this.postService.deleteOwnedPost(id, actor);
   }
 }

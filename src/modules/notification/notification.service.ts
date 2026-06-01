@@ -8,6 +8,7 @@ import {
   NotificationMeta,
   NotificationType,
 } from '../../database/schemas/notification.schema';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import {
   buildNotificationFromTemplate,
   type NotificationTemplateKey,
@@ -39,7 +40,11 @@ export interface NotificationDto {
   createdAt: string;
 }
 
-function resolveUserId(userId?: string): string {
+function resolveUserId(actor: RequestActor): string {
+  return actor.resolvedUserId?.trim() || 'anonymous';
+}
+
+function resolveStoredUserId(userId: string): string {
   return userId?.trim() || 'anonymous';
 }
 
@@ -98,7 +103,7 @@ export class NotificationService {
   async createNotification(
     input: CreateNotificationInput,
   ): Promise<NotificationDto | null> {
-    const userId = resolveUserId(input.userId);
+    const userId = resolveStoredUserId(input.userId);
     if (userId === 'anonymous') return null;
 
     const doc = await this.notificationModel.create({
@@ -116,7 +121,7 @@ export class NotificationService {
   async createMany(inputs: CreateNotificationInput[]): Promise<void> {
     const rows = inputs
       .map((input) => ({
-        userId: resolveUserId(input.userId),
+        userId: resolveStoredUserId(input.userId),
         type: input.type,
         title: input.title,
         body: input.body,
@@ -129,8 +134,8 @@ export class NotificationService {
     await this.notificationModel.insertMany(rows);
   }
 
-  async listByUser(userId?: string): Promise<NotificationDto[]> {
-    const uid = resolveUserId(userId);
+  async listByUser(actor: RequestActor): Promise<NotificationDto[]> {
+    const uid = resolveUserId(actor);
     const rows = await this.notificationModel
       .find({ userId: uid })
       .sort({ createdAt: -1 })
@@ -140,13 +145,13 @@ export class NotificationService {
     return rows.map((row) => toDto(row));
   }
 
-  async unreadCount(userId?: string): Promise<number> {
-    const uid = resolveUserId(userId);
+  async unreadCount(actor: RequestActor): Promise<number> {
+    const uid = resolveUserId(actor);
     return this.notificationModel.countDocuments({ userId: uid, read: false });
   }
 
-  async markRead(id: string, userId?: string): Promise<NotificationDto> {
-    const uid = resolveUserId(userId);
+  async markRead(id: string, actor: RequestActor): Promise<NotificationDto> {
+    const uid = resolveUserId(actor);
     const doc = await this.notificationModel
       .findOneAndUpdate(
         { _id: id, userId: uid },
@@ -162,8 +167,8 @@ export class NotificationService {
     return toDto(doc);
   }
 
-  async markAllRead(userId?: string): Promise<{ ok: true }> {
-    const uid = resolveUserId(userId);
+  async markAllRead(actor: RequestActor): Promise<{ ok: true }> {
+    const uid = resolveUserId(actor);
     await this.notificationModel.updateMany(
       { userId: uid, read: false },
       { $set: { read: true } },
@@ -171,8 +176,8 @@ export class NotificationService {
     return { ok: true };
   }
 
-  async deleteOne(id: string, userId?: string): Promise<{ ok: true }> {
-    const uid = resolveUserId(userId);
+  async deleteOne(id: string, actor: RequestActor): Promise<{ ok: true }> {
+    const uid = resolveUserId(actor);
     const result = await this.notificationModel.deleteOne({
       _id: id,
       userId: uid,
@@ -183,8 +188,8 @@ export class NotificationService {
     return { ok: true };
   }
 
-  async clearAll(userId?: string): Promise<{ ok: true }> {
-    const uid = resolveUserId(userId);
+  async clearAll(actor: RequestActor): Promise<{ ok: true }> {
+    const uid = resolveUserId(actor);
     await this.notificationModel.deleteMany({ userId: uid });
     return { ok: true };
   }
@@ -199,7 +204,7 @@ export class NotificationService {
       sinceMs?: number;
     },
   ): Promise<boolean> {
-    const uid = resolveUserId(userId);
+    const uid = resolveStoredUserId(userId);
     if (uid === 'anonymous') return false;
 
     const sinceMs = options?.sinceMs ?? 24 * 60 * 60 * 1000;

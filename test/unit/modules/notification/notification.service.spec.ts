@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { NotificationService } from '@src/modules/notification/notification.service';
 
 describe('NotificationService', () => {
@@ -45,7 +46,7 @@ describe('NotificationService', () => {
       }),
     });
 
-    const result = await service.markRead('n1', 'u1');
+    const result = await service.markRead('n1', toRequestActor('u1'));
     expect(result.read).toBe(true);
     expect(model.findOneAndUpdate).toHaveBeenCalledWith(
       { _id: 'n1', userId: 'u1' },
@@ -56,20 +57,26 @@ describe('NotificationService', () => {
 
   it('throws when deleting missing notification', async () => {
     model.deleteOne.mockResolvedValue({ deletedCount: 0 });
-    await expect(service.deleteOne('missing', 'u1')).rejects.toBeInstanceOf(
+    await expect(
+      service.deleteOne('missing', toRequestActor('u1')),
+    ).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });
 
   it('deletes one notification for owner', async () => {
     model.deleteOne.mockResolvedValue({ deletedCount: 1 });
-    await expect(service.deleteOne('n1', 'u1')).resolves.toEqual({ ok: true });
+    await expect(
+      service.deleteOne('n1', toRequestActor('u1')),
+    ).resolves.toEqual({ ok: true });
     expect(model.deleteOne).toHaveBeenCalledWith({ _id: 'n1', userId: 'u1' });
   });
 
   it('clears all notifications for user', async () => {
     model.deleteMany.mockResolvedValue({ deletedCount: 5 });
-    await expect(service.clearAll('u1')).resolves.toEqual({ ok: true });
+    await expect(service.clearAll(toRequestActor('u1'))).resolves.toEqual({
+      ok: true,
+    });
     expect(model.deleteMany).toHaveBeenCalledWith({ userId: 'u1' });
   });
 });

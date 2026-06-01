@@ -91,6 +91,8 @@ export default () => ({
     jwtExpiresIn: cleanEnv(process.env.JWT_EXPIRES_IN, '30d'),
     /** `dev` enables POST /auth/dev; `wechat` is production default. */
     mode: cleanEnv(process.env.AUTH_MODE, 'wechat'),
+    /** When false (default), REST requires Bearer JWT except `@Public()` routes. */
+    allowDemoQuery: cleanEnv(process.env.AUTH_ALLOW_DEMO, 'false') === 'true',
     wechatMini: {
       appId: cleanEnv(
         process.env.WECHAT_MINI_APP_ID ?? process.env.WX_APP_ID,

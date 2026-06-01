@@ -18,7 +18,7 @@ import {
   POST_REPOSITORY,
   PostRecord,
 } from '../interfaces/post.repository.interface';
-import { resolveActorUserId } from '../../../common/auth/actor-user.util';
+import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { buildMatchCriteriaPatch } from '../../../ai/match/buddy-match-criteria.util';
 import { inferPostContentTypes } from '../utils/post-content-type.util';
 @Injectable()
@@ -39,12 +39,11 @@ export class PostWriteService {
 
   async createPost(
     dto: CreatePostDto,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
     options?: { skipRiskCheck?: boolean },
   ) {
-    const profile = await this.userService.resolveProfile(userId, authorName);
-    const ownerUserId = resolveActorUserId(userId, authorName);
+    const profile = await this.userService.resolveProfile(actor);
+    const ownerUserId = actor.resolvedUserId;
 
     const activity =
       dto.activityLegacyId != null
@@ -60,7 +59,7 @@ export class PostWriteService {
     if (!options?.skipRiskCheck) {
       const risk = await this.postModeration.assessPost({
         body: bodyToSave,
-        userId,
+        userId: actor.clientUserId,
         activityLegacyId: dto.activityLegacyId ?? activity?.legacyId,
       });
       if (!risk.publishable) {
@@ -103,7 +102,7 @@ export class PostWriteService {
 
     const created = await this.repository.create({
       userId: ownerUserId,
-      authorName: profile?.name ?? authorName?.trim() ?? 'Zara Chen',
+      authorName: profile?.name ?? actor.displayName?.trim() ?? 'Zara Chen',
       authorHandle: profile?.handle,
       authorAvatar: profile?.avatar,
       activityLegacyId,

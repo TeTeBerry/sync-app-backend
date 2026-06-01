@@ -21,7 +21,8 @@ import {
   resolveRecordValidUntil,
   type EventEntitlementUsage,
 } from './domain/event-entitlement.util';
-import { resolveProfilePackageOwnerId } from './domain/mock-profile-user.util';
+import { resolveProfilePackageOwnerFromActor } from './domain/mock-profile-user.util';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { getPackageTierDefinition } from './domain/package-tier.config';
 import {
   ProfilePackageService,
@@ -47,15 +48,14 @@ export class ProfileEntitlementConsumeService {
 
   /** Resolve which bucket would be used without consuming (for AI match pre-check). */
   async peekAiMatchBucket(
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
     activityLegacyId?: number,
   ): Promise<EntitlementConsumeBucket | null> {
     if (activityLegacyId == null || Number.isNaN(activityLegacyId)) {
       throw new BadRequestException('activityLegacyId is required');
     }
 
-    const ownerId = resolveProfilePackageOwnerId(userId, authorName);
+    const ownerId = resolveProfilePackageOwnerFromActor(actor);
     const freeUsage =
       await this.profileFreeQuotaService.getFreeMonthlyForUser(ownerId);
     const paid = await this.loadPaidEntitlement(ownerId, activityLegacyId);
@@ -68,46 +68,35 @@ export class ProfileEntitlementConsumeService {
   }
 
   async consumeAiMatch(
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
     activityLegacyId?: number,
   ): Promise<ConsumeProfileEntitlementResultDto> {
-    const bucket = await this.consumeQuota(
-      userId,
-      authorName,
-      activityLegacyId,
-      'aiMatch',
-    );
+    const bucket = await this.consumeQuota(actor, activityLegacyId, 'aiMatch');
     const entitlement = await this.resolveEntitlementAfterConsume(
-      userId,
-      authorName,
+      actor,
       activityLegacyId,
     );
     return { ok: true, bucket, entitlement };
   }
 
   async consumeContactUnlock(
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
     activityLegacyId?: number,
   ): Promise<ConsumeProfileEntitlementResultDto> {
     const bucket = await this.consumeQuota(
-      userId,
-      authorName,
+      actor,
       activityLegacyId,
       'contactUnlock',
     );
     const entitlement = await this.resolveEntitlementAfterConsume(
-      userId,
-      authorName,
+      actor,
       activityLegacyId,
     );
     return { ok: true, bucket, entitlement };
   }
 
   private async consumeQuota(
-    userId: string | undefined,
-    authorName: string | undefined,
+    actor: RequestActor,
     activityLegacyId: number | undefined,
     kind: 'aiMatch' | 'contactUnlock',
   ): Promise<EntitlementConsumeBucket> {
@@ -115,7 +104,7 @@ export class ProfileEntitlementConsumeService {
       throw new BadRequestException('activityLegacyId is required');
     }
 
-    const ownerId = resolveProfilePackageOwnerId(userId, authorName);
+    const ownerId = resolveProfilePackageOwnerFromActor(actor);
     const freeUsage =
       await this.profileFreeQuotaService.getFreeMonthlyForUser(ownerId);
 
@@ -216,8 +205,7 @@ export class ProfileEntitlementConsumeService {
   }
 
   private async resolveEntitlementAfterConsume(
-    userId: string | undefined,
-    authorName: string | undefined,
+    actor: RequestActor,
     activityLegacyId: number | undefined,
   ): Promise<EventPackageEntitlementDto> {
     if (activityLegacyId == null || Number.isNaN(activityLegacyId)) {
@@ -226,8 +214,7 @@ export class ProfileEntitlementConsumeService {
 
     const entitlement =
       await this.profilePackageService.getEntitlementForActivity(
-        userId,
-        authorName,
+        actor,
         activityLegacyId,
       );
     if (!entitlement) {

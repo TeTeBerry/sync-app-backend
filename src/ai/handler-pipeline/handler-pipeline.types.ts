@@ -1,3 +1,4 @@
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import type { ConversationState } from '../conversation';
 import type { ChatMessageDto } from '../presentation/chat-message.dto';
 
@@ -28,8 +29,7 @@ export interface ReplyContext {
   messages: ChatMessageDto[];
   input: string;
   state: ConversationState;
-  userId?: string;
-  userName?: string;
+  actor: RequestActor;
   userPhone?: string;
   image?: string;
   /** When set, chat is scoped to this activity (e.g. opened from event detail). */

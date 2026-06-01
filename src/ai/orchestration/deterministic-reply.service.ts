@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
 import type { ConversationState } from '../conversation';
 import { ConversationStateService } from './conversation-state.service';
-import { AgentRuntimeService } from './legacy/agent-runtime.service';
+import { AgentRuntimeService } from './agent-runtime.service';
 import {
   type DeterministicReplyResult,
   type ReplyContext,
 } from '../handler-pipeline';
 
 export interface DeterministicReplyContext {
-  userId?: string;
-  userName?: string;
+  actor: RequestActor;
   userPhone?: string;
   image?: string;
   activityLegacyId?: number;
@@ -49,8 +49,7 @@ export class DeterministicReplyService {
       messages,
       input,
       state,
-      userId: context.userId,
-      userName: context.userName,
+      actor: context.actor,
       userPhone: context.userPhone,
       image: context.image,
       activityLegacyId: context.activityLegacyId,

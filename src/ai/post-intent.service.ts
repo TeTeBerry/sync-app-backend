@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { RequestActor } from '../common/auth/request-actor.types';
 import type { BuddySearchHintPayload } from './intent/chat-intent.types';
 import { ChatMessageDto } from './presentation/chat-message.dto';
 import type { UserProfileSyncResult } from './agents/user-profile.agent';
@@ -31,8 +32,7 @@ export class PostIntentService {
   async tryCreatePostFromChat(params: {
     messages: ChatMessageDto[];
     input: string;
-    userId?: string;
-    userName?: string;
+    actor: RequestActor;
     activityLegacyId?: number;
     image?: string;
     images?: string[];
@@ -46,8 +46,7 @@ export class PostIntentService {
     messages: ChatMessageDto[];
     input: string;
     activityLegacyId?: number;
-    userId?: string;
-    authorName?: string;
+    actor: RequestActor;
     conversationState?: ConversationState | null;
     profileSync?: UserProfileSyncResult | null;
   }): Promise<PostIntentMatchResult | null> {
@@ -58,8 +57,7 @@ export class PostIntentService {
     messages: ChatMessageDto[];
     input: string;
     activityLegacyId?: number;
-    userId?: string;
-    authorName?: string;
+    actor: RequestActor;
     buddySearchHint?: BuddySearchHintPayload;
     fromIntentRouter?: boolean;
     profileSync?: UserProfileSyncResult | null;

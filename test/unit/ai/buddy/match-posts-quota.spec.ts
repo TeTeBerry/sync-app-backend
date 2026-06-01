@@ -10,6 +10,7 @@ jest.mock('@src/ai/agents', () => ({
 }));
 
 import { ForbiddenException } from '@nestjs/common';
+import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { MatchPostsFromChatUseCase } from '@src/ai/buddy/match-posts.use-case';
 import { AiMatchQuotaService } from '@src/ai/ai-match-quota.service';
 import type { UserProfileSyncResult } from '@src/ai/agents/user-profile.agent';

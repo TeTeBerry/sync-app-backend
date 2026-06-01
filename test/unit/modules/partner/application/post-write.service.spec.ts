@@ -1,3 +1,4 @@
+import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { PostWriteService } from '@src/modules/partner/application/post-write.service';
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { UserService } from '@src/modules/user/user.service';
@@ -85,8 +86,7 @@ describe('PostWriteService', () => {
 
     const result = await service.createPost(
       { body: '13号A区求组队', activityLegacyId: 9 },
-      'demo-user',
-      'Zara Chen',
+      toRequestActor('demo-user', 'Zara Chen'),
     );
 
     expect(result.id).toBe('post-123');

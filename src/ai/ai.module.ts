@@ -15,7 +15,7 @@ import { BuddyModule } from './buddy/buddy.module';
 import { IntentRouterModule } from './intent/intent-router.module';
 import { AiRateLimitService } from './ai-rate-limit.service';
 import { AiTurnPipeline } from './orchestration/ai-turn.pipeline';
-import { AiSseBuilder } from './presentation/ai-sse.builder';
+import { AiStreamEventBuilder } from './presentation/ai-sse.builder';
 import { AiChatWsHandler } from './ws/ai-chat-ws.handler';
 import { AiChatWsServer } from './ws/ai-chat-ws.server';
 
@@ -38,7 +38,7 @@ import { AiChatWsServer } from './ws/ai-chat-ws.server';
     AiService,
     AiRateLimitService,
     AiTurnPipeline,
-    AiSseBuilder,
+    AiStreamEventBuilder,
     AiChatWsHandler,
     AiChatWsServer,
   ],

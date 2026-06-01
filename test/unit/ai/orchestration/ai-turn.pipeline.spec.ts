@@ -14,6 +14,7 @@ jest.mock('@src/ai/llm/llm.service', () => ({
   LlmService: mockLlmService,
 }));
 
+import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { AiTurnPipeline } from '@src/ai/orchestration/ai-turn.pipeline';
 import { AiSseBuilder } from '@src/ai/presentation/ai-sse.builder';
 import { RECOMMEND_GATE_MARKER } from '@src/ai/gate/recommend-gate.util';
@@ -60,7 +61,7 @@ describe('AiTurnPipeline homepage activity gating', () => {
 
   const baseDto = {
     sessionId: 'home-session',
-    userId: 'user-1',
+    actor: toRequestActor('user-1', 'Test User'),
     messages: [{ role: 'user' as const, content: 'test' }],
   };
 

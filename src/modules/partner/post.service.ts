@@ -9,9 +9,11 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { resolveActorUserId } from '../../common/auth/actor-user.util';
-import { isResourceOwnedByClient } from '../../common/utils/demo-owner.util';
-import { resolveOwnerFilter } from '../../common/utils/owner-filter.util';
+import type { RequestActor } from '../../common/auth/request-actor.types';
+import {
+  isResourceOwnedByActor,
+} from '../../common/auth/actor-query.util';
+import { resolveOwnerFilterFromActor } from '../../common/utils/owner-filter.util';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
 import { ActivityService } from '../activity/activity.service';
 import {
@@ -276,12 +278,11 @@ export class PostService implements OnModuleInit {
 
   private async filterPostsForViewer(
     posts: PostRecord[],
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ): Promise<PostRecord[]> {
-    const actorUserId = resolveActorUserId(userId, authorName);
-    const excluded =
-      await this.userBlockService.getBlockExclusionSet(actorUserId);
+    const excluded = await this.userBlockService.getBlockExclusionSet(
+      actor.resolvedUserId,
+    );
     if (!excluded.size) return posts;
     return posts.filter((post) => !excluded.has(post.userId));
   }
@@ -332,61 +333,41 @@ export class PostService implements OnModuleInit {
   >(
     posts: PostRecord[],
     mapper: (post: PostRecord, liked: boolean) => T,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ): Promise<T[]> {
     if (!posts.length) return [];
 
-    const actorUserId = resolveActorUserId(userId, authorName);
-    const visiblePosts = await this.filterPostsForViewer(
-      posts,
-      userId,
-      authorName,
-    );
+    const visiblePosts = await this.filterPostsForViewer(posts, actor);
     const postIds = visiblePosts.map((post) => String(post._id));
-    const likedIds = await this.findLikedPostIds(actorUserId, postIds);
-    const buddyUserIds =
-      await this.userBlockService.loadBuddyUserIds(actorUserId);
+    const likedIds = await this.findLikedPostIds(actor.resolvedUserId, postIds);
+    const buddyUserIds = await this.userBlockService.loadBuddyUserIds(
+      actor.resolvedUserId,
+    );
 
     const mapped = visiblePosts.map((post) =>
       mapper(post, likedIds.has(String(post._id))),
     );
 
-    return this.applyPrivacyToFeedItems(mapped, actorUserId, buddyUserIds);
+    return this.applyPrivacyToFeedItems(
+      mapped,
+      actor.resolvedUserId,
+      buddyUserIds,
+    );
   }
 
-  async listPopular(limit = 20, userId?: string, authorName?: string) {
+  async listPopular(limit = 20, actor: RequestActor) {
     const rows = await this.repository.findPopular(limit);
-    return this.mapPostsWithLiked(
-      rows,
-      PostMapper.toHomeFeedItem,
-      userId,
-      authorName,
-    );
+    return this.mapPostsWithLiked(rows, PostMapper.toHomeFeedItem, actor);
   }
 
-  async listAll(userId?: string, authorName?: string) {
+  async listAll(actor: RequestActor) {
     const rows = await this.repository.findAll();
-    return this.mapPostsWithLiked(
-      rows,
-      PostMapper.toHomeFeedItem,
-      userId,
-      authorName,
-    );
+    return this.mapPostsWithLiked(rows, PostMapper.toHomeFeedItem, actor);
   }
 
-  async listByActivity(
-    activityLegacyId: number,
-    userId?: string,
-    authorName?: string,
-  ) {
+  async listByActivity(activityLegacyId: number, actor: RequestActor) {
     const rows = await this.repository.findByActivityLegacyId(activityLegacyId);
-    return this.mapPostsWithLiked(
-      rows,
-      PostMapper.toEventDetailItem,
-      userId,
-      authorName,
-    );
+    return this.mapPostsWithLiked(rows, PostMapper.toEventDetailItem, actor);
   }
 
   async listByActivityPage(
@@ -396,8 +377,7 @@ export class PostService implements OnModuleInit {
       cursor?: string;
       anchorPostId?: string;
     },
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ) {
     const limit = clampActivityPostsLimit(options.limit);
     const decodedCursor = options.cursor
@@ -417,8 +397,7 @@ export class PostService implements OnModuleInit {
     let items = await this.mapPostsWithLiked(
       pageRows,
       PostMapper.toEventDetailItem,
-      userId,
-      authorName,
+      actor,
     );
 
     const anchorId = options.anchorPostId?.trim();
@@ -432,8 +411,7 @@ export class PostService implements OnModuleInit {
         const [anchorItem] = await this.mapPostsWithLiked(
           [anchorRecord],
           PostMapper.toEventDetailItem,
-          userId,
-          authorName,
+          actor,
         );
         if (anchorItem) {
           items = [anchorItem, ...items.filter((post) => post.id !== anchorId)];
@@ -449,8 +427,8 @@ export class PostService implements OnModuleInit {
     return { items, nextCursor, hasMore };
   }
 
-  listByOwner(userId?: string, authorName?: string) {
-    const filter = resolveOwnerFilter(userId, authorName);
+  listByOwner(actor: RequestActor) {
+    const filter = resolveOwnerFilterFromActor(actor);
     return this.repository
       .findByOwner(filter)
       .then((rows) => rows.map(PostMapper.toProfileItem));
@@ -462,8 +440,7 @@ export class PostService implements OnModuleInit {
 
   async findOwnerRecruitingPostForActivity(
     activityLegacyId: number,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ): Promise<{
     id: string;
     body: string;
@@ -473,8 +450,7 @@ export class PostService implements OnModuleInit {
   } | null> {
     const record = await this.findOwnerRecruitingPostRecord(
       activityLegacyId,
-      userId,
-      authorName,
+      actor,
     );
     if (!record) return null;
     return {
@@ -488,22 +464,20 @@ export class PostService implements OnModuleInit {
 
   async findOwnerRecruitingPostRecord(
     activityLegacyId: number,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ): Promise<PostRecord | null> {
     return this.repository.findOwnerRecruitingPostForActivity(
-      resolveOwnerFilter(userId, authorName),
+      resolveOwnerFilterFromActor(actor),
       activityLegacyId,
     );
   }
 
   async createPost(
     dto: CreatePostDto,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
     options?: { skipRiskCheck?: boolean },
   ) {
-    return this.postWriteService.createPost(dto, userId, authorName, options);
+    return this.postWriteService.createPost(dto, actor, options);
   }
 
   async hidePostForViolation(
@@ -535,8 +509,7 @@ export class PostService implements OnModuleInit {
   async updateOwnedPost(
     id: string,
     dto: UpdatePostDto,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ) {
     const post = await this.repository.findById(id);
     if (!post) {
@@ -544,10 +517,9 @@ export class PostService implements OnModuleInit {
     }
 
     if (
-      !isResourceOwnedByClient(
+      !isResourceOwnedByActor(
         { userId: post.userId, authorName: post.authorName },
-        userId,
-        authorName,
+        actor,
       )
     ) {
       throw new ForbiddenException('无权编辑该帖子');
@@ -602,23 +574,21 @@ export class PostService implements OnModuleInit {
   acceptPostApplication(
     postId: string,
     applicantUserId: string,
-    ownerUserId?: string,
-    ownerAuthorName?: string,
+    owner?: RequestActor,
   ) {
     return this.postInteraction.acceptPostApplication(
       postId,
       applicantUserId,
-      ownerUserId,
-      ownerAuthorName,
+      owner,
     );
   }
 
-  likePost(id: string, userId?: string, authorName?: string) {
-    return this.postInteraction.likePost(id, userId, authorName);
+  likePost(id: string, actor: RequestActor) {
+    return this.postInteraction.likePost(id, actor);
   }
 
-  applyToPost(id: string, userId?: string, authorName?: string) {
-    return this.postInteraction.applyToPost(id, userId, authorName);
+  applyToPost(id: string, actor: RequestActor) {
+    return this.postInteraction.applyToPost(id, actor);
   }
 
   listComments(id: string) {
@@ -628,29 +598,26 @@ export class PostService implements OnModuleInit {
   addComment(
     id: string,
     body: string,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
     parentCommentId?: string,
   ) {
     return this.postInteraction.addComment(
       id,
       body,
-      userId,
-      authorName,
+      actor,
       parentCommentId,
     );
   }
 
-  async deleteOwnedPost(id: string, userId?: string, authorName?: string) {
+  async deleteOwnedPost(id: string, actor: RequestActor) {
     const post = await this.repository.findById(id);
     if (!post) {
       throw new NotFoundException('帖子不存在');
     }
 
-    const isOwner = isResourceOwnedByClient(
+    const isOwner = isResourceOwnedByActor(
       { userId: post.userId, authorName: post.authorName },
-      userId,
-      authorName,
+      actor,
     );
 
     if (!isOwner) {
@@ -670,19 +637,19 @@ export class PostService implements OnModuleInit {
     return { ok: true as const };
   }
 
-  countByOwner(userId?: string, authorName?: string) {
-    return this.repository.countByOwner(resolveOwnerFilter(userId, authorName));
+  countByOwner(actor: RequestActor) {
+    return this.repository.countByOwner(resolveOwnerFilterFromActor(actor));
   }
 
-  countCompletedByOwner(userId?: string, authorName?: string) {
+  countCompletedByOwner(actor: RequestActor) {
     return this.repository.countCompletedByOwner(
-      resolveOwnerFilter(userId, authorName),
+      resolveOwnerFilterFromActor(actor),
     );
   }
 
-  sumLikesByOwner(userId?: string, authorName?: string) {
+  sumLikesByOwner(actor: RequestActor) {
     return this.repository.sumLikesByOwner(
-      resolveOwnerFilter(userId, authorName),
+      resolveOwnerFilterFromActor(actor),
     );
   }
 }

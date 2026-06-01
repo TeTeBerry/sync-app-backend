@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { UserService } from '../../modules/user/user.service';
 import { LlmService } from '../llm/llm.service';
 import { ChatMessageDto } from '../presentation/chat-message.dto';
@@ -203,10 +204,9 @@ export class UserProfileAgent {
   async syncProfileFromChat(params: {
     messages: ChatMessageDto[];
     input: string;
-    userId?: string;
-    authorName?: string;
+    actor: RequestActor;
   }): Promise<UserProfileSyncResult | null> {
-    const { messages, input, userId, authorName } = params;
+    const { messages, input, actor } = params;
     const trimmedInput = input.trim();
 
     if (!trimmedInput || !isFindBuddyThread(messages)) {
@@ -215,7 +215,7 @@ export class UserProfileAgent {
 
     let existing: UserMatchProfile | undefined;
     try {
-      const me = await this.userService.getMe(userId, authorName);
+      const me = await this.userService.getMe(actor);
       existing = {
         city: me.city,
         favorGenres: me.favorGenres,
@@ -242,7 +242,7 @@ export class UserProfileAgent {
 
     const weights = this.getMatchWeights(profile);
     const changed = !profilesEqual(existing, profile);
-    if (changed && userId?.trim()) {
+    if (changed && actor.clientUserId.trim()) {
       await this.userService.patchMe(
         {
           city: profile.city,
@@ -250,8 +250,7 @@ export class UserProfileAgent {
           likeMate: profile.likeMate,
           budgetLevel: profile.budgetLevel,
         },
-        userId,
-        authorName,
+        actor,
       );
     }
 

@@ -25,8 +25,9 @@ export interface ReplySink {
   getState: () => ConversationState;
 }
 
+/** Builds `AiStreamEvent` frames for WebSocket transport (name is historical). */
 @Injectable()
-export class AiSseBuilder {
+export class AiStreamEventBuilder {
   withMessageComplete(
     events: AiStreamEvent[],
     replyText: string,
@@ -181,3 +182,6 @@ export class AiSseBuilder {
     return [];
   }
 }
+
+/** @deprecated Use `AiStreamEventBuilder`. */
+export const AiSseBuilder = AiStreamEventBuilder;

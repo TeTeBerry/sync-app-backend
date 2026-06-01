@@ -12,6 +12,7 @@ jest.mock('@langchain/community/chat_models/alibaba_tongyi', () =>
   require('../../../mocks/alibaba-tongyi'),
 );
 
+import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { CreatePostFromChatUseCase } from '@src/ai/buddy/create-post-from-chat.use-case';
 import {
   RECOMMEND_GATE_MARKER,
@@ -288,8 +289,10 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
         location: '上海',
         departureCity: '上海',
       }),
-      'user-1',
-      'Test User',
+      expect.objectContaining({
+        clientUserId: 'user-1',
+        displayName: 'Test User',
+      }),
       { skipRiskCheck: true },
     );
   });

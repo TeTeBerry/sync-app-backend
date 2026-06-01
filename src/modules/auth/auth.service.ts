@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
+import { toRequestActor } from '../../common/auth/actor-query.util';
 import { UserService, UserMeDto } from '../user/user.service';
 import {
   IUserRepository,
@@ -76,7 +77,7 @@ export class AuthService {
     if (!uid) {
       throw new UnauthorizedException('用户资料无效');
     }
-    const user = await this.userService.getMe(uid, authorName);
+    const user = await this.userService.getMe(toRequestActor(uid, authorName));
     return {
       accessToken: this.signToken(user.id, user.name),
       user,

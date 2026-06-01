@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { RedisService } from '../../redis/redis.service';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityRegistrationService } from '../activity/registration/activity-registration.service';
@@ -11,10 +12,10 @@ export class HomeService {
     private readonly redisService: RedisService,
   ) {}
 
-  async getSummary(userId?: string, authorName?: string) {
+  async getSummary(actor: RequestActor) {
     const [activities, registeredLegacyIds] = await Promise.all([
       this.activityService.findAll(),
-      this.registrationService.listRegisteredLegacyIds(userId, authorName),
+      this.registrationService.listRegisteredLegacyIds(actor),
     ]);
 
     const signupEvents = activities.map((item) => ({
@@ -48,8 +49,8 @@ export class HomeService {
     const heat = await this.redisService.getHeat(totalAttendees);
 
     return {
-      heat,
       signupEvents,
+      heat,
     };
   }
 }

@@ -22,8 +22,9 @@ import { LiveInfoModule } from './modules/live-info/live-info.module';
 import { ItineraryModule } from './modules/itinerary/itinerary.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { HealthModule } from './common/health/health.module';
+import { AuthCoreModule } from './common/auth/auth-core.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { JwtActorMiddleware } from './common/middleware/jwt-actor.middleware';
+import { RequestActorMiddleware } from './common/middleware/request-actor.middleware';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { JwtActorMiddleware } from './common/middleware/jwt-actor.middleware';
     RedisModule,
     ActivityModule,
     AuthModule,
+    AuthCoreModule,
     UserModule,
     ChatModule,
     ProfileModule,
@@ -56,12 +58,12 @@ import { JwtActorMiddleware } from './common/middleware/jwt-actor.middleware';
     UploadModule,
     HealthModule,
   ],
-  providers: [JwtActorMiddleware],
+  providers: [RequestActorMiddleware],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer
-      .apply(JwtActorMiddleware)
+      .apply(RequestActorMiddleware)
       .exclude(
         { path: 'auth/wechat', method: RequestMethod.POST },
         { path: 'auth/dev', method: RequestMethod.POST },

@@ -4,9 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { resolveActorUserId } from '../../../common/auth/actor-user.util';
+import type { RequestActor } from '../../../common/auth/request-actor.types';
+import { ownerFilterFromActor } from '../../../common/auth/actor-query.util';
 import { isDemoOwnerClient } from '../../../common/utils/demo-owner.util';
-import { resolveOwnerFilter } from '../../../common/utils/owner-filter.util';
 import { UserService } from '../../user/user.service';
 import { ActivityService } from '../activity.service';
 import {
@@ -15,13 +15,12 @@ import {
 } from './interfaces/activity-registration.repository.interface';
 
 function resolveActorAuthorName(
-  userId?: string,
-  authorName?: string,
+  actor: RequestActor,
   fallbackName?: string,
 ): string | undefined {
-  const name = authorName?.trim() || fallbackName?.trim();
+  const name = actor.displayName?.trim() || fallbackName?.trim();
   if (name) return name;
-  if (isDemoOwnerClient(userId, authorName)) {
+  if (isDemoOwnerClient(actor.clientUserId, actor.displayName)) {
     return 'Zara Chen';
   }
   return undefined;
@@ -52,15 +51,14 @@ export class ActivityRegistrationService {
 
   async register(
     legacyId: number,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ): Promise<ActivityRegistrationResultDto> {
     const activity = await this.activityService.findByLegacyId(legacyId);
     if (!activity) {
       throw new NotFoundException(`Activity ${legacyId} not found`);
     }
 
-    const filter = resolveOwnerFilter(userId, authorName);
+    const filter = ownerFilterFromActor(actor);
     const existing = await this.registrationRepository.findByOwnerAndActivity(
       filter,
       legacyId,
@@ -74,13 +72,12 @@ export class ActivityRegistrationService {
       };
     }
 
-    const profile = await this.userService.resolveProfile(userId, authorName);
-    const actorUserId = resolveActorUserId(userId, authorName);
-    const actorName = resolveActorAuthorName(userId, authorName, profile?.name);
+    const profile = await this.userService.resolveProfile(actor);
+    const actorName = resolveActorAuthorName(actor, profile?.name);
 
     try {
       await this.registrationRepository.create({
-        userId: actorUserId,
+        userId: actor.resolvedUserId,
         authorName: actorName,
         activityLegacyId: legacyId,
         status: 'registered',
@@ -109,11 +106,8 @@ export class ActivityRegistrationService {
     return this.registrationRepository.findRegisteredUserIds(activityLegacyId);
   }
 
-  async listRegisteredLegacyIds(
-    userId?: string,
-    authorName?: string,
-  ): Promise<Set<number>> {
-    const filter = resolveOwnerFilter(userId, authorName);
+  async listRegisteredLegacyIds(actor: RequestActor): Promise<Set<number>> {
+    const filter = ownerFilterFromActor(actor);
     const registrations = await this.registrationRepository.findByOwner(filter);
     return new Set(
       registrations.map((registration) => registration.activityLegacyId),
@@ -122,15 +116,14 @@ export class ActivityRegistrationService {
 
   async unregister(
     legacyId: number,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ): Promise<ActivityUnregisterResultDto> {
     const activity = await this.activityService.findByLegacyId(legacyId);
     if (!activity) {
       throw new NotFoundException(`Activity ${legacyId} not found`);
     }
 
-    const filter = resolveOwnerFilter(userId, authorName);
+    const filter = ownerFilterFromActor(actor);
     const removed = await this.registrationRepository.deleteByOwnerAndActivity(
       filter,
       legacyId,

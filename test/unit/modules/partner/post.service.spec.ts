@@ -4,6 +4,7 @@ jest.mock('@langchain/core/documents', () =>
   require('../../../mocks/langchain-documents'),
 );
 
+import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { PostService } from '@src/modules/partner/post.service';
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
@@ -81,7 +82,7 @@ describe('PostService.listPopular', () => {
   it('returns empty list when repository has no popular posts', async () => {
     (repository.findPopular as jest.Mock).mockResolvedValue([]);
 
-    const result = await service.listPopular(20, 'demo-kyle', 'Kyle');
+    const result = await service.listPopular(20, toRequestActor('demo-kyle', 'Kyle'));
 
     expect(result).toEqual([]);
     expect(repository.findPopular).toHaveBeenCalledWith(20);
@@ -91,7 +92,7 @@ describe('PostService.listPopular', () => {
   it('passes limit to repository.findPopular', async () => {
     (repository.findPopular as jest.Mock).mockResolvedValue([]);
 
-    await service.listPopular(5, 'demo-kyle', 'Kyle');
+    await service.listPopular(5, toRequestActor('demo-kyle', 'Kyle'));
 
     expect(repository.findPopular).toHaveBeenCalledWith(5);
   });
@@ -111,7 +112,7 @@ describe('PostService.listPopular', () => {
     });
     (repository.findPopular as jest.Mock).mockResolvedValue([hotPost, warmPost]);
 
-    const result = await service.listPopular(20, 'demo-kyle', 'Kyle');
+    const result = await service.listPopular(20, toRequestActor('demo-kyle', 'Kyle'));
 
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe('post-hot');
@@ -136,7 +137,7 @@ describe('PostService.listPopular', () => {
       new Set(['demo-blocked']),
     );
 
-    const result = await service.listPopular(20, 'demo-kyle', 'Kyle');
+    const result = await service.listPopular(20, toRequestActor('demo-kyle', 'Kyle'));
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('post-visible');
@@ -161,7 +162,7 @@ describe('PostService.listPopular', () => {
       new Set(['post-liked']),
     );
 
-    const result = await service.listPopular(20, 'demo-kyle', 'Kyle');
+    const result = await service.listPopular(20, toRequestActor('demo-kyle', 'Kyle'));
 
     expect(postInteraction.findLikedPostIds).toHaveBeenCalledWith('demo-kyle', [
       'post-liked',
@@ -184,7 +185,7 @@ describe('PostService.listPopular', () => {
       new Map([['demo-private', 'private']]),
     );
 
-    const result = await service.listPopular(20, 'demo-kyle', 'Kyle');
+    const result = await service.listPopular(20, toRequestActor('demo-kyle', 'Kyle'));
 
     expect(result[0]).toEqual(
       expect.objectContaining({

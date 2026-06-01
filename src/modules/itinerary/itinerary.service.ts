@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import {
   UserItinerary,
   UserItineraryDocument,
 } from '../../database/schemas/user-itinerary.schema';
-import { resolveActorUserId } from '../../common/auth/actor-user.util';
 import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
 import type { ItineraryDay } from '../../database/schemas/user-itinerary.schema';
@@ -27,12 +27,8 @@ export class ItineraryService {
     query: {
       dateKey?: string;
       selectedDjIds?: string;
-      userId?: string;
-      authorName?: string;
     },
   ) {
-    void query.userId;
-    void query.authorName;
     const selectedDjIds = query.selectedDjIds
       ? query.selectedDjIds
           .split(',')
@@ -49,25 +45,21 @@ export class ItineraryService {
   generate(
     activityLegacyId: number,
     body: GenerateItineraryDto,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ) {
-    const actorId = resolveActorUserId(userId, authorName);
     return this.generationService.generate({
       activityLegacyId,
       selectedDjIds: body.selectedDjIds,
       dateKey: body.dateKey,
-      userId: actorId,
+      userId: actor.resolvedUserId,
     });
   }
 
   async save(
     activityLegacyId: number,
     body: SaveItineraryDto,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ) {
-    const actorId = resolveActorUserId(userId, authorName);
     const normalizedDays = normalizeItineraryDaysForSave(
       body.days as ItineraryDay[],
     );
@@ -90,9 +82,9 @@ export class ItineraryService {
     }));
 
     const doc = await this.itineraryModel.findOneAndUpdate(
-      { userId: actorId, activityLegacyId },
+      { userId: actor.resolvedUserId, activityLegacyId },
       {
-        userId: actorId,
+        userId: actor.resolvedUserId,
         activityLegacyId,
         selectedDjIds: body.selectedDjIds ?? [],
         eventMeta: body.eventMeta,
@@ -112,14 +104,9 @@ export class ItineraryService {
     };
   }
 
-  async getSaved(
-    activityLegacyId: number,
-    userId?: string,
-    authorName?: string,
-  ) {
-    const actorId = resolveActorUserId(userId, authorName);
+  async getSaved(activityLegacyId: number, actor: RequestActor) {
     const doc = await this.itineraryModel
-      .findOne({ userId: actorId, activityLegacyId })
+      .findOne({ userId: actor.resolvedUserId, activityLegacyId })
       .lean()
       .exec();
 
@@ -130,10 +117,12 @@ export class ItineraryService {
     return {
       saved: true as const,
       activityLegacyId,
-      selectedDjIds: doc.selectedDjIds,
+      selectedDjIds: doc.selectedDjIds ?? [],
       eventMeta: doc.eventMeta,
       days: doc.days,
-      updatedAt: (doc as { updatedAt?: Date }).updatedAt?.toISOString(),
+      savedAt:
+        (doc as { updatedAt?: Date }).updatedAt?.toISOString() ??
+        new Date().toISOString(),
     };
   }
 }

@@ -97,6 +97,14 @@ export class UserRepository implements IUserRepository {
       .select('externalId privacyLevel')
       .lean();
   }
+
+  async findSummariesByExternalIds(externalIds: string[]): Promise<UserRecord[]> {
+    if (!externalIds.length) return [];
+    return this.model
+      .find({ externalId: { $in: externalIds } })
+      .select('externalId name avatar handle')
+      .lean();
+  }
 }
 
 export { DEFAULT_PROFILE_EXTERNAL_ID };

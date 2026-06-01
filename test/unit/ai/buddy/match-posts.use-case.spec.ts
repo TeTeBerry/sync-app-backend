@@ -9,6 +9,7 @@ jest.mock('@src/ai/agents', () => ({
   UserProfileAgent: jest.fn(),
 }));
 
+import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { MatchPostsFromChatUseCase } from '@src/ai/buddy/match-posts.use-case';
 import type { UserProfileSyncResult } from '@src/ai/agents/user-profile.agent';
 

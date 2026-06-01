@@ -16,6 +16,8 @@ import {
 } from '../../common/utils/demo-owner.util';
 import { UpdateUserMeDto } from './dto/update-user-me.dto';
 import { ChromaService } from '../../ai/rag/chroma.service';
+import type { RequestActor } from '../../common/auth/request-actor.types';
+import { toRequestActor } from '../../common/auth/actor-query.util';
 
 export interface UserMeDto {
   id: string;
@@ -68,12 +70,12 @@ export class UserService implements OnModuleInit {
     return this.repository.findDefaultProfile();
   }
 
-  async resolveProfile(userId?: string, authorName?: string) {
-    if (isDemoOwnerClient(userId, authorName)) {
+  async resolveProfile(actor: RequestActor) {
+    if (isDemoOwnerClient(actor.clientUserId, actor.displayName)) {
       return this.repository.findDefaultProfile();
     }
 
-    const uid = userId?.trim();
+    const uid = actor.clientUserId?.trim();
     if (uid && uid !== DEFAULT_PROFILE_EXTERNAL_ID) {
       const found = await this.repository.findByExternalId(uid);
       if (found) return found;
@@ -82,12 +84,13 @@ export class UserService implements OnModuleInit {
     return this.repository.findDefaultProfile();
   }
 
-  private resolveExternalId(userId?: string, authorName?: string): string {
-    const uid = userId?.trim();
-    if (isDemoOwnerClient(uid, authorName)) {
-      return DEMO_OWNER_USER_ID;
-    }
-    return uid || DEMO_OWNER_USER_ID;
+  /** Resolve profile for stored userId/authorName (comments, notifications). */
+  resolveProfileFromLegacy(userId?: string, authorName?: string) {
+    return this.resolveProfile(toRequestActor(userId, authorName));
+  }
+
+  private resolveExternalId(actor: RequestActor): string {
+    return actor.resolvedUserId;
   }
 
   private toMeDto(record: UserRecord, externalId: string): UserMeDto {
@@ -123,33 +126,26 @@ export class UserService implements OnModuleInit {
     return map;
   }
 
-  async isNotificationsEnabled(
-    userId?: string,
-    authorName?: string,
-  ): Promise<boolean> {
+  async isNotificationsEnabled(actor: RequestActor): Promise<boolean> {
     try {
-      const me = await this.getMe(userId, authorName);
+      const me = await this.getMe(actor);
       return me.notificationsEnabled !== false;
     } catch {
       return true;
     }
   }
 
-  async getMe(userId?: string, authorName?: string): Promise<UserMeDto> {
-    const profile = await this.resolveProfile(userId, authorName);
+  async getMe(actor: RequestActor): Promise<UserMeDto> {
+    const profile = await this.resolveProfile(actor);
     if (!profile) {
       throw new NotFoundException('User profile not found');
     }
-    const externalId = this.resolveExternalId(userId, authorName);
+    const externalId = this.resolveExternalId(actor);
     return this.toMeDto(profile, externalId);
   }
 
-  async patchMe(
-    body: UpdateUserMeDto,
-    userId?: string,
-    authorName?: string,
-  ): Promise<UserMeDto> {
-    const externalId = this.resolveExternalId(userId, authorName);
+  async patchMe(body: UpdateUserMeDto, actor: RequestActor): Promise<UserMeDto> {
+    const externalId = this.resolveExternalId(actor);
     const existing = await this.repository.findByExternalId(externalId);
     const updated = existing
       ? await this.repository.updateByExternalId(externalId, body)
@@ -157,7 +153,7 @@ export class UserService implements OnModuleInit {
     const record =
       updated ??
       (await this.repository.upsertByExternalId(externalId, {
-        name: authorName?.trim() || DEMO_PROFILE.name,
+        name: actor.displayName?.trim() || DEMO_PROFILE.name,
         handle: DEMO_PROFILE.handle,
         location: DEMO_PROFILE.location,
         bio: DEMO_PROFILE.bio,

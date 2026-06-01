@@ -1,23 +1,12 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import {
   ContentReport,
   ContentReportDocument,
 } from '../../database/schemas/content-report.schema';
-import {
-  DEMO_OWNER_USER_ID,
-  isDemoOwnerClient,
-} from '../../common/utils/demo-owner.util';
 import { CreateReportDto } from './dto/create-report.dto';
-
-function resolveReporterUserId(userId?: string, authorName?: string): string {
-  const uid = userId?.trim();
-  if (isDemoOwnerClient(uid, authorName)) {
-    return DEMO_OWNER_USER_ID;
-  }
-  return uid || DEMO_OWNER_USER_ID;
-}
 
 @Injectable()
 export class ReportService {
@@ -28,10 +17,9 @@ export class ReportService {
 
   async submit(
     dto: CreateReportDto,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ): Promise<{ ok: true; id: string }> {
-    const reporterUserId = resolveReporterUserId(userId, authorName);
+    const reporterUserId = actor.resolvedUserId;
 
     try {
       const created = await this.reportModel.create({

@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { resolveActorUserId } from '../../common/auth/actor-user.util';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import {
   EventLiveUpdate,
   EventLiveUpdateDocument,
@@ -69,12 +69,20 @@ export class LiveInfoService implements OnModuleInit {
     return activity;
   }
 
-  private resolveUser(userId?: string, authorName?: string) {
-    const uid = resolveActorUserId(userId, authorName);
+  private resolveUser(actor: RequestActor): string {
+    const uid = actor.resolvedUserId;
     if (!uid) {
       throw new BadRequestException('缺少 userId');
     }
     return uid;
+  }
+
+  /** Viewer for feed `liked` state; undefined when client identity is empty. */
+  private resolveViewerId(actor: RequestActor): string | undefined {
+    if (!actor.clientUserId?.trim() && !actor.displayName?.trim()) {
+      return undefined;
+    }
+    return actor.resolvedUserId;
   }
 
   /** Same upload file already certified (or pending) for this activity today by another user. */
@@ -139,14 +147,10 @@ export class LiveInfoService implements OnModuleInit {
     };
   }
 
-  async getSnapshot(
-    activityLegacyId: number,
-    userId?: string,
-    authorName?: string,
-  ) {
+  async getSnapshot(activityLegacyId: number, actor: RequestActor) {
     await this.ensureActivity(activityLegacyId);
     const eventDate = shanghaiEventDate();
-    const viewerId = userId?.trim() || undefined;
+    const viewerId = this.resolveViewerId(actor);
 
     const wristband = viewerId
       ? await this.wristbandModel
@@ -194,11 +198,10 @@ export class LiveInfoService implements OnModuleInit {
   async submitWristband(
     activityLegacyId: number,
     body: SubmitLiveInfoWristbandDto,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ) {
     const activity = await this.ensureActivity(activityLegacyId);
-    const uid = this.resolveUser(userId, authorName);
+    const uid = this.resolveUser(actor);
     const imageUrl = body.imageUrl?.trim();
     if (!imageUrl) {
       throw new BadRequestException('请上传手环照片');
@@ -206,8 +209,8 @@ export class LiveInfoService implements OnModuleInit {
 
     const eventDate = shanghaiEventDate();
     const validUntil = shanghaiEndOfEventDate(eventDate);
-    const profile = await this.userService.resolveProfile(uid, authorName);
-    const author = profile?.name ?? authorName?.trim() ?? '用户';
+    const profile = await this.userService.resolveProfile(actor);
+    const author = profile?.name ?? actor.displayName?.trim() ?? '用户';
 
     const duplicate = await this.findDuplicateWristband({
       activityLegacyId,
@@ -287,12 +290,8 @@ export class LiveInfoService implements OnModuleInit {
     };
   }
 
-  async clearWristband(
-    activityLegacyId: number,
-    userId?: string,
-    authorName?: string,
-  ) {
-    const uid = this.resolveUser(userId, authorName);
+  async clearWristband(activityLegacyId: number, actor: RequestActor) {
+    const uid = this.resolveUser(actor);
     const eventDate = shanghaiEventDate();
     await this.wristbandModel.deleteOne({
       userId: uid,
@@ -325,11 +324,10 @@ export class LiveInfoService implements OnModuleInit {
   async publishUpdate(
     activityLegacyId: number,
     body: PublishLiveInfoDto,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ) {
     await this.ensureActivity(activityLegacyId);
-    const uid = this.resolveUser(userId, authorName);
+    const uid = this.resolveUser(actor);
     const eventDate = shanghaiEventDate();
     await this.requireCertified(activityLegacyId, uid, eventDate);
 
@@ -343,13 +341,13 @@ export class LiveInfoService implements OnModuleInit {
       throw new BadRequestException('发布过于频繁，请稍后再试');
     }
 
-    const profile = await this.userService.resolveProfile(uid, authorName);
+    const profile = await this.userService.resolveProfile(actor);
     const expiresAt = new Date(Date.now() + LIVE_INFO_UPDATE_TTL_MS);
 
     const doc = await this.updateModel.create({
       activityLegacyId,
       userId: uid,
-      authorName: profile?.name ?? authorName?.trim() ?? '用户',
+      authorName: profile?.name ?? actor.displayName?.trim() ?? '用户',
       avatar: profile?.avatar,
       ratings: body.ratings,
       remark: body.remark?.trim(),
@@ -366,11 +364,10 @@ export class LiveInfoService implements OnModuleInit {
   async toggleLike(
     activityLegacyId: number,
     updateId: string,
-    userId?: string,
-    authorName?: string,
+    actor: RequestActor,
   ) {
     await this.ensureActivity(activityLegacyId);
-    const uid = this.resolveUser(userId, authorName);
+    const uid = this.resolveUser(actor);
 
     const doc = await this.updateModel.findById(updateId);
     if (!doc || doc.activityLegacyId !== activityLegacyId) {
@@ -389,9 +386,17 @@ export class LiveInfoService implements OnModuleInit {
     }
     await doc.save();
 
+    const fresh = await this.updateModel.findById(updateId).lean();
+    if (!fresh) {
+      throw new NotFoundException('动态不存在');
+    }
+
     return {
       ok: true as const,
-      update: toLiveInfoFeedItemDto(doc, uid),
+      update: toLiveInfoFeedItemDto(
+        fresh as EventLiveUpdateDocument,
+        uid,
+      ),
     };
   }
 

@@ -1,27 +1,14 @@
-import type { ConversationState } from '../conversation';
+import type { ConversationState } from '../../shared/chat/conversation-state.types';
+import type {
+  RecommendedActivityCard,
+  RecommendedPostCard,
+} from '../../shared/chat/chat-cards.types';
 
-export type RecommendedPostAuthorGender = 'female' | 'male';
-
-export interface RecommendedPostCard {
-  postId: string;
-  snippet: string;
-  authorName: string;
-  authorHandle?: string;
-  authorAvatar?: string;
-  authorGender?: RecommendedPostAuthorGender;
-  eventTitle: string;
-  location?: string;
-  tags?: string[];
-  activityLegacyId?: number;
-  matchReason?: string;
-}
-
-export interface RecommendedActivityCard {
-  activityLegacyId: number;
-  title: string;
-  date?: string;
-  venue?: string;
-}
+export type {
+  RecommendedActivityCard,
+  RecommendedPostAuthorGender,
+  RecommendedPostCard,
+} from '../../shared/chat/chat-cards.types';
 
 export type AiStreamEvent =
   | { type: 'delta'; content: string }

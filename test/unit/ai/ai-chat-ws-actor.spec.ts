@@ -7,12 +7,13 @@ describe('resolveWsChatActor', () => {
     const result = resolveWsChatActor(jwt, { userPhone: '13800000000' });
     expect(result).toEqual({
       ok: true,
-      source: 'jwt',
       actor: {
-        userId: 'user-jwt',
-        userName: 'JWT User',
-        userPhone: '13800000000',
+        source: 'jwt',
+        clientUserId: 'user-jwt',
+        displayName: 'JWT User',
+        resolvedUserId: 'user-jwt',
       },
+      userPhone: '13800000000',
     });
   });
 
@@ -31,8 +32,8 @@ describe('resolveWsChatActor', () => {
     });
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.actor.userId).toBe('user-jwt');
-      expect(result.actor.userName).toBe('JWT User');
+      expect(result.actor.clientUserId).toBe('user-jwt');
+      expect(result.actor.displayName).toBe('JWT User');
     }
   });
 
@@ -48,14 +49,15 @@ describe('resolveWsChatActor', () => {
       userId: 'demo-client',
       userName: 'Zara',
     });
-    expect(result).toEqual({
-      ok: true,
-      source: 'body',
-      actor: {
-        userId: 'demo-client',
-        userName: 'Zara',
-        userPhone: undefined,
-      },
-    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.actor).toEqual({
+        source: 'demo',
+        clientUserId: 'demo-client',
+        displayName: 'Zara',
+        resolvedUserId: expect.any(String),
+      });
+      expect(result.userPhone).toBeUndefined();
+    }
   });
 });

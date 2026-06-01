@@ -1,4 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { RequestActor } from '../../common/auth/request-actor.types';
+import { ownerFilterFromActor } from '../../common/auth/actor-query.util';
 import { ActivityService } from '../activity/activity.service';
 import {
   ACTIVITY_REGISTRATION_REPOSITORY,
@@ -16,15 +18,13 @@ import {
 import type { EventPackageEntitlementDto } from './profile-package.service';
 import { ProfilePackageService } from './profile-package.service';
 
-function resolveOwnerFilter(
-  userId?: string,
-  authorName?: string,
+function registrationFilterFromActor(
+  actor: RequestActor,
 ): ActivityRegistrationQueryFilter {
-  const uid = userId?.trim();
-  const name = authorName?.trim() || 'Zara';
+  const filter = ownerFilterFromActor(actor);
   return {
-    userId: uid || undefined,
-    authorName: name,
+    userId: filter.userId,
+    authorName: filter.authorName?.trim() || 'Zara',
   };
 }
 
@@ -68,15 +68,13 @@ export class ProfileSummaryService {
   ) {}
 
   async getSummary(
-    userId?: string,
-    authorName?: string,
-    viewerUserId?: string,
-    viewerAuthorName?: string,
+    actor: RequestActor,
+    viewer?: RequestActor,
     activityLegacyId?: number,
   ): Promise<ProfileSummaryDto> {
-    const filter = resolveOwnerFilter(userId, authorName);
-    const ownerExternalId = filter.userId ?? userId?.trim();
-    const viewerId = viewerUserId?.trim() || ownerExternalId;
+    const filter = registrationFilterFromActor(actor);
+    const ownerExternalId = filter.userId ?? actor.clientUserId?.trim();
+    const viewerId = viewer?.resolvedUserId ?? ownerExternalId;
     const isOwner =
       !viewerId || !ownerExternalId || viewerId === ownerExternalId;
 
@@ -94,21 +92,20 @@ export class ProfileSummaryService {
       buddyUserIds,
       packageData,
     ] = await Promise.all([
-      this.userService.resolveProfile(userId, authorName),
+      this.userService.resolveProfile(actor),
       this.registrationRepository.countByOwner(filter),
-      this.postService.sumLikesByOwner(userId, authorName),
-      this.postService.countByOwner(userId, authorName),
-      this.postService.countCompletedByOwner(userId, authorName),
+      this.postService.sumLikesByOwner(actor),
+      this.postService.countByOwner(actor),
+      this.postService.countCompletedByOwner(actor),
       viewerId
         ? this.userBlockService.loadBuddyUserIds(viewerId)
         : Promise.resolve(new Set<string>()),
       scopedActivity != null
         ? this.profilePackageService.getEntitlementForActivity(
-            userId,
-            authorName,
+            actor,
             scopedActivity,
           )
-        : this.profilePackageService.listEntitlements(userId, authorName),
+        : this.profilePackageService.listEntitlements(actor),
     ]);
 
     const privacyLevel =
@@ -146,11 +143,8 @@ export class ProfileSummaryService {
     return summary;
   }
 
-  async listActivities(
-    userId?: string,
-    authorName?: string,
-  ): Promise<ProfileActivityItemDto[]> {
-    const filter = resolveOwnerFilter(userId, authorName);
+  async listActivities(actor: RequestActor): Promise<ProfileActivityItemDto[]> {
+    const filter = registrationFilterFromActor(actor);
     const registrations = (
       await this.registrationRepository.findByOwner(filter)
     ).filter((registration) => registration.activityLegacyId !== 3);
@@ -176,7 +170,7 @@ export class ProfileSummaryService {
     return items.sort(compareActivityDateDesc);
   }
 
-  listPosts(userId?: string, authorName?: string) {
-    return this.postService.listByOwner(userId, authorName);
+  listPosts(actor: RequestActor) {
+    return this.postService.listByOwner(actor);
   }
 }

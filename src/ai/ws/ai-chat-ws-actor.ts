@@ -1,4 +1,6 @@
 import type { JwtBearerActor } from '../../common/auth/jwt-bearer.util';
+import type { RequestActor } from '../../common/auth/request-actor.types';
+import { resolveActorUserId } from '../../common/auth/actor-user.util';
 
 export type WsChatActorBody = {
   userId?: string;
@@ -6,20 +8,14 @@ export type WsChatActorBody = {
   userPhone?: string;
 };
 
-export type ResolvedWsChatActor = {
-  userId: string;
-  userName: string;
-  userPhone?: string;
-};
-
 export type ResolveWsChatActorResult =
-  | { ok: true; actor: ResolvedWsChatActor; source: 'jwt' | 'body' }
+  | { ok: true; actor: RequestActor; userPhone?: string }
   | { ok: false; message: string };
 
 /**
- * REST uses JwtActorMiddleware on query; WS uses upgrade Authorization + optional body.
+ * REST uses RequestActorMiddleware on `req.actor`; WS uses upgrade Authorization + body.
  * - Valid Bearer: actor from JWT; body `userId` must match `sub` when present.
- * - No Bearer: demo / legacy — require body `userId`.
+ * - No Bearer: demo — require body `userId`.
  */
 export function resolveWsChatActor(
   jwtActor: JwtBearerActor | null,
@@ -33,28 +29,35 @@ export function resolveWsChatActor(
 
     return {
       ok: true,
-      source: 'jwt',
       actor: {
-        userId: jwtActor.userId,
-        userName: jwtActor.userName,
-        userPhone: body.userPhone?.trim() || undefined,
+        source: 'jwt',
+        clientUserId: jwtActor.userId,
+        displayName: jwtActor.userName,
+        resolvedUserId: jwtActor.userId,
       },
+      userPhone: body.userPhone?.trim() || undefined,
     };
   }
 
   const userId = body.userId?.trim();
   if (!userId) {
-    return { ok: false, message: '缺少用户身份（请登录或在消息中提供 userId）' };
+    return {
+      ok: false,
+      message: '缺少用户身份（请登录或在消息中提供 userId）',
+    };
   }
 
   const userName = body.userName?.trim() || '用户';
+  const resolvedUserId = resolveActorUserId(userId, userName);
+
   return {
     ok: true,
-    source: 'body',
     actor: {
-      userId,
-      userName,
-      userPhone: body.userPhone?.trim() || undefined,
+      source: 'demo',
+      clientUserId: userId,
+      displayName: userName,
+      resolvedUserId,
     },
+    userPhone: body.userPhone?.trim() || undefined,
   };
 }

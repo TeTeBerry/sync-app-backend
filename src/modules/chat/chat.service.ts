@@ -2,14 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
-import { ChatMessageDto } from '../../ai/presentation/chat-message.dto';
 import type { ChatMessageRichMetadata } from '../../ai/presentation/chat-message-metadata.util';
+import { migrateConversationStateFromHistory } from '../../ai/conversation';
 import {
+  ChatMessageDto,
   CONVERSATION_STATE_VERSION,
   createIdleState,
-  migrateConversationStateFromHistory,
   type ConversationState,
-} from '../../ai/conversation';
+} from '../../shared/chat';
 import { Chat, ChatDocument } from '../../database/schemas/chat.schema';
 
 /** Max user/assistant turns sent to LLM intent + buddy pipelines per request. */

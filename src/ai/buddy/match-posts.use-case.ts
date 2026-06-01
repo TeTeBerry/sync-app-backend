@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import { MatchAgent, UserProfileAgent } from '../agents';
 import type { UserProfileSyncResult } from '../agents/user-profile.agent';
@@ -34,8 +35,7 @@ export interface MatchPostsFromChatParams {
   messages: ChatMessageDto[];
   input: string;
   activityLegacyId?: number;
-  userId?: string;
-  authorName?: string;
+  actor: RequestActor;
   buddySearchHint?: BuddySearchHintPayload;
   fromIntentRouter?: boolean;
   profileSync?: UserProfileSyncResult | null;
@@ -60,8 +60,7 @@ export class MatchPostsFromChatUseCase {
       messages,
       input,
       activityLegacyId,
-      userId,
-      authorName,
+      actor,
       buddySearchHint,
       fromIntentRouter,
       profileSync,
@@ -86,7 +85,7 @@ export class MatchPostsFromChatUseCase {
         this.userProfileAgent.syncProfileFromChat({
           messages,
           input: trimmed,
-          userId,
+          actor,
         }),
       params.preResolvedActivity != null
         ? Promise.resolve(params.preResolvedActivity)
@@ -117,19 +116,15 @@ export class MatchPostsFromChatUseCase {
       fromIntentRouter || buddySearchHint?.displayLabel,
     );
 
-    await this.aiMatchQuota.assertCanMatch(
-      userId,
-      authorName,
-      resolvedActivity.legacyId,
-    );
+    await this.aiMatchQuota.assertCanMatch(actor, resolvedActivity.legacyId);
 
     const matchResult = await this.matchAgent.match({
       criteria,
       activityCode: resolvedActivity.code ?? '',
       activityLegacyId: resolvedActivity.legacyId,
       limit: BUDDY_RECOMMEND_LIMIT,
-      userId,
-      authorName,
+      userId: actor.clientUserId,
+      authorName: actor.displayName,
       profile: resolvedProfileSync?.profile,
       rankingWeights: resolvedProfileSync?.weights,
     });
@@ -163,8 +158,7 @@ export class MatchPostsFromChatUseCase {
     );
 
     await this.aiMatchQuota.consumeIfMatched(
-      userId,
-      authorName,
+      actor,
       resolvedActivity.legacyId,
       postCards.length,
     );

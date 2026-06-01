@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
+import type { RequestActor } from '../common/auth/request-actor.types';
 import { ProfileEntitlementConsumeService } from '../modules/profile/profile-entitlement-consume.service';
 
 export const AI_MATCH_QUOTA_EXHAUSTED_MESSAGE = 'AI 匹配次数已用完，请升级套餐';
@@ -10,13 +11,11 @@ export class AiMatchQuotaService {
   ) {}
 
   async assertCanMatch(
-    userId: string | undefined,
-    authorName: string | undefined,
+    actor: RequestActor,
     activityLegacyId: number,
   ): Promise<void> {
     const bucket = await this.entitlementConsume.peekAiMatchBucket(
-      userId,
-      authorName,
+      actor,
       activityLegacyId,
     );
     if (!bucket) {
@@ -25,18 +24,13 @@ export class AiMatchQuotaService {
   }
 
   async consumeIfMatched(
-    userId: string | undefined,
-    authorName: string | undefined,
+    actor: RequestActor,
     activityLegacyId: number,
     postCount: number,
   ): Promise<void> {
     if (postCount <= 0) {
       return;
     }
-    await this.entitlementConsume.consumeAiMatch(
-      userId,
-      authorName,
-      activityLegacyId,
-    );
+    await this.entitlementConsume.consumeAiMatch(actor, activityLegacyId);
   }
 }

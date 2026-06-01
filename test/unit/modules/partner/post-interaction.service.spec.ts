@@ -6,6 +6,7 @@ jest.mock('@langchain/core/documents', () =>
   require('../../../mocks/langchain-documents'),
 );
 
+import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { PostInteractionService } from '@src/modules/partner/post-interaction.service';
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { UserService } from '@src/modules/user/user.service';
@@ -22,6 +23,10 @@ describe('PostInteractionService.addComment', () => {
   const commentModel = {
     findById: jest.fn(),
     create: jest.fn(),
+  };
+
+  const likeModel = {
+    exists: jest.fn().mockResolvedValue(null),
   };
 
   function mockParentComment(parent: {
@@ -64,7 +69,7 @@ describe('PostInteractionService.addComment', () => {
     jest.clearAllMocks();
     service = new PostInteractionService(
       repository,
-      {} as never,
+      likeModel as never,
       {} as never,
       commentModel as never,
       {} as never,
@@ -95,8 +100,7 @@ describe('PostInteractionService.addComment', () => {
       service.addComment(
         'post-1',
         '我也想加入',
-        'demo-kyle',
-        'Kyle',
+        toRequestActor('demo-kyle', 'Kyle'),
         'parent-1',
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
@@ -114,8 +118,7 @@ describe('PostInteractionService.addComment', () => {
       service.addComment(
         'post-1',
         '补充一下',
-        'demo-zara',
-        'Zara Chen',
+        toRequestActor('demo-zara', 'Zara Chen'),
         'parent-1',
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -132,8 +135,7 @@ describe('PostInteractionService.addComment', () => {
     await service.addComment(
       'post-1',
       '有的，私我对票区～',
-      'demo-zara',
-      'Zara Chen',
+      toRequestActor('demo-zara', 'Zara Chen'),
       'parent-1',
     );
 
@@ -198,7 +200,10 @@ describe('PostInteractionService.likePost', () => {
       likes: 4,
     });
 
-    const result = await service.likePost('post-1', 'demo-kyle', 'Kyle');
+    const result = await service.likePost(
+      'post-1',
+      toRequestActor('demo-kyle', 'Kyle'),
+    );
 
     expect(likeModel.create).toHaveBeenCalledWith({
       userId: 'demo-kyle',
@@ -217,7 +222,10 @@ describe('PostInteractionService.likePost', () => {
       likes: 2,
     });
 
-    const result = await service.likePost('post-1', 'demo-kyle', 'Kyle');
+    const result = await service.likePost(
+      'post-1',
+      toRequestActor('demo-kyle', 'Kyle'),
+    );
 
     expect(likeModel.deleteOne).toHaveBeenCalledWith({
       userId: 'demo-kyle',
@@ -269,7 +277,7 @@ describe('PostInteractionService.applyToPost', () => {
 
   it('rejects applying to own post', async () => {
     await expect(
-      service.applyToPost('post-1', 'demo-zara', 'Zara Chen'),
+      service.applyToPost('post-1', toRequestActor('demo-zara', 'Zara Chen')),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -278,7 +286,10 @@ describe('PostInteractionService.applyToPost', () => {
       lean: jest.fn().mockResolvedValue({ userId: 'demo-kyle', postId: 'post-1' }),
     });
 
-    const result = await service.applyToPost('post-1', 'demo-kyle', 'Kyle');
+    const result = await service.applyToPost(
+      'post-1',
+      toRequestActor('demo-kyle', 'Kyle'),
+    );
 
     expect(result).toEqual({ ok: true, alreadyApplied: true });
     expect(applicationModel.create).not.toHaveBeenCalled();
@@ -290,7 +301,10 @@ describe('PostInteractionService.applyToPost', () => {
     });
     (applicationModel.create as jest.Mock).mockResolvedValue({});
 
-    const result = await service.applyToPost('post-1', 'demo-kyle', 'Kyle');
+    const result = await service.applyToPost(
+      'post-1',
+      toRequestActor('demo-kyle', 'Kyle'),
+    );
 
     expect(applicationModel.create).toHaveBeenCalledWith(
       expect.objectContaining({
