@@ -44,12 +44,12 @@ export function postMatchesShortcutTag(
       return types.includes('carpool') || /拼车|顺路|顺风车/i.test(haystack);
     case '住宿同行':
       return (
-        types.includes('accommodation') || /拼房|拼住宿|住宿|酒店/i.test(haystack)
+        types.includes('accommodation') ||
+        /拼房|拼住宿|住宿|酒店/i.test(haystack)
       );
     case '组队队友':
       return (
-        types.includes('team') ||
-        /组队|搭子|同行|缺\d|有人吗/i.test(haystack)
+        types.includes('team') || /组队|搭子|同行|缺\d|有人吗/i.test(haystack)
       );
     default:
       return true;

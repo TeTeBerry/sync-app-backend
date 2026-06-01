@@ -51,5 +51,4 @@ describe('activity-scope-guard.util', () => {
       expect(shouldSkipActivityScopedBuddyRecommend(ASOT_HK_TICKET)).toBe(true);
     });
   });
-
 });

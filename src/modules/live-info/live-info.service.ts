@@ -393,10 +393,7 @@ export class LiveInfoService implements OnModuleInit {
 
     return {
       ok: true as const,
-      update: toLiveInfoFeedItemDto(
-        fresh as EventLiveUpdateDocument,
-        uid,
-      ),
+      update: toLiveInfoFeedItemDto(fresh as EventLiveUpdateDocument, uid),
     };
   }
 

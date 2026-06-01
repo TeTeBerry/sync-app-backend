@@ -25,7 +25,10 @@ export class WechatContentSecurityService {
   ) {}
 
   isEnabled(): boolean {
-    if (this.config.get<boolean>('auth.wechatMini.contentSecurityEnabled') !== true) {
+    if (
+      this.config.get<boolean>('auth.wechatMini.contentSecurityEnabled') !==
+      true
+    ) {
       return false;
     }
     return this.accessToken.isConfigured();
@@ -45,9 +48,7 @@ export class WechatContentSecurityService {
     }
 
     if (params.size > WECHAT_IMG_SEC_CHECK_MAX_BYTES) {
-      throw new BadRequestException(
-        '图片不能超过 1MB（微信内容安全检测限制）',
-      );
+      throw new BadRequestException('图片不能超过 1MB（微信内容安全检测限制）');
     }
 
     const mime = params.mime?.toLowerCase() || 'image/jpeg';
@@ -95,9 +96,7 @@ export class WechatContentSecurityService {
     }
 
     if (payload.errcode === 44991 || payload.errcode === 45009) {
-      throw new ServiceUnavailableException(
-        '图片安全检测繁忙，请稍后再试',
-      );
+      throw new ServiceUnavailableException('图片安全检测繁忙，请稍后再试');
     }
 
     this.logger.warn(

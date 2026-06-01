@@ -3,7 +3,7 @@ export interface PostIntentCreateResult {
   postId: string;
   activityLegacyId?: number;
   replyText: string;
-  createdPost?: import('../presentation/ai-stream-event.view').RecommendedPostCard;
+  createdPost?: import('../../shared/chat').RecommendedPostCard;
 }
 
 export interface PostIntentRejectedResult {
@@ -35,7 +35,7 @@ export type PostIntentCreateAttempt =
 export interface PostIntentMatchResult {
   replyText: string;
   matches: Array<{ postId: string; snippet: string; matchReason?: string }>;
-  postCards: import('../presentation/ai-stream-event.view').RecommendedPostCard[];
+  postCards: import('../../shared/chat').RecommendedPostCard[];
   degraded?: boolean;
   activityLabel?: string;
 }

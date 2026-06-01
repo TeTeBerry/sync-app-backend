@@ -24,6 +24,7 @@ Imports use the `@src/...` alias (see `package.json` → `jest.moduleNameMapper`
 ## Commands
 
 ```bash
+npm run check               # typecheck + lint + format:check + unit tests
 npm test                    # unit tests (test/unit/**/*.spec.ts)
 npm run test:e2e            # e2e
 CI=true npm test -- --watchman=false

@@ -15,10 +15,7 @@ export class RequestActorMiddleware implements NestMiddleware {
   constructor(private readonly jwtService: JwtService) {}
 
   use(req: Request, res: Response, next: NextFunction): void {
-    const auth = classifyBearerAuth(
-      this.jwtService,
-      req.headers.authorization,
-    );
+    const auth = classifyBearerAuth(this.jwtService, req.headers.authorization);
 
     if (auth.kind === 'invalid') {
       res.status(401).json({

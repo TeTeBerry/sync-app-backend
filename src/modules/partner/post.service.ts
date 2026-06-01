@@ -10,9 +10,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import {
-  isResourceOwnedByActor,
-} from '../../common/auth/actor-query.util';
+import { isResourceOwnedByActor } from '../../common/auth/actor-query.util';
 import { resolveOwnerFilterFromActor } from '../../common/utils/owner-filter.util';
 import { sumProfilePostLikes } from '../../common/utils/profile-likes.util';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
@@ -507,11 +505,7 @@ export class PostService implements OnModuleInit {
     return true;
   }
 
-  async updateOwnedPost(
-    id: string,
-    dto: UpdatePostDto,
-    actor: RequestActor,
-  ) {
+  async updateOwnedPost(id: string, dto: UpdatePostDto, actor: RequestActor) {
     const post = await this.repository.findById(id);
     if (!post) {
       throw new NotFoundException('帖子不存在');
@@ -602,12 +596,7 @@ export class PostService implements OnModuleInit {
     actor: RequestActor,
     parentCommentId?: string,
   ) {
-    return this.postInteraction.addComment(
-      id,
-      body,
-      actor,
-      parentCommentId,
-    );
+    return this.postInteraction.addComment(id, body, actor, parentCommentId);
   }
 
   async deleteOwnedPost(id: string, actor: RequestActor) {

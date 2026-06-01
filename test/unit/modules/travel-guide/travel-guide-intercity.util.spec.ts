@@ -11,8 +11,18 @@ import { buildTransportLinesFromMap } from '../../../../src/modules/travel-guide
 
 describe('travel-guide-intercity', () => {
   it('detects Shanghai to Shenzhen as inter-city by distance', () => {
-    const shanghai = { lat: 31.23, lng: 121.47, title: '上海', address: '上海' };
-    const shenzhenVenue = { lat: 22.7053, lng: 113.9396, title: '深圳国际会展中心', address: '深圳' };
+    const shanghai = {
+      lat: 31.23,
+      lng: 121.47,
+      title: '上海',
+      address: '上海',
+    };
+    const shenzhenVenue = {
+      lat: 22.7053,
+      lng: 113.9396,
+      title: '深圳国际会展中心',
+      address: '深圳',
+    };
     expect(isInterCityByDistance(shanghai, shenzhenVenue)).toBe(true);
     expect(haversineDistanceM(shanghai, shenzhenVenue)).toBeGreaterThan(80_000);
   });
@@ -40,7 +50,9 @@ describe('travel-guide-intercity', () => {
       hints,
       true,
     );
-    expect(lines.some((l) => l.includes('高铁') || l.includes('航班'))).toBe(true);
+    expect(lines.some((l) => l.includes('高铁') || l.includes('航班'))).toBe(
+      true,
+    );
     expect(lines.some((l) => l.includes('地铁11号线'))).toBe(false);
   });
 

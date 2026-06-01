@@ -44,6 +44,17 @@ npm run start:dev
 
 服务默认：`http://localhost:3000/api`
 
+## 质量检查
+
+```bash
+npm run check   # typecheck + lint + format:check + unit tests（含 contract）
+```
+
+PR / `main` 推送由 [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) 自动执行 `check` + `nest build`。  
+`npm install` 后启用 **husky** + **lint-staged**（pre-commit 仅格式化/修复 staged 文件）。  
+同级工作区一键检查：`../npm run check:all`（见 [`../CONTRIBUTING.md`](../CONTRIBUTING.md)）。  
+详见 [`test/README.md`](./test/README.md)。
+
 ## 环境变量
 
 | 变量 | 说明 |
@@ -98,7 +109,7 @@ npm run start:dev
 
 完整契约：`sync-app/docs/API.md`
 
-**身份（当前）**：写接口 Query `userId` / `authorName`（demo）。登录 / JWT 未实现。
+**身份（当前）**：全局 `JwtAuthGuard` + `RequestActor`；demo 可用 Query `userId`（`AUTH_ALLOW_DEMO=true`）。详见 [`docs/AUTH.md`](./docs/AUTH.md)。
 
 ## REST 冒烟
 

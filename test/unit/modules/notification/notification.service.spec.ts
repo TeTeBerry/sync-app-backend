@@ -59,9 +59,7 @@ describe('NotificationService', () => {
     model.deleteOne.mockResolvedValue({ deletedCount: 0 });
     await expect(
       service.deleteOne('missing', toRequestActor('u1')),
-    ).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('deletes one notification for owner', async () => {

@@ -19,6 +19,8 @@
 | P0-H5 | Dev JWT + Guard | ✅ JwtAuthGuard + RequestActor；生产设 `AUTH_ALLOW_DEMO=false` |
 | P0-Wx | 微信登录 | ⬜ 更晚 |
 | **P2-debt** | **可迭代技术债**（契约 / import / 废弃路径） | ✅ 完成（2025-06） |
+| **P1-contract** | **契约与类型**（Chat 共享类型 + contract tests） | ✅ 完成（2025-06） |
+| **P3-dev** | **开发体验**（check / husky / 工作区脚本 / 文档） | ✅ 完成（2025-06） |
 
 ---
 
@@ -170,17 +172,69 @@
 ### 关联已完成（架构 P1，非本表 P2 Partner）
 
 - [x] `X-Activity-Id` → `activity-context.middleware` / `req.scopedActivityLegacyId`
-- [x] `ConversationState` + `@sync/chat-contracts` + contract test
 - [x] 出行攻略出发地：后端单源，前端只信 `place-suggestions` API
+
+---
+
+## P1 — 契约与类型 ✅（2025-06）
+
+> 真源：`src/shared/chat/`；前端 `@sync/chat-contracts` 仅 re-export。
+
+### 共享类型
+
+- [x] `conversation-state.types.ts` — `ConversationState` + version
+- [x] `ai-stream-event.types.ts` — `AiStreamEvent` 判别联合
+- [x] `chat-cards.types.ts` — `RecommendedPostCard` / `RecommendedActivityCard`
+- [x] `chat-message.types.ts` — `ChatMessage` / `ChatMessageRole`（与 `ChatMessageDto` 对齐）
+- [x] `chat-message.dto.ts` — class-validator DTO（实现层，非契约重复定义）
+
+### 契约测试
+
+- [x] `test/contract/chat-conversation-state.contract.spec.ts`
+- [x] `test/contract/chat-ai-stream-event.contract.spec.ts`
+- [x] `test/contract/chat-frontend-reexports.contract.spec.ts`（无同级 `sync-app` 时 skip）
+
+### Import 收敛
+
+- [x] AI 层 `AiStreamEvent` / 卡片类型 → `shared/chat`（不再经 `presentation/ai-stream-event.view` 业务 import）
+- [x] 前端 `aiChat.ts` / `conversationState.ts` 仅 re-export；`AiChatMessage` → `ChatMessage`
+
+### 仍可选
+
+- [ ] `TravelGuidePlan` 等出行攻略 DTO 收进 `shared/` + contract test
+- [ ] 正式 `packages/chat-contracts` workspace（替代路径 alias）
+
+---
+
+## P3 — 开发体验 ✅（2025-06）
+
+> 本地与 CI 统一 `npm run check`；提交前 lint-staged；工作区见上级目录 `sync/CONTRIBUTING.md`。
+
+### 质量脚本
+
+- [x] `npm run check` — typecheck + lint + format:check + test（含 contract）
+- [x] GitHub Actions — `.github/workflows/ci.yml`（`check` + `nest build`）
+- [x] `lint-staged` + husky `pre-commit`（`npm install` 后 `prepare` 启用）
+
+### 工作区（`sync/` 父目录，非 Git 仓库）
+
+- [x] `package.json` → `npm run check:all`（先后端 + 前端）
+- [x] `CONTRIBUTING.md`、`.editorconfig`
+- [x] Dependabot — `.github/dependabot.yml`（每周 npm）
+
+### 文档对齐
+
+- [x] README / checklist 身份描述 → `JwtAuthGuard` + `RequestActor`（非「无 JWT」）
 
 ---
 
 ## P0-H5 — 登录之后做
 
-- [ ] `POST /auth/dev` + JWT + Guard
-- [ ] Controller 改 `@CurrentUser()`，关闭生产 demo Query
+- [x] `POST /auth/dev` + JWT + `JwtAuthGuard`
+- [x] `@CurrentActor()` / `RequestActor` 业务层
 - [x] `activity-context.middleware` — `X-Activity-Id` → `req.scopedActivityLegacyId`
-- [ ] 与前端同 PR 切换 Bearer
+- [x] 前端 Bearer + `ownerQueryParams()` 空 Query（已实现）
+- [ ] 生产关闭 demo Query（`AUTH_ALLOW_DEMO=false` 运维验收）
 
 ## P0-Wx — 更晚
 

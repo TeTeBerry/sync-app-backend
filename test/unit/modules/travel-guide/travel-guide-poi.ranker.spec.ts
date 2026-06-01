@@ -58,8 +58,18 @@ describe('TravelGuidePoiRanker', () => {
       {
         ...baseCtx,
         pois: [
-          hotel({ name: '远但便宜', distanceM: 2000, rating: 4.5, category: '快捷酒店' }),
-          hotel({ name: '近', distanceM: 400, rating: 4.4, category: '商务酒店' }),
+          hotel({
+            name: '远但便宜',
+            distanceM: 2000,
+            rating: 4.5,
+            category: '快捷酒店',
+          }),
+          hotel({
+            name: '近',
+            distanceM: 400,
+            rating: 4.4,
+            category: '商务酒店',
+          }),
         ],
       },
       {

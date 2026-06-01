@@ -4,9 +4,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from '@src/common/auth/jwt-auth.guard';
 import { IS_PUBLIC_KEY } from '@src/common/auth/auth.constants';
-import {
-  AUTH_SESSION_EXPIRED_MESSAGE,
-} from '@src/common/auth/jwt-bearer.util';
+import { AUTH_SESSION_EXPIRED_MESSAGE } from '@src/common/auth/jwt-bearer.util';
 
 function createContext(
   headers: Record<string, string> = {},

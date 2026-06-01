@@ -44,7 +44,9 @@ export function isMockProfileActor(actor: RequestActor): boolean {
   return isMockProfileUser(actor.clientUserId, actor.displayName);
 }
 
-export function resolveProfilePackageOwnerFromActor(actor: RequestActor): string {
+export function resolveProfilePackageOwnerFromActor(
+  actor: RequestActor,
+): string {
   if (isMockProfileActor(actor)) {
     return MOCK_PROFILE_SEED_USER_ID;
   }

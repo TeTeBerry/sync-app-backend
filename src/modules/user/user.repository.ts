@@ -98,7 +98,9 @@ export class UserRepository implements IUserRepository {
       .lean();
   }
 
-  async findSummariesByExternalIds(externalIds: string[]): Promise<UserRecord[]> {
+  async findSummariesByExternalIds(
+    externalIds: string[],
+  ): Promise<UserRecord[]> {
     if (!externalIds.length) return [];
     return this.model
       .find({ externalId: { $in: externalIds } })

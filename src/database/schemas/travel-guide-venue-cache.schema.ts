@@ -72,5 +72,6 @@ export class TravelGuideVenueCache {
 export type TravelGuideVenueCacheDocument =
   HydratedDocument<TravelGuideVenueCache>;
 
-export const TravelGuideVenueCacheSchema =
-  SchemaFactory.createForClass(TravelGuideVenueCache);
+export const TravelGuideVenueCacheSchema = SchemaFactory.createForClass(
+  TravelGuideVenueCache,
+);

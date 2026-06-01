@@ -31,9 +31,5 @@ export function isResourceOwnedByActor(
   record: { userId?: string; authorName?: string },
   actor: RequestActor,
 ): boolean {
-  return isResourceOwnedByClient(
-    record,
-    actor.clientUserId,
-    actor.displayName,
-  );
+  return isResourceOwnedByClient(record, actor.clientUserId, actor.displayName);
 }

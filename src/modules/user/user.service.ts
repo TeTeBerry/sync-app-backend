@@ -154,7 +154,10 @@ export class UserService implements OnModuleInit {
     return this.toMeDto(profile, externalId);
   }
 
-  async patchMe(body: UpdateUserMeDto, actor: RequestActor): Promise<UserMeDto> {
+  async patchMe(
+    body: UpdateUserMeDto,
+    actor: RequestActor,
+  ): Promise<UserMeDto> {
     const externalId = this.resolveExternalId(actor);
     const existing = await this.repository.findByExternalId(externalId);
     const updated = existing

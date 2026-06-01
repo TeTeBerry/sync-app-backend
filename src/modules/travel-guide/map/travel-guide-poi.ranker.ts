@@ -95,21 +95,21 @@ export class TravelGuidePoiRanker {
       .map((poi) => {
         const distance = distanceScore(poi.distanceM);
         const rating = ratingScore(poi.rating, opts.minRating);
-        const budget =
-          opts.isHotel ?
-            budgetScore(estimateHotelPrice(poi, opts.budgetTier), opts.budgetTier)
+        const budget = opts.isHotel
+          ? budgetScore(
+              estimateHotelPrice(poi, opts.budgetTier),
+              opts.budgetTier,
+            )
           : 0.6;
-        const lateNight =
-          opts.preferLateNight ?
-            lateNightScore(poi, opts.eventEndHour)
+        const lateNight = opts.preferLateNight
+          ? lateNightScore(poi, opts.eventEndHour)
           : 0;
 
-        const score =
-          opts.isHotel ?
-            0.42 * distance + 0.33 * rating + 0.25 * budget
-          : opts.preferLateNight ?
-            0.38 * distance + 0.27 * rating + 0.35 * lateNight
-          : 0.55 * distance + 0.45 * rating;
+        const score = opts.isHotel
+          ? 0.42 * distance + 0.33 * rating + 0.25 * budget
+          : opts.preferLateNight
+            ? 0.38 * distance + 0.27 * rating + 0.35 * lateNight
+            : 0.55 * distance + 0.45 * rating;
 
         return {
           ...poi,
@@ -153,7 +153,10 @@ function estimateHotelPrice(
 
 function lateNightScore(poi: RawMapPoi, eventEndHour: number): number {
   let score = poi.lateNightFriendly ? 0.85 : 0.35;
-  if (eventEndHour >= 22 && /酒吧|夜店|club|live/i.test(`${poi.name} ${poi.category}`)) {
+  if (
+    eventEndHour >= 22 &&
+    /酒吧|夜店|club|live/i.test(`${poi.name} ${poi.category}`)
+  ) {
     score = Math.min(1, score + 0.15);
   }
   if (/24/.test(`${poi.name} ${poi.category}`)) {

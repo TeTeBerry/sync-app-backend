@@ -87,7 +87,10 @@ export default () => ({
   },
 
   auth: {
-    jwtSecret: cleanEnv(process.env.JWT_SECRET, 'sync-dev-jwt-secret-change-me'),
+    jwtSecret: cleanEnv(
+      process.env.JWT_SECRET,
+      'sync-dev-jwt-secret-change-me',
+    ),
     jwtExpiresIn: cleanEnv(process.env.JWT_EXPIRES_IN, '30d'),
     /** `dev` enables POST /auth/dev; `wechat` is production default. */
     mode: cleanEnv(process.env.AUTH_MODE, 'wechat'),

@@ -46,41 +46,42 @@ describe('UserBlockService', () => {
   });
 
   it('rejects blocking self', async () => {
-    await expect(service.blockUser('demo-mia', 'demo-mia')).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.blockUser('demo-mia', 'demo-mia'),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('throws conflict when already blocked', async () => {
     (blockModel.create as jest.Mock).mockRejectedValue({ code: 11000 });
 
-    await expect(service.blockUser('demo-mia', 'demo-finn')).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(
+      service.blockUser('demo-mia', 'demo-finn'),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('unblockUser deletes existing record', async () => {
     (blockModel.deleteOne as jest.Mock).mockResolvedValue({ deletedCount: 1 });
 
-    await expect(service.unblockUser('demo-mia', 'demo-finn')).resolves.toEqual({
-      ok: true,
-    });
+    await expect(service.unblockUser('demo-mia', 'demo-finn')).resolves.toEqual(
+      {
+        ok: true,
+      },
+    );
   });
 
   it('unblockUser throws when record missing', async () => {
     (blockModel.deleteOne as jest.Mock).mockResolvedValue({ deletedCount: 0 });
 
-    await expect(service.unblockUser('demo-mia', 'demo-finn')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.unblockUser('demo-mia', 'demo-finn'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('getBlockExclusionSet includes blocked users and blockers', async () => {
     (blockModel.find as jest.Mock)
       .mockReturnValueOnce({
         select: () => ({
-          lean: () =>
-            Promise.resolve([{ blockedUserId: 'blocked-a' }]),
+          lean: () => Promise.resolve([{ blockedUserId: 'blocked-a' }]),
         }),
       })
       .mockReturnValueOnce({

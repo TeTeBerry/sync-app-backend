@@ -1,4 +1,4 @@
-import type { AiStreamEvent } from '../presentation/ai-stream-event.view';
+import type { AiStreamEvent } from '../../shared/chat';
 
 /** Client → server (simple Taro payload) */
 export type AiChatWsSimpleClientMessage = {

@@ -3,7 +3,7 @@ import {
   CHAT_LLM_CONTEXT_TURNS,
   ChatService,
 } from '../modules/chat/chat.service';
-import { AiStreamEvent } from './presentation/ai-stream-event.view';
+import { AiStreamEvent } from '../shared/chat';
 import { ChatRequestDto } from './presentation/chat-request.dto';
 import { DeterministicReplyService } from './orchestration/deterministic-reply.service';
 import {

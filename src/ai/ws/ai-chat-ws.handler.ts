@@ -16,7 +16,7 @@ import {
 import { AiService } from '../ai.service';
 import { resolveWsChatActor } from './ai-chat-ws-actor';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
-import type { AiStreamEvent } from '../presentation/ai-stream-event.view';
+import type { AiStreamEvent } from '../../shared/chat';
 import { createRequestId } from '../utils/log-ai-turn.util';
 import type {
   AiChatWsClientMessage,

@@ -66,9 +66,8 @@ export class UserBlockService {
       return { blockedUserIds: [], items: [] };
     }
 
-    const profiles = await this.userRepository.findSummariesByExternalIds(
-      blockedUserIds,
-    );
+    const profiles =
+      await this.userRepository.findSummariesByExternalIds(blockedUserIds);
     const profileById = new Map(
       profiles
         .filter((row) => row.externalId)

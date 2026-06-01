@@ -10,7 +10,11 @@ export function coerceGuideLine(value: unknown): string | null {
     const trimmed = value.trim();
     return trimmed || null;
   }
-  if (value == null || typeof value === 'number' || typeof value === 'boolean') {
+  if (
+    value == null ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
     const text = String(value).trim();
     return text || null;
   }
@@ -19,12 +23,13 @@ export function coerceGuideLine(value: unknown): string | null {
   }
 
   const record = value as Record<string, unknown>;
-  const title =
-    typeof record.title === 'string' ? record.title.trim() : '';
+  const title = typeof record.title === 'string' ? record.title.trim() : '';
   const detail =
-    typeof record.detail === 'string' ? record.detail.trim()
-    : typeof record.note === 'string' ? record.note.trim()
-    : '';
+    typeof record.detail === 'string'
+      ? record.detail.trim()
+      : typeof record.note === 'string'
+        ? record.note.trim()
+        : '';
   if (title && detail) {
     return `${title}：${detail}`;
   }
@@ -67,30 +72,42 @@ function normalizeHotel(item: unknown): TravelGuideHotelItem | null {
   if (!item || typeof item !== 'object') return null;
   const record = item as Record<string, unknown>;
   const name =
-    typeof record.name === 'string' ? record.name.trim()
-    : typeof record.title === 'string' ? record.title.trim()
-    : '';
+    typeof record.name === 'string'
+      ? record.name.trim()
+      : typeof record.title === 'string'
+        ? record.title.trim()
+        : '';
   const note =
-    typeof record.note === 'string' ? record.note.trim()
-    : coerceGuideLine(record.description) ?? '';
+    typeof record.note === 'string'
+      ? record.note.trim()
+      : (coerceGuideLine(record.description) ?? '');
   if (!name) return null;
   const bookingHint =
-    typeof record.bookingHint === 'string' ? record.bookingHint.trim()
-    : typeof record.booking_hint === 'string' ? record.booking_hint.trim()
-    : undefined;
-  return { name, note: note || '详见地图平台', bookingHint: bookingHint || undefined };
+    typeof record.bookingHint === 'string'
+      ? record.bookingHint.trim()
+      : typeof record.booking_hint === 'string'
+        ? record.booking_hint.trim()
+        : undefined;
+  return {
+    name,
+    note: note || '详见地图平台',
+    bookingHint: bookingHint || undefined,
+  };
 }
 
 function normalizeSpot(item: unknown): TravelGuideSpotItem | null {
   if (!item || typeof item !== 'object') return null;
   const record = item as Record<string, unknown>;
   const name =
-    typeof record.name === 'string' ? record.name.trim()
-    : typeof record.title === 'string' ? record.title.trim()
-    : '';
+    typeof record.name === 'string'
+      ? record.name.trim()
+      : typeof record.title === 'string'
+        ? record.title.trim()
+        : '';
   const note =
-    typeof record.note === 'string' ? record.note.trim()
-    : coerceGuideLine(record.description) ?? '';
+    typeof record.note === 'string'
+      ? record.note.trim()
+      : (coerceGuideLine(record.description) ?? '');
   if (!name) return null;
   return { name, note: note || '详见地图平台' };
 }

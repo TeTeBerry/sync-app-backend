@@ -56,7 +56,9 @@ export function buildTransportLinesFromMap(
       '散场时段优先预约网约车；返程票建议提前购买。',
     );
   } else {
-    lines.push(`抵达后打车/地铁前往「${venueTitle}」，高峰建议预留 40–60 分钟。`);
+    lines.push(
+      `抵达后打车/地铁前往「${venueTitle}」，高峰建议预留 40–60 分钟。`,
+    );
   }
 
   for (const hint of hints) {
@@ -93,8 +95,7 @@ export function hotelsFromRanked(
 
   return picked.map((p, index) => {
     const band = index === 0 ? priceBands[0] : priceBands[1];
-    const ratingText =
-      p.rating != null ? ` · 评分约 ${p.rating}` : '';
+    const ratingText = p.rating != null ? ` · 评分约 ${p.rating}` : '';
     return {
       name: p.name,
       note: `约 ${band}/晚 · 距会场 ${formatKm(p.distanceM)}${ratingText} · ${nightLabel} · ${roomHint}`,
@@ -103,7 +104,9 @@ export function hotelsFromRanked(
   });
 }
 
-export function nightlifeFromRanked(ranked: RankedMapPoi[]): TravelGuideSpotItem[] {
+export function nightlifeFromRanked(
+  ranked: RankedMapPoi[],
+): TravelGuideSpotItem[] {
   return ranked.slice(0, 4).map((p) => ({
     name: p.name,
     note: formatNightlifeNote(p),
@@ -121,9 +124,11 @@ export function mapCandidatesToLlmFallback(
   },
 ): LlmTravelGuidePayload {
   const room =
-    input.headcount <= 1 ? '单人入住'
-    : input.headcount === 2 ? '双床/大床房即可'
-    : `建议 ${Math.ceil(input.headcount / 2)} 间房`;
+    input.headcount <= 1
+      ? '单人入住'
+      : input.headcount === 2
+        ? '双床/大床房即可'
+        : `建议 ${Math.ceil(input.headcount / 2)} 间房`;
   const nightLabel = `${input.accommodationNights} 晚`;
 
   return {
@@ -142,9 +147,8 @@ export function mapCandidatesToLlmFallback(
       room,
       ranked.hotelPriceBand,
     ),
-    parkingLines:
-      input.selfDrive ?
-        buildParkingLinesFromMap(ranked.parking, ctx.venue.title)
+    parkingLines: input.selfDrive
+      ? buildParkingLinesFromMap(ranked.parking, ctx.venue.title)
       : undefined,
     nightlifeSpots: nightlifeFromRanked(ranked.nightlife),
     tipItems: [

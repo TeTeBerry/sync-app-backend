@@ -1,4 +1,7 @@
-import { isAiShortcutTag, normalizeAiShortcutInput } from '../../common/utils/demo-owner.util';
+import {
+  isAiShortcutTag,
+  normalizeAiShortcutInput,
+} from '../../common/utils/demo-owner.util';
 import type { PostRecord } from '../../modules/partner/interfaces/post.repository.interface';
 import type { ConversationContext } from '../conversation/conversation-context.parser';
 import type { BuddyMatchCriteria, BuddyMatchIntent } from './buddy-match.types';

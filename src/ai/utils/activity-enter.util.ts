@@ -1,6 +1,6 @@
 import type { Activity } from '../../database/schemas/activity.schema';
 import { ChatMessageDto } from '../../shared/chat';
-import type { RecommendedActivityCard } from '../presentation/ai-stream-event.view';
+import type { RecommendedActivityCard } from '../../shared/chat';
 import {
   ACTIVITY_PICKER_PROMPT,
   findAssistantBeforeIndex,

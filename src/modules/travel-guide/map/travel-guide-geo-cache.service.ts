@@ -70,14 +70,12 @@ export class TravelGuideGeoCacheService {
     const city = query.split(/[·,，]/)[0]?.trim();
     const memKey = `geo:${query}`;
     const cached = this.getMem(this.geoMem, memKey);
-    const venue =
-      cached ?? (await this.map.geocode(query, city)) ?? null;
+    const venue = cached ?? (await this.map.geocode(query, city)) ?? null;
     if (!venue) return null;
     if (!cached) this.setMem(this.geoMem, memKey, venue, GEO_TTL_MS);
 
     const readableAddress =
-      (await this.reverseGeocodeCached(venue.lat, venue.lng)) ||
-      venue.address;
+      (await this.reverseGeocodeCached(venue.lat, venue.lng)) || venue.address;
 
     return { venue, readableAddress, source: 'api' };
   }
@@ -231,7 +229,10 @@ export class TravelGuideGeoCacheService {
     return pois;
   }
 
-  private async reverseGeocodeCached(lat: number, lng: number): Promise<string | null> {
+  private async reverseGeocodeCached(
+    lat: number,
+    lng: number,
+  ): Promise<string | null> {
     const key = `rev:${lat.toFixed(5)},${lng.toFixed(5)}`;
     const cached = this.getMem(this.reverseMem, key);
     if (cached) return cached;

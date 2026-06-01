@@ -32,7 +32,10 @@ export function isTicketPublishProhibited(params: {
     return true;
   }
 
-  if (TICKET_RESALE_BODY_RE.test(body) && /票|VIP|Stage|内场|看台/i.test(body)) {
+  if (
+    TICKET_RESALE_BODY_RE.test(body) &&
+    /票|VIP|Stage|内场|看台/i.test(body)
+  ) {
     return true;
   }
 

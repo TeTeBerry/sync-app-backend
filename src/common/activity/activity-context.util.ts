@@ -20,9 +20,7 @@ export function parseActivityLegacyIdHeader(
 }
 
 /** Parse `activityLegacyId` query param. */
-export function parseActivityLegacyIdQuery(
-  raw?: string,
-): number | undefined {
+export function parseActivityLegacyIdQuery(raw?: string): number | undefined {
   return parsePositiveLegacyId(raw);
 }
 

@@ -38,10 +38,7 @@ function resolveShortcutCodeForActivity(
   activity: Activity,
 ): HomeFestivalShortcutCode | undefined {
   const code = activity.code?.trim().toLowerCase();
-  if (
-    code &&
-    HOME_FESTIVAL_SHORTCUTS.some((def) => def.code === code)
-  ) {
+  if (code && HOME_FESTIVAL_SHORTCUTS.some((def) => def.code === code)) {
     return code as HomeFestivalShortcutCode;
   }
   return resolveHomeFestivalShortcutCode(activity.name ?? '');
@@ -59,7 +56,9 @@ export function buildActivityGuideReply(activity?: Activity | null): string {
 
   const shortcutCode = resolveShortcutCodeForActivity(activity);
   if (shortcutCode) {
-    const def = HOME_FESTIVAL_SHORTCUTS.find((item) => item.code === shortcutCode);
+    const def = HOME_FESTIVAL_SHORTCUTS.find(
+      (item) => item.code === shortcutCode,
+    );
     if (def) {
       const name = activity.name?.trim() || def.fallbackName;
       const date = activity.date?.trim() || def.fallbackDate;

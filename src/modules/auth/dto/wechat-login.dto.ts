@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+} from 'class-validator';
 
 export class WechatLoginDto {
   @IsString()
@@ -16,6 +22,9 @@ export class WechatLoginDto {
   @IsOptional()
   @IsString()
   @MaxLength(2048)
-  @IsUrl({ require_protocol: true }, { message: 'avatarUrl must be a valid URL' })
+  @IsUrl(
+    { require_protocol: true },
+    { message: 'avatarUrl must be a valid URL' },
+  )
   avatarUrl?: string;
 }

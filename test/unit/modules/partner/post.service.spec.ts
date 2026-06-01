@@ -82,7 +82,10 @@ describe('PostService.listPopular', () => {
   it('returns empty list when repository has no popular posts', async () => {
     (repository.findPopular as jest.Mock).mockResolvedValue([]);
 
-    const result = await service.listPopular(20, toRequestActor('demo-kyle', 'Kyle'));
+    const result = await service.listPopular(
+      20,
+      toRequestActor('demo-kyle', 'Kyle'),
+    );
 
     expect(result).toEqual([]);
     expect(repository.findPopular).toHaveBeenCalledWith(20);
@@ -110,9 +113,15 @@ describe('PostService.listPopular', () => {
       likes: 20,
       body: 'Second place',
     });
-    (repository.findPopular as jest.Mock).mockResolvedValue([hotPost, warmPost]);
+    (repository.findPopular as jest.Mock).mockResolvedValue([
+      hotPost,
+      warmPost,
+    ]);
 
-    const result = await service.listPopular(20, toRequestActor('demo-kyle', 'Kyle'));
+    const result = await service.listPopular(
+      20,
+      toRequestActor('demo-kyle', 'Kyle'),
+    );
 
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe('post-hot');
@@ -122,7 +131,10 @@ describe('PostService.listPopular', () => {
   });
 
   it('excludes posts from blocked users', async () => {
-    const visiblePost = createPost({ _id: 'post-visible', userId: 'demo-zara' });
+    const visiblePost = createPost({
+      _id: 'post-visible',
+      userId: 'demo-zara',
+    });
     const blockedPost = createPost({
       _id: 'post-blocked',
       userId: 'demo-blocked',
@@ -137,7 +149,10 @@ describe('PostService.listPopular', () => {
       new Set(['demo-blocked']),
     );
 
-    const result = await service.listPopular(20, toRequestActor('demo-kyle', 'Kyle'));
+    const result = await service.listPopular(
+      20,
+      toRequestActor('demo-kyle', 'Kyle'),
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('post-visible');
@@ -162,7 +177,10 @@ describe('PostService.listPopular', () => {
       new Set(['post-liked']),
     );
 
-    const result = await service.listPopular(20, toRequestActor('demo-kyle', 'Kyle'));
+    const result = await service.listPopular(
+      20,
+      toRequestActor('demo-kyle', 'Kyle'),
+    );
 
     expect(postInteraction.findLikedPostIds).toHaveBeenCalledWith('demo-kyle', [
       'post-liked',
@@ -180,12 +198,17 @@ describe('PostService.listPopular', () => {
       authorHandle: '@private',
       location: 'Shanghai',
     });
-    (repository.findPopular as jest.Mock).mockResolvedValue([privateAuthorPost]);
+    (repository.findPopular as jest.Mock).mockResolvedValue([
+      privateAuthorPost,
+    ]);
     (userService.findPrivacyLevelsByExternalIds as jest.Mock).mockResolvedValue(
       new Map([['demo-private', 'private']]),
     );
 
-    const result = await service.listPopular(20, toRequestActor('demo-kyle', 'Kyle'));
+    const result = await service.listPopular(
+      20,
+      toRequestActor('demo-kyle', 'Kyle'),
+    );
 
     expect(result[0]).toEqual(
       expect.objectContaining({

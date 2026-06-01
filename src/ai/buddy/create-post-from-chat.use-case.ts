@@ -239,8 +239,7 @@ export class CreatePostFromChatUseCase {
     const publishDraftBody = publishConfirmReady
       ? resolvePublishDraftBody({ messages, conversationState })
       : null;
-    const bodyForTicketCheck =
-      publishDraftBody?.trim() || trimmedInput;
+    const bodyForTicketCheck = publishDraftBody?.trim() || trimmedInput;
     if (
       bodyForTicketCheck &&
       isTicketPublishProhibited({
@@ -375,9 +374,7 @@ export class CreatePostFromChatUseCase {
 
     const contentTypes = inferPostContentTypes({ tags, body: finalBody });
 
-    if (
-      isTicketPublishProhibited({ body: finalBody, tags, contentTypes })
-    ) {
+    if (isTicketPublishProhibited({ body: finalBody, tags, contentTypes })) {
       return {
         kind: 'rejected',
         replyText: TICKET_PUBLISH_FORBIDDEN_MESSAGE,

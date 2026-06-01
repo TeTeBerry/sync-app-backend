@@ -45,15 +45,19 @@ describe('HomeService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (activityService.findAll as jest.Mock).mockResolvedValue(activities);
-    (registrationService.listRegisteredLegacyIds as jest.Mock).mockResolvedValue(
-      new Set([4]),
-    );
+    (
+      registrationService.listRegisteredLegacyIds as jest.Mock
+    ).mockResolvedValue(new Set([4]));
     (redisService.isEnabled as jest.Mock).mockReturnValue(true);
     (redisService.getHeat as jest.Mock).mockResolvedValue({
       people: 150,
       growthPercent: 12,
     });
-    service = new HomeService(activityService, registrationService, redisService);
+    service = new HomeService(
+      activityService,
+      registrationService,
+      redisService,
+    );
   });
 
   it('returns heat and signup events with going flags', async () => {

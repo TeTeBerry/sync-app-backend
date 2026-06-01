@@ -1,10 +1,4 @@
-import {
-  Body,
-  Controller,
-  Param,
-  ParseIntPipe,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Param, ParseIntPipe, Post } from '@nestjs/common';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';

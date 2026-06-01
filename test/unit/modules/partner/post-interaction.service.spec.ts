@@ -215,7 +215,9 @@ describe('PostInteractionService.likePost', () => {
 
   it('removes like and decrements counter when already liked', async () => {
     (likeModel.findOne as jest.Mock).mockReturnValue({
-      lean: jest.fn().mockResolvedValue({ userId: 'demo-kyle', postId: 'post-1' }),
+      lean: jest
+        .fn()
+        .mockResolvedValue({ userId: 'demo-kyle', postId: 'post-1' }),
     });
     (repository.incrementCounter as jest.Mock).mockResolvedValue({
       ...post,
@@ -231,7 +233,11 @@ describe('PostInteractionService.likePost', () => {
       userId: 'demo-kyle',
       postId: 'post-1',
     });
-    expect(repository.incrementCounter).toHaveBeenCalledWith('post-1', 'likes', -1);
+    expect(repository.incrementCounter).toHaveBeenCalledWith(
+      'post-1',
+      'likes',
+      -1,
+    );
     expect(result.liked).toBe(false);
   });
 });
@@ -283,7 +289,9 @@ describe('PostInteractionService.applyToPost', () => {
 
   it('returns alreadyApplied when duplicate application', async () => {
     (applicationModel.findOne as jest.Mock).mockReturnValue({
-      lean: jest.fn().mockResolvedValue({ userId: 'demo-kyle', postId: 'post-1' }),
+      lean: jest
+        .fn()
+        .mockResolvedValue({ userId: 'demo-kyle', postId: 'post-1' }),
     });
 
     const result = await service.applyToPost(

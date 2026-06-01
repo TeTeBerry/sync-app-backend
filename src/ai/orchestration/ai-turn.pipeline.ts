@@ -33,7 +33,7 @@ import { enterCollectPostBodyState } from '../conversation';
 import { logAiTurn } from '../utils/log-ai-turn.util';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
 import { ChatMessageDto } from '../../shared/chat';
-import type { AiStreamEvent } from '../presentation/ai-stream-event.view';
+import type { AiStreamEvent } from '../../shared/chat';
 import {
   AiStreamEventBuilder,
   type ReplySink,

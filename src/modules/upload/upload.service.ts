@@ -53,9 +53,7 @@ export class UploadService {
       this.wechatContentSecurity.isEnabled() &&
       file.size > WECHAT_IMG_SEC_CHECK_MAX_BYTES
     ) {
-      throw new BadRequestException(
-        '图片不能超过 1MB（微信内容安全检测限制）',
-      );
+      throw new BadRequestException('图片不能超过 1MB（微信内容安全检测限制）');
     }
 
     await this.wechatContentSecurity.assertImageSafe({

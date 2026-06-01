@@ -6,9 +6,7 @@ import {
 
 describe('activity-context.util', () => {
   it('parses X-Activity-Id header', () => {
-    expect(
-      parseActivityLegacyIdHeader({ 'x-activity-id': '9' }),
-    ).toBe(9);
+    expect(parseActivityLegacyIdHeader({ 'x-activity-id': '9' })).toBe(9);
     expect(parseActivityLegacyIdHeader({})).toBeUndefined();
   });
 
@@ -18,9 +16,7 @@ describe('activity-context.util', () => {
   });
 
   it('resolves first valid legacy id in order', () => {
-    expect(
-      resolveEffectiveActivityLegacyId(undefined, 9, 4),
-    ).toBe(9);
+    expect(resolveEffectiveActivityLegacyId(undefined, 9, 4)).toBe(9);
     expect(resolveEffectiveActivityLegacyId(undefined, NaN, 4)).toBe(4);
   });
 });
