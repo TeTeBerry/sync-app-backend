@@ -8,12 +8,12 @@ export function intentsForShortcutTag(
 ): BuddyMatchIntent[] | undefined {
   const tag = normalizeAiShortcutInput(shortcut);
   switch (tag) {
-    case '拼卡':
-    case '拼车同行':
+    case '找拼卡':
+    case '找拼车':
       return ['carpool'];
-    case '住宿同行':
+    case '找拼房':
       return ['lodging'];
-    case '组队队友':
+    case '找队友':
       return ['team'];
     default:
       return undefined;
@@ -35,19 +35,19 @@ export function postMatchesShortcutTag(
   });
 
   switch (tag) {
-    case '拼卡':
+    case '找拼卡':
       return (
         types.includes('carpool') ||
         /拼卡|拼车|顺路|顺风车|包车/i.test(haystack)
       );
-    case '拼车同行':
+    case '找拼车':
       return types.includes('carpool') || /拼车|顺路|顺风车/i.test(haystack);
-    case '住宿同行':
+    case '找拼房':
       return (
         types.includes('accommodation') ||
         /拼房|拼住宿|住宿|酒店/i.test(haystack)
       );
-    case '组队队友':
+    case '找队友':
       return (
         types.includes('team') || /组队|搭子|同行|缺\d|有人吗/i.test(haystack)
       );

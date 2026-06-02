@@ -19,14 +19,7 @@ jest.mock('@langchain/core/documents', () =>
 );
 
 function buddySheetPayload() {
-  const body = [
-    '找「风暴电音节 深圳站」同行',
-    '时间：6月13日-14日',
-    '地点：上海',
-    '人数：2人',
-    '类型：#组队 #拼房',
-    '备注：希望女生优先',
-  ].join('\n');
+  const body = '找队友、找拼房，6.13-6.14，上海，2人，希望女生优先';
   return {
     body: `${body}\n\n#组队 #拼房`,
     activityLegacyId: 9,

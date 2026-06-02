@@ -5,27 +5,48 @@ export const DEMO_OWNER_DISPLAY_NAME = 'Zara Chen';
 
 /** 活动详情页 AI 快捷标签（与前端 aiShortcutTags.ts 对齐） */
 export const AI_SHORTCUT_TAGS = [
+  '找队友',
+  '找拼房',
+  '找拼车',
+  '找拼卡',
+] as const;
+
+/** 历史标签，仍视为快捷标签以兼容旧会话 */
+const LEGACY_AI_SHORTCUT_TAGS = [
+  '拼套票',
+  '拼房同行',
   '组队队友',
   '住宿同行',
   '拼车同行',
   '拼卡',
 ] as const;
 
-/** 历史标签，仍视为快捷标签以兼容旧会话 */
-const LEGACY_AI_SHORTCUT_TAGS = ['拼套票', '拼房同行'] as const;
+const LEGACY_TO_CANONICAL: Record<string, (typeof AI_SHORTCUT_TAGS)[number]> = {
+  组队队友: '找队友',
+  住宿同行: '找拼房',
+  拼房同行: '找拼房',
+  拼车同行: '找拼车',
+  拼卡: '找拼卡',
+};
 
 /** 展示文案别名 → 标准快捷标签（与前端 aiShortcutTags 对齐） */
 export const AI_SHORTCUT_TAG_ALIASES: Record<
   string,
   (typeof AI_SHORTCUT_TAGS)[number]
 > = {
-  帮我dd: '组队队友',
-  拼车: '拼卡',
+  帮我dd: '找队友',
+  拼车: '找拼车',
 };
 
 export function normalizeAiShortcutInput(input: string): string {
   const text = input.trim();
-  return AI_SHORTCUT_TAG_ALIASES[text] ?? text;
+  if (AI_SHORTCUT_TAG_ALIASES[text]) {
+    return AI_SHORTCUT_TAG_ALIASES[text];
+  }
+  if (LEGACY_TO_CANONICAL[text]) {
+    return LEGACY_TO_CANONICAL[text];
+  }
+  return text;
 }
 
 function escapeRegex(value: string): string {

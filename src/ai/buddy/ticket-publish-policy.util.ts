@@ -11,6 +11,16 @@ const TICKET_PUBLISH_KEYWORD_RE = /转票|出票|票务|倒票|黄牛/i;
 const TICKET_RESALE_BODY_RE =
   /折价|出手|转让|临时有事.*票|VIP.*票|Stage.*票|内场票|看台票/i;
 
+/** 找进场/分区搭子（#拼卡），与转票、出票不同 */
+const BUDDY_PINCARD_RE = /#拼卡|找拼卡/i;
+
+function isBuddyPincardIntent(body: string, tags: string[]): boolean {
+  const combined = [body, ...tags].join('\n');
+  return (
+    BUDDY_PINCARD_RE.test(combined) && !TICKET_PUBLISH_KEYWORD_RE.test(combined)
+  );
+}
+
 export function isTicketPublishProhibited(params: {
   body?: string;
   tags?: string[];
@@ -18,17 +28,21 @@ export function isTicketPublishProhibited(params: {
 }): boolean {
   const body = params.body?.trim() ?? '';
   const tags = params.tags ?? [];
+  const combined = [body, ...tags].join('\n');
+
+  if (isBuddyPincardIntent(body, tags)) {
+    return false;
+  }
+
+  if (TICKET_PUBLISH_KEYWORD_RE.test(combined)) {
+    return true;
+  }
 
   const contentTypes = params.contentTypes?.length
     ? params.contentTypes
     : inferPostContentTypes({ tags, body });
 
   if (contentTypes.includes('ticket')) {
-    return true;
-  }
-
-  const combined = [body, ...tags].join('\n');
-  if (TICKET_PUBLISH_KEYWORD_RE.test(combined)) {
     return true;
   }
 

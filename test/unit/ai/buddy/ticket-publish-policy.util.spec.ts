@@ -31,6 +31,23 @@ describe('ticket-publish-policy.util', () => {
     );
   });
 
+  it('allows 找拼卡 buddy posts (not ticket resale)', () => {
+    expect(
+      isTicketPublishProhibited({
+        body: '找拼卡，6.13-6.14，上海，1人',
+        tags: ['#拼卡'],
+        contentTypes: ['carpool'],
+      }),
+    ).toBe(false);
+    expect(
+      isTicketPublishProhibited({
+        body: '找拼卡，6.13-6.14，上海，1人',
+        tags: ['#拼卡'],
+        contentTypes: ['ticket'],
+      }),
+    ).toBe(false);
+  });
+
   it('exposes stable rejection copy', () => {
     expect(TICKET_PUBLISH_FORBIDDEN_MESSAGE).toContain('禁止');
     expect(TICKET_PUBLISH_FORBIDDEN_MESSAGE).toMatch(/转票|出票|票务/);

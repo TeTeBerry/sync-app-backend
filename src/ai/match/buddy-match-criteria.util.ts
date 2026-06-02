@@ -212,11 +212,11 @@ export function buildMatchCriteriaForSearch(params: {
     requesterBody:
       params.ownerPost?.body?.trim() ??
       fromOwner?.requesterBody ??
-      (shortcutTag === '拼卡' || shortcutTag === '拼车同行'
+      (shortcutTag === '找拼卡' || shortcutTag === '找拼车'
         ? '拼卡 拼车 顺风车 顺路 包车 出发'
-        : shortcutTag === '住宿同行'
+        : shortcutTag === '找拼房'
           ? '拼住宿 拼房 酒店 同行'
-          : shortcutTag === '组队队友'
+          : shortcutTag === '找队友'
             ? '组队 搭子 同行 缺人'
             : undefined),
     excludePostIds: params.ownerPost?._id
