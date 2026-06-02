@@ -48,6 +48,7 @@ export class TravelGuidePoiCollector {
     const departure = await this.geoCache.resolveDeparture(
       dto.departure.trim(),
       eventRegion || undefined,
+      dto.departureCity?.trim(),
     );
 
     const transport = await this.geoCache.resolveTransport({

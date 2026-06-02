@@ -11,9 +11,19 @@ describe('travel-guide-departure-suggestions.util', () => {
     expect(findDepartureCityAnchor('上海虹桥')).toBe('上海');
   });
 
-  it('resolves suggestion region from anchor or event city', () => {
-    expect(resolveSuggestionRegion('上海', '深圳')).toBe('上海');
-    expect(resolveSuggestionRegion('虹桥', '深圳')).toBe('深圳');
+  it('resolves suggestion region from anchor, picked city, or event city', () => {
+    expect(resolveSuggestionRegion('上海', { eventRegion: '深圳' })).toBe(
+      '上海',
+    );
+    expect(resolveSuggestionRegion('虹桥', { eventRegion: '深圳' })).toBe(
+      '深圳',
+    );
+    expect(
+      resolveSuggestionRegion('拼多多', {
+        eventRegion: '深圳',
+        departureCity: '上海市',
+      }),
+    ).toBe('上海');
   });
 
   it('builds geocode targets without using POI name as region', () => {
@@ -24,6 +34,12 @@ describe('travel-guide-departure-suggestions.util', () => {
     expect(resolveDepartureGeocodeTargets('拼多多公司', '深圳')).toEqual({
       address: '拼多多公司',
       region: '深圳',
+    });
+    expect(
+      resolveDepartureGeocodeTargets('拼多多公司', '深圳', '上海市'),
+    ).toEqual({
+      address: '拼多多公司',
+      region: '上海',
     });
     expect(resolveDepartureGeocodeTargets('上海虹桥', '深圳')).toEqual({
       address: '上海虹桥',

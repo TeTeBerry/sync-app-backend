@@ -28,11 +28,13 @@ export function findDepartureCityAnchor(query: string): string | null {
 
 export function resolveSuggestionRegion(
   keyword: string,
-  eventRegion?: string,
+  options?: { eventRegion?: string; departureCity?: string },
 ): string | undefined {
   const anchor = findDepartureCityAnchor(keyword);
   if (anchor) return anchor;
-  return eventRegion?.trim() || undefined;
+  const picked = options?.departureCity?.trim();
+  if (picked) return normalizeDepartureCityLabel(picked);
+  return options?.eventRegion?.trim() || undefined;
 }
 
 /** Strip admin suffix so geocoder region matches local city catalog (e.g. 上海市 → 上海). */
@@ -52,13 +54,16 @@ export function normalizeDepartureCityLabel(city: string): string {
 export function resolveDepartureGeocodeTargets(
   departureText: string,
   eventRegion?: string,
+  departureCity?: string,
 ): { address: string; region?: string } {
   const q = departureText.trim();
   if (!q) return { address: '' };
 
   const anchor = findDepartureCityAnchor(q);
   const event = eventRegion?.trim();
-  const region = resolveSuggestionRegion(q, event);
+  const pickedCity = departureCity?.trim()
+    ? normalizeDepartureCityLabel(departureCity)
+    : undefined;
 
   if (anchor && anchor === q) {
     return { address: anchor, region: anchor };
@@ -68,6 +73,11 @@ export function resolveDepartureGeocodeTargets(
     return { address: q, region: anchor };
   }
 
+  if (pickedCity) {
+    return { address: q, region: pickedCity };
+  }
+
+  const region = resolveSuggestionRegion(q, { eventRegion: event });
   return { address: q, region: region ?? (event || undefined) };
 }
 

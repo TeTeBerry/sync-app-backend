@@ -87,15 +87,20 @@ export class TravelGuideGeoCacheService {
   async resolveDeparture(
     departureText: string,
     eventRegion?: string,
+    departureCity?: string,
   ): Promise<GeocodedPlace | null> {
     const q = departureText.trim();
     if (!q) return null;
 
-    const memKey = `geo:${q}`;
+    const memKey = `geo:${q}:${departureCity?.trim() ?? ''}`;
     const cached = this.getMem(this.geoMem, memKey);
     if (cached) return cached;
 
-    const { address, region } = resolveDepartureGeocodeTargets(q, eventRegion);
+    const { address, region } = resolveDepartureGeocodeTargets(
+      q,
+      eventRegion,
+      departureCity,
+    );
     let place =
       address.length > 0 ? await this.map.geocode(address, region) : null;
 

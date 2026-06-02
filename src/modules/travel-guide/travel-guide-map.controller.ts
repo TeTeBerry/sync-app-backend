@@ -25,7 +25,9 @@ export class TravelGuideMapController {
       return { data: mergePlaceSuggestions('', []) };
     }
 
-    const suggestionRegion = resolveSuggestionRegion(q, region);
+    const suggestionRegion = resolveSuggestionRegion(q, {
+      eventRegion: region,
+    });
     let remote: Array<{ title: string; address: string; city?: string }> = [];
 
     const anchor = findDepartureCityAnchor(q);
