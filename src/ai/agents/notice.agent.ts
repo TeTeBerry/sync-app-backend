@@ -29,6 +29,8 @@ export interface NoticeDispatchInput {
     activityLegacyId?: number;
     postId?: string;
     actorUserId?: string;
+    /** Activity update: same summary within window → skip. */
+    changeSummary?: string;
     sinceMs?: number;
   };
 }
@@ -213,6 +215,13 @@ export class NoticeAgent {
           meta: {
             activityLegacyId,
             type: 'activity_update',
+            changeSummary,
+          },
+          dedupe: {
+            metaType: 'activity_update',
+            activityLegacyId,
+            changeSummary,
+            sinceMs: 7 * 24 * 60 * 60 * 1000,
           },
         }),
       ),
@@ -239,6 +248,7 @@ export class NoticeAgent {
           activityLegacyId: input.dedupe.activityLegacyId,
           postId: input.dedupe.postId,
           actorUserId: input.dedupe.actorUserId,
+          changeSummary: input.dedupe.changeSummary,
           sinceMs: input.dedupe.sinceMs,
         },
       );

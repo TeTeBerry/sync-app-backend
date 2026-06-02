@@ -201,6 +201,7 @@ export class NotificationService {
       activityLegacyId?: number;
       postId?: string;
       actorUserId?: string;
+      changeSummary?: string;
       sinceMs?: number;
     },
   ): Promise<boolean> {
@@ -224,6 +225,9 @@ export class NotificationService {
     }
     if (options?.actorUserId?.trim()) {
       filter['meta.actorUserId'] = options.actorUserId.trim();
+    }
+    if (options?.changeSummary?.trim()) {
+      filter['meta.changeSummary'] = options.changeSummary.trim();
     }
 
     const count = await this.notificationModel.countDocuments(filter);

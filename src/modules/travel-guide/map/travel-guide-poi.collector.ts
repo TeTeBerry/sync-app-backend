@@ -22,6 +22,8 @@ const NIGHTLIFE_KEYWORDS = [
 ];
 
 const DEFAULT_EVENT_END_HOUR = 23.5;
+/** Align with default `TENCENT_MAP_QPS` / `TENCENT_MAP_MAX_CONCURRENT`. */
+const POI_SEARCH_BATCH_SIZE = 5;
 
 @Injectable()
 export class TravelGuidePoiCollector {
@@ -42,8 +44,10 @@ export class TravelGuidePoiCollector {
     }
 
     const { venue, readableAddress, source: venueSource } = resolvedVenue;
+    const eventRegion = destinationCityFromActivityLocation(activity.location);
     const departure = await this.geoCache.resolveDeparture(
       dto.departure.trim(),
+      eventRegion || undefined,
     );
 
     const transport = await this.geoCache.resolveTransport({
@@ -62,36 +66,18 @@ export class TravelGuidePoiCollector {
       transportHints.push(transport.transitHint);
     }
 
-    const poiBatches = await Promise.all([
-      ...HOTEL_KEYWORDS.map((keyword) =>
+    const poiSearchTasks = buildPoiSearchTasks(Boolean(dto.selfDrive));
+    const poiBatches = await runInBatches(
+      poiSearchTasks,
+      POI_SEARCH_BATCH_SIZE,
+      (task) =>
         this.geoCache.searchPoisCached({
           activityLegacyId: activity.legacyId,
           venue,
-          keyword,
-          kind: 'hotel',
+          keyword: task.keyword,
+          kind: task.kind,
         }),
-      ),
-      ...(dto.selfDrive
-        ? PARKING_KEYWORDS.map((keyword) =>
-            this.geoCache.searchPoisCached({
-              activityLegacyId: activity.legacyId,
-              venue,
-              keyword,
-              kind: 'parking',
-            }),
-          )
-        : []),
-      ...NIGHTLIFE_KEYWORDS.map((keyword) =>
-        this.geoCache.searchPoisCached({
-          activityLegacyId: activity.legacyId,
-          venue,
-          keyword,
-          kind: /酒吧|夜店|live/i.test(keyword)
-            ? 'nightlife_club'
-            : 'nightlife_food',
-        }),
-      ),
-    ]);
+    );
 
     let pois = dedupePois(poiBatches.flat());
     if (!pois.length) {
@@ -122,6 +108,46 @@ export class TravelGuidePoiCollector {
       collectedAt: new Date().toISOString(),
     };
   }
+}
+
+type PoiSearchTask = { keyword: string; kind: MapPoiKind };
+
+function buildPoiSearchTasks(selfDrive: boolean): PoiSearchTask[] {
+  const tasks: PoiSearchTask[] = HOTEL_KEYWORDS.map((keyword) => ({
+    keyword,
+    kind: 'hotel' as const,
+  }));
+  if (selfDrive) {
+    tasks.push(
+      ...PARKING_KEYWORDS.map((keyword) => ({
+        keyword,
+        kind: 'parking' as const,
+      })),
+    );
+  }
+  tasks.push(
+    ...NIGHTLIFE_KEYWORDS.map((keyword) => ({
+      keyword,
+      kind: (/酒吧|夜店|live/i.test(keyword)
+        ? 'nightlife_club'
+        : 'nightlife_food') as MapPoiKind,
+    })),
+  );
+  return tasks;
+}
+
+async function runInBatches<T, R>(
+  items: T[],
+  batchSize: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(fn));
+    results.push(...batchResults);
+  }
+  return results;
 }
 
 function dedupePois(pois: RawMapPoi[]): RawMapPoi[] {

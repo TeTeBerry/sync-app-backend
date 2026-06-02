@@ -22,6 +22,10 @@ import {
   isInterCityByDistance,
 } from './travel-guide-intercity.util';
 import { getHotPathFallbackPois } from './travel-guide-hot-path-pois.data';
+import {
+  findDepartureCityAnchor,
+  resolveDepartureGeocodeTargets,
+} from './travel-guide-departure-suggestions.util';
 import { TencentMapService } from './tencent-map.service';
 
 const GEO_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -80,15 +84,26 @@ export class TravelGuideGeoCacheService {
     return { venue, readableAddress, source: 'api' };
   }
 
-  async resolveDeparture(departureCity: string): Promise<GeocodedPlace | null> {
-    const q = departureCity.trim();
+  async resolveDeparture(
+    departureText: string,
+    eventRegion?: string,
+  ): Promise<GeocodedPlace | null> {
+    const q = departureText.trim();
     if (!q) return null;
 
     const memKey = `geo:${q}`;
     const cached = this.getMem(this.geoMem, memKey);
     if (cached) return cached;
 
-    const place = await this.map.geocode(q, q);
+    const { address, region } = resolveDepartureGeocodeTargets(q, eventRegion);
+    let place =
+      address.length > 0 ? await this.map.geocode(address, region) : null;
+
+    const anchor = findDepartureCityAnchor(q);
+    if (!place && anchor) {
+      place = await this.map.geocode(anchor, anchor);
+    }
+
     if (place) this.setMem(this.geoMem, memKey, place, GEO_TTL_MS);
     return place;
   }

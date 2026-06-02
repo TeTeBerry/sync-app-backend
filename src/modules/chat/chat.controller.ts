@@ -12,6 +12,8 @@ export class ChatController {
     return this.chatService.health();
   }
 
+  /** Public: session id is client-generated secret; used to hydrate AI chat on return. */
+  @Public()
   @Get('sessions/:sessionId')
   getSession(@Param('sessionId') sessionId: string) {
     return this.chatService.getSession(sessionId);

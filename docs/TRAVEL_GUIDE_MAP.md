@@ -10,10 +10,20 @@
 | 输入提示 | `GET /ws/place/v1/suggestion` | `TencentMapService.getSuggestion` | 出发地自动补全 |
 
 **出发地补全单源**：`GET /api/travel-guide/place-suggestions?keyword=&region=`（`TravelGuideMapController`）。城市库、锚点、本地+远程合并均在 `travel-guide-departure-suggestions.util.ts`；前端只消费 API，勿维护 `travelGuideCities`。
+
+**出发地 geocode**：`place/suggestion` 与 `geocoder` 不同。提交后 `resolveDeparture` 用 `resolveDepartureGeocodeTargets`（`region` 为城市锚点或活动举办城市，**不会**把公司名当 region）。前端点选 POI 时优先提交 `city`（如「拼多多公司」→「上海」）。
 | 路线规划 | `GET /ws/direction/v1/{driving\|transit\|walking}/` | `drivingRoute` / `transitRoute` / `walkingRoute` | 出发地 → 场馆 |
 | 距离计算 | `GET /ws/distance/v1/` | `TencentMapService.calculateDistanceToMany` | 多点距离/时长 |
 
 详见 `src/modules/travel-guide/map/tencent-map.capabilities.ts`。
+
+## 限流（Key QPS / 并发）
+
+所有 WebService 请求经 `TencentMapRateLimiter`（`TencentMapService.getJson`）：
+
+- 默认 **每秒最多 5 次** 发起（`TENCENT_MAP_QPS`）
+- 默认 **最多 5 个并发** in-flight（`TENCENT_MAP_MAX_CONCURRENT`）
+- 攻略 POI 关键词按批（每批 5 个）调用 `place/search`，避免一次 `Promise.all` 打满配额
 
 ## 调用策略（避免每次全量打 API）
 

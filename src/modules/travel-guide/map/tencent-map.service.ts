@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TENCENT_MAP_WS } from './tencent-map.capabilities';
+import { TencentMapRateLimiter } from './tencent-map-rate-limiter';
 import type { GeocodedPlace, RawMapPoi } from './travel-guide-map.types';
 import type { MapPoiKind } from './travel-guide-map.types';
 import type { DrivingRouteSummary } from './travel-guide-map.types';
@@ -102,10 +103,17 @@ export class TencentMapService {
   private readonly logger = new Logger(TencentMapService.name);
   readonly enabled: boolean;
   private readonly key: string;
+  private readonly limiter: TencentMapRateLimiter;
 
   constructor(private readonly config: ConfigService) {
     this.key = this.config.get<string>('tencentMap.key') ?? '';
     this.enabled = Boolean(this.key);
+    const maxConcurrent = Math.max(
+      1,
+      this.config.get<number>('tencentMap.maxConcurrent') ?? 5,
+    );
+    const qps = Math.max(1, this.config.get<number>('tencentMap.qps') ?? 5);
+    this.limiter = new TencentMapRateLimiter(maxConcurrent, qps);
   }
 
   /** 地理编码 geocoder：地址 → 坐标 */
@@ -384,7 +392,14 @@ export class TencentMapService {
     return `${BASE}${TENCENT_MAP_WS.placeSearch}?${parts.join('&')}`;
   }
 
-  private async getJson<T>(url: string): Promise<T | null> {
+  private getJson<T>(url: string): Promise<T | null> {
+    if (!this.enabled) {
+      return Promise.resolve(null);
+    }
+    return this.limiter.enqueue(() => this.fetchJson<T>(url));
+  }
+
+  private async fetchJson<T>(url: string): Promise<T | null> {
     try {
       const res = await fetch(url);
       if (!res.ok) {

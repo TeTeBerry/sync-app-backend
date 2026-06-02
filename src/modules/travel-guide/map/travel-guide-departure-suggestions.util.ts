@@ -35,6 +35,42 @@ export function resolveSuggestionRegion(
   return eventRegion?.trim() || undefined;
 }
 
+/** Strip admin suffix so geocoder region matches local city catalog (e.g. 上海市 → 上海). */
+export function normalizeDepartureCityLabel(city: string): string {
+  const trimmed = city.trim();
+  if (!trimmed) return trimmed;
+  const stripped = trimmed
+    .replace(/(特别行政区|自治州|地区|盟)$/, '')
+    .replace(/[省市]$/, '');
+  return stripped || trimmed;
+}
+
+/**
+ * Geocoder address + region for submitted departure text.
+ * Never use company/POI name as `region` (Tencent returns 参数错误).
+ */
+export function resolveDepartureGeocodeTargets(
+  departureText: string,
+  eventRegion?: string,
+): { address: string; region?: string } {
+  const q = departureText.trim();
+  if (!q) return { address: '' };
+
+  const anchor = findDepartureCityAnchor(q);
+  const event = eventRegion?.trim();
+  const region = resolveSuggestionRegion(q, event);
+
+  if (anchor && anchor === q) {
+    return { address: anchor, region: anchor };
+  }
+
+  if (anchor) {
+    return { address: q, region: anchor };
+  }
+
+  return { address: q, region: region ?? (event || undefined) };
+}
+
 export function filterRemoteSuggestionsByAnchor(
   keyword: string,
   items: PlaceSuggestionRow[],

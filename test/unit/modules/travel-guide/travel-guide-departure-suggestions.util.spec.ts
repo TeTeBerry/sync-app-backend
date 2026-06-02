@@ -1,6 +1,7 @@
 import {
   findDepartureCityAnchor,
   mergePlaceSuggestions,
+  resolveDepartureGeocodeTargets,
   resolveSuggestionRegion,
 } from '@src/modules/travel-guide/map/travel-guide-departure-suggestions.util';
 
@@ -13,6 +14,21 @@ describe('travel-guide-departure-suggestions.util', () => {
   it('resolves suggestion region from anchor or event city', () => {
     expect(resolveSuggestionRegion('上海', '深圳')).toBe('上海');
     expect(resolveSuggestionRegion('虹桥', '深圳')).toBe('深圳');
+  });
+
+  it('builds geocode targets without using POI name as region', () => {
+    expect(resolveDepartureGeocodeTargets('上海', '深圳')).toEqual({
+      address: '上海',
+      region: '上海',
+    });
+    expect(resolveDepartureGeocodeTargets('拼多多公司', '深圳')).toEqual({
+      address: '拼多多公司',
+      region: '深圳',
+    });
+    expect(resolveDepartureGeocodeTargets('上海虹桥', '深圳')).toEqual({
+      address: '上海虹桥',
+      region: '上海',
+    });
   });
 
   it('merges local cities before remote and filters by anchor', () => {

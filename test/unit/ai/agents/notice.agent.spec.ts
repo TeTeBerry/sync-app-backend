@@ -88,6 +88,14 @@ describe('NoticeAgent', () => {
       '时间已更新',
     );
 
+    expect(notificationService.hasRecentByMeta).toHaveBeenCalledWith(
+      'user-a',
+      'activity_update',
+      expect.objectContaining({
+        activityLegacyId: 99,
+        changeSummary: '时间已更新',
+      }),
+    );
     expect(notificationService.createFromTemplate).toHaveBeenCalledTimes(2);
     expect(notificationService.createFromTemplate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -97,8 +105,30 @@ describe('NoticeAgent', () => {
           category: 'system',
           type: 'activity_update',
           activityLegacyId: 99,
+          changeSummary: '时间已更新',
         }),
       }),
     );
+  });
+
+  it('skips duplicate activity update for same user and changeSummary', async () => {
+    notificationService.hasRecentByMeta.mockResolvedValue(true);
+
+    await agent.notifyActivityUpdate(
+      ['user-a'],
+      4,
+      '风暴电音节 深圳站',
+      '地点已更新为 深圳国际会展中心 17 号馆',
+    );
+
+    expect(notificationService.hasRecentByMeta).toHaveBeenCalledWith(
+      'user-a',
+      'activity_update',
+      expect.objectContaining({
+        activityLegacyId: 4,
+        changeSummary: '地点已更新为 深圳国际会展中心 17 号馆',
+      }),
+    );
+    expect(notificationService.createFromTemplate).not.toHaveBeenCalled();
   });
 });

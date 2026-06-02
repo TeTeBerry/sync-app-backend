@@ -120,6 +120,11 @@ export default () => ({
 
   tencentMap: {
     key: cleanEnv(process.env.TENCENT_MAP_KEY ?? process.env.QQ_MAP_KEY),
+    maxConcurrent: parseInt(
+      cleanEnv(process.env.TENCENT_MAP_MAX_CONCURRENT, '5'),
+      10,
+    ),
+    qps: parseInt(cleanEnv(process.env.TENCENT_MAP_QPS, '5'), 10),
   },
 
   itinerary: {

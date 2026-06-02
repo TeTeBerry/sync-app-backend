@@ -45,6 +45,8 @@ export interface NotificationMeta {
   rejectionReason?: string;
   /** Parent comment ID for reply notifications. */
   parentCommentId?: string;
+  /** Activity update summary (e.g. `地点已更新为 …`) for dedupe / display. */
+  changeSummary?: string;
 }
 
 export type NotificationDocument = HydratedDocument<Notification>;
