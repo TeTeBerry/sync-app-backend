@@ -95,11 +95,13 @@ export function hotelsFromRanked(
 
   return picked.map((p, index) => {
     const band = index === 0 ? priceBands[0] : priceBands[1];
-    const ratingText = p.rating != null ? ` · 评分约 ${p.rating}` : '';
+    const ratingText = p.rating != null ? ` · 评分 ${p.rating}` : '';
+    const distanceText =
+      p.distanceLabel?.trim() || `距会场约 ${formatKm(p.distanceM)}`;
     return {
       name: p.name,
-      note: `约 ${band}/晚 · 距会场 ${formatKm(p.distanceM)}${ratingText} · ${nightLabel} · ${roomHint}`,
-      bookingHint: '腾讯地图 / 携程',
+      note: `起步约 ¥${p.avgPrice ?? band}/晚 · ${distanceText}${ratingText} · ${nightLabel} · ${roomHint}`,
+      bookingHint: '携程 / 美团',
     };
   });
 }
@@ -111,6 +113,24 @@ export function nightlifeFromRanked(
     name: p.name,
     note: formatNightlifeNote(p),
   }));
+}
+
+/** 酒店名单与排序以地图排序为准；LLM 仅润色同名酒店的 note */
+export function mergeRankedHotelsWithLlmPolish(
+  ranked: TravelGuideHotelItem[],
+  llmHotels: TravelGuideHotelItem[] | undefined,
+): TravelGuideHotelItem[] {
+  if (!llmHotels?.length) return ranked;
+  const llmByName = new Map(llmHotels.map((h) => [h.name, h]));
+  return ranked.map((hotel) => {
+    const polished = llmByName.get(hotel.name);
+    if (!polished) return hotel;
+    return {
+      name: hotel.name,
+      note: polished.note?.trim() ? polished.note : hotel.note,
+      bookingHint: polished.bookingHint?.trim() || hotel.bookingHint,
+    };
+  });
 }
 
 export function mapCandidatesToLlmFallback(
@@ -153,7 +173,7 @@ export function mapCandidatesToLlmFallback(
     nightlifeSpots: nightlifeFromRanked(ranked.nightlife),
     tipItems: [
       '以上交通、住宿与散场点位来自腾讯地图实时检索，并结合预算与距离智能排序。',
-      '散场后优先选择仍在营业的酒吧 / 夜宵点；凌晨离场注意安全结伴。',
+      '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
       '酒店与餐厅评分以地图平台展示为准，下单前建议在 OTA 再确认价格与房态。',
     ],
   };

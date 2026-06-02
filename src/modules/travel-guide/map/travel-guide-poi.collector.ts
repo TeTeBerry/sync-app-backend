@@ -4,22 +4,17 @@ import type { GenerateTravelGuideDto } from '../dto/generate-travel-guide.dto';
 import { TravelGuideGeoCacheService } from './travel-guide-geo-cache.service';
 import { getAllHotPathFallbackPois } from './travel-guide-hot-path-pois.data';
 import { destinationCityFromActivityLocation } from './travel-guide-intercity.util';
+import {
+  AFTERPARTY_SEARCH_KEYWORD,
+  isAfterpartyMapPoi,
+} from './travel-guide-afterparty.constants';
 import type {
   MapPoiKind,
   RawMapPoi,
   TravelGuideMapContext,
 } from './travel-guide-map.types';
 
-const HOTEL_KEYWORDS = ['酒店', '宾馆'];
 const PARKING_KEYWORDS = ['停车场', '停车'];
-const NIGHTLIFE_KEYWORDS = [
-  '酒吧',
-  '夜店',
-  'Livehouse',
-  '夜宵',
-  '烧烤',
-  '便利店',
-];
 
 const DEFAULT_EVENT_END_HOUR = 23.5;
 /** Align with default `TENCENT_MAP_QPS` / `TENCENT_MAP_MAX_CONCURRENT`. */
@@ -87,7 +82,11 @@ export class TravelGuidePoiCollector {
         this.logger.warn(
           `using hot-path fallback POI set for activity ${activity.legacyId} (${venue.title})`,
         );
-        pois = fallback;
+        pois = fallback.filter(
+          (p) =>
+            p.kind !== 'hotel' &&
+            (!p.kind.startsWith('nightlife') || isAfterpartyMapPoi(p)),
+        );
       } else {
         this.logger.warn(`no POIs near venue: ${venue.title}`);
         return null;
@@ -114,10 +113,7 @@ export class TravelGuidePoiCollector {
 type PoiSearchTask = { keyword: string; kind: MapPoiKind };
 
 function buildPoiSearchTasks(selfDrive: boolean): PoiSearchTask[] {
-  const tasks: PoiSearchTask[] = HOTEL_KEYWORDS.map((keyword) => ({
-    keyword,
-    kind: 'hotel' as const,
-  }));
+  const tasks: PoiSearchTask[] = [];
   if (selfDrive) {
     tasks.push(
       ...PARKING_KEYWORDS.map((keyword) => ({
@@ -126,14 +122,10 @@ function buildPoiSearchTasks(selfDrive: boolean): PoiSearchTask[] {
       })),
     );
   }
-  tasks.push(
-    ...NIGHTLIFE_KEYWORDS.map((keyword) => ({
-      keyword,
-      kind: (/酒吧|夜店|live/i.test(keyword)
-        ? 'nightlife_club'
-        : 'nightlife_food') as MapPoiKind,
-    })),
-  );
+  tasks.push({
+    keyword: AFTERPARTY_SEARCH_KEYWORD,
+    kind: 'nightlife_food',
+  });
   return tasks;
 }
 

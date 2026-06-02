@@ -121,16 +121,12 @@ function buildNightlife(
   const city = venueCity(location);
   return [
     {
-      name: `${city}电音 Afterparty / 酒吧`,
-      note: '散场后 1–2 小时内最热闹，提前看官方群或小红书组局。',
+      name: `${city}场馆周边夜宵`,
+      note: '火锅、烧烤、砂锅粥等；散场后 1–2 小时内仍营业的优先，结伴出行注意安全。',
     },
     {
-      name: '场馆周边夜宵街',
-      note: '烧烤、粉面、便利店补给；结伴出行注意安全。',
-    },
-    {
-      name: '24h 便利店 / 咖啡店',
-      note: '适合等早班接驳或临时休息，注意财物与电量。',
+      name: '深夜食堂 / 大排档',
+      note: '适合散场后补充能量，提前在地图确认营业时间。',
     },
   ];
 }

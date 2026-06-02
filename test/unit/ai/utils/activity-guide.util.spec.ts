@@ -15,6 +15,8 @@ describe('activity-guide.util', () => {
     expect(isTravelGuideIntent('帮我规划行程')).toBe(true);
     expect(isTravelGuideIntent('规划行程')).toBe(true);
     expect(isTravelGuideIntent('帮我生成出行攻略')).toBe(true);
+    expect(isTravelGuideIntent('规划')).toBe(true);
+    expect(isTravelGuideIntent('攻略')).toBe(true);
     expect(isTravelGuideIntent('组队队友')).toBe(false);
   });
 

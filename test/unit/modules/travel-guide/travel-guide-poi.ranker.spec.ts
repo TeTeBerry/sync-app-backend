@@ -53,6 +53,26 @@ describe('TravelGuidePoiRanker', () => {
     expect(ranked.hotels.map((h) => h.name)).toEqual(['高分酒店']);
   });
 
+  it('picks different hotels for economy vs comfort when prices span tiers', () => {
+    const pois = [
+      hotel({ name: '近档中价', distanceM: 400, rating: 4.5, avgPrice: 380 }),
+      hotel({ name: '远经济型', distanceM: 900, rating: 4.6, avgPrice: 220 }),
+      hotel({ name: '近豪华', distanceM: 500, rating: 4.7, avgPrice: 780 }),
+    ];
+    const economy = ranker.rank(
+      { ...baseCtx, pois },
+      { departure: '上海', headcount: 2, budgetTier: 'economy' },
+    );
+    const comfort = ranker.rank(
+      { ...baseCtx, pois },
+      { departure: '上海', headcount: 2, budgetTier: 'comfort' },
+    );
+
+    expect(economy.hotels[0]?.name).toBe('远经济型');
+    expect(comfort.hotels[0]?.name).toBe('近豪华');
+    expect(economy.hotels[0]?.name).not.toBe(comfort.hotels[0]?.name);
+  });
+
   it('prefers closer hotel when scores are similar', () => {
     const ranked = ranker.rank(
       {
@@ -82,14 +102,45 @@ describe('TravelGuidePoiRanker', () => {
     expect(ranked.hotels[0]?.name).toBe('近');
   });
 
-  it('boosts late-night venues for nightlife', () => {
+  it('uses curated hotels when provided', () => {
+    const curated = [
+      {
+        id: 'c1',
+        name: '库内酒店A',
+        address: '',
+        lat: 0,
+        lng: 0,
+        category: '酒店',
+        distanceM: 1300,
+        distanceLabel: '步行1.3公里',
+        avgPrice: 319,
+        rating: 4.4,
+        kind: 'hotel' as const,
+        keyword: 'curated',
+        lateNightFriendly: false,
+        score: 1,
+        scoreBreakdown: { distance: 1, rating: 1, budget: 1, lateNight: 0 },
+      },
+    ];
+    const ranked = ranker.rank(
+      {
+        ...baseCtx,
+        pois: [hotel({ name: '地图酒店', distanceM: 100, rating: 5 })],
+      },
+      { departure: '上海', headcount: 2, budgetTier: 'standard' },
+      { curatedHotels: curated },
+    );
+    expect(ranked.hotels.map((h) => h.name)).toEqual(['库内酒店A']);
+  });
+
+  it('boosts late-night 夜宵 venues and ignores non-夜宵 nightlife', () => {
     const ranked = ranker.rank(
       {
         ...baseCtx,
         pois: [
           {
             id: '1',
-            name: '普通餐厅',
+            name: '普通夜宵店',
             address: '',
             lat: 22.51,
             lng: 114.01,
@@ -101,16 +152,29 @@ describe('TravelGuidePoiRanker', () => {
           },
           {
             id: '2',
+            name: '深夜火锅',
+            address: '',
+            lat: 22.51,
+            lng: 114.01,
+            category: '美食:火锅',
+            distanceM: 500,
+            kind: 'nightlife_food',
+            keyword: '夜宵',
+            lateNightFriendly: true,
+            rating: 4.2,
+          },
+          {
+            id: '3',
             name: 'Afterparty 酒吧',
             address: '',
             lat: 22.51,
             lng: 114.01,
             category: '娱乐:酒吧',
-            distanceM: 500,
+            distanceM: 200,
             kind: 'nightlife_club',
             keyword: '酒吧',
             lateNightFriendly: true,
-            rating: 4.2,
+            rating: 4.8,
           },
         ],
       },
@@ -121,6 +185,8 @@ describe('TravelGuidePoiRanker', () => {
       },
     );
 
-    expect(ranked.nightlife[0]?.name).toBe('Afterparty 酒吧');
+    expect(ranked.nightlife).toHaveLength(2);
+    expect(ranked.nightlife[0]?.name).toBe('深夜火锅');
+    expect(ranked.nightlife.some((p) => p.name.includes('酒吧'))).toBe(false);
   });
 });

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { GenerateTravelGuideDto } from '../dto/generate-travel-guide.dto';
 import { budgetTierHotelNightRanges } from '../domain/parse-activity-days.util';
 import type { TravelGuideBudgetTier } from '../domain/travel-guide.types';
+import { isAfterpartyMapPoi } from './travel-guide-afterparty.constants';
 import type {
   RankedMapPoi,
   RawMapPoi,
@@ -28,21 +29,23 @@ export class TravelGuidePoiRanker {
   rank(
     ctx: TravelGuideMapContext,
     dto: GenerateTravelGuideDto,
-    minHotelRating = DEFAULT_MIN_HOTEL_RATING,
+    options?: {
+      curatedHotels?: RankedMapPoi[];
+      minHotelRating?: number;
+    },
   ): TravelGuideRankedCandidates {
     const budgetTier = dto.budgetTier;
     const ranges = budgetTierHotelNightRanges(budgetTier);
+    const minHotelRating = options?.minHotelRating ?? DEFAULT_MIN_HOTEL_RATING;
 
-    const hotels = this.rankList(
-      ctx.pois.filter((p) => p.kind === 'hotel'),
-      {
-        budgetTier,
-        minRating: minHotelRating,
-        preferLateNight: false,
-        eventEndHour: ctx.eventEndHour,
-        isHotel: true,
-      },
-    ).slice(0, 6);
+    const hotels = options?.curatedHotels?.length
+      ? options.curatedHotels.slice(0, 6)
+      : this.pickHotelsForBudget(
+          ctx.pois.filter((p) => p.kind === 'hotel'),
+          budgetTier,
+          minHotelRating,
+          ctx.eventEndHour,
+        );
 
     const parking = this.rankList(
       ctx.pois.filter((p) => p.kind === 'parking'),
@@ -55,16 +58,13 @@ export class TravelGuidePoiRanker {
       },
     ).slice(0, 4);
 
-    const nightlife = this.rankList(
-      ctx.pois.filter((p) => p.kind.startsWith('nightlife')),
-      {
-        budgetTier,
-        minRating: 3.5,
-        preferLateNight: true,
-        eventEndHour: ctx.eventEndHour,
-        isHotel: false,
-      },
-    ).slice(0, 8);
+    const nightlife = this.rankList(ctx.pois.filter(isAfterpartyMapPoi), {
+      budgetTier,
+      minRating: 3.5,
+      preferLateNight: true,
+      eventEndHour: ctx.eventEndHour,
+      isHotel: false,
+    }).slice(0, 8);
 
     return {
       hotels,
@@ -106,7 +106,7 @@ export class TravelGuidePoiRanker {
           : 0;
 
         const score = opts.isHotel
-          ? 0.42 * distance + 0.33 * rating + 0.25 * budget
+          ? 0.32 * distance + 0.28 * rating + 0.4 * budget
           : opts.preferLateNight
             ? 0.38 * distance + 0.27 * rating + 0.35 * lateNight
             : 0.55 * distance + 0.45 * rating;
@@ -118,6 +118,64 @@ export class TravelGuidePoiRanker {
         };
       })
       .sort((a, b) => b.score - a.score || a.distanceM - b.distanceM);
+  }
+
+  /** 按预算档位选酒店：优先落在价位区间内的 POI，经济/豪华再按估价升降序补足 */
+  private pickHotelsForBudget(
+    pois: RawMapPoi[],
+    tier: TravelGuideBudgetTier,
+    minRating: number,
+    eventEndHour: number,
+  ): RankedMapPoi[] {
+    const scored = this.rankList(pois, {
+      budgetTier: tier,
+      minRating,
+      preferLateNight: false,
+      eventEndHour,
+      isHotel: true,
+    });
+
+    const [min, max] = TIER_PRICE_RANGE[tier];
+    const withPrice = scored.map((p) => ({
+      poi: p,
+      price: estimateHotelPrice(p, tier),
+    }));
+
+    const inBand = withPrice.filter((x) => x.price >= min && x.price <= max);
+    const below = withPrice.filter((x) => x.price < min);
+    const above = withPrice.filter((x) => x.price > max);
+
+    const sortBucket = (
+      bucket: typeof withPrice,
+      priceOrder: 'asc' | 'desc' | 'none',
+    ) =>
+      [...bucket].sort((a, b) => {
+        if (b.poi.score !== a.poi.score) return b.poi.score - a.poi.score;
+        if (priceOrder === 'asc') return a.price - b.price;
+        if (priceOrder === 'desc') return b.price - a.price;
+        return a.poi.distanceM - b.poi.distanceM;
+      });
+
+    const ordered =
+      tier === 'economy'
+        ? [
+            ...sortBucket(inBand, 'asc'),
+            ...sortBucket(below, 'desc'),
+            ...sortBucket(above, 'asc'),
+          ]
+        : tier === 'comfort'
+          ? [
+              ...sortBucket(inBand, 'desc'),
+              ...sortBucket(above, 'asc'),
+              ...sortBucket(below, 'desc'),
+            ]
+          : [
+              ...sortBucket(inBand, 'none'),
+              ...sortBucket(below, 'desc'),
+              ...sortBucket(above, 'asc'),
+            ];
+
+    return ordered.map((x) => x.poi).slice(0, 6);
   }
 }
 
@@ -155,7 +213,7 @@ function lateNightScore(poi: RawMapPoi, eventEndHour: number): number {
   let score = poi.lateNightFriendly ? 0.85 : 0.35;
   if (
     eventEndHour >= 22 &&
-    /酒吧|夜店|club|live/i.test(`${poi.name} ${poi.category}`)
+    /夜宵|火锅|烧烤|砂锅|粥|串|宵夜/.test(`${poi.name} ${poi.category}`)
   ) {
     score = Math.min(1, score + 0.15);
   }

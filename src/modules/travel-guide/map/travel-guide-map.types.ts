@@ -14,6 +14,8 @@ export interface RawMapPoi {
   lng: number;
   category: string;
   distanceM: number;
+  /** 运营维护酒店等场景下的可读距离文案 */
+  distanceLabel?: string;
   tel?: string;
   rating?: number;
   /** 餐饮人均等（元），酒店通常缺失 */

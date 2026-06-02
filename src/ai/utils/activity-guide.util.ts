@@ -11,6 +11,12 @@ import { composeReply } from './reply-text.util';
 export const AI_GUIDE_SHORTCUT_TEXT = 'AI攻略';
 
 const TRAVEL_GUIDE_INTENT_PATTERNS: RegExp[] = [
+  /^规划$/,
+  /^规划一下$/,
+  /^做个?规划$/,
+  /^安排(一下)?(行程|出行)$/,
+  /^出行规划$/,
+  /^要?(一份)?攻略$/,
   /帮我规划(一下)?行程/,
   /^规划(一下)?行程$/,
   /出行攻略/,
@@ -74,7 +80,7 @@ export function buildActivityGuideReply(activity?: Activity | null): string {
         `🎤 艺人阵容：${artistLine}`,
         '',
         '你还可以：',
-        '· 说「帮我规划行程」或点「AI攻略」生成交通/住宿/散场攻略长图',
+        '· 说「上海2人舒适自驾」或「帮我规划行程」生成交通/住宿/散场攻略长图；点「AI攻略」可用表单',
         '· 点「组队队友 / 拼卡」等找现有组队帖',
         '· 点「自己发帖」发布招募',
       ]);
@@ -90,7 +96,7 @@ export function buildActivityGuideReply(activity?: Activity | null): string {
   }
   lines.push(
     '',
-    '说「帮我规划行程」或点「AI攻略」可生成出行攻略；找队友请点「组队队友」等快捷按钮。',
+    '一句话说出出发地、人数、预算即可生成攻略；点「AI攻略」可用表单。找队友请点「组队队友」等快捷按钮。',
   );
   return composeReply(lines);
 }

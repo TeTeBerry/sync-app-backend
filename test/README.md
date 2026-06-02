@@ -21,6 +21,18 @@ test/unit/
 
 Imports use the `@src/...` alias (see `package.json` → `jest.moduleNameMapper`).
 
+### 组队发帖相关用例
+
+| 文件 | 覆盖流程 |
+|------|----------|
+| `modules/partner/application/buddy-post-write-flow.spec.ts` | 活动详情/助手表单 → `POST /posts` → `PostWriteService` |
+| `modules/partner/application/post-write.service.spec.ts` | 写帖风控、Chroma、活动帖上限 |
+| `modules/partner/utils/post-content-type.util.spec.ts` | `#组队` / `#拼房` 等 → `contentTypes` |
+| `ai/buddy/create-post-from-chat.use-case.spec.ts` | WS 聊天：自己发帖、确认、已有帖 |
+| `ai/buddy/create-post-from-chat-buddy-publish.spec.ts` | WS 聊天：解析就绪发帖、风控拒绝 |
+| `ai/intent/intent-router.rules.spec.ts` | 意图路由（发帖 / 查帖 / 攻略快捷回复） |
+| `ai/ai.service.buddy-flow.spec.ts` | `AiService` 端到轮次（推荐门、确认发布） |
+
 ## Commands
 
 ```bash

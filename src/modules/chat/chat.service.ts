@@ -3,7 +3,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import type { ChatMessageRichMetadata } from '../../ai/presentation/chat-message-metadata.util';
-import { migrateConversationStateFromHistory } from '../../ai/conversation';
 import {
   ChatMessageDto,
   CONVERSATION_STATE_VERSION,
@@ -169,45 +168,12 @@ export class ChatService {
       .filter((item): item is ChatMessageDto => Boolean(item));
   }
 
+  /** Stateless chat: only the current request messages are used (stored history ignored). */
   mergeChatHistory(
-    stored: ChatMessageDto[],
+    _stored: ChatMessageDto[],
     incoming: ChatMessageDto[],
   ): ChatMessageDto[] {
-    const storedNorm = this.normalizeHistory(stored);
-    const incomingNorm = this.normalizeHistory(incoming);
-
-    if (!storedNorm.length) return incomingNorm;
-    if (!incomingNorm.length) return storedNorm;
-
-    const prefixMatches = storedNorm.every(
-      (message, index) =>
-        incomingNorm[index]?.role === message.role &&
-        incomingNorm[index]?.content === message.content,
-    );
-    if (prefixMatches && incomingNorm.length >= storedNorm.length) {
-      return incomingNorm;
-    }
-
-    const lastIncomingUser = [...incomingNorm]
-      .reverse()
-      .find((message) => message.role === 'user');
-    if (!lastIncomingUser) return storedNorm;
-
-    const lastStored = storedNorm[storedNorm.length - 1];
-    if (lastStored?.role === 'assistant') {
-      return [...storedNorm, lastIncomingUser];
-    }
-    if (
-      lastStored?.role === 'user' &&
-      lastStored.content === lastIncomingUser.content
-    ) {
-      return storedNorm;
-    }
-    if (lastStored?.role === 'user') {
-      return [...storedNorm.slice(0, -1), lastIncomingUser];
-    }
-
-    return [...storedNorm, lastIncomingUser];
+    return this.normalizeHistory(incoming);
   }
 
   truncateToRecentTurns(
@@ -260,35 +226,10 @@ export class ChatService {
   }
 
   async getSession(sessionId: string): Promise<ChatSessionDto> {
-    const doc = await this.chatModel.findOne({ sessionId }).lean();
-    const history = this.normalizeHistory(
-      doc?.history as Array<Partial<ChatMessageDto>> | undefined,
-    );
-    let conversationState = this.normalizeConversationState(
-      doc?.conversationState,
-    );
-
-    if (!conversationState.flow && history.length > 0) {
-      const migrated = migrateConversationStateFromHistory(history);
-      if (migrated.flow !== 'idle') {
-        conversationState = migrated;
-        await this.chatModel.findOneAndUpdate(
-          { sessionId },
-          {
-            sessionId,
-            userId: doc?.userId,
-            conversationState,
-          },
-          { upsert: true, new: true, setDefaultsOnInsert: true },
-        );
-      }
-    }
-
     return {
       sessionId,
-      userId: doc?.userId,
-      history,
-      conversationState,
+      history: [],
+      conversationState: createIdleState(),
     };
   }
 
@@ -312,7 +253,8 @@ export class ChatService {
     );
   }
 
-  async saveTurn(params: {
+  /** Stateless: assign message id only; do not persist transcript or flow state. */
+  async saveTurn(_params: {
     sessionId: string;
     userId?: string;
     messages: ChatMessageDto[];
@@ -320,40 +262,6 @@ export class ChatService {
     conversationState?: ConversationState;
     assistantMetadata?: Omit<ChatMessageRichMetadata, 'imageContext'>;
   }): Promise<string> {
-    const messageId = uuidv4();
-    const stored = await this.getSession(params.sessionId);
-    const merged = this.mergeChatHistory(stored.history, params.messages);
-    const reply = params.assistantReply.trim();
-    const assistantMetadata = params.assistantMetadata ?? {};
-    const history =
-      reply ||
-      assistantMetadata.recommendedPosts?.length ||
-      assistantMetadata.recommendedActivity ||
-      assistantMetadata.createdPost ||
-      assistantMetadata.suggestedReplies?.length
-        ? [
-            ...merged,
-            {
-              role: 'assistant' as const,
-              content: reply,
-              ...assistantMetadata,
-            },
-          ]
-        : merged;
-
-    await this.chatModel.findOneAndUpdate(
-      { sessionId: params.sessionId },
-      {
-        sessionId: params.sessionId,
-        userId: params.userId,
-        history,
-        ...(params.conversationState
-          ? { conversationState: params.conversationState }
-          : {}),
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
-    );
-
-    return messageId;
+    return uuidv4();
   }
 }

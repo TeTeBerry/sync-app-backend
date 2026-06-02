@@ -1,8 +1,5 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
-import {
-  CHAT_LLM_CONTEXT_TURNS,
-  ChatService,
-} from '../modules/chat/chat.service';
+import { ChatService } from '../modules/chat/chat.service';
 import { AiStreamEvent } from '../shared/chat';
 import { ChatRequestDto } from './presentation/chat-request.dto';
 import { DeterministicReplyService } from './orchestration/deterministic-reply.service';
@@ -68,14 +65,9 @@ export class AiService {
     const requestId = turnContext?.requestId ?? 'unknown';
     const sessionId = this.chatService.resolveSessionId(dto.sessionId);
     const stored = await this.chatService.getSession(sessionId);
-    const mergedMessages = this.chatService.mergeChatHistory(
-      stored.history,
-      dto.messages ?? [],
-    );
-    const fullMessages = mergedMessages;
     const contextMessages = this.chatService.truncateToRecentTurns(
-      mergedMessages,
-      CHAT_LLM_CONTEXT_TURNS,
+      this.chatService.mergeChatHistory([], dto.messages ?? []),
+      1,
     );
 
     if (!contextMessages.length) {
@@ -130,7 +122,7 @@ export class AiService {
 
     let conversationState = this.agenticReplyService.resolveConversationState(
       stored.conversationState,
-      contextMessages.slice(0, -1),
+      [],
     );
 
     logAiTurn(this.logger, {
@@ -167,7 +159,7 @@ export class AiService {
       const messageId = await this.chatService.saveTurn({
         sessionId,
         userId: dto.actor.clientUserId,
-        messages: fullMessages,
+        messages: contextMessages,
         assistantReply,
         conversationState,
         assistantMetadata: extractAssistantMessageMetadata(turnResult.events),

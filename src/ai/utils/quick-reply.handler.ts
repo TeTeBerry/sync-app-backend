@@ -27,7 +27,8 @@ export async function buildQuickReplyResponse(
       return composeReply([
         '🗺️ 好的，我来帮你规划出行攻略。',
         '',
-        '请点下方「AI攻略」填写出发地、人数、预算与是否自驾，即可生成可分享的长图。',
+        '直接说出出发地、人数、预算（经济/舒适/豪华）和是否自驾即可，例如：上海2人舒适自驾住2晚。',
+        '也可点下方「AI攻略」用表单填写。',
         activity?.name ? `当前活动：${activity.name.trim()}` : '',
       ]);
     }
