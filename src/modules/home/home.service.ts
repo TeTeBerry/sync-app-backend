@@ -3,6 +3,10 @@ import type { RequestActor } from '../../common/auth/request-actor.types';
 import { RedisService } from '../../redis/redis.service';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityRegistrationService } from '../activity/registration/activity-registration.service';
+import { PostService } from '../partner/post.service';
+
+/** Matches frontend `HOME_POPULAR_POSTS_PERSIST_LIMIT`. */
+const HOME_POPULAR_POSTS_LIMIT = 8;
 
 @Injectable()
 export class HomeService {
@@ -10,12 +14,14 @@ export class HomeService {
     private readonly activityService: ActivityService,
     private readonly registrationService: ActivityRegistrationService,
     private readonly redisService: RedisService,
+    private readonly postService: PostService,
   ) {}
 
   async getSummary(actor: RequestActor) {
-    const [activities, registeredLegacyIds] = await Promise.all([
+    const [activities, registeredLegacyIds, popularPosts] = await Promise.all([
       this.activityService.findAll(),
       this.registrationService.listRegisteredLegacyIds(actor),
+      this.postService.listPopular(HOME_POPULAR_POSTS_LIMIT, actor),
     ]);
 
     const signupEvents = activities.map((item) => ({
@@ -51,6 +57,7 @@ export class HomeService {
     return {
       signupEvents,
       heat,
+      popularPosts,
     };
   }
 }
