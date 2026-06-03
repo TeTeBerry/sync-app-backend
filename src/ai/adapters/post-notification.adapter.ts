@@ -35,12 +35,14 @@ export class PostNotificationAdapter implements IPostNotificationPort {
     postId: string,
     actorUserId: string,
     authorName?: string,
+    applicationMessage?: string,
   ): void {
     void this.noticeAgent.notifyApplication(
       post,
       postId,
       actorUserId,
       authorName,
+      applicationMessage,
     );
   }
 

@@ -21,6 +21,16 @@ export class PostApplication {
   @Prop()
   message?: string;
 
+  /** Light apply when applicant has no recruiting post yet. */
+  @Prop()
+  lightDepartureCity?: string;
+
+  @Prop()
+  lightTripDays?: number;
+
+  @Prop()
+  lightGenderPref?: string;
+
   /** Set when post owner opens chat from profile post list ("沟通"). */
   @Prop()
   ownerOpenedChatAt?: Date;

@@ -2,6 +2,7 @@ import {
   buildMatchCriteriaForSearch,
   buildRerankUserNeed,
   criteriaFromPostRecord,
+  criteriaToEmbeddingText,
   inferDepartureCityFromText,
   inferIntentsFromPost,
   mergeBuddySearchIntents,
@@ -187,5 +188,30 @@ describe('buddy-match-criteria.util', () => {
       expect(intents).toContain('carpool');
       expect(intents).toContain('lodging');
     });
+  });
+
+  it('includes stored profile fields in criteria and embedding fallback', () => {
+    const criteria = buildMatchCriteriaForSearch({
+      activityLegacyId: 4,
+      profileCity: '上海',
+      profileFavorGenres: ['Techno', 'House'],
+      profileBudgetLevel: 'medium',
+      profileLikeMate: true,
+      userInput: '匹配队友',
+    });
+
+    expect(criteria.profileFavorGenres).toEqual(['Techno', 'House']);
+    expect(criteria.profileBudgetLevel).toBe('medium');
+    expect(criteria.profileLikeMate).toBe(true);
+
+    const embed = criteriaToEmbeddingText(criteria);
+    expect(embed).toContain('上海');
+    expect(embed).toContain('Techno');
+    expect(embed).toContain('舒适');
+    expect(embed).toContain('找搭子');
+
+    const rerank = buildRerankUserNeed(criteria);
+    expect(rerank).toContain('偏好曲风');
+    expect(rerank).toContain('住宿预算');
   });
 });

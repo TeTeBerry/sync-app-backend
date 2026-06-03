@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type { RequestActor } from '../../common/auth/request-actor.types';
@@ -8,6 +12,13 @@ import {
 } from '../../database/schemas/content-report.schema';
 import { AccountRiskService } from '../account-risk/account-risk.service';
 import { CreateReportDto } from './dto/create-report.dto';
+import type { ReportTargetType } from '../../database/schemas/content-report.schema';
+
+export type ReportStatusResult = {
+  reported: boolean;
+  category?: string;
+  createdAt?: string;
+};
 
 @Injectable()
 export class ReportService {
@@ -51,5 +62,38 @@ export class ReportService {
       }
       throw error;
     }
+  }
+
+  async getStatus(
+    targetType: ReportTargetType,
+    targetId: string,
+    actor: RequestActor,
+  ): Promise<ReportStatusResult> {
+    const reporterUserId = actor.resolvedUserId;
+    const trimmedId = targetId.trim();
+    if (!trimmedId) {
+      throw new NotFoundException('目标不存在');
+    }
+
+    const row = await this.reportModel
+      .findOne({
+        reporterUserId,
+        targetType,
+        targetId: trimmedId,
+      })
+      .select('category createdAt')
+      .lean();
+
+    if (!row) {
+      return { reported: false };
+    }
+
+    const createdAt = (row as { createdAt?: Date }).createdAt;
+
+    return {
+      reported: true,
+      category: row.category,
+      createdAt: createdAt?.toISOString(),
+    };
   }
 }

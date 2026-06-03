@@ -21,13 +21,22 @@ import type { BuddyMatchCriteria } from '../match/buddy-match.types';
 import { MatchContextService } from './match-context.service';
 import { PostMatchRerankService } from './post-match-rerank.service';
 import {
+  computeProfileBoost,
+  profileVectorWeightBoost,
   type MatchFilterContext,
+  type MatchRankingWeights,
   type RankablePostCandidate,
   shouldFilterCandidate,
+  buildMatchReason,
 } from '../match/match-ranking.util';
 import type { UserMatchProfile } from '../match/match-ranking.util';
 import type { MatchedPostItem } from '../agents/agent.types';
-import { BUDDY_RECOMMEND_LIMIT } from '../match/buddy-match.constants';
+import {
+  BUDDY_RECOMMEND_LIMIT,
+  MATCH_PROFILE_RULE_WEIGHT,
+  MATCH_PROFILE_VECTOR_WEIGHT,
+  MATCH_RERANK_SLOT_WEIGHT,
+} from '../match/buddy-match.constants';
 
 export interface MatchSearchParams {
   criteria: BuddyMatchCriteria;
@@ -138,6 +147,7 @@ export class MatchService {
           requesterUserId,
           actor: params.actor,
           excludePostIds,
+          rankingWeights: params.rankingWeights,
         },
       );
       items = ranked.items;
@@ -207,8 +217,10 @@ export class MatchService {
       requesterUserId?: string;
       actor?: RequestActor;
       excludePostIds: ReadonlySet<string>;
+      rankingWeights?: MatchRankingWeights;
     },
   ): Promise<{ items: MatchedPostItem[]; rerankFailed: boolean }> {
+    const rankingWeights = isolation.rankingWeights;
     const postById = new Map(
       mongoCandidates.map((post) => [String(post._id), post]),
     );
@@ -225,6 +237,7 @@ export class MatchService {
       postId: string;
       snippet: string;
       distance?: number;
+      profileDistance?: number;
       chromaRank: number;
       snapshot: ReturnType<typeof postRecordToFitSnapshot>;
     };
@@ -274,6 +287,7 @@ export class MatchService {
         postId: match.postId,
         snippet: this.buildSnippet(snippetSource),
         distance: match.distance,
+        profileDistance: match.profileDistance,
         chromaRank,
         snapshot,
       });
@@ -317,14 +331,32 @@ export class MatchService {
       const tie = applyLightTieBreak(criteria, item.snapshot);
       const rerankRank = orderIndex.get(item.postId) ?? prepared.length;
       const isTopRerank = rerankRank === 0 && !rerankFailed;
+      const enrichedCandidate = enrichedById.get(item.postId);
+      const profileBoost =
+        context?.profile && enrichedCandidate
+          ? computeProfileBoost(
+              context.profile,
+              enrichedCandidate,
+              rankingWeights,
+            )
+          : 0;
+      const profileVectorBoost =
+        profileVectorWeightBoost(
+          item.profileDistance,
+          rankingWeights?.profileVector,
+        ) - 1;
 
       const matchReason =
+        (enrichedCandidate
+          ? buildMatchReason(enrichedCandidate, context?.profile, criteria)
+          : undefined) ??
         buildPostFitMatchReason({
           matchedTags: tie.matchedTags,
           departureCity: criteria.departureCity,
           departureCityExact: tie.departureCityExact,
           topRerank: isTopRerank,
-        }) ?? tie.matchReason;
+        }) ??
+        tie.matchReason;
 
       return {
         postId: item.postId,
@@ -332,16 +364,26 @@ export class MatchService {
         distance: item.distance,
         rerankRank,
         tieBoost: tie.boost,
+        profileBoost,
+        profileVectorBoost,
         matchReason,
       };
     });
 
     withTieBreak.sort((left, right) => {
+      const slotScore = (item: (typeof withTieBreak)[number]) =>
+        (prepared.length - item.rerankRank) * MATCH_RERANK_SLOT_WEIGHT +
+        item.tieBoost +
+        item.profileBoost * MATCH_PROFILE_RULE_WEIGHT +
+        (item.profileVectorBoost - 1) * MATCH_PROFILE_VECTOR_WEIGHT;
+
+      const leftScore = slotScore(left);
+      const rightScore = slotScore(right);
+      if (rightScore !== leftScore) return rightScore - leftScore;
+
       if (left.rerankRank !== right.rerankRank) {
         return left.rerankRank - right.rerankRank;
       }
-      if (right.tieBoost !== left.tieBoost)
-        return right.tieBoost - left.tieBoost;
       const leftDistance = left.distance ?? Number.POSITIVE_INFINITY;
       const rightDistance = right.distance ?? Number.POSITIVE_INFINITY;
       return leftDistance - rightDistance;

@@ -25,4 +25,8 @@ export interface BuddyMatchCriteria {
   excludePostIds?: string[];
   /** AI shortcut chip the user tapped (找拼车 / 找拼房 / 找队友 …) */
   searchShortcutTag?: string;
+  /** Persisted user profile — enriches embedding / rerank when no recruiting post body */
+  profileFavorGenres?: string[];
+  profileBudgetLevel?: string;
+  profileLikeMate?: boolean;
 }

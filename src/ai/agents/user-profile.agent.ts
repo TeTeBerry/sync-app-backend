@@ -78,6 +78,30 @@ export class UserProfileAgent {
     private readonly userService: UserService,
   ) {}
 
+  /** Load persisted user profile for match ranking (no LLM). */
+  async getStoredMatchProfile(
+    actor: RequestActor,
+  ): Promise<UserProfileSyncResult | null> {
+    if (!actor.clientUserId.trim()) return null;
+    try {
+      const me = await this.userService.getMe(actor);
+      const profile: UserMatchProfile = {
+        city: me.city,
+        favorGenres: me.favorGenres,
+        likeMate: me.likeMate,
+        budgetLevel: me.budgetLevel,
+      };
+      if (!hasUserMatchProfileSignal(profile)) return null;
+      return {
+        profile,
+        weights: this.getMatchWeights(profile),
+        updated: false,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   getMatchWeights(profile?: UserMatchProfile): MatchRankingWeights {
     const weights = { ...DEFAULT_MATCH_RANKING_WEIGHTS };
 

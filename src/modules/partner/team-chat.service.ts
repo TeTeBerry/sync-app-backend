@@ -33,6 +33,7 @@ import { pickBestMatchingPostRecord } from './utils/buddy-post-match.util';
 import type { TeamChatMessageDto } from './dto/team-chat-message.dto';
 import type { TeamChatSessionDto } from './dto/team-chat-session.dto';
 import { PostMapper } from './post.mapper';
+import { buddyPreviewFromApplicationRow } from './light-apply.util';
 import {
   IPostRepository,
   POST_REPOSITORY,
@@ -430,6 +431,19 @@ export class TeamChatService {
       if (recruiting) {
         return PostMapper.toBuddyPreview(recruiting);
       }
+
+      const application = await this.applicationModel
+        .findOne({
+          postId: String(targetPost._id),
+          userId: applicantUserId.trim(),
+        })
+        .select('lightDepartureCity lightTripDays lightGenderPref')
+        .lean();
+      const fromLight = buddyPreviewFromApplicationRow(
+        application ?? undefined,
+      );
+      if (fromLight) return fromLight;
+
       return {
         body: '想一起组队参加活动，期待与你同行～',
         tags: ['#组队'],
@@ -841,7 +855,17 @@ export class TeamChatService {
       return map;
     }
 
+    const postId = String(targetPost._id);
     const uniqueIds = [...new Set(applicantUserIds.map((id) => id.trim()))];
+
+    const lightApplications = await this.applicationModel
+      .find({ postId, userId: { $in: uniqueIds } })
+      .select('userId lightDepartureCity lightTripDays lightGenderPref')
+      .lean();
+    const lightByUser = new Map(
+      lightApplications.map((row) => [row.userId, row]),
+    );
+
     await Promise.all(
       uniqueIds.map(async (userId) => {
         const post = await this.findBestRecruitingPostForUser(
@@ -850,6 +874,13 @@ export class TeamChatService {
         );
         if (post) {
           map.set(userId, PostMapper.toBuddyPreview(post));
+          return;
+        }
+        const fromLight = buddyPreviewFromApplicationRow(
+          lightByUser.get(userId),
+        );
+        if (fromLight) {
+          map.set(userId, fromLight);
         }
       }),
     );

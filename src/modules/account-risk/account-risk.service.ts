@@ -30,11 +30,18 @@ import {
   shouldEscalateAccountRisk,
 } from './account-risk.policy';
 
+export type AccountRiskReasonCode = 'scalper' | 'content' | 'reports';
+
 export interface AccountRiskPublicStatus {
   status: AccountRiskStatus;
   postBlockedUntil?: string;
   message?: string;
+  reasonCode?: AccountRiskReasonCode;
+  appealHint?: string;
 }
+
+const APPEAL_HINT =
+  '如认为误判，可在「设置 → 申诉说明」查看流程并提交反馈，我们将在 1–3 个工作日内复核。';
 
 function addDays(base: Date, days: number): Date {
   const next = new Date(base);
@@ -97,10 +104,13 @@ export class AccountRiskService {
       return { status: 'normal' };
     }
 
+    const reasonCode = await this.resolveReasonCode(userId);
     return {
       status,
       postBlockedUntil: until.toISOString(),
-      message: this.buildBlockMessage(status, until),
+      reasonCode,
+      appealHint: APPEAL_HINT,
+      message: this.buildBlockMessage(status, until, reasonCode),
     };
   }
 
@@ -338,11 +348,72 @@ export class AccountRiskService {
     );
   }
 
-  private buildBlockMessage(status: AccountRiskStatus, until: Date): string {
+  private async resolveReasonCode(
+    userId: string,
+  ): Promise<AccountRiskReasonCode> {
+    const now = new Date();
+    const violationSince = subDays(now, ACCOUNT_RISK_VIOLATION_WINDOW_DAYS);
+    const reportSince = subDays(now, ACCOUNT_RISK_REPORT_WINDOW_DAYS);
+
+    const [scalperViolations, scalperReports, highSeverityViolations] =
+      await Promise.all([
+        this.eventModel.countDocuments({
+          userId,
+          violationType: 'scalper',
+          createdAt: { $gte: violationSince },
+        }),
+        this.reportModel.countDocuments({
+          targetUserId: userId,
+          category: 'scalper',
+          createdAt: { $gte: reportSince },
+        }),
+        this.eventModel.countDocuments({
+          userId,
+          severity: 'high',
+          violationType: { $nin: ['duplicate', 'scalper'] },
+          createdAt: { $gte: violationSince },
+        }),
+      ]);
+
+    const escalatedByScalper =
+      scalperViolations >= ACCOUNT_RISK_SCALPER_RESTRICT_COUNT;
+    const escalatedByReports =
+      scalperReports >= ACCOUNT_RISK_SCALPER_REPORT_RESTRICT_COUNT;
+
+    if (escalatedByReports && !escalatedByScalper && scalperViolations === 0) {
+      return 'reports';
+    }
+    if (escalatedByScalper || escalatedByReports || scalperViolations > 0) {
+      return 'scalper';
+    }
+    if (highSeverityViolations > 0) {
+      return 'content';
+    }
+    return 'content';
+  }
+
+  private buildBlockMessage(
+    status: AccountRiskStatus,
+    until: Date,
+    reasonCode: AccountRiskReasonCode,
+  ): string {
     const dateLabel = formatBlockDate(until);
     if (status === 'banned') {
-      return `因多次违规或黄牛相关举报，账号发帖与评论功能已暂停至 ${dateLabel}。如有疑问请联系客服。`;
+      if (reasonCode === 'reports') {
+        return `因收到多起黄牛/欺诈类举报，账号发帖与评论功能已暂停至 ${dateLabel}。`;
+      }
+      if (reasonCode === 'scalper') {
+        return `因多次黄牛/票务相关违规，账号发帖与评论功能已暂停至 ${dateLabel}。`;
+      }
+      return `因多次内容违规，账号发帖与评论功能已暂停至 ${dateLabel}。`;
     }
-    return `因内容违规或黄牛相关行为，发帖与评论功能已暂停至 ${dateLabel}。请遵守平台组队规范。`;
+
+    if (reasonCode === 'reports') {
+      return `因收到用户举报（黄牛/欺诈类），发帖与评论功能已暂停至 ${dateLabel}。请遵守平台组队规范。`;
+    }
+    if (reasonCode === 'scalper') {
+      return `因黄牛/票务相关违规，发帖与评论功能已暂停至 ${dateLabel}。请勿发布转票、加价出票等内容。`;
+    }
+    return `因内容违规，发帖与评论功能已暂停至 ${dateLabel}。请修改组队帖后重试。`;
   }
 }

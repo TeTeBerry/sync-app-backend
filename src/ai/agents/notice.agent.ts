@@ -132,18 +132,50 @@ export class NoticeAgent {
     postId: string,
     actorUserId: string,
     actorName?: string,
+    applicationMessage?: string,
   ): Promise<void> {
-    await this.notifyPostOwnerInteraction(
-      post,
-      postId,
-      actorUserId,
-      actorName,
-      'application',
-      {
-        templateKey: 'application',
-        templateParams: { actor: actorName?.trim() || '有人' },
+    const actorLabel = actorName?.trim() || '有人';
+    const preview = this.summarizeApplicationPreview(applicationMessage);
+    const ownerUserId = post.userId?.trim();
+    if (!ownerUserId || ownerUserId === actorUserId) {
+      return;
+    }
+
+    if (
+      isResourceOwnedByClient(
+        { userId: post.userId, authorName: post.authorName },
+        actorUserId,
+        actorName,
+      )
+    ) {
+      return;
+    }
+
+    await this.dispatch({
+      userId: ownerUserId,
+      category: 'application',
+      templateKey: 'application',
+      templateParams: { actor: actorLabel, preview },
+      meta: {
+        activityLegacyId: post.activityLegacyId,
+        postId,
+        type: 'application',
+        actorUserId,
+        actorUserName: actorLabel,
       },
-    );
+      dedupe: {
+        metaType: 'application',
+        postId,
+        actorUserId,
+        sinceMs: 30 * 60 * 1000,
+      },
+    });
+  }
+
+  private summarizeApplicationPreview(message?: string): string {
+    const trimmed = message?.trim();
+    if (!trimmed) return '想加入你的组队';
+    return trimmed.length > 48 ? `${trimmed.slice(0, 48)}…` : trimmed;
   }
 
   async notifyPostRejected(

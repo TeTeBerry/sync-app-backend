@@ -52,7 +52,7 @@ const TEMPLATE_DEFAULTS: Record<
   application: {
     type: 'interaction',
     title: '有人申请加入你的组队',
-    body: '{{actor}} 申请加入你的组队帖',
+    body: '{{actor}}：{{preview}}',
   },
   postRejected: {
     type: 'system',

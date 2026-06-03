@@ -141,8 +141,9 @@ describe('match-ranking.util', () => {
       },
     );
 
-    expect(reason).toContain('同城出发');
-    expect(reason).toContain('风格相近');
+    expect(reason).toContain('同「上海」出发');
+    expect(reason).toContain('曲风接近');
+    expect(reason).toContain('Techno');
   });
 
   it('keeps vector distance primary; criteria only nudges ties', () => {

@@ -5,6 +5,7 @@ import { ReportService } from '@src/modules/report/report.service';
 describe('ReportService', () => {
   const reportModel = {
     create: jest.fn(),
+    findOne: jest.fn(),
   };
 
   const accountRisk = {
@@ -52,6 +53,51 @@ describe('ReportService', () => {
         toRequestActor('demo-mia'),
       ),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('getStatus returns reported false when no row', async () => {
+    (reportModel.findOne as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue(null),
+      }),
+    });
+
+    const result = await service.getStatus(
+      'post',
+      'post-1',
+      toRequestActor('demo-mia'),
+    );
+
+    expect(result).toEqual({ reported: false });
+    expect(reportModel.findOne).toHaveBeenCalledWith({
+      reporterUserId: 'demo-mia',
+      targetType: 'post',
+      targetId: 'post-1',
+    });
+  });
+
+  it('getStatus returns category and createdAt when reported', async () => {
+    const createdAt = new Date('2026-06-01T12:00:00.000Z');
+    (reportModel.findOne as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          category: 'scalper',
+          createdAt,
+        }),
+      }),
+    });
+
+    const result = await service.getStatus(
+      'post',
+      'post-9',
+      toRequestActor('demo-mia'),
+    );
+
+    expect(result).toEqual({
+      reported: true,
+      category: 'scalper',
+      createdAt: createdAt.toISOString(),
+    });
   });
 
   it('resolves demo owner reporter id', async () => {

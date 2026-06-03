@@ -38,6 +38,12 @@ import { AccountRiskService } from '../account-risk/account-risk.service';
 import { UserService } from '../user/user.service';
 import type { PostApplicationItemDto } from './dto/post-application-item.dto';
 import type { PostBuddyPreviewDto } from './dto/post-buddy-preview.dto';
+import type { ApplyToPostDto } from './dto/apply-to-post.dto';
+import {
+  buildLightApplyInitialMessage,
+  lightApplyToBuddyPreview,
+  normalizeLightApplyInput,
+} from './light-apply.util';
 import {
   clampCommentPageLimit,
   commentCursorFilter,
@@ -53,7 +59,7 @@ import {
 import { PostRecruitmentService } from '../recruitment/application/post-recruitment.service';
 import { PostTeamPairService } from './application/post-team-pair.service';
 import { POST_COMMENT_SEED } from './post-comment.seed';
-import { TeamChatService } from './team-chat.service';
+import { TeamChatService, buildTeamChatSessionId } from './team-chat.service';
 import {
   PostApplicationMessage,
   PostApplicationMessageDocument,
@@ -170,11 +176,7 @@ export class PostInteractionService {
     return toPostMutationResponse(updated, true);
   }
 
-  async applyToPost(
-    id: string,
-    actor: RequestActor,
-    body?: { message?: string },
-  ) {
+  async applyToPost(id: string, actor: RequestActor, body?: ApplyToPostDto) {
     const post = await this.repository.findById(id);
     if (!post) {
       throw new NotFoundException('帖子不存在');
@@ -190,37 +192,79 @@ export class PostInteractionService {
       throw new BadRequestException('不能申请加入自己的帖子');
     }
 
+    const lightApply = normalizeLightApplyInput(body?.lightApply);
+    const note = body?.message?.trim();
+    const teamChat = this.buildApplyTeamChatRef(id, actorUserId);
+
     const existing = await this.applicationModel
       .findOne({ userId: actorUserId, postId: id })
       .lean();
     if (existing) {
-      return { ok: true as const, alreadyApplied: true };
+      return { ok: true as const, alreadyApplied: true, teamChat };
     }
 
+    const initialMessage = lightApply
+      ? buildLightApplyInitialMessage(lightApply, note)
+      : note;
+
     try {
-      const message = body?.message?.trim();
       await this.applicationModel.create({
         userId: actorUserId,
         authorName: actor.displayName?.trim(),
         postId: id,
         status: 'pending',
-        ...(message ? { message } : {}),
+        ...(note && !lightApply ? { message: note } : {}),
+        ...(lightApply
+          ? {
+              lightDepartureCity: lightApply.departureCity,
+              lightTripDays: lightApply.tripDays,
+              lightGenderPref: lightApply.genderPref,
+              ...(note ? { message: note } : {}),
+            }
+          : {}),
       });
     } catch (error) {
       if ((error as { code?: number }).code === 11000) {
-        return { ok: true as const, alreadyApplied: true };
+        return { ok: true as const, alreadyApplied: true, teamChat };
       }
       throw error;
     }
+
+    if (lightApply) {
+      void this.userService
+        .mergeProfileCityIfEmpty(actorUserId, lightApply.departureCity)
+        .catch((err) => {
+          this.logger.warn({
+            msg: 'light_apply_profile_city_merge_failed',
+            userId: actorUserId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+    }
+
+    await this.teamChatService.createInitialMessageOnApply(
+      id,
+      actorUserId,
+      initialMessage,
+    );
 
     void this.postNotification.notifyApplication(
       post,
       id,
       actorUserId,
       actor.displayName,
+      initialMessage,
     );
 
-    return { ok: true as const, alreadyApplied: false };
+    return { ok: true as const, alreadyApplied: false, teamChat };
+  }
+
+  private buildApplyTeamChatRef(postId: string, applicantUserId: string) {
+    return {
+      sessionId: buildTeamChatSessionId(postId, applicantUserId),
+      postId,
+      applicantUserId,
+    };
   }
 
   async listComments(

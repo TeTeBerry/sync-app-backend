@@ -80,15 +80,26 @@ describe('NoticeAgent', () => {
     );
   });
 
-  it('creates application notification with application category', async () => {
-    await agent.notifyApplication(post, 'post-1', 'actor-3', 'Luna');
+  it('creates application notification with preview and dedupe', async () => {
+    await agent.notifyApplication(
+      post,
+      'post-1',
+      'actor-3',
+      'Luna',
+      '上海出发，想一起拼房',
+    );
 
     expect(notificationService.createFromTemplate).toHaveBeenCalledWith(
       expect.objectContaining({
         templateKey: 'application',
+        templateParams: {
+          actor: 'Luna',
+          preview: '上海出发，想一起拼房',
+        },
         meta: expect.objectContaining({
           category: 'application',
           type: 'application',
+          actorUserId: 'actor-3',
         }),
       }),
     );

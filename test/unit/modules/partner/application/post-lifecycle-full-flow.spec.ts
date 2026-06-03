@@ -337,10 +337,20 @@ describe('Post lifecycle full business flow', () => {
       toRequestActor(APPLICANT_ID, 'Applicant'),
       { message: '可以一起拼车吗' },
     );
-    expect(applyResult).toEqual({ ok: true, alreadyApplied: false });
+    expect(applyResult).toEqual(
+      expect.objectContaining({
+        ok: true,
+        alreadyApplied: false,
+        teamChat: expect.any(Object),
+      }),
+    );
     expect(applications).toHaveLength(1);
     expect(applications[0].status).toBe('pending');
-    expect(teamChatService.createInitialMessageOnApply).not.toHaveBeenCalled();
+    expect(teamChatService.createInitialMessageOnApply).toHaveBeenCalledWith(
+      hostId,
+      APPLICANT_ID,
+      '可以一起拼车吗',
+    );
     expect(postNotification.notifyApplication).toHaveBeenCalled();
 
     // 5. 不能接受自己的申请

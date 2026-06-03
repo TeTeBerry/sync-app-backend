@@ -24,6 +24,7 @@ import { UserBlockService } from '../user/user-block.service';
 import { UserService } from '../user/user.service';
 import { ChromaService } from '../../ai/rag/chroma.service';
 import type { PostStatus } from '../../database/schemas/post.schema';
+import { ApplyToPostDto } from './dto/apply-to-post.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PostMapper } from './post.mapper';
@@ -463,7 +464,7 @@ export class PostService implements OnModuleInit {
     return this.postInteraction.likePost(id, actor);
   }
 
-  applyToPost(id: string, actor: RequestActor, body?: { message?: string }) {
+  applyToPost(id: string, actor: RequestActor, body?: ApplyToPostDto) {
     return this.postInteraction.applyToPost(id, actor, body);
   }
 

@@ -16,6 +16,7 @@ export interface MatchRankingWeights {
   city: number;
   genreOverlap: number;
   likeMateCompatible: number;
+  budgetCompatible: number;
   /** Multiplier strength for Chroma user-profile vector similarity */
   profileVector: number;
   personalization: number;
@@ -25,6 +26,7 @@ export const DEFAULT_MATCH_RANKING_WEIGHTS: MatchRankingWeights = {
   city: 0.12,
   genreOverlap: 0.1,
   likeMateCompatible: 0.06,
+  budgetCompatible: 0.04,
   profileVector: 0.2,
   personalization: 0.04,
 };
@@ -42,6 +44,7 @@ export interface PostAuthorSnapshot {
   city?: string;
   favorGenres?: string[];
   likeMate?: boolean;
+  budgetLevel?: string;
 }
 
 export interface RankablePostCandidate {
@@ -108,10 +111,27 @@ function genreOverlapRatio(
   authorGenres: string[] | undefined,
   postTags: string[] | undefined,
 ): number {
+  const labels = overlappingGenreLabels(
+    requesterGenres,
+    authorGenres,
+    postTags,
+  );
+  const requesterCount = new Set(
+    (requesterGenres ?? []).map(normalizeGenre).filter(Boolean),
+  ).size;
+  if (!requesterCount) return 0;
+  return labels.length / requesterCount;
+}
+
+function overlappingGenreLabels(
+  requesterGenres: string[] | undefined,
+  authorGenres: string[] | undefined,
+  postTags: string[] | undefined,
+): string[] {
   const requester = new Set(
     (requesterGenres ?? []).map(normalizeGenre).filter(Boolean),
   );
-  if (!requester.size) return 0;
+  if (!requester.size) return [];
 
   const author = new Set(
     (authorGenres ?? []).map(normalizeGenre).filter(Boolean),
@@ -121,14 +141,19 @@ function genreOverlapRatio(
     if (normalized) author.add(normalized);
   }
 
-  if (!author.size) return 0;
-
-  let overlap = 0;
-  for (const genre of requester) {
-    if (author.has(genre)) overlap += 1;
+  const labels: string[] = [];
+  for (const genre of requesterGenres ?? []) {
+    const key = normalizeGenre(genre);
+    if (key && author.has(key)) {
+      labels.push(genre.trim());
+    }
   }
+  return [...new Set(labels)].slice(0, 3);
+}
 
-  return overlap / requester.size;
+function displayCityLabel(city?: string): string | undefined {
+  const trimmed = city?.trim();
+  return trimmed || undefined;
 }
 
 function likeMateCompatibility(requester?: boolean, author?: boolean): number {
@@ -136,6 +161,27 @@ function likeMateCompatibility(requester?: boolean, author?: boolean): number {
   if (requester && author) return 1;
   if (!requester && !author) return 0.75;
   return 0.2;
+}
+
+function normalizeBudgetLevel(value?: string): string | undefined {
+  const trimmed = value?.trim().toLowerCase();
+  if (!trimmed) return undefined;
+  if (trimmed === 'low' || trimmed === 'medium' || trimmed === 'high') {
+    return trimmed;
+  }
+  return undefined;
+}
+
+function budgetCompatibility(requester?: string, author?: string): number {
+  const left = normalizeBudgetLevel(requester);
+  const right = normalizeBudgetLevel(author);
+  if (!left || !right) return 0;
+  if (left === right) return 1;
+  const order = ['low', 'medium', 'high'];
+  const li = order.indexOf(left);
+  const ri = order.indexOf(right);
+  if (li >= 0 && ri >= 0 && Math.abs(li - ri) === 1) return 0.5;
+  return 0;
 }
 
 function hashPersonalization(userId: string, postId: string): number {
@@ -187,6 +233,10 @@ export function computeProfileBoost(
     weights.likeMateCompatible *
     likeMateCompatibility(profile.likeMate, candidate.author?.likeMate);
 
+  boost +=
+    weights.budgetCompatible *
+    budgetCompatibility(profile.budgetLevel, candidate.author?.budgetLevel);
+
   return boost;
 }
 
@@ -222,59 +272,67 @@ function candidateToPostFitSnapshot(
   };
 }
 
+export function formatMatchReasonParts(parts: string[]): string | undefined {
+  const unique = [...new Set(parts.map((p) => p.trim()).filter(Boolean))];
+  if (!unique.length) return undefined;
+  return unique.slice(0, 2).join(' · ');
+}
+
 export function buildMatchReason(
   candidate: RankablePostCandidate,
   profile?: UserMatchProfile,
   criteria?: BuddyMatchCriteria,
 ): string | undefined {
-  if (criteria) {
-    const tie = applyLightTieBreak(
-      criteria,
-      candidateToPostFitSnapshot(candidate),
-    );
-    const reason = buildPostFitMatchReason({
-      matchedTags: tie.matchedTags,
-      departureCity: criteria.departureCity,
-      departureCityExact: tie.departureCityExact,
-      topRerank: candidate.distance != null && candidate.distance < 0.35,
-    });
-    if (reason) return reason;
+  const parts: string[] = [];
+
+  const departureCity =
+    criteria?.departureCity?.trim() || profile?.city?.trim();
+  if (departureCity) {
+    const tie = criteria
+      ? applyLightTieBreak(criteria, candidateToPostFitSnapshot(candidate))
+      : null;
+    if (
+      tie?.departureCityExact ||
+      citiesMatch(departureCity, candidate.author?.city, candidate.postCity)
+    ) {
+      parts.push(`同「${displayCityLabel(departureCity)}」出发`);
+    }
   }
 
-  const reasons: string[] = [];
-
-  if (
-    profile?.city &&
-    citiesMatch(profile.city, candidate.author?.city, candidate.postCity)
-  ) {
-    reasons.push('同城出发');
-  }
-
-  const genreRatio = genreOverlapRatio(
+  const genreLabels = overlappingGenreLabels(
     profile?.favorGenres,
     candidate.author?.favorGenres,
     candidate.postTags,
   );
-  if (genreRatio >= 0.5) {
-    reasons.push('风格相近');
+  if (genreLabels.length) {
+    parts.push(`曲风接近：${genreLabels.join('、')}`);
   }
 
   if (profile?.likeMate === true && candidate.author?.likeMate === true) {
-    reasons.push('都想找搭子');
+    parts.push('都想找搭子');
+  }
+
+  if (
+    profile?.budgetLevel &&
+    candidate.author?.budgetLevel &&
+    budgetCompatibility(profile.budgetLevel, candidate.author.budgetLevel) >=
+      0.5
+  ) {
+    parts.push('住宿预算相近');
   }
 
   if (candidate.profileDistance != null && candidate.profileDistance < 0.5) {
-    reasons.push('画像匹配');
+    parts.push('偏好画像接近');
   }
 
-  if (!reasons.length) {
-    if (candidate.distance != null && candidate.distance < 0.35) {
-      return '内容高度相关';
-    }
-    return undefined;
+  const formatted = formatMatchReasonParts(parts);
+  if (formatted) return formatted;
+
+  if (candidate.distance != null && candidate.distance < 0.35) {
+    return '内容高度相关';
   }
 
-  return reasons.slice(0, 2).join(' · ');
+  return undefined;
 }
 
 export function rerankMatchCandidates(

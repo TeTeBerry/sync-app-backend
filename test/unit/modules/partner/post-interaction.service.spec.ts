@@ -335,6 +335,24 @@ describe('PostInteractionService.applyToPost', () => {
         status: 'pending',
       }),
     );
-    expect(result).toEqual({ ok: true, alreadyApplied: false });
+    expect(
+      defaultTeamChatService.createInitialMessageOnApply,
+    ).toHaveBeenCalledWith('post-1', 'demo-kyle', undefined);
+    expect(postNotification.notifyApplication).toHaveBeenCalledWith(
+      post,
+      'post-1',
+      'demo-kyle',
+      'Kyle',
+      undefined,
+    );
+    expect(result).toEqual({
+      ok: true,
+      alreadyApplied: false,
+      teamChat: expect.objectContaining({
+        postId: 'post-1',
+        applicantUserId: 'demo-kyle',
+        sessionId: expect.stringContaining('post-1'),
+      }),
+    });
   });
 });

@@ -127,6 +127,21 @@ describe('AccountRiskService', () => {
     );
   });
 
+  it('getPublicStatus includes reasonCode and appealHint when restricted', async () => {
+    const until = new Date(Date.now() + 86_400_000);
+    const service = createService({
+      user: { accountRiskStatus: 'restricted', postRestrictedUntil: until },
+      counts: { scalperViolations: 2 },
+    });
+
+    const status = await service.getPublicStatus(actor);
+
+    expect(status.status).toBe('restricted');
+    expect(status.reasonCode).toBe('scalper');
+    expect(status.appealHint).toContain('申诉说明');
+    expect(status.message).toContain('黄牛');
+  });
+
   it('skips duplicate violations for escalation', async () => {
     const eventModel = { create: jest.fn(), countDocuments: jest.fn() };
     const service = createService();

@@ -20,6 +20,7 @@ export interface IPostNotificationPort {
     postId: string,
     actorUserId: string,
     authorName?: string,
+    applicationMessage?: string,
   ): void;
 
   notifyComment(

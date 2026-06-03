@@ -117,7 +117,7 @@ export class MatchContextService {
     const users = authorIds.length
       ? await this.userModel
           .find({ externalId: { $in: authorIds } })
-          .select('externalId city favorGenres likeMate')
+          .select('externalId city favorGenres likeMate budgetLevel')
           .lean()
       : [];
 
@@ -147,6 +147,7 @@ export class MatchContextService {
               city: author?.city,
               favorGenres: author?.favorGenres,
               likeMate: author?.likeMate,
+              budgetLevel: author?.budgetLevel,
             }
           : undefined,
       };

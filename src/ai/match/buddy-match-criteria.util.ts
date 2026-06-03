@@ -180,6 +180,15 @@ export function criteriaFromPostRecord(
   };
 }
 
+function profileBudgetLabel(level?: string): string | undefined {
+  const value = level?.trim().toLowerCase();
+  if (!value) return undefined;
+  if (value === 'low') return '经济';
+  if (value === 'high') return '充裕';
+  if (value === 'medium') return '舒适';
+  return level?.trim();
+}
+
 export function buildMatchCriteriaForSearch(params: {
   activityLegacyId: number;
   activityName?: string;
@@ -188,6 +197,9 @@ export function buildMatchCriteriaForSearch(params: {
   ownerPost?: PostRecord | null;
   conversation?: ConversationContext;
   profileCity?: string;
+  profileFavorGenres?: string[];
+  profileBudgetLevel?: string;
+  profileLikeMate?: boolean;
   userInput?: string;
   zone?: string;
 }): BuddyMatchCriteria {
@@ -251,7 +263,28 @@ export function buildMatchCriteriaForSearch(params: {
     excludePostIds: params.ownerPost?._id
       ? [String(params.ownerPost._id)]
       : undefined,
+    profileFavorGenres: params.profileFavorGenres?.length
+      ? params.profileFavorGenres
+      : undefined,
+    profileBudgetLevel: params.profileBudgetLevel?.trim() || undefined,
+    profileLikeMate: params.profileLikeMate,
   };
+}
+
+function appendProfileStructuredLines(
+  structured: string[],
+  criteria: BuddyMatchCriteria,
+): void {
+  if (criteria.profileFavorGenres?.length) {
+    structured.push(`偏好曲风：${criteria.profileFavorGenres.join('、')}`);
+  }
+  const budgetLabel = profileBudgetLabel(criteria.profileBudgetLevel);
+  if (budgetLabel) {
+    structured.push(`住宿预算：${budgetLabel}`);
+  }
+  if (criteria.profileLikeMate === true) {
+    structured.push('结伴意愿：想找搭子');
+  }
 }
 
 export function buildMatchCriteriaPatch(params: {
@@ -315,6 +348,7 @@ export function buildRerankUserNeed(criteria: BuddyMatchCriteria): string {
   if (criteria.zone) structured.push(`区域：${criteria.zone}`);
   if (criteria.eventDate) structured.push(`日期：${criteria.eventDate}`);
   if (criteria.genderPref) structured.push(`性别偏好：${criteria.genderPref}`);
+  appendProfileStructuredLines(structured, criteria);
 
   if (structured.length) {
     parts.push(structured.join('\n'));
@@ -323,13 +357,26 @@ export function buildRerankUserNeed(criteria: BuddyMatchCriteria): string {
   return parts.join('\n\n').trim();
 }
 
+function profileEmbeddingSuffix(criteria: BuddyMatchCriteria): string {
+  return [
+    criteria.departureCity ? `${criteria.departureCity}出发` : undefined,
+    criteria.profileFavorGenres?.join(' '),
+    profileBudgetLabel(criteria.profileBudgetLevel),
+    criteria.profileLikeMate === true ? '找搭子' : undefined,
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
 export function criteriaToEmbeddingText(criteria: BuddyMatchCriteria): string {
   const body = criteria.requesterBody?.trim();
+  const profileSuffix = profileEmbeddingSuffix(criteria);
 
   // 有用户发帖内容时以帖子正文为主；快捷键补充搜索意图（拼车等）
   if (body) {
     const shortcut = criteria.searchShortcutTag?.trim();
-    return shortcut ? `${shortcut} ${body}`.trim() : body;
+    const base = shortcut ? `${shortcut} ${body}`.trim() : body;
+    return profileSuffix ? `${base} ${profileSuffix}`.trim() : base;
   }
 
   // fallback：没有帖子内容时，用结构化需求信息
@@ -342,6 +389,7 @@ export function criteriaToEmbeddingText(criteria: BuddyMatchCriteria): string {
     criteria.genderPref,
     criteria.intents?.join(' '),
     criteria.requesterTags?.map((tag) => `#${tag}`).join(' '),
+    profileSuffix || undefined,
   ];
   return parts.filter(Boolean).join(' ');
 }

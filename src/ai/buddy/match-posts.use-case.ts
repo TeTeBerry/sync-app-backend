@@ -87,22 +87,28 @@ export class MatchPostsFromChatUseCase {
     const skipProfileLlm =
       fromIntentRouter && isShortcutSearch && profileSync === undefined;
 
-    const [resolvedProfileSync, resolvedActivity] = await Promise.all([
-      profileSync ??
-        (skipProfileLlm
-          ? Promise.resolve(null)
-          : this.userProfileAgent.syncProfileFromChat({
-              messages,
-              input: trimmed,
-              actor,
-            })),
-      params.preResolvedActivity != null
-        ? Promise.resolve(params.preResolvedActivity)
-        : this.buddyContext.resolveActivity(ctx, activityLegacyId),
-    ]);
+    const [resolvedProfileSync, resolvedActivity, storedProfileSync] =
+      await Promise.all([
+        profileSync ??
+          (skipProfileLlm
+            ? Promise.resolve(null)
+            : this.userProfileAgent.syncProfileFromChat({
+                messages,
+                input: trimmed,
+                actor,
+              })),
+        params.preResolvedActivity != null
+          ? Promise.resolve(params.preResolvedActivity)
+          : this.buddyContext.resolveActivity(ctx, activityLegacyId),
+        skipProfileLlm && profileSync === undefined
+          ? this.userProfileAgent.getStoredMatchProfile(actor)
+          : Promise.resolve(null),
+      ]);
     if (!resolvedActivity?.legacyId) {
       return null;
     }
+
+    const effectiveProfileSync = resolvedProfileSync ?? storedProfileSync;
 
     const hintDisplay = buddySearchHint?.displayLabel?.trim() || trimmed;
     const hintKind =
@@ -128,7 +134,10 @@ export class MatchPostsFromChatUseCase {
         activityDate: resolvedActivity.date,
         ownerPost,
         conversation: ctx,
-        profileCity: resolvedProfileSync?.profile?.city,
+        profileCity: effectiveProfileSync?.profile?.city,
+        profileFavorGenres: effectiveProfileSync?.profile?.favorGenres,
+        profileBudgetLevel: effectiveProfileSync?.profile?.budgetLevel,
+        profileLikeMate: effectiveProfileSync?.profile?.likeMate,
         userInput: trimmed,
         zone: hintKind === 'zone' ? hintDisplay : undefined,
       });
@@ -145,8 +154,8 @@ export class MatchPostsFromChatUseCase {
       activityLegacyId: resolvedActivity.legacyId,
       limit: BUDDY_RECOMMEND_LIMIT,
       actor,
-      profile: resolvedProfileSync?.profile,
-      rankingWeights: resolvedProfileSync?.weights,
+      profile: effectiveProfileSync?.profile,
+      rankingWeights: effectiveProfileSync?.weights,
     });
 
     let matches = matchResult.items;

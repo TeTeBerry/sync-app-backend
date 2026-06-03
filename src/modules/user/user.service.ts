@@ -193,6 +193,37 @@ export class UserService implements OnModuleInit {
     return this.toMeDto(record, externalId);
   }
 
+  /** Merge city from light apply when profile has no city yet. */
+  async mergeProfileCityIfEmpty(
+    externalId: string,
+    city: string,
+  ): Promise<void> {
+    const trimmed = city?.trim();
+    if (!trimmed || !externalId?.trim()) return;
+
+    const existing = await this.repository.findByExternalId(externalId.trim());
+    if (existing?.city?.trim()) return;
+
+    const record = existing
+      ? await this.repository.updateByExternalId(externalId.trim(), {
+          city: trimmed,
+        })
+      : await this.repository.upsertByExternalId(externalId.trim(), {
+          city: trimmed,
+          name: DEMO_PROFILE.name,
+          handle: DEMO_PROFILE.handle,
+          location: DEMO_PROFILE.location,
+          bio: DEMO_PROFILE.bio,
+          avatar: DEMO_PROFILE.avatar,
+          notificationsEnabled: DEMO_PROFILE.notificationsEnabled,
+          privacyLevel: DEMO_PROFILE.privacyLevel,
+        });
+
+    if (record) {
+      void this.syncUserProfileVector(record, externalId.trim());
+    }
+  }
+
   /** Sync user profile vector to Chroma (also callable after UserProfileAgent extraction) */
   syncUserProfileVector(record: UserRecord, externalId?: string): void {
     const userId = record.externalId ?? externalId;
