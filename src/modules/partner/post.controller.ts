@@ -103,8 +103,19 @@ export class PostController {
   }
 
   @Get(':id/comments')
-  listComments(@Param('id') id: string) {
-    return this.postService.listComments(id);
+  listComments(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    const parsedLimit = limit ? Number(limit) : undefined;
+    return this.postService.listComments(id, {
+      limit:
+        parsedLimit != null && !Number.isNaN(parsedLimit)
+          ? parsedLimit
+          : undefined,
+      cursor: cursor?.trim() || undefined,
+    });
   }
 
   @Post(':id/comments')

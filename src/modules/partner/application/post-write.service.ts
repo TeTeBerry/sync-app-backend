@@ -12,6 +12,8 @@ import {
 import { ActivityService } from '../../activity/activity.service';
 import { ChromaService } from '../../../ai/rag/chroma.service';
 import type { PostStatus } from '../../../database/schemas/post.schema';
+import { AccountRiskService } from '../../account-risk/account-risk.service';
+import { UserProfileSyncService } from '../../user/user-profile-sync.service';
 import { UserService } from '../../user/user.service';
 import {
   IPostModerationPort,
@@ -39,6 +41,8 @@ export class PostWriteService {
     @Inject(POST_REPOSITORY)
     private readonly repository: IPostRepository,
     private readonly userService: UserService,
+    private readonly userProfileSync: UserProfileSyncService,
+    private readonly accountRisk: AccountRiskService,
     private readonly activityService: ActivityService,
     private readonly chromaService: ChromaService,
     @Inject(POST_NOTIFICATION_PORT)
@@ -52,6 +56,8 @@ export class PostWriteService {
     actor: RequestActor,
     options?: { skipRiskCheck?: boolean },
   ) {
+    await this.accountRisk.assertCanPublish(actor);
+
     const profile = await this.userService.resolveProfile(actor);
     const ownerUserId = actor.resolvedUserId;
 
@@ -73,6 +79,10 @@ export class PostWriteService {
         contentTypes: dto.contentTypes,
       })
     ) {
+      void this.accountRisk.recordTicketPolicyViolation(
+        actor,
+        TICKET_PUBLISH_FORBIDDEN_MESSAGE,
+      );
       throw new BadRequestException(TICKET_PUBLISH_FORBIDDEN_MESSAGE);
     }
 
@@ -89,6 +99,9 @@ export class PostWriteService {
         structuredBuddyForm ? { rulesOnly: true } : undefined,
       );
       if (!risk.publishable) {
+        void this.accountRisk.recordPublishRiskViolation(actor, risk, {
+          source: 'post_risk',
+        });
         status = 'hidden';
         rejectionReason = risk.reason;
       } else if (risk.sanitizedBody) {
@@ -163,6 +176,14 @@ export class PostWriteService {
     });
 
     const postId = String(created._id);
+
+    this.userProfileSync.applyBuddyPostHints(actor, {
+      body: bodyToSave,
+      location,
+      departureCity: criteriaPatch.departureCity,
+      tags: dto.tags,
+      contentTypes: dto.contentTypes,
+    });
 
     if (status === 'hidden') {
       void this.postNotification.notifyPostHidden(

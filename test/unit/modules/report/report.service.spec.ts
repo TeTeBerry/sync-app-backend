@@ -7,11 +7,16 @@ describe('ReportService', () => {
     create: jest.fn(),
   };
 
+  const accountRisk = {
+    resolveReportTargetUserId: jest.fn().mockResolvedValue('author-1'),
+    recordScalperReportAgainstUser: jest.fn(),
+  };
+
   let service: ReportService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new ReportService(reportModel as never);
+    service = new ReportService(reportModel as never, accountRisk as never);
   });
 
   it('creates a report and returns id', async () => {

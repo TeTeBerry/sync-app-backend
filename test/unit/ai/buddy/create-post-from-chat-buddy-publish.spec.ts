@@ -16,6 +16,12 @@ import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { CreatePostFromChatUseCase } from '@src/ai/buddy/create-post-from-chat.use-case';
 
 /** WS 聊天发帖：解析就绪后直接发布（与前端表单 REST 路径并列） */
+const accountRiskMock = {
+  assertCanPublish: jest.fn().mockResolvedValue(undefined),
+  recordTicketPolicyViolation: jest.fn(),
+  recordPublishRiskViolation: jest.fn(),
+};
+
 describe('CreatePostFromChatUseCase buddy publish (WS chat)', () => {
   const activity = {
     legacyId: 9,
@@ -62,6 +68,7 @@ describe('CreatePostFromChatUseCase buddy publish (WS chat)', () => {
         ]),
         buildRejectionReply: jest.fn(),
       } as never,
+      accountRiskMock as never,
     );
 
     const result = await useCase.execute({
@@ -119,6 +126,7 @@ describe('CreatePostFromChatUseCase buddy publish (WS chat)', () => {
         buildRecommendedPostCards: jest.fn(),
         buildRejectionReply: jest.fn().mockReturnValue('无法发布'),
       } as never,
+      accountRiskMock as never,
     );
 
     const result = await useCase.execute({

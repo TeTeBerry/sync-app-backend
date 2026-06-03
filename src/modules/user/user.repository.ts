@@ -107,6 +107,26 @@ export class UserRepository implements IUserRepository {
       .select('externalId name avatar handle')
       .lean();
   }
+
+  async getTokenVersion(externalId: string): Promise<number> {
+    const doc = await this.model
+      .findOne({ externalId })
+      .select('tokenVersion')
+      .lean();
+    return doc?.tokenVersion ?? 0;
+  }
+
+  async incrementTokenVersion(externalId: string): Promise<number> {
+    const doc = await this.model
+      .findOneAndUpdate(
+        { externalId },
+        { $inc: { tokenVersion: 1 } },
+        { new: true },
+      )
+      .select('tokenVersion')
+      .lean();
+    return doc?.tokenVersion ?? 1;
+  }
 }
 
 export { DEFAULT_PROFILE_EXTERNAL_ID };

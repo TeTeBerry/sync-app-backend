@@ -1,6 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { UserService } from '../../modules/user/user.service';
+import {
+  hasUserMatchProfileSignal,
+  mergeUserProfileHints,
+  extractProfileGenresFromText,
+  normalizeProfileBudgetLevel,
+  normalizeProfileGenres,
+  userMatchProfilesEqual,
+} from '../../modules/user/user-profile-hints.util';
 import { LlmService } from '../llm/llm.service';
 import { ChatMessageDto } from '../../shared/chat';
 import { formatConversationHistory } from '../utils/conversation-format.util';
@@ -39,99 +47,26 @@ const PROFILE_EXTRACT_SYSTEM = [
   '若对话未提及某字段，省略该字段，不要猜测。',
 ].join('\n');
 
-const KNOWN_GENRES = new Set([
-  'edm',
-  'techno',
-  'house',
-  'trance',
-  'dubstep',
-  'hardstyle',
-  'psytrance',
-  'bass',
-]);
-
-function normalizeGenres(raw?: string[]): string[] {
-  const genres = new Set<string>();
-  for (const item of raw ?? []) {
-    const trimmed = item.trim();
-    if (!trimmed) continue;
-    const normalized = trimmed.replace(/^#/, '');
-    genres.add(
-      normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase(),
-    );
-  }
-  return [...genres];
-}
-
-function normalizeBudgetLevel(raw?: string): string | undefined {
-  const value = raw?.trim().toLowerCase();
-  if (!value) return undefined;
-  if (value === 'low' || value === 'medium' || value === 'high') return value;
-  if (/低/.test(value)) return 'low';
-  if (/高/.test(value)) return 'high';
-  if (/中/.test(value)) return 'medium';
-  return undefined;
-}
-
-function mergeProfiles(
+function mergeLlmExtract(
   existing: UserMatchProfile | undefined,
   extracted: LlmProfileExtract,
   ctxCity?: string,
 ): UserMatchProfile {
-  const merged: UserMatchProfile = { ...(existing ?? {}) };
-
+  const hints: UserMatchProfile = {};
   const city = extracted.city?.trim() || ctxCity?.trim();
-  if (city) merged.city = city;
+  if (city) hints.city = city;
 
-  const genres = normalizeGenres(extracted.favorGenres);
-  if (genres.length) {
-    merged.favorGenres = genres;
-  }
+  const genres = normalizeProfileGenres(extracted.favorGenres);
+  if (genres.length) hints.favorGenres = genres;
 
   if (extracted.likeMate != null) {
-    merged.likeMate = Boolean(extracted.likeMate);
+    hints.likeMate = Boolean(extracted.likeMate);
   }
 
-  const budgetLevel = normalizeBudgetLevel(extracted.budgetLevel);
-  if (budgetLevel) merged.budgetLevel = budgetLevel;
+  const budgetLevel = normalizeProfileBudgetLevel(extracted.budgetLevel);
+  if (budgetLevel) hints.budgetLevel = budgetLevel;
 
-  return merged;
-}
-
-function profilesEqual(
-  left: UserMatchProfile | undefined,
-  right: UserMatchProfile,
-): boolean {
-  const leftCity = left?.city?.trim() ?? '';
-  const rightCity = right.city?.trim() ?? '';
-  if (leftCity !== rightCity) return false;
-
-  const leftGenres = (left?.favorGenres ?? [])
-    .map((g) => g.toLowerCase())
-    .sort()
-    .join(',');
-  const rightGenres = (right.favorGenres ?? [])
-    .map((g) => g.toLowerCase())
-    .sort()
-    .join(',');
-  if (leftGenres !== rightGenres) return false;
-
-  if (Boolean(left?.likeMate) !== Boolean(right.likeMate)) return false;
-
-  const leftBudget = left?.budgetLevel?.trim() ?? '';
-  const rightBudget = right.budgetLevel?.trim() ?? '';
-  return leftBudget === rightBudget;
-}
-
-function extractGenresFromText(text: string): string[] {
-  const found = new Set<string>();
-  const lower = text.toLowerCase();
-  for (const genre of KNOWN_GENRES) {
-    if (lower.includes(genre)) {
-      found.add(genre.charAt(0).toUpperCase() + genre.slice(1));
-    }
-  }
-  return [...found];
+  return mergeUserProfileHints(existing, hints);
 }
 
 @Injectable()
@@ -191,14 +126,14 @@ export class UserProfileAgent {
         userPrompt,
       )) ?? {};
 
-    const heuristicGenres = extractGenresFromText(
+    const heuristicGenres = extractProfileGenresFromText(
       `${history}\n${trimmedInput}`,
     );
     if (!extracted.favorGenres?.length && heuristicGenres.length) {
       extracted.favorGenres = heuristicGenres;
     }
 
-    return mergeProfiles(existingProfile, extracted, ctx.city);
+    return mergeLlmExtract(existingProfile, extracted, ctx.city);
   }
 
   async syncProfileFromChat(params: {
@@ -232,16 +167,10 @@ export class UserProfileAgent {
       existing,
     );
 
-    const hasSignal = Boolean(
-      profile.city ||
-      (profile.favorGenres?.length ?? 0) > 0 ||
-      profile.likeMate != null ||
-      profile.budgetLevel,
-    );
-    if (!hasSignal) return null;
+    if (!hasUserMatchProfileSignal(profile)) return null;
 
     const weights = this.getMatchWeights(profile);
-    const changed = !profilesEqual(existing, profile);
+    const changed = !userMatchProfilesEqual(existing, profile);
     if (changed && actor.clientUserId.trim()) {
       await this.userService.patchMe(
         {

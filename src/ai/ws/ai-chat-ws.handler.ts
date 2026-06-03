@@ -1,14 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import type { IncomingMessage } from 'http';
 import { WebSocket } from 'ws';
 import {
   AUTH_SESSION_EXPIRED_MESSAGE,
-  classifyBearerAuth,
   type ClassifyBearerAuthResult,
 } from '../../common/auth/jwt-bearer.util';
+import { AuthService } from '../../modules/auth/auth.service';
 import {
   parseActivityLegacyIdHeader,
   resolveEffectiveActivityLegacyId,
@@ -89,7 +88,7 @@ export class AiChatWsHandler {
 
   constructor(
     private readonly aiService: AiService,
-    private readonly jwtService: JwtService,
+    private readonly authService: AuthService,
   ) {}
 
   private isDevLog(): boolean {
@@ -108,11 +107,15 @@ export class AiChatWsHandler {
 
   handleConnection(socket: WebSocket, request: IncomingMessage): void {
     const connectionId = ++AiChatWsHandler.connectionSeq;
-    const bearerAuth: ClassifyBearerAuthResult = classifyBearerAuth(
-      this.jwtService,
-      request.headers.authorization,
-    );
-    const jwtActor = bearerAuth.kind === 'valid' ? bearerAuth.actor : null;
+    let bearerAuth: ClassifyBearerAuthResult = { kind: 'absent' };
+    const authReady = this.authService
+      .resolveBearerAuth(request.headers.authorization)
+      .then((auth) => {
+        bearerAuth = auth;
+        return auth;
+      });
+    const jwtActor = () =>
+      bearerAuth.kind === 'valid' ? bearerAuth.actor : null;
     let authRejected = false;
     let busy = false;
     let sessionId: string | undefined;
@@ -121,14 +124,16 @@ export class AiChatWsHandler {
     );
     let messageChain = Promise.resolve();
 
-    this.devLog(connectionId, 'connected', {
-      readyState: socket.readyState,
-      auth:
-        bearerAuth.kind === 'valid'
-          ? 'jwt'
-          : bearerAuth.kind === 'invalid'
-            ? 'invalid'
-            : 'demo',
+    void authReady.then((auth) => {
+      this.devLog(connectionId, 'connected', {
+        readyState: socket.readyState,
+        auth:
+          auth.kind === 'valid'
+            ? 'jwt'
+            : auth.kind === 'invalid'
+              ? 'invalid'
+              : 'demo',
+      });
     });
 
     const send = (message: AiChatWsServerMessage) => {
@@ -160,6 +165,7 @@ export class AiChatWsHandler {
     const handleMessage = async (
       raw: Buffer | ArrayBuffer | Buffer[] | string,
     ): Promise<void> => {
+      await authReady;
       let parsed: AiChatWsClientMessage;
       const text =
         typeof raw === 'string'
@@ -216,7 +222,7 @@ export class AiChatWsHandler {
         return;
       }
 
-      const actorResult = resolveWsChatActor(jwtActor, {
+      const actorResult = resolveWsChatActor(jwtActor(), {
         userId: sendPayload.userId,
         userName: sendPayload.userName,
         userPhone: sendPayload.userPhone,

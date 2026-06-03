@@ -39,6 +39,7 @@ import {
   isAwaitingSelfPostBodyCollection,
   isDeclineRecommendationsIntent,
 } from '../gate/recommend-gate.util';
+import { AccountRiskService } from '../../modules/account-risk/account-risk.service';
 import { BuddyContextService } from './buddy-context.service';
 import {
   isTicketPublishProhibited,
@@ -70,6 +71,7 @@ export class CreatePostFromChatUseCase {
     private readonly noticeAgent: NoticeAgent,
     private readonly postService: PostService,
     private readonly buddyContext: BuddyContextService,
+    private readonly accountRisk: AccountRiskService,
   ) {}
 
   async execute(
@@ -249,6 +251,10 @@ export class CreatePostFromChatUseCase {
         ),
       })
     ) {
+      void this.accountRisk.recordTicketPolicyViolation(
+        actor,
+        TICKET_PUBLISH_FORBIDDEN_MESSAGE,
+      );
       return {
         kind: 'rejected',
         replyText: TICKET_PUBLISH_FORBIDDEN_MESSAGE,
@@ -294,6 +300,8 @@ export class CreatePostFromChatUseCase {
       return null;
     }
 
+    await this.accountRisk.assertCanPublish(actor);
+
     const body = await this.buddyContext.buildPostBody({
       ctx,
       input: trimmedInput,
@@ -333,6 +341,9 @@ export class CreatePostFromChatUseCase {
     );
 
     if (!risk.publishable) {
+      void this.accountRisk.recordPublishRiskViolation(actor, risk, {
+        source: 'ai_post_reject',
+      });
       void this.noticeAgent.notifyPostRejected(
         actor,
         resolvedActivity?.legacyId,
@@ -357,6 +368,10 @@ export class CreatePostFromChatUseCase {
     const contentTypes = inferPostContentTypes({ tags, body: finalBody });
 
     if (isTicketPublishProhibited({ body: finalBody, tags, contentTypes })) {
+      void this.accountRisk.recordTicketPolicyViolation(
+        actor,
+        TICKET_PUBLISH_FORBIDDEN_MESSAGE,
+      );
       return {
         kind: 'rejected',
         replyText: TICKET_PUBLISH_FORBIDDEN_MESSAGE,

@@ -34,9 +34,16 @@ import {
   IPostNotificationPort,
   POST_NOTIFICATION_PORT,
 } from './ports/post-notification.port';
+import { AccountRiskService } from '../account-risk/account-risk.service';
 import { UserService } from '../user/user.service';
 import type { PostApplicationItemDto } from './dto/post-application-item.dto';
 import type { PostBuddyPreviewDto } from './dto/post-buddy-preview.dto';
+import {
+  clampCommentPageLimit,
+  commentCursorFilter,
+  decodeCommentCursor,
+  encodeCommentCursor,
+} from './domain/comment-cursor.util';
 import { PostMapper } from './post.mapper';
 import { toPostMutationResponse } from './utils/post-mutation-response.util';
 import {
@@ -69,6 +76,7 @@ export class PostInteractionService {
     @InjectModel(Post.name)
     private readonly postModel: Model<PostDocument>,
     private readonly userService: UserService,
+    private readonly accountRisk: AccountRiskService,
     private readonly teamChatService: TeamChatService,
     @Inject(POST_NOTIFICATION_PORT)
     private readonly postNotification: IPostNotificationPort,
@@ -215,7 +223,10 @@ export class PostInteractionService {
     return { ok: true as const, alreadyApplied: false };
   }
 
-  async listComments(id: string) {
+  async listComments(
+    id: string,
+    options?: { limit?: number; cursor?: string },
+  ) {
     const post = await this.repository.findById(id);
     if (!post) {
       throw new NotFoundException('帖子不存在');
@@ -224,19 +235,33 @@ export class PostInteractionService {
       throw new NotFoundException('帖子不存在');
     }
 
+    const limit = clampCommentPageLimit(options?.limit);
+    const decodedCursor = options?.cursor
+      ? decodeCommentCursor(options.cursor)
+      : null;
+    if (options?.cursor && !decodedCursor) {
+      throw new BadRequestException('无效的分页游标');
+    }
+
     const topLevelFilter: FilterQuery<PostCommentDocument> = {
       postId: id,
       $or: [
         { parentCommentId: { $exists: false } },
         { parentCommentId: { $type: 'null' } },
       ],
+      ...(decodedCursor ? commentCursorFilter(decodedCursor) : {}),
     };
+
     const topLevel = await this.commentModel
       .find(topLevelFilter)
-      .sort({ createdAt: 1 })
+      .sort({ createdAt: 1, _id: 1 })
+      .limit(limit + 1)
       .lean();
 
-    const parentIds = topLevel.map((row) => String(row._id));
+    const hasMore = topLevel.length > limit;
+    const pageRows = hasMore ? topLevel.slice(0, limit) : topLevel;
+
+    const parentIds = pageRows.map((row) => String(row._id));
     const replyRows =
       parentIds.length > 0
         ? await this.commentModel
@@ -254,7 +279,7 @@ export class PostInteractionService {
     }
 
     const items = await Promise.all(
-      topLevel.map(async (comment) => {
+      pageRows.map(async (comment) => {
         const profile = await this.userService.resolveProfileFromStoredAuthor({
           userId: comment.userId,
           authorName: comment.authorName,
@@ -283,7 +308,22 @@ export class PostInteractionService {
       }),
     );
 
-    return items;
+    const last = pageRows[pageRows.length - 1] as
+      | ((typeof pageRows)[number] & { createdAt?: Date })
+      | undefined;
+    const nextCursor =
+      hasMore && last?._id
+        ? encodeCommentCursor({
+            _id: last._id,
+            createdAt: last.createdAt ?? new Date(0),
+          })
+        : undefined;
+
+    return {
+      items,
+      hasMore,
+      ...(nextCursor ? { nextCursor } : {}),
+    };
   }
 
   async addComment(
@@ -305,12 +345,18 @@ export class PostInteractionService {
       throw new BadRequestException('评论内容不能为空');
     }
 
+    await this.accountRisk.assertCanPublish(actor);
+
     const risk = await this.postModeration.assessComment({
       body: trimmed,
       actor,
       postId: id,
     });
     if (!risk.publishable) {
+      void this.accountRisk.recordPublishRiskViolation(actor, risk, {
+        source: 'comment_risk',
+        refId: id,
+      });
       throw new BadRequestException(risk.reason?.trim() || '评论未通过审核');
     }
 

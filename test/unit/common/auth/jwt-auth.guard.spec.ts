@@ -1,10 +1,10 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from '@src/common/auth/jwt-auth.guard';
 import { IS_PUBLIC_KEY } from '@src/common/auth/auth.constants';
 import { AUTH_SESSION_EXPIRED_MESSAGE } from '@src/common/auth/jwt-bearer.util';
+import type { AuthService } from '@src/modules/auth/auth.service';
 
 function createContext(
   headers: Record<string, string> = {},
@@ -26,9 +26,9 @@ function createContext(
 }
 
 describe('JwtAuthGuard', () => {
-  const jwtService = {
-    verify: jest.fn(),
-  } as unknown as JwtService;
+  const authService = {
+    resolveBearerAuth: jest.fn(),
+  } as unknown as AuthService;
 
   const reflector = {
     getAllAndOverride: jest.fn(),
@@ -44,26 +44,26 @@ describe('JwtAuthGuard', () => {
     jest.clearAllMocks();
     (reflector.getAllAndOverride as jest.Mock).mockReturnValue(false);
     (configService.get as jest.Mock).mockReturnValue(false);
-    guard = new JwtAuthGuard(reflector, jwtService, configService);
+    guard = new JwtAuthGuard(reflector, authService, configService);
   });
 
-  it('allows @Public routes without Authorization', () => {
+  it('allows @Public routes without Authorization', async () => {
     (reflector.getAllAndOverride as jest.Mock).mockImplementation((key) =>
       key === IS_PUBLIC_KEY ? true : false,
     );
 
-    expect(guard.canActivate(createContext())).toBe(true);
-    expect(jwtService.verify).not.toHaveBeenCalled();
+    await expect(guard.canActivate(createContext())).resolves.toBe(true);
+    expect(authService.resolveBearerAuth).not.toHaveBeenCalled();
   });
 
-  it('sets actor from valid Bearer token', () => {
-    (jwtService.verify as jest.Mock).mockReturnValue({
-      sub: 'user-jwt',
-      name: 'JWT User',
+  it('sets actor from valid Bearer token', async () => {
+    (authService.resolveBearerAuth as jest.Mock).mockResolvedValue({
+      kind: 'valid',
+      actor: { userId: 'user-jwt', userName: 'JWT User' },
     });
 
     const ctx = createContext({ authorization: 'Bearer valid-token' });
-    expect(guard.canActivate(ctx)).toBe(true);
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
     expect(ctx.switchToHttp().getRequest().actor).toEqual({
       source: 'jwt',
       clientUserId: 'user-jwt',
@@ -72,27 +72,34 @@ describe('JwtAuthGuard', () => {
     });
   });
 
-  it('rejects invalid Bearer', () => {
-    (jwtService.verify as jest.Mock).mockImplementation(() => {
-      throw new Error('invalid');
+  it('rejects invalid Bearer', async () => {
+    (authService.resolveBearerAuth as jest.Mock).mockResolvedValue({
+      kind: 'invalid',
     });
 
-    expect(() =>
+    await expect(
       guard.canActivate(createContext({ authorization: 'Bearer bad' })),
-    ).toThrow(new UnauthorizedException(AUTH_SESSION_EXPIRED_MESSAGE));
+    ).rejects.toThrow(new UnauthorizedException(AUTH_SESSION_EXPIRED_MESSAGE));
   });
 
-  it('rejects missing Bearer when demo query disabled', () => {
-    expect(() => guard.canActivate(createContext())).toThrow(
+  it('rejects missing Bearer when demo query disabled', async () => {
+    (authService.resolveBearerAuth as jest.Mock).mockResolvedValue({
+      kind: 'absent',
+    });
+
+    await expect(guard.canActivate(createContext())).rejects.toThrow(
       new UnauthorizedException('请先登录'),
     );
   });
 
-  it('allows demo query when AUTH_ALLOW_DEMO is enabled', () => {
+  it('allows demo query when AUTH_ALLOW_DEMO is enabled', async () => {
+    (authService.resolveBearerAuth as jest.Mock).mockResolvedValue({
+      kind: 'absent',
+    });
     (configService.get as jest.Mock).mockReturnValue(true);
 
     const ctx = createContext({}, { userId: 'demo-client' });
-    expect(guard.canActivate(ctx)).toBe(true);
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
     expect(ctx.switchToHttp().getRequest().actor?.source).toBe('demo');
   });
 });

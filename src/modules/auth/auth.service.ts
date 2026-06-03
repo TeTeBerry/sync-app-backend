@@ -13,12 +13,19 @@ import {
   IUserRepository,
   USER_REPOSITORY,
 } from '../user/interfaces/user.repository.interface';
-import { AUTH_SESSION_EXPIRED_MESSAGE } from '../../common/auth/jwt-bearer.util';
+import {
+  AUTH_SESSION_EXPIRED_MESSAGE,
+  classifyBearerAuth,
+  extractBearerToken,
+  type ClassifyBearerAuthResult,
+} from '../../common/auth/jwt-bearer.util';
 import { WechatMiniService } from './wechat-mini.service';
 
 export interface AuthTokenPayload {
   sub: string;
   name: string;
+  /** Session version; bumped on logout to revoke older JWTs. */
+  tv?: number;
 }
 
 export interface AuthLoginResult {
@@ -50,9 +57,51 @@ export class AuthService {
     return process.env.NODE_ENV !== 'production';
   }
 
-  signToken(externalId: string, name: string): string {
-    const payload: AuthTokenPayload = { sub: externalId, name };
+  signToken(externalId: string, name: string, tokenVersion = 0): string {
+    const payload: AuthTokenPayload = {
+      sub: externalId,
+      name,
+      tv: tokenVersion,
+    };
     return this.jwtService.sign(payload);
+  }
+
+  async resolveBearerAuth(
+    authorization?: string | string[],
+  ): Promise<ClassifyBearerAuthResult> {
+    const auth = classifyBearerAuth(this.jwtService, authorization);
+    if (auth.kind !== 'valid') {
+      return auth;
+    }
+
+    const token = extractBearerToken(authorization);
+    if (!token) {
+      return { kind: 'invalid' };
+    }
+
+    let payload: AuthTokenPayload;
+    try {
+      payload = this.jwtService.verify<AuthTokenPayload>(token);
+    } catch {
+      return { kind: 'invalid' };
+    }
+
+    const current = await this.users.getTokenVersion(payload.sub);
+    const issued = payload.tv ?? 0;
+    if (issued !== current) {
+      return { kind: 'invalid' };
+    }
+
+    return auth;
+  }
+
+  async logout(actor: { source: string; resolvedUserId: string }): Promise<{
+    ok: true;
+  }> {
+    if (actor.source === 'jwt') {
+      await this.users.incrementTokenVersion(actor.resolvedUserId);
+    }
+    return { ok: true };
   }
 
   verifyToken(token: string): AuthTokenPayload {
@@ -78,8 +127,9 @@ export class AuthService {
       throw new UnauthorizedException('用户资料无效');
     }
     const user = await this.userService.getMe(toRequestActor(uid, authorName));
+    const tokenVersion = await this.users.getTokenVersion(user.id);
     return {
-      accessToken: this.signToken(user.id, user.name),
+      accessToken: this.signToken(user.id, user.name, tokenVersion),
       user,
     };
   }

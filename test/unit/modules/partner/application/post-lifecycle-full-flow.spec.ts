@@ -16,6 +16,8 @@ import type { ActivityService } from '@src/modules/activity/activity.service';
 import type { ChromaService } from '@src/ai/rag/chroma.service';
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
+import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
+import type { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import type { PostRecruitmentService } from '@src/modules/recruitment/application/post-recruitment.service';
 
 jest.mock('chromadb', () => require('../../../../mocks/chromadb'));
@@ -162,6 +164,12 @@ describe('Post lifecycle full business flow', () => {
     postWriteService = new PostWriteService(
       repository,
       userService,
+      { applyBuddyPostHints: jest.fn() } as unknown as UserProfileSyncService,
+      {
+        assertCanPublish: jest.fn().mockResolvedValue(undefined),
+        recordTicketPolicyViolation: jest.fn(),
+        recordPublishRiskViolation: jest.fn(),
+      } as unknown as AccountRiskService,
       activityService,
       chromaService,
       postNotification,

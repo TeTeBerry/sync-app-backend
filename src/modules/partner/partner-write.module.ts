@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ChromaModule } from '../../ai/rag/chroma.module';
 import { PostAgentAdaptersModule } from '../../ai/adapters/post-agent-adapters.module';
 import { ActivityModule } from '../activity/activity.module';
+import { AccountRiskModule } from '../account-risk/account-risk.module';
 import { UserModule } from '../user/user.module';
 import { PostWriteService } from './application/post-write.service';
 import { PartnerRepositoryModule } from './partner-repository.module';
@@ -10,6 +11,7 @@ import { PartnerRepositoryModule } from './partner-repository.module';
   imports: [
     PartnerRepositoryModule,
     UserModule,
+    AccountRiskModule,
     forwardRef(() => ActivityModule),
     ChromaModule,
     PostAgentAdaptersModule,

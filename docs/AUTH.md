@@ -7,6 +7,7 @@
 | `RequestActor` | 统一请求身份：`source`（`jwt` \| `demo`）、`clientUserId`、`displayName`、`resolvedUserId` |
 | REST | 全局 `JwtAuthGuard`；`@Public()` 路由（health、auth、部分活动读）跳过 |
 | Demo Query | `AUTH_ALLOW_DEMO=true` 时，无 Bearer 可用 Query `userId` / `authorName`（仅开发） |
+| Logout | `POST /api/auth/logout`（Bearer）递增 Mongo `user.tokenVersion`；JWT 含 `tv` 声明，与库中版本不一致则 401 |
 | AI WebSocket | Upgrade `Authorization` + body `userId`/`userName` → `resolveWsChatActor` → `ChatRequestDto.actor` |
 
 ## 环境变量

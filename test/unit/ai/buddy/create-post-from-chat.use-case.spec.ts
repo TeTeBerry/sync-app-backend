@@ -106,6 +106,11 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
         buildRejectionReply: jest.fn(),
         resolveTags: jest.fn().mockReturnValue([]),
       } as never,
+      {
+        assertCanPublish: jest.fn().mockResolvedValue(undefined),
+        recordTicketPolicyViolation: jest.fn(),
+        recordPublishRiskViolation: jest.fn(),
+      } as never,
     );
   }
 

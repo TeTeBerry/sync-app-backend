@@ -25,6 +25,7 @@ import { ChromaModule } from '../../ai/rag/chroma.module';
 import { ActivityModule } from '../activity/activity.module';
 import { NotificationModule } from '../notification/notification.module';
 import { RecruitmentModule } from '../recruitment/recruitment.module';
+import { AccountRiskModule } from '../account-risk/account-risk.module';
 import { UserModule } from '../user/user.module';
 import { PostInteractionService } from './post-interaction.service';
 import { PostQueryService } from './application/post-query.service';
@@ -39,6 +40,7 @@ import { TeamChatService } from './team-chat.service';
 @Module({
   imports: [
     UserModule,
+    AccountRiskModule,
     forwardRef(() => ActivityModule),
     PartnerRepositoryModule,
     PartnerWriteModule,

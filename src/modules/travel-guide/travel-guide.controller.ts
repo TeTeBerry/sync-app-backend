@@ -16,7 +16,6 @@ export class TravelGuideController {
     @Body() body: GenerateTravelGuideDto,
     @CurrentActor() actor: RequestActor,
   ) {
-    void actor;
-    return this.generationService.generate(legacyId, body);
+    return this.generationService.generate(legacyId, body, actor);
   }
 }

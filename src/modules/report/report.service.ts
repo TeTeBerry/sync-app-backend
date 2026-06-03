@@ -6,6 +6,7 @@ import {
   ContentReport,
   ContentReportDocument,
 } from '../../database/schemas/content-report.schema';
+import { AccountRiskService } from '../account-risk/account-risk.service';
 import { CreateReportDto } from './dto/create-report.dto';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class ReportService {
   constructor(
     @InjectModel(ContentReport.name)
     private readonly reportModel: Model<ContentReportDocument>,
+    private readonly accountRisk: AccountRiskService,
   ) {}
 
   async submit(
@@ -30,6 +32,18 @@ export class ReportService {
         category: dto.category,
         reason: dto.reason?.trim(),
       });
+
+      if (dto.category === 'scalper') {
+        const targetUserId = await this.accountRisk.resolveReportTargetUserId(
+          dto.targetType,
+          dto.targetId,
+          dto.targetUserId,
+        );
+        if (targetUserId) {
+          void this.accountRisk.recordScalperReportAgainstUser(targetUserId);
+        }
+      }
+
       return { ok: true, id: String(created._id) };
     } catch (error) {
       if ((error as { code?: number }).code === 11000) {

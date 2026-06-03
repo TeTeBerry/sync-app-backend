@@ -5,7 +5,9 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { ActivityService } from '../activity/activity.service';
+import { UserProfileSyncService } from '../user/user-profile-sync.service';
 import { LlmService } from '../../ai/llm/llm.service';
 import { TencentMapService } from './map/tencent-map.service';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
@@ -62,11 +64,13 @@ export class TravelGuideGenerationService {
     private readonly poiRanker: TravelGuidePoiRanker,
     private readonly hotelService: TravelGuideHotelService,
     private readonly generationCache: TravelGuideGenerationCacheService,
+    private readonly userProfileSync: UserProfileSyncService,
   ) {}
 
   async generate(
     activityLegacyId: number,
     dto: GenerateTravelGuideDto,
+    actor: RequestActor,
   ): Promise<{ plan: TravelGuidePlan }> {
     if (!this.tencentMap.enabled) {
       throw new ServiceUnavailableException(
@@ -94,6 +98,12 @@ export class TravelGuideGenerationService {
       this.logger.log(
         `travel guide cache hit activity=${activityLegacyId} key=${cacheKey.slice(0, 8)}`,
       );
+      this.userProfileSync.applyTravelGuideHints(actor, {
+        departure: dto.departure,
+        departureCity: dto.departureCity,
+        budgetTier: dto.budgetTier,
+        headcount: dto.headcount,
+      });
       return { plan: cachedPlan };
     }
 
@@ -137,6 +147,13 @@ export class TravelGuideGenerationService {
       cacheParams,
       plan,
     );
+
+    this.userProfileSync.applyTravelGuideHints(actor, {
+      departure: dto.departure,
+      departureCity: dto.departureCity,
+      budgetTier: dto.budgetTier,
+      headcount: dto.headcount,
+    });
 
     return { plan };
   }

@@ -8,6 +8,8 @@ import type { ActivityService } from '@src/modules/activity/activity.service';
 import type { ChromaService } from '@src/ai/rag/chroma.service';
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
+import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
+import type { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 
 jest.mock('chromadb', () => require('../../../../mocks/chromadb'));
 
@@ -42,6 +44,16 @@ describe('PostWriteService', () => {
     assessPost: jest.fn(),
   } as unknown as IPostModerationPort;
 
+  const userProfileSync = {
+    applyBuddyPostHints: jest.fn(),
+  } as unknown as UserProfileSyncService;
+
+  const accountRisk = {
+    assertCanPublish: jest.fn().mockResolvedValue(undefined),
+    recordTicketPolicyViolation: jest.fn(),
+    recordPublishRiskViolation: jest.fn(),
+  } as unknown as AccountRiskService;
+
   let service: PostWriteService;
 
   beforeEach(() => {
@@ -52,6 +64,8 @@ describe('PostWriteService', () => {
     service = new PostWriteService(
       repository,
       userService,
+      userProfileSync,
+      accountRisk,
       activityService,
       chromaService,
       postNotification,

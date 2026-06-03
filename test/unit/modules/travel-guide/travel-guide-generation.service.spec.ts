@@ -7,7 +7,15 @@ import { TravelGuidePoiCollector } from '@src/modules/travel-guide/map/travel-gu
 import { TravelGuidePoiRanker } from '@src/modules/travel-guide/map/travel-guide-poi.ranker';
 import { TravelGuideHotelService } from '@src/modules/travel-guide/map/travel-guide-hotel.service';
 import { TravelGuideGenerationCacheService } from '@src/modules/travel-guide/travel-guide-generation-cache.service';
+import { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import type { TravelGuidePlan } from '@src/modules/travel-guide/domain/travel-guide.types';
+
+const testActor = {
+  clientUserId: 'wx_test',
+  resolvedUserId: 'wx_test',
+  displayName: 'Test',
+  source: 'jwt' as const,
+};
 
 const cachedPlan: TravelGuidePlan = {
   activityName: 'Storm',
@@ -69,6 +77,10 @@ describe('TravelGuideGenerationService cache', () => {
           provide: TravelGuideGenerationCacheService,
           useValue: { findPlan, savePlan },
         },
+        {
+          provide: UserProfileSyncService,
+          useValue: { applyTravelGuideHints: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -78,7 +90,7 @@ describe('TravelGuideGenerationService cache', () => {
   it('returns cached plan without calling map collector', async () => {
     findPlan.mockResolvedValue(cachedPlan);
 
-    const result = await service.generate(4, dto);
+    const result = await service.generate(4, dto, testActor);
 
     expect(result.plan).toEqual(cachedPlan);
     expect(collect).not.toHaveBeenCalled();

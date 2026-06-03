@@ -467,8 +467,8 @@ export class PostService implements OnModuleInit {
     return this.postInteraction.applyToPost(id, actor, body);
   }
 
-  listComments(id: string) {
-    return this.postInteraction.listComments(id);
+  listComments(id: string, options?: { limit?: number; cursor?: string }) {
+    return this.postInteraction.listComments(id, options);
   }
 
   addComment(

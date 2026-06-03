@@ -15,6 +15,8 @@ import {
   isDemoOwnerClient,
 } from '../../common/utils/demo-owner.util';
 import { UpdateUserMeDto } from './dto/update-user-me.dto';
+import { AccountRiskService } from '../account-risk/account-risk.service';
+import type { AccountRiskPublicStatus } from '../account-risk/account-risk.service';
 import { ChromaService } from '../../ai/rag/chroma.service';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { toRequestActor } from '../../common/auth/actor-query.util';
@@ -35,6 +37,7 @@ export interface UserMeDto {
   likeMate?: boolean;
   notificationsEnabled?: boolean;
   privacyLevel?: 'public' | 'friends' | 'private';
+  accountRisk?: AccountRiskPublicStatus;
 }
 
 const DEMO_PROFILE = {
@@ -59,6 +62,7 @@ export class UserService implements OnModuleInit {
     @Inject(USER_REPOSITORY)
     private readonly repository: IUserRepository,
     private readonly chromaService: ChromaService,
+    private readonly accountRisk: AccountRiskService,
   ) {}
 
   async onModuleInit() {
@@ -151,7 +155,11 @@ export class UserService implements OnModuleInit {
       throw new NotFoundException('User profile not found');
     }
     const externalId = this.resolveExternalId(actor);
-    return this.toMeDto(profile, externalId);
+    const accountRisk = await this.accountRisk.getPublicStatus(actor);
+    return {
+      ...this.toMeDto(profile, externalId),
+      ...(accountRisk.status !== 'normal' ? { accountRisk } : {}),
+    };
   }
 
   async patchMe(

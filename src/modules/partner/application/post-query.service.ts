@@ -154,7 +154,7 @@ export class PostQueryService {
     activityLegacyId: number,
     actor: RequestActor,
   ): Promise<PostRecord[]> {
-    if (!actor.clientUserId?.trim()) return [];
+    if (!actor.clientUserId?.trim()) return Promise.resolve([]);
     return this.repository.findOwnerRecruitingPostsForActivity(
       resolveOwnerFilterFromActor(actor),
       activityLegacyId,

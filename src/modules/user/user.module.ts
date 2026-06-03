@@ -15,10 +15,13 @@ import { USER_REPOSITORY } from './interfaces/user.repository.interface';
 import { UserBlockService } from './user-block.service';
 import { UserController } from './user.controller';
 import { UserRepository } from './user.repository';
+import { AccountRiskModule } from '../account-risk/account-risk.module';
+import { UserProfileSyncService } from './user-profile-sync.service';
 import { UserService } from './user.service';
 
 @Module({
   imports: [
+    AccountRiskModule,
     ChromaModule,
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
@@ -32,8 +35,14 @@ import { UserService } from './user.service';
     UserRepository,
     { provide: USER_REPOSITORY, useExisting: UserRepository },
     UserService,
+    UserProfileSyncService,
     UserBlockService,
   ],
-  exports: [UserService, UserBlockService, USER_REPOSITORY],
+  exports: [
+    UserService,
+    UserProfileSyncService,
+    UserBlockService,
+    USER_REPOSITORY,
+  ],
 })
 export class UserModule {}

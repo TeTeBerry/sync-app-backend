@@ -6,17 +6,14 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from './auth.constants';
-import {
-  AUTH_SESSION_EXPIRED_MESSAGE,
-  classifyBearerAuth,
-} from './jwt-bearer.util';
+import { AUTH_SESSION_EXPIRED_MESSAGE } from './jwt-bearer.util';
 import {
   jwtBearerToRequestActor,
   resolveDemoActorFromQuery,
 } from './resolve-request-actor';
+import { AuthService } from '../../modules/auth/auth.service';
 
 const LOGIN_REQUIRED_MESSAGE = '请先登录';
 
@@ -24,11 +21,11 @@ const LOGIN_REQUIRED_MESSAGE = '请先登录';
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly jwtService: JwtService,
+    private readonly authService: AuthService,
     private readonly configService: ConfigService,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -38,8 +35,7 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<Request>();
-    const auth = classifyBearerAuth(
-      this.jwtService,
+    const auth = await this.authService.resolveBearerAuth(
       request.headers.authorization,
     );
 

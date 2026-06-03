@@ -32,6 +32,8 @@ export interface IUserRepository {
   ): Promise<UserRecord>;
   findByExternalIds(externalIds: string[]): Promise<UserRecord[]>;
   findSummariesByExternalIds(externalIds: string[]): Promise<UserRecord[]>;
+  getTokenVersion(externalId: string): Promise<number>;
+  incrementTokenVersion(externalId: string): Promise<number>;
 }
 
 export const USER_REPOSITORY = Symbol('USER_REPOSITORY');

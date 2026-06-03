@@ -1,10 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { NextFunction, Request, Response } from 'express';
-import {
-  AUTH_SESSION_EXPIRED_MESSAGE,
-  classifyBearerAuth,
-} from '../auth/jwt-bearer.util';
+import { AUTH_SESSION_EXPIRED_MESSAGE } from '../auth/jwt-bearer.util';
+import { AuthService } from '../../modules/auth/auth.service';
 
 /**
  * Rejects invalid Bearer before route handlers.
@@ -12,10 +9,12 @@ import {
  */
 @Injectable()
 export class RequestActorMiddleware implements NestMiddleware {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(private readonly authService: AuthService) {}
 
-  use(req: Request, res: Response, next: NextFunction): void {
-    const auth = classifyBearerAuth(this.jwtService, req.headers.authorization);
+  async use(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const auth = await this.authService.resolveBearerAuth(
+      req.headers.authorization,
+    );
 
     if (auth.kind === 'invalid') {
       res.status(401).json({

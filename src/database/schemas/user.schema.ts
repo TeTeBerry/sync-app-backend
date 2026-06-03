@@ -47,6 +47,17 @@ export class User {
 
   @Prop({ default: 'public', enum: ['public', 'friends', 'private'] })
   privacyLevel: 'public' | 'friends' | 'private';
+
+  /** Incremented on logout to invalidate outstanding JWTs (`tv` claim). */
+  @Prop({ default: 0 })
+  tokenVersion: number;
+
+  /** `restricted` / `banned` block new posts & comments until `postRestrictedUntil`. */
+  @Prop({ default: 'normal', enum: ['normal', 'restricted', 'banned'] })
+  accountRiskStatus?: 'normal' | 'restricted' | 'banned';
+
+  @Prop({ type: Date })
+  postRestrictedUntil?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
