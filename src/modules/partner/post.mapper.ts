@@ -61,7 +61,11 @@ export class PostMapper {
     };
   }
 
-  static toEventDetailItem(post: PostRecord, liked = false) {
+  static toEventDetailItem(
+    post: PostRecord,
+    liked = false,
+    appliedByMe = false,
+  ) {
     const createdAt =
       post.createdAt instanceof Date
         ? post.createdAt.toISOString()
@@ -80,6 +84,7 @@ export class PostMapper {
       contentTypes: post.contentTypes ?? [],
       likes: post.likes ?? 0,
       liked,
+      appliedByMe,
       comments: post.comments ?? 0,
       avatar: post.authorAvatar ?? '',
       status: PostMapper.toStatusLabel(post.status),

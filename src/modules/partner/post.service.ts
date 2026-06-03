@@ -47,6 +47,7 @@ import {
   normalizeCityName,
 } from '../../ai/match/buddy-match-criteria.util';
 import { PostRecruitmentService } from '../recruitment/application/post-recruitment.service';
+import { PostTeamPairService } from './application/post-team-pair.service';
 import {
   clampActivityPostsLimit,
   decodePostCursor,
@@ -71,6 +72,7 @@ export class PostService implements OnModuleInit {
     private readonly postWriteService: PostWriteService,
     private readonly postInteraction: PostInteractionService,
     private readonly postRecruitmentService: PostRecruitmentService,
+    private readonly postTeamPairService: PostTeamPairService,
   ) {}
 
   async onModuleInit() {
@@ -275,6 +277,13 @@ export class PostService implements OnModuleInit {
     return this.postInteraction.findLikedPostIds(actorUserId, postIds);
   }
 
+  private async findAppliedPostIds(
+    actorUserId: string,
+    postIds: string[],
+  ): Promise<Set<string>> {
+    return this.postInteraction.findAppliedPostIds(actorUserId, postIds);
+  }
+
   private async filterPostsForViewer(
     posts: PostRecord[],
     actor: RequestActor,
@@ -331,21 +340,25 @@ export class PostService implements OnModuleInit {
     },
   >(
     posts: PostRecord[],
-    mapper: (post: PostRecord, liked: boolean) => T,
+    mapper: (post: PostRecord, liked: boolean, appliedByMe: boolean) => T,
     actor: RequestActor,
   ): Promise<T[]> {
     if (!posts.length) return [];
 
     const visiblePosts = await this.filterPostsForViewer(posts, actor);
     const postIds = visiblePosts.map((post) => String(post._id));
-    const likedIds = await this.findLikedPostIds(actor.resolvedUserId, postIds);
+    const [likedIds, appliedIds] = await Promise.all([
+      this.findLikedPostIds(actor.resolvedUserId, postIds),
+      this.findAppliedPostIds(actor.resolvedUserId, postIds),
+    ]);
     const buddyUserIds = await this.userBlockService.loadBuddyUserIds(
       actor.resolvedUserId,
     );
 
-    const mapped = visiblePosts.map((post) =>
-      mapper(post, likedIds.has(String(post._id))),
-    );
+    const mapped = visiblePosts.map((post) => {
+      const id = String(post._id);
+      return mapper(post, likedIds.has(id), appliedIds.has(id));
+    });
 
     return this.applyPrivacyToFeedItems(
       mapped,
@@ -553,6 +566,12 @@ export class PostService implements OnModuleInit {
       });
       patch.departureCity = criteriaPatch.departureCity;
       patch.matchCriteria = criteriaPatch.matchCriteria;
+    }
+
+    if (dto.status === 'recruiting') {
+      const reopened =
+        await this.postTeamPairService.reopenRecruitmentAndDissolve(id, actor);
+      return PostMapper.toProfileItem(reopened);
     }
 
     if (dto.status === 'completed') {

@@ -57,6 +57,10 @@ export interface IPostRepository {
     filter: PostQueryFilter,
     activityLegacyId: number,
   ): Promise<PostRecord | null>;
+  findOwnerRecruitingPostsForActivity(
+    filter: PostQueryFilter,
+    activityLegacyId: number,
+  ): Promise<PostRecord[]>;
   existsOwnerRecruitingPostByContentTypes(
     userId: string,
     contentTypes: string[],

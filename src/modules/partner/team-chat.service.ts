@@ -22,9 +22,14 @@ import {
   PostApplicationMessage,
   PostApplicationMessageDocument,
 } from '../../database/schemas/post-application-message.schema';
+import {
+  PostApplicationThreadRead,
+  PostApplicationThreadReadDocument,
+} from '../../database/schemas/post-application-thread-read.schema';
 import { ActivityService } from '../activity/activity.service';
 import { UserService } from '../user/user.service';
 import type { PostBuddyPreviewDto } from './dto/post-buddy-preview.dto';
+import { pickBestMatchingPostRecord } from './utils/buddy-post-match.util';
 import type { TeamChatMessageDto } from './dto/team-chat-message.dto';
 import type { TeamChatSessionDto } from './dto/team-chat-session.dto';
 import { PostMapper } from './post.mapper';
@@ -60,6 +65,8 @@ export class TeamChatService {
     private readonly applicationModel: Model<PostApplicationDocument>,
     @InjectModel(PostApplicationMessage.name)
     private readonly messageModel: Model<PostApplicationMessageDocument>,
+    @InjectModel(PostApplicationThreadRead.name)
+    private readonly threadReadModel: Model<PostApplicationThreadReadDocument>,
     private readonly userService: UserService,
     private readonly activityService: ActivityService,
   ) {}
@@ -154,6 +161,25 @@ export class TeamChatService {
           new Date(b.lastMessageAt).getTime() -
           new Date(a.lastMessageAt).getTime(),
       );
+  }
+
+  async markThreadRead(
+    postId: string,
+    applicantUserId: string,
+    actor: RequestActor,
+  ): Promise<{ ok: true; unreadCount: 0 }> {
+    await this.assertThreadParticipant(postId, applicantUserId, actor);
+    const now = new Date();
+    await this.threadReadModel.updateOne(
+      {
+        postId,
+        applicantUserId: applicantUserId.trim(),
+        userId: actor.resolvedUserId,
+      },
+      { $set: { lastReadAt: now } },
+      { upsert: true },
+    );
+    return { ok: true, unreadCount: 0 };
   }
 
   async listMessages(
@@ -277,6 +303,12 @@ export class TeamChatService {
           ? new Date(application.createdAt).toISOString()
           : new Date().toISOString();
 
+    const unreadCount = await this.countUnreadForThread(
+      postId,
+      applicantUserId,
+      actor.resolvedUserId,
+    );
+
     return {
       sessionId: buildTeamChatSessionId(postId, applicantUserId),
       postId,
@@ -292,10 +324,36 @@ export class TeamChatService {
       buddyPreview,
       lastMessage: lastBody,
       lastMessageAt: lastAt,
+      unreadCount,
       applicationStatus: application.status,
       postRecruitmentStatus: PostMapper.toStatusLabel(post.status),
       isOwner,
     };
+  }
+
+  private async countUnreadForThread(
+    postId: string,
+    applicantUserId: string,
+    actorUserId: string,
+  ): Promise<number> {
+    const read = await this.threadReadModel
+      .findOne({
+        postId,
+        applicantUserId: applicantUserId.trim(),
+        userId: actorUserId,
+      })
+      .lean();
+
+    const filter: Record<string, unknown> = {
+      postId,
+      applicantUserId: applicantUserId.trim(),
+      senderUserId: { $ne: actorUserId },
+    };
+    if (read?.lastReadAt) {
+      filter.createdAt = { $gt: read.lastReadAt };
+    }
+
+    return this.messageModel.countDocuments(filter);
   }
 
   private async resolvePeerBuddyPreview(
@@ -304,9 +362,9 @@ export class TeamChatService {
     viewerIsOwner: boolean,
   ): Promise<PostBuddyPreviewDto> {
     if (viewerIsOwner) {
-      const recruiting = await this.findRecruitingPostForUser(
+      const recruiting = await this.findBestRecruitingPostForUser(
         applicantUserId,
-        targetPost.activityLegacyId,
+        targetPost,
       );
       if (recruiting) {
         return PostMapper.toBuddyPreview(recruiting);
@@ -320,15 +378,18 @@ export class TeamChatService {
     return PostMapper.toBuddyPreview(targetPost);
   }
 
-  private async findRecruitingPostForUser(
+  private async findBestRecruitingPostForUser(
     userId: string,
-    activityLegacyId?: number,
+    targetPost: PostRecord,
   ): Promise<PostRecord | null> {
+    const activityLegacyId = targetPost.activityLegacyId;
     if (activityLegacyId == null) return null;
-    return this.repository.findOwnerRecruitingPostForActivity(
-      { userId },
-      activityLegacyId,
-    );
+    const candidates =
+      await this.repository.findOwnerRecruitingPostsForActivity(
+        { userId },
+        activityLegacyId,
+      );
+    return pickBestMatchingPostRecord(targetPost, candidates);
   }
 
   private async resolveRetention(post: PostRecord): Promise<{
@@ -496,19 +557,19 @@ export class TeamChatService {
 
   async loadBuddyPreviewsForApplicants(
     applicantUserIds: string[],
-    activityLegacyId?: number,
+    targetPost: PostRecord,
   ): Promise<Map<string, PostBuddyPreviewDto>> {
     const map = new Map<string, PostBuddyPreviewDto>();
-    if (!applicantUserIds.length || activityLegacyId == null) {
+    if (!applicantUserIds.length || targetPost.activityLegacyId == null) {
       return map;
     }
 
     const uniqueIds = [...new Set(applicantUserIds.map((id) => id.trim()))];
     await Promise.all(
       uniqueIds.map(async (userId) => {
-        const post = await this.findRecruitingPostForUser(
+        const post = await this.findBestRecruitingPostForUser(
           userId,
-          activityLegacyId,
+          targetPost,
         );
         if (post) {
           map.set(userId, PostMapper.toBuddyPreview(post));

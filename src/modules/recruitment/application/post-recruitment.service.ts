@@ -6,8 +6,14 @@ import {
   POST_REPOSITORY,
   PostRecord,
 } from '../../partner/interfaces/post.repository.interface';
-import type { PostRecruitmentCloseReason } from '../domain/post-status.util';
-import { isPostRecruiting } from '../domain/post-status.util';
+import type {
+  PostRecruitmentCloseReason,
+  PostRecruitmentReopenReason,
+} from '../domain/post-status.util';
+import {
+  isPostRecruiting,
+  isRecruitmentClosed,
+} from '../domain/post-status.util';
 
 @Injectable()
 export class PostRecruitmentService {
@@ -51,6 +57,38 @@ export class PostRecruitmentService {
       );
     });
     this.logger.log(`Post ${postId} recruitment closed: ${reason}`);
+
+    return record;
+  }
+
+  /** 重新开放招募：completed → recruiting（如组队解散、帖主改回招募中）。 */
+  async reopenRecruitment(
+    postId: string,
+    reason: PostRecruitmentReopenReason,
+    current?: PostRecord | null,
+  ): Promise<PostRecord | null> {
+    const post = current ?? (await this.repository.findById(postId));
+    if (!post) {
+      return null;
+    }
+
+    if (isPostRecruiting(post.status)) {
+      return post;
+    }
+
+    if (!isRecruitmentClosed(post.status)) {
+      return post;
+    }
+
+    const updated = await this.repository.updateById(postId, {
+      status: 'recruiting' satisfies PostStatus,
+    });
+    const record = (updated ?? {
+      ...post,
+      status: 'recruiting' as PostStatus,
+    }) as PostRecord;
+
+    this.logger.log(`Post ${postId} recruitment reopened: ${reason}`);
 
     return record;
   }

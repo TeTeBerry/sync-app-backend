@@ -22,6 +22,15 @@ export class TeamChatController {
     return this.teamChatService.listMessages(postId, applicantUserId, actor);
   }
 
+  @Post(':postId/:applicantUserId/read')
+  markRead(
+    @Param('postId') postId: string,
+    @Param('applicantUserId') applicantUserId: string,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.teamChatService.markThreadRead(postId, applicantUserId, actor);
+  }
+
   @Post(':postId/:applicantUserId/messages')
   sendMessage(
     @Param('postId') postId: string,

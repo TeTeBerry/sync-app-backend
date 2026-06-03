@@ -43,6 +43,7 @@ import {
   POST_REPOSITORY,
 } from './interfaces/post.repository.interface';
 import { PostRecruitmentService } from '../recruitment/application/post-recruitment.service';
+import { PostTeamPairService } from './application/post-team-pair.service';
 import { POST_COMMENT_SEED } from './post-comment.seed';
 import { TeamChatService } from './team-chat.service';
 import {
@@ -73,6 +74,7 @@ export class PostInteractionService {
     @Inject(POST_MODERATION_PORT)
     private readonly postModeration: IPostModerationPort,
     private readonly postRecruitmentService: PostRecruitmentService,
+    private readonly postTeamPairService: PostTeamPairService,
   ) {}
 
   async acceptPostApplication(
@@ -111,6 +113,14 @@ export class PostInteractionService {
       postId,
       'buddy_teamed',
       post,
+    );
+
+    const ownerName =
+      owner?.displayName?.trim() || post.authorName?.trim() || '发帖人';
+    await this.postTeamPairService.onOwnerAcceptedApplication(
+      post,
+      applicantUserId,
+      ownerName,
     );
 
     return { ok: true };
@@ -543,7 +553,7 @@ export class PostInteractionService {
         const previews =
           await this.teamChatService.loadBuddyPreviewsForApplicants(
             applicantIds,
-            post.activityLegacyId,
+            post,
           );
         previewsByPost.set(postId, previews);
       }),
@@ -607,6 +617,20 @@ export class PostInteractionService {
     if (!postIds.length) return new Set();
 
     const rows = await this.likeModel
+      .find({ userId: actorUserId, postId: { $in: postIds } })
+      .select('postId')
+      .lean();
+
+    return new Set(rows.map((row) => row.postId));
+  }
+
+  async findAppliedPostIds(
+    actorUserId: string,
+    postIds: string[],
+  ): Promise<Set<string>> {
+    if (!postIds.length) return new Set();
+
+    const rows = await this.applicationModel
       .find({ userId: actorUserId, postId: { $in: postIds } })
       .select('postId')
       .lean();

@@ -20,7 +20,9 @@ export type NotificationInteractionType =
   | 'activity'
   | 'activity_update'
   | 'post_rejected'
-  | 'post_hidden';
+  | 'post_hidden'
+  | 'team_dissolved'
+  | 'team_accepted';
 
 export interface NotificationMeta {
   /** NoticeAgent category (comment / like / buddy_recommend / system). */

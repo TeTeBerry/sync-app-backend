@@ -9,6 +9,10 @@ import {
   PostApplicationMessageSchema,
 } from '../../database/schemas/post-application-message.schema';
 import {
+  PostApplicationThreadRead,
+  PostApplicationThreadReadSchema,
+} from '../../database/schemas/post-application-thread-read.schema';
+import {
   PostComment,
   PostCommentSchema,
 } from '../../database/schemas/post-comment.schema';
@@ -27,6 +31,7 @@ import { PartnerWriteModule } from './partner-write.module';
 import { PostController } from './post.controller';
 import { PartnerRepositoryModule } from './partner-repository.module';
 import { PostService } from './post.service';
+import { PostTeamPairService } from './application/post-team-pair.service';
 import { TeamChatController } from './team-chat.controller';
 import { TeamChatService } from './team-chat.service';
 
@@ -47,11 +52,20 @@ import { TeamChatService } from './team-chat.service';
         name: PostApplicationMessage.name,
         schema: PostApplicationMessageSchema,
       },
+      {
+        name: PostApplicationThreadRead.name,
+        schema: PostApplicationThreadReadSchema,
+      },
       { name: PostComment.name, schema: PostCommentSchema },
     ]),
   ],
   controllers: [PostController, TeamChatController],
-  providers: [PostInteractionService, PostService, TeamChatService],
+  providers: [
+    PostInteractionService,
+    PostService,
+    TeamChatService,
+    PostTeamPairService,
+  ],
   exports: [
     PostService,
     PartnerWriteModule,

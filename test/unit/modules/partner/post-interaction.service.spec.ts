@@ -13,6 +13,11 @@ import type { UserService } from '@src/modules/user/user.service';
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
 import type { PostRecruitmentService } from '@src/modules/recruitment/application/post-recruitment.service';
+import type { TeamChatService } from '@src/modules/partner/team-chat.service';
+
+const defaultTeamChatService = {
+  createInitialMessageOnApply: jest.fn().mockResolvedValue(undefined),
+} as unknown as TeamChatService;
 
 describe('PostInteractionService.addComment', () => {
   const repository = {
@@ -72,11 +77,14 @@ describe('PostInteractionService.addComment', () => {
       likeModel as never,
       {} as never,
       commentModel as never,
+      { deleteMany: jest.fn() } as never,
       {} as never,
       userService,
+      defaultTeamChatService,
       postNotification,
       postModeration,
       postRecruitmentService,
+      {} as never,
     );
     (repository.findById as jest.Mock).mockResolvedValue(zaraPost);
     (repository.incrementCounter as jest.Mock).mockResolvedValue({
@@ -181,10 +189,13 @@ describe('PostInteractionService.likePost', () => {
       likeModel as never,
       {} as never,
       {} as never,
+      { deleteMany: jest.fn() } as never,
       {} as never,
-      {} as never,
+      {} as UserService,
+      defaultTeamChatService,
       postNotification,
-      {} as never,
+      {} as IPostModerationPort,
+      {} as PostRecruitmentService,
       {} as never,
     );
     (repository.findById as jest.Mock).mockResolvedValue(post);
@@ -272,10 +283,13 @@ describe('PostInteractionService.applyToPost', () => {
       {} as never,
       applicationModel as never,
       {} as never,
+      { deleteMany: jest.fn() } as never,
       {} as never,
-      {} as never,
+      {} as UserService,
+      defaultTeamChatService,
       postNotification,
-      {} as never,
+      {} as IPostModerationPort,
+      {} as PostRecruitmentService,
       {} as never,
     );
     (repository.findById as jest.Mock).mockResolvedValue(post);

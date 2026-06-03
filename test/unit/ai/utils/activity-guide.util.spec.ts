@@ -36,6 +36,6 @@ describe('activity-guide.util', () => {
     } as never);
     expect(reply).toContain('AI 攻略');
     expect(reply).toContain('MARSHMELLO');
-    expect(reply).toContain('组队队友');
+    expect(reply).toContain('找队友');
   });
 });

@@ -47,6 +47,7 @@ describe('PostService.listPopular', () => {
 
   const postInteraction = {
     findLikedPostIds: jest.fn(),
+    findAppliedPostIds: jest.fn(),
   } as unknown as PostInteractionService;
 
   let service: PostService;
@@ -72,6 +73,9 @@ describe('PostService.listPopular', () => {
       new Set(),
     );
     (postInteraction.findLikedPostIds as jest.Mock).mockResolvedValue(
+      new Set(),
+    );
+    (postInteraction.findAppliedPostIds as jest.Mock).mockResolvedValue(
       new Set(),
     );
     (userService.findPrivacyLevelsByExternalIds as jest.Mock).mockResolvedValue(

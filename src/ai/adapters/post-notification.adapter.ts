@@ -77,4 +77,32 @@ export class PostNotificationAdapter implements IPostNotificationPort {
       preview,
     );
   }
+
+  notifyApplicationAccepted(
+    applicantUserId: string,
+    postId: string,
+    activityLegacyId: number | undefined,
+    ownerName: string,
+  ): void {
+    void this.noticeAgent.notifyApplicationAccepted(
+      applicantUserId,
+      postId,
+      activityLegacyId,
+      ownerName,
+    );
+  }
+
+  notifyTeamDissolved(
+    recipientUserId: string,
+    postId: string,
+    activityLegacyId: number | undefined,
+    actorName: string,
+  ): void {
+    void this.noticeAgent.notifyTeamDissolved(
+      recipientUserId,
+      postId,
+      activityLegacyId,
+      actorName,
+    );
+  }
 }

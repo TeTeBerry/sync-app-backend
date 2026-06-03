@@ -167,6 +167,50 @@ export class NoticeAgent {
     });
   }
 
+  async notifyApplicationAccepted(
+    applicantUserId: string,
+    postId: string,
+    activityLegacyId: number | undefined,
+    ownerName: string,
+  ): Promise<void> {
+    const uid = applicantUserId?.trim();
+    if (!uid) return;
+
+    await this.dispatch({
+      userId: uid,
+      category: 'general',
+      templateKey: 'teamAccepted',
+      templateParams: { actor: ownerName?.trim() || '发帖人' },
+      meta: {
+        activityLegacyId,
+        postId,
+        type: 'team_accepted',
+      },
+    });
+  }
+
+  async notifyTeamDissolved(
+    recipientUserId: string,
+    postId: string,
+    activityLegacyId: number | undefined,
+    actorName: string,
+  ): Promise<void> {
+    const uid = recipientUserId?.trim();
+    if (!uid) return;
+
+    await this.dispatch({
+      userId: uid,
+      category: 'general',
+      templateKey: 'teamDissolved',
+      templateParams: { actor: actorName?.trim() || '对方' },
+      meta: {
+        activityLegacyId,
+        postId,
+        type: 'team_dissolved',
+      },
+    });
+  }
+
   async notifyPostHidden(
     userId: string | undefined,
     postId: string,

@@ -9,6 +9,10 @@ import type { PostStatus } from '../../../database/schemas/post.schema';
 
 export type PostRecruitmentCloseReason = 'buddy_teamed' | 'owner_manual';
 
+export type PostRecruitmentReopenReason =
+  | 'owner_reopen_recruiting'
+  | 'mutual_team_dissolved';
+
 export function isPostRecruiting(status?: PostStatus | string): boolean {
   return !status || status === 'recruiting';
 }
