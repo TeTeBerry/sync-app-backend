@@ -16,6 +16,13 @@ export class PostApplication {
 
   @Prop({ default: 'pending' })
   status: 'pending' | 'accepted' | 'rejected';
+
+  /** Optional note from applicant shown to post author. */
+  @Prop()
+  message?: string;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const PostApplicationSchema =

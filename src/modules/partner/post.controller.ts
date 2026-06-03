@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
+import { ApplyToPostDto } from './dto/apply-to-post.dto';
 import { CreatePostCommentDto } from './dto/create-post-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
@@ -76,8 +77,29 @@ export class PostController {
   }
 
   @Post(':id/applications')
-  apply(@Param('id') id: string, @CurrentActor() actor: RequestActor) {
-    return this.postService.applyToPost(id, actor);
+  apply(
+    @Param('id') id: string,
+    @Body() body: ApplyToPostDto,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.postService.applyToPost(id, actor, body);
+  }
+
+  @Get(':id/applications')
+  listApplications(
+    @Param('id') id: string,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.postService.listApplicationsForPost(id, actor);
+  }
+
+  @Post(':id/applications/:applicantUserId/accept')
+  acceptApplication(
+    @Param('id') id: string,
+    @Param('applicantUserId') applicantUserId: string,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.postService.acceptPostApplication(id, applicantUserId, actor);
   }
 
   @Get(':id/comments')

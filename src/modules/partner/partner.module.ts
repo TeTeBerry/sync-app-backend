@@ -5,6 +5,10 @@ import {
   PostApplicationSchema,
 } from '../../database/schemas/post-application.schema';
 import {
+  PostApplicationMessage,
+  PostApplicationMessageSchema,
+} from '../../database/schemas/post-application-message.schema';
+import {
   PostComment,
   PostCommentSchema,
 } from '../../database/schemas/post-comment.schema';
@@ -23,6 +27,8 @@ import { PartnerWriteModule } from './partner-write.module';
 import { PostController } from './post.controller';
 import { PartnerRepositoryModule } from './partner-repository.module';
 import { PostService } from './post.service';
+import { TeamChatController } from './team-chat.controller';
+import { TeamChatService } from './team-chat.service';
 
 @Module({
   imports: [
@@ -37,17 +43,22 @@ import { PostService } from './post.service';
       { name: Post.name, schema: PostSchema },
       { name: PostLike.name, schema: PostLikeSchema },
       { name: PostApplication.name, schema: PostApplicationSchema },
+      {
+        name: PostApplicationMessage.name,
+        schema: PostApplicationMessageSchema,
+      },
       { name: PostComment.name, schema: PostCommentSchema },
     ]),
   ],
-  controllers: [PostController],
-  providers: [PostInteractionService, PostService],
+  controllers: [PostController, TeamChatController],
+  providers: [PostInteractionService, PostService, TeamChatService],
   exports: [
     PostService,
     PartnerWriteModule,
     PostInteractionService,
     PartnerRepositoryModule,
     RecruitmentModule,
+    TeamChatService,
   ],
 })
 export class PartnerModule {}

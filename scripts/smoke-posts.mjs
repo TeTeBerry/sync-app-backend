@@ -157,6 +157,51 @@ step('POST /posts/:id/applications (own post → 400)', async (ctx) => {
   });
 });
 
+step('GET /team-chats (applicant session list)', async (ctx) => {
+  const data = await request('GET', 'team-chats', {
+    userId: applicantId,
+    authorName: applicantName,
+  });
+  assert(Array.isArray(data), 'team-chats should be array');
+  assert(
+    data.some(
+      (s) => s.postId === ctx.postId && s.applicantUserId === applicantId,
+    ),
+    'applicant should see thread',
+  );
+});
+
+step('GET /team-chats/:postId/:userId/messages', async (ctx) => {
+  const data = await request(
+    'GET',
+    `team-chats/${ctx.postId}/${encodeURIComponent(applicantId)}/messages`,
+    { userId: applicantId, authorName: applicantName },
+  );
+  assert(Array.isArray(data) && data.length > 0, 'messages non-empty');
+});
+
+step('POST /team-chats/:postId/:userId/messages', async (ctx) => {
+  const data = await request(
+    'POST',
+    `team-chats/${ctx.postId}/${encodeURIComponent(applicantId)}/messages`,
+    {
+      userId: ownerId,
+      authorName: ownerName,
+      body: { body: '你好，欢迎组队！' },
+    },
+  );
+  assert(data?.role === 'me', 'owner message role is me');
+});
+
+step('POST /posts/:id/applications/:userId/accept', async (ctx) => {
+  const data = await request(
+    'POST',
+    `posts/${ctx.postId}/applications/${encodeURIComponent(applicantId)}/accept`,
+    { userId: ownerId, authorName: ownerName },
+  );
+  assert(data?.ok === true, 'accept should return ok');
+});
+
 step('PATCH /posts/:id (mark completed)', async (ctx) => {
   const data = await request('PATCH', `posts/${ctx.postId}`, {
     userId: ownerId,

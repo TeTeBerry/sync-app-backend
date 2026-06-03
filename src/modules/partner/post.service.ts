@@ -405,7 +405,8 @@ export class PostService implements OnModuleInit {
       if (
         anchorRecord &&
         anchorRecord.activityLegacyId === activityLegacyId &&
-        anchorRecord.status !== 'hidden'
+        anchorRecord.status !== 'hidden' &&
+        anchorRecord.listedInFeed !== false
       ) {
         const [anchorItem] = await this.mapPostsWithLiked(
           [anchorRecord],
@@ -426,11 +427,25 @@ export class PostService implements OnModuleInit {
     return { items, nextCursor, hasMore };
   }
 
-  listByOwner(actor: RequestActor) {
+  async listByOwner(actor: RequestActor) {
     const filter = resolveOwnerFilterFromActor(actor);
-    return this.repository
-      .findByOwner(filter)
-      .then((rows) => rows.map(PostMapper.toProfileItem));
+    const rows = await this.repository.findByOwner(filter);
+    const postIds = rows.map((row) => String(row._id));
+    const applicationsByPost =
+      await this.postInteraction.listApplicationsGroupedByPostIds(
+        postIds,
+        actor,
+      );
+
+    return rows.map((row) => {
+      const postId = String(row._id);
+      const applications = applicationsByPost.get(postId) ?? [];
+      return PostMapper.toProfileItem(row, applications);
+    });
+  }
+
+  listApplicationsForPost(postId: string, actor: RequestActor) {
+    return this.postInteraction.listApplicationsForPost(postId, actor);
   }
 
   async findPostById(id: string): Promise<PostRecord | null> {
@@ -582,8 +597,8 @@ export class PostService implements OnModuleInit {
     return this.postInteraction.likePost(id, actor);
   }
 
-  applyToPost(id: string, actor: RequestActor) {
-    return this.postInteraction.applyToPost(id, actor);
+  applyToPost(id: string, actor: RequestActor, body?: { message?: string }) {
+    return this.postInteraction.applyToPost(id, actor, body);
   }
 
   listComments(id: string) {

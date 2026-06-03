@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsNumber,
   IsOptional,
   IsString,
@@ -41,4 +42,9 @@ export class CreatePostDto {
   @IsArray()
   @IsString({ each: true })
   images?: string[];
+
+  /** Default true. False = save post but hide from activity/popular feeds. */
+  @IsOptional()
+  @IsBoolean()
+  listedInFeed?: boolean;
 }

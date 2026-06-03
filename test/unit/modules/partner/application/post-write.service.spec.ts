@@ -119,4 +119,50 @@ describe('PostWriteService', () => {
 
     await new Promise((resolve) => setImmediate(resolve));
   });
+
+  it('createPost with listedInFeed false persists and still upserts Chroma', async () => {
+    (userService.resolveProfile as jest.Mock).mockResolvedValue({
+      name: 'Zara Chen',
+      handle: '@zara',
+      avatar: 'avatar.png',
+      location: '上海',
+    });
+    (activityService.findByLegacyId as jest.Mock).mockResolvedValue({
+      legacyId: 9,
+      name: '风暴电音节',
+      code: 'storm',
+      location: '上海',
+    });
+    (postModeration.assessPost as jest.Mock).mockResolvedValue({
+      publishable: true,
+    });
+    (repository.countByOwnerAndActivity as jest.Mock).mockResolvedValue(0);
+    (repository.create as jest.Mock).mockResolvedValue({
+      _id: 'post-apply-only',
+      userId: 'owner-1',
+      body: '仅用于申请',
+      eventTitle: '风暴电音节',
+      tags: [],
+      location: '上海',
+      activityLegacyId: 9,
+      status: 'recruiting',
+      listedInFeed: false,
+    });
+
+    const result = await service.createPost(
+      { body: '仅用于申请', activityLegacyId: 9, listedInFeed: false },
+      toRequestActor('demo-user', 'Zara Chen'),
+    );
+
+    expect(result.id).toBe('post-apply-only');
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ listedInFeed: false }),
+    );
+    expect(chromaService.syncPostEmbeddingStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        postId: 'post-apply-only',
+        status: 'recruiting',
+      }),
+    );
+  });
 });

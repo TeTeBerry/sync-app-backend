@@ -18,6 +18,9 @@ function buildOwnerFilter(filter: PostQueryFilter) {
   return base;
 }
 
+/** Public feeds: legacy posts without the field remain visible. */
+const FEED_LISTED_FILTER = { listedInFeed: { $ne: false } } as const;
+
 @Injectable()
 export class PostRepository implements IPostRepository {
   constructor(
@@ -26,7 +29,7 @@ export class PostRepository implements IPostRepository {
 
   async findPopular(limit: number): Promise<PostRecord[]> {
     return this.model
-      .find({ status: { $ne: 'hidden' } })
+      .find({ status: { $ne: 'hidden' }, ...FEED_LISTED_FILTER })
       .sort({ likes: -1, createdAt: -1 })
       .limit(limit)
       .lean();
@@ -34,7 +37,7 @@ export class PostRepository implements IPostRepository {
 
   async findAll(): Promise<PostRecord[]> {
     return this.model
-      .find({ status: { $ne: 'hidden' } })
+      .find({ status: { $ne: 'hidden' }, ...FEED_LISTED_FILTER })
       .sort({ createdAt: -1 })
       .lean();
   }
@@ -43,7 +46,20 @@ export class PostRepository implements IPostRepository {
     activityLegacyId: number,
   ): Promise<PostRecord[]> {
     return this.model
-      .find({ activityLegacyId, status: { $ne: 'hidden' } })
+      .find({
+        activityLegacyId,
+        status: { $ne: 'hidden' },
+        ...FEED_LISTED_FILTER,
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+  }
+
+  async findRecruitingByActivityForMatch(
+    activityLegacyId: number,
+  ): Promise<PostRecord[]> {
+    return this.model
+      .find({ activityLegacyId, status: 'recruiting' })
       .sort({ createdAt: -1 })
       .lean();
   }
@@ -55,6 +71,7 @@ export class PostRepository implements IPostRepository {
     const filter: Record<string, unknown> = {
       activityLegacyId,
       status: { $ne: 'hidden' },
+      ...FEED_LISTED_FILTER,
     };
     if (options.cursor) {
       filter.$or = [

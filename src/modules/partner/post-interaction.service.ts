@@ -35,6 +35,8 @@ import {
   POST_NOTIFICATION_PORT,
 } from './ports/post-notification.port';
 import { UserService } from '../user/user.service';
+import type { PostApplicationItemDto } from './dto/post-application-item.dto';
+import type { PostBuddyPreviewDto } from './dto/post-buddy-preview.dto';
 import { PostMapper } from './post.mapper';
 import {
   IPostRepository,
@@ -42,6 +44,11 @@ import {
 } from './interfaces/post.repository.interface';
 import { PostRecruitmentService } from '../recruitment/application/post-recruitment.service';
 import { POST_COMMENT_SEED } from './post-comment.seed';
+import { TeamChatService } from './team-chat.service';
+import {
+  PostApplicationMessage,
+  PostApplicationMessageDocument,
+} from '../../database/schemas/post-application-message.schema';
 
 @Injectable()
 export class PostInteractionService {
@@ -55,9 +62,12 @@ export class PostInteractionService {
     private readonly applicationModel: Model<PostApplicationDocument>,
     @InjectModel(PostComment.name)
     private readonly commentModel: Model<PostCommentDocument>,
+    @InjectModel(PostApplicationMessage.name)
+    private readonly applicationMessageModel: Model<PostApplicationMessageDocument>,
     @InjectModel(Post.name)
     private readonly postModel: Model<PostDocument>,
     private readonly userService: UserService,
+    private readonly teamChatService: TeamChatService,
     @Inject(POST_NOTIFICATION_PORT)
     private readonly postNotification: IPostNotificationPort,
     @Inject(POST_MODERATION_PORT)
@@ -141,7 +151,11 @@ export class PostInteractionService {
     return PostMapper.toEventDetailItem(updated, true);
   }
 
-  async applyToPost(id: string, actor: RequestActor) {
+  async applyToPost(
+    id: string,
+    actor: RequestActor,
+    body?: { message?: string },
+  ) {
     const post = await this.repository.findById(id);
     if (!post) {
       throw new NotFoundException('帖子不存在');
@@ -165,11 +179,13 @@ export class PostInteractionService {
     }
 
     try {
+      const message = body?.message?.trim();
       await this.applicationModel.create({
         userId: actorUserId,
         authorName: actor.displayName?.trim(),
         postId: id,
         status: 'pending',
+        ...(message ? { message } : {}),
       });
     } catch (error) {
       if ((error as { code?: number }).code === 11000) {
@@ -183,6 +199,12 @@ export class PostInteractionService {
       id,
       actorUserId,
       actor.displayName,
+    );
+
+    await this.teamChatService.createInitialMessageOnApply(
+      id,
+      actorUserId,
+      body?.message,
     );
 
     return { ok: true as const, alreadyApplied: false };
@@ -446,8 +468,136 @@ export class PostInteractionService {
     await Promise.all([
       this.likeModel.deleteMany({ postId }),
       this.applicationModel.deleteMany({ postId }),
+      this.applicationMessageModel.deleteMany({ postId }),
       this.commentModel.deleteMany({ postId }),
     ]);
+  }
+
+  async listApplicationsForPost(
+    postId: string,
+    owner: RequestActor,
+  ): Promise<PostApplicationItemDto[]> {
+    const post = await this.repository.findById(postId);
+    if (!post) {
+      throw new NotFoundException('帖子不存在');
+    }
+    if (
+      !isResourceOwnedByActor(
+        { userId: post.userId, authorName: post.authorName },
+        owner,
+      )
+    ) {
+      throw new ForbiddenException('无权查看该帖子的申请');
+    }
+
+    const rows = await this.applicationModel
+      .find({ postId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return this.mapApplicationRows(rows);
+  }
+
+  async listApplicationsGroupedByPostIds(
+    postIds: string[],
+    owner: RequestActor,
+  ): Promise<Map<string, PostApplicationItemDto[]>> {
+    const grouped = new Map<string, PostApplicationItemDto[]>();
+    if (!postIds.length) return grouped;
+
+    const ownedPostIds: string[] = [];
+    const postById = new Map<
+      string,
+      Awaited<ReturnType<IPostRepository['findById']>>
+    >();
+    for (const postId of postIds) {
+      const post = await this.repository.findById(postId);
+      if (
+        post &&
+        isResourceOwnedByActor(
+          { userId: post.userId, authorName: post.authorName },
+          owner,
+        )
+      ) {
+        ownedPostIds.push(postId);
+        postById.set(postId, post);
+        grouped.set(postId, []);
+      }
+    }
+
+    if (!ownedPostIds.length) return grouped;
+
+    const rows = await this.applicationModel
+      .find({ postId: { $in: ownedPostIds } })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const previewsByPost = new Map<string, Map<string, PostBuddyPreviewDto>>();
+    await Promise.all(
+      ownedPostIds.map(async (postId) => {
+        const post = postById.get(postId);
+        if (!post) return;
+        const applicantIds = rows
+          .filter((row) => row.postId === postId)
+          .map((row) => row.userId);
+        const previews =
+          await this.teamChatService.loadBuddyPreviewsForApplicants(
+            applicantIds,
+            post.activityLegacyId,
+          );
+        previewsByPost.set(postId, previews);
+      }),
+    );
+
+    await Promise.all(
+      rows.map(async (row) => {
+        const buddyPreview = previewsByPost.get(row.postId)?.get(row.userId);
+        const item = await this.mapApplicationRow(row, buddyPreview);
+        const list = grouped.get(row.postId) ?? [];
+        list.push(item);
+        grouped.set(row.postId, list);
+      }),
+    );
+
+    return grouped;
+  }
+
+  private async mapApplicationRows(
+    rows: Array<{
+      _id: { toString(): string } | string;
+      userId: string;
+      authorName?: string;
+      status: 'pending' | 'accepted' | 'rejected';
+      message?: string;
+      createdAt?: Date | string;
+    }>,
+  ): Promise<PostApplicationItemDto[]> {
+    return Promise.all(rows.map((row) => this.mapApplicationRow(row)));
+  }
+
+  private async mapApplicationRow(
+    row: {
+      _id: { toString(): string } | string;
+      userId: string;
+      authorName?: string;
+      status: 'pending' | 'accepted' | 'rejected';
+      message?: string;
+      createdAt?: Date | string;
+    },
+    buddyPreview?: PostBuddyPreviewDto,
+  ): Promise<PostApplicationItemDto> {
+    const profile = await this.userService.resolveProfileFromStoredAuthor({
+      userId: row.userId,
+      authorName: row.authorName,
+    });
+    return PostMapper.toApplicationItem(
+      row,
+      {
+        name: profile?.name,
+        avatar: profile?.avatar,
+      },
+      buddyPreview,
+    );
   }
 
   async findLikedPostIds(

@@ -120,6 +120,8 @@ export class PostWriteService {
       }
     }
 
+    const listedInFeed = dto.listedInFeed !== false;
+
     const created = await this.repository.create({
       userId: ownerUserId,
       authorName: profile?.name ?? actor.displayName?.trim() ?? 'Zara Chen',
@@ -134,6 +136,7 @@ export class PostWriteService {
       tags: dto.tags ?? [],
       contentTypes,
       status,
+      listedInFeed,
       likes: 0,
       comments: 0,
       images: dto.images ?? [],

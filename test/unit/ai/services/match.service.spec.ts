@@ -29,7 +29,7 @@ describe('MatchService', () => {
 
   it('returns Mongo-ranked matches when Chroma is empty and intent is generic team', async () => {
     const postRepository = {
-      findByActivityLegacyId: jest.fn().mockResolvedValue([
+      findRecruitingByActivityForMatch: jest.fn().mockResolvedValue([
         {
           _id: 'luna',
           userId: 'demo-luna',
@@ -95,7 +95,7 @@ describe('MatchService', () => {
 
   it('skips Mongo fallback when user has a specific intent and Chroma is empty', async () => {
     const postRepository = {
-      findByActivityLegacyId: jest.fn().mockResolvedValue([
+      findRecruitingByActivityForMatch: jest.fn().mockResolvedValue([
         {
           _id: 'luna',
           userId: 'demo-luna',
@@ -150,7 +150,7 @@ describe('MatchService', () => {
 
   it('filters Chroma matches exceeding distance threshold', async () => {
     const postRepository = {
-      findByActivityLegacyId: jest.fn().mockResolvedValue([
+      findRecruitingByActivityForMatch: jest.fn().mockResolvedValue([
         {
           _id: 'close-post',
           userId: 'u1',
@@ -209,7 +209,7 @@ describe('MatchService', () => {
 
   it('follows LLM rerank order over Chroma vector distance', async () => {
     const postRepository = {
-      findByActivityLegacyId: jest.fn().mockResolvedValue([
+      findRecruitingByActivityForMatch: jest.fn().mockResolvedValue([
         {
           _id: 'post-a',
           userId: 'user-a',
@@ -293,7 +293,7 @@ describe('MatchService', () => {
 
   it('marks degraded when rerank fails and falls back to Chroma order', async () => {
     const postRepository = {
-      findByActivityLegacyId: jest.fn().mockResolvedValue([
+      findRecruitingByActivityForMatch: jest.fn().mockResolvedValue([
         {
           _id: 'vector-first',
           userId: 'u1',
@@ -351,7 +351,7 @@ describe('MatchService', () => {
 
   it('excludes the requester own recruiting post from recommendations', async () => {
     const postRepository = {
-      findByActivityLegacyId: jest.fn().mockResolvedValue([
+      findRecruitingByActivityForMatch: jest.fn().mockResolvedValue([
         {
           _id: 'own-post',
           userId: 'user-1',
@@ -419,7 +419,7 @@ describe('MatchService', () => {
 
   it('excludes demo owner post when client userId differs from stored author id', async () => {
     const postRepository = {
-      findByActivityLegacyId: jest.fn().mockResolvedValue([
+      findRecruitingByActivityForMatch: jest.fn().mockResolvedValue([
         {
           _id: 'demo-post',
           userId: 'demo-zara',
@@ -496,7 +496,7 @@ describe('MatchService', () => {
 
   it('excludes criteria seed owner post id even when rerank prefers it', async () => {
     const postRepository = {
-      findByActivityLegacyId: jest.fn().mockResolvedValue([
+      findRecruitingByActivityForMatch: jest.fn().mockResolvedValue([
         {
           _id: 'seed-post',
           userId: 'user-2',

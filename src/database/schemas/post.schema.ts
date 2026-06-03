@@ -61,6 +61,13 @@ export class Post {
 
   @Prop({ type: [String], default: [] })
   images: string[];
+
+  /**
+   * When false, post is stored for owner/apply flows but omitted from public activity feeds.
+   * Missing field is treated as true (legacy posts).
+   */
+  @Prop({ default: true })
+  listedInFeed: boolean;
 }
 
 export const PostSchema = SchemaFactory.createForClass(Post);

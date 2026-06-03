@@ -181,10 +181,11 @@ export class MatchService {
   ): Promise<PostRecord[]> {
     const excluded = new Set(excludeUserIds.filter(Boolean));
     const rows =
-      await this.postRepository.findByActivityLegacyId(activityLegacyId);
+      await this.postRepository.findRecruitingByActivityForMatch(
+        activityLegacyId,
+      );
     return rows.filter(
       (post) =>
-        post.status === 'recruiting' &&
         post.userId &&
         !excluded.has(String(post.userId)) &&
         !excludePostIds.has(String(post._id)),
