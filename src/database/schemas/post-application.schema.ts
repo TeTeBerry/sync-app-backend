@@ -21,6 +21,10 @@ export class PostApplication {
   @Prop()
   message?: string;
 
+  /** Set when post owner opens chat from profile post list ("沟通"). */
+  @Prop()
+  ownerOpenedChatAt?: Date;
+
   createdAt?: Date;
   updatedAt?: Date;
 }

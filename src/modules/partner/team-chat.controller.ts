@@ -13,6 +13,15 @@ export class TeamChatController {
     return this.teamChatService.listSessions(actor);
   }
 
+  @Post(':postId/:applicantUserId/open')
+  openChat(
+    @Param('postId') postId: string,
+    @Param('applicantUserId') applicantUserId: string,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.teamChatService.openChatByOwner(postId, applicantUserId, actor);
+  }
+
   @Get(':postId/:applicantUserId/messages')
   listMessages(
     @Param('postId') postId: string,

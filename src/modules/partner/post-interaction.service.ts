@@ -211,12 +211,6 @@ export class PostInteractionService {
       actor.displayName,
     );
 
-    await this.teamChatService.createInitialMessageOnApply(
-      id,
-      actorUserId,
-      body?.message,
-    );
-
     return { ok: true as const, alreadyApplied: false };
   }
 

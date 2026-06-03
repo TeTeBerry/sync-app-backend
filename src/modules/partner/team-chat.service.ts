@@ -163,12 +163,71 @@ export class TeamChatService {
       );
   }
 
+  /** Post owner opens chat from profile posts ("沟通"); applicant cannot open. */
+  async openChatByOwner(
+    postId: string,
+    applicantUserId: string,
+    actor: RequestActor,
+  ): Promise<TeamChatSessionDto> {
+    const post = await this.repository.findById(postId);
+    if (!post) {
+      throw new NotFoundException('帖子不存在');
+    }
+    if (
+      !isResourceOwnedByActor(
+        { userId: post.userId, authorName: post.authorName },
+        actor,
+      )
+    ) {
+      throw new ForbiddenException('仅发帖人可发起沟通');
+    }
+
+    const trimmedApplicant = applicantUserId.trim();
+    const application = await this.applicationModel
+      .findOne({ postId, userId: trimmedApplicant })
+      .lean();
+    if (!application) {
+      throw new NotFoundException('申请不存在');
+    }
+
+    if (!application.ownerOpenedChatAt) {
+      const now = new Date();
+      await this.applicationModel.updateOne(
+        { postId, userId: trimmedApplicant },
+        { $set: { ownerOpenedChatAt: now } },
+      );
+      const hasMessages = await this.messageModel.exists({
+        postId,
+        applicantUserId: trimmedApplicant,
+      });
+      if (!hasMessages) {
+        await this.createInitialMessageOnApply(
+          postId,
+          trimmedApplicant,
+          application.message,
+        );
+      }
+    }
+
+    const session = await this.buildSessionDto(
+      postId,
+      trimmedApplicant,
+      actor,
+      true,
+    );
+    if (!session) {
+      throw new NotFoundException('无法创建会话');
+    }
+    return session;
+  }
+
   async markThreadRead(
     postId: string,
     applicantUserId: string,
     actor: RequestActor,
   ): Promise<{ ok: true; unreadCount: 0 }> {
     await this.assertThreadParticipant(postId, applicantUserId, actor);
+    await this.assertChatOpened(postId, applicantUserId);
     const now = new Date();
     await this.threadReadModel.updateOne(
       {
@@ -192,6 +251,7 @@ export class TeamChatService {
       applicantUserId,
       actor,
     );
+    await this.assertChatOpened(postId, applicantUserId);
     if (isTeamChatExpired(ctx.retention.destroysAt)) {
       await this.deleteThreadMessages(postId, applicantUserId);
       throw new BadRequestException('临时会话已过期');
@@ -231,6 +291,7 @@ export class TeamChatService {
       applicantUserId,
       actor,
     );
+    await this.assertChatOpened(postId, applicantUserId);
     if (isTeamChatExpired(ctx.retention.destroysAt)) {
       await this.deleteThreadMessages(postId, applicantUserId);
       throw new BadRequestException('临时会话已过期');
@@ -265,6 +326,12 @@ export class TeamChatService {
       .findOne({ postId, userId: applicantUserId.trim() })
       .lean();
     if (!application) return null;
+
+    if (
+      !(await this.isThreadChatOpened(application, postId, applicantUserId))
+    ) {
+      return null;
+    }
 
     const actorUserId = actor.resolvedUserId;
     const ownerMatch = isResourceOwnedByActor(
@@ -411,13 +478,43 @@ export class TeamChatService {
     }
   }
 
+  private async isThreadChatOpened(
+    application: { ownerOpenedChatAt?: Date },
+    postId: string,
+    applicantUserId: string,
+  ): Promise<boolean> {
+    if (application.ownerOpenedChatAt) return true;
+    const exists = await this.messageModel.exists({
+      postId,
+      applicantUserId: applicantUserId.trim(),
+    });
+    return Boolean(exists);
+  }
+
+  private async assertChatOpened(
+    postId: string,
+    applicantUserId: string,
+  ): Promise<void> {
+    const application = await this.applicationModel
+      .findOne({ postId, userId: applicantUserId.trim() })
+      .lean();
+    if (!application) {
+      throw new NotFoundException('申请不存在');
+    }
+    if (
+      !(await this.isThreadChatOpened(application, postId, applicantUserId))
+    ) {
+      throw new ForbiddenException('帖主尚未发起沟通');
+    }
+  }
+
   private async assertThreadParticipant(
     postId: string,
     applicantUserId: string,
     actor: RequestActor,
   ): Promise<{
     post: PostRecord;
-    application: { status: string; message?: string };
+    application: { status: string; message?: string; ownerOpenedChatAt?: Date };
     retention: { destroysAt?: string };
   }> {
     const post = await this.repository.findById(postId);

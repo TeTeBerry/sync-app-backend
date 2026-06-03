@@ -332,11 +332,7 @@ describe('Post lifecycle full business flow', () => {
     expect(applyResult).toEqual({ ok: true, alreadyApplied: false });
     expect(applications).toHaveLength(1);
     expect(applications[0].status).toBe('pending');
-    expect(teamChatService.createInitialMessageOnApply).toHaveBeenCalledWith(
-      hostId,
-      APPLICANT_ID,
-      '可以一起拼车吗',
-    );
+    expect(teamChatService.createInitialMessageOnApply).not.toHaveBeenCalled();
     expect(postNotification.notifyApplication).toHaveBeenCalled();
 
     // 5. 不能接受自己的申请

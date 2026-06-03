@@ -8,7 +8,7 @@ import { PostRecord } from './interfaces/post.repository.interface';
 
 const CONTENT_TYPE_TAG: Record<string, string> = {
   team: '#组队',
-  accommodation: '#住宿',
+  accommodation: '#拼房',
   carpool: '#拼车',
   ticket: '#票务',
   social: '#社交',
@@ -22,6 +22,7 @@ type ApplicationRecord = {
   authorName?: string;
   status: 'pending' | 'accepted' | 'rejected';
   message?: string;
+  ownerOpenedChatAt?: Date | string;
   createdAt?: Date | string;
 };
 
@@ -174,6 +175,13 @@ export class PostMapper {
         application.createdAt != null
           ? new Date(application.createdAt).toISOString()
           : new Date().toISOString(),
+      ...(application.ownerOpenedChatAt != null
+        ? {
+            ownerOpenedChatAt: new Date(
+              application.ownerOpenedChatAt,
+            ).toISOString(),
+          }
+        : {}),
       ...(buddyPreview ? { buddyPreview } : {}),
     };
   }
