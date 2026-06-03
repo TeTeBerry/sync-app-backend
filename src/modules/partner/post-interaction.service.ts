@@ -38,6 +38,7 @@ import { UserService } from '../user/user.service';
 import type { PostApplicationItemDto } from './dto/post-application-item.dto';
 import type { PostBuddyPreviewDto } from './dto/post-buddy-preview.dto';
 import { PostMapper } from './post.mapper';
+import { toPostMutationResponse } from './utils/post-mutation-response.util';
 import {
   IPostRepository,
   POST_REPOSITORY,
@@ -141,13 +142,13 @@ export class PostInteractionService {
       await this.likeModel.deleteOne({ userId: actorUserId, postId: id });
       const updated =
         (await this.repository.incrementCounter(id, 'likes', -1)) ?? post;
-      return PostMapper.toEventDetailItem(updated, false);
+      return toPostMutationResponse(updated, false);
     }
 
     try {
       await this.likeModel.create({ userId: actorUserId, postId: id });
     } catch {
-      return PostMapper.toEventDetailItem(post, true);
+      return toPostMutationResponse(post, true);
     }
 
     const updated =
@@ -158,7 +159,7 @@ export class PostInteractionService {
       actorUserId,
       actor.displayName,
     );
-    return PostMapper.toEventDetailItem(updated, true);
+    return toPostMutationResponse(updated, true);
   }
 
   async applyToPost(
@@ -385,7 +386,7 @@ export class PostInteractionService {
     const liked = Boolean(
       await this.likeModel.exists({ userId: actorUserId, postId: id }),
     );
-    return PostMapper.toEventDetailItem(updated, liked);
+    return toPostMutationResponse(updated, liked);
   }
 
   /** Idempotent demo replies for seeded posts (matched by body substring). */

@@ -27,6 +27,7 @@ import { NotificationModule } from '../notification/notification.module';
 import { RecruitmentModule } from '../recruitment/recruitment.module';
 import { UserModule } from '../user/user.module';
 import { PostInteractionService } from './post-interaction.service';
+import { PostQueryService } from './application/post-query.service';
 import { PartnerWriteModule } from './partner-write.module';
 import { PostController } from './post.controller';
 import { PartnerRepositoryModule } from './partner-repository.module';
@@ -62,6 +63,7 @@ import { TeamChatService } from './team-chat.service';
   controllers: [PostController, TeamChatController],
   providers: [
     PostInteractionService,
+    PostQueryService,
     PostService,
     TeamChatService,
     PostTeamPairService,
@@ -70,6 +72,7 @@ import { TeamChatService } from './team-chat.service';
     PostService,
     PartnerWriteModule,
     PostInteractionService,
+    PostQueryService,
     PartnerRepositoryModule,
     RecruitmentModule,
     TeamChatService,

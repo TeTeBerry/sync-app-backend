@@ -101,6 +101,13 @@ export class PostRepository implements IPostRepository {
     return this.model.findById(id).lean();
   }
 
+  async findByIds(ids: string[]): Promise<PostRecord[]> {
+    if (!ids.length) return [];
+    return this.model
+      .find({ _id: { $in: ids }, status: { $ne: 'hidden' } })
+      .lean();
+  }
+
   async create(data: Partial<PostRecord>): Promise<PostRecord> {
     const doc = await this.model.create(data);
     return doc.toObject() as PostRecord;

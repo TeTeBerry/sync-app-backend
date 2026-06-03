@@ -30,6 +30,7 @@ export interface IPostRepository {
   ): Promise<PostRecord[]>;
   findByOwner(filter: PostQueryFilter): Promise<PostRecord[]>;
   findById(id: string): Promise<PostRecord | null>;
+  findByIds(ids: string[]): Promise<PostRecord[]>;
   create(data: Partial<PostRecord>): Promise<PostRecord>;
   updateById(
     id: string,

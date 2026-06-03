@@ -221,7 +221,7 @@ describe('PostInteractionService.likePost', () => {
       postId: 'post-1',
     });
     expect(repository.incrementCounter).toHaveBeenCalledWith('post-1', 'likes');
-    expect(result.liked).toBe(true);
+    expect(result.post.liked).toBe(true);
   });
 
   it('removes like and decrements counter when already liked', async () => {
@@ -249,7 +249,7 @@ describe('PostInteractionService.likePost', () => {
       'likes',
       -1,
     );
-    expect(result.liked).toBe(false);
+    expect(result.post.liked).toBe(false);
   });
 });
 

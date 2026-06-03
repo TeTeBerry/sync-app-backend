@@ -20,7 +20,6 @@ import {
   IPostNotificationPort,
   POST_NOTIFICATION_PORT,
 } from './ports/post-notification.port';
-import { canViewPersonalInfo } from '../../common/utils/privacy.util';
 import { UserBlockService } from '../user/user-block.service';
 import { UserService } from '../user/user.service';
 import { ChromaService } from '../../ai/rag/chroma.service';
@@ -41,6 +40,7 @@ import {
   PostRecord,
 } from './interfaces/post.repository.interface';
 import { PostWriteService } from './application/post-write.service';
+import { PostQueryService } from './application/post-query.service';
 import { PostInteractionService } from './post-interaction.service';
 import {
   buildMatchCriteriaPatch,
@@ -49,11 +49,6 @@ import {
 } from '../../ai/match/buddy-match-criteria.util';
 import { PostRecruitmentService } from '../recruitment/application/post-recruitment.service';
 import { PostTeamPairService } from './application/post-team-pair.service';
-import {
-  clampActivityPostsLimit,
-  decodePostCursor,
-  encodePostCursor,
-} from './domain/post-cursor.util';
 
 @Injectable()
 export class PostService implements OnModuleInit {
@@ -71,6 +66,7 @@ export class PostService implements OnModuleInit {
     @Inject(POST_NOTIFICATION_PORT)
     private readonly postNotification: IPostNotificationPort,
     private readonly postWriteService: PostWriteService,
+    private readonly postQuery: PostQueryService,
     private readonly postInteraction: PostInteractionService,
     private readonly postRecruitmentService: PostRecruitmentService,
     private readonly postTeamPairService: PostTeamPairService,
@@ -271,119 +267,23 @@ export class PostService implements OnModuleInit {
     });
   }
 
-  private async findLikedPostIds(
-    actorUserId: string,
-    postIds: string[],
-  ): Promise<Set<string>> {
-    return this.postInteraction.findLikedPostIds(actorUserId, postIds);
+  listApplicationsForPost(postId: string, actor: RequestActor) {
+    return this.postInteraction.listApplicationsForPost(postId, actor);
   }
 
-  private async findAppliedPostIds(
-    actorUserId: string,
-    postIds: string[],
-  ): Promise<Set<string>> {
-    return this.postInteraction.findAppliedPostIds(actorUserId, postIds);
+  listPopular(limit = 20, actor: RequestActor) {
+    return this.postQuery.listPopular(limit, actor);
   }
 
-  private async filterPostsForViewer(
-    posts: PostRecord[],
-    actor: RequestActor,
-  ): Promise<PostRecord[]> {
-    const excluded = await this.userBlockService.getBlockExclusionSet(
-      actor.resolvedUserId,
-    );
-    if (!excluded.size) return posts;
-    return posts.filter((post) => !excluded.has(post.userId));
+  listAll(actor: RequestActor) {
+    return this.postQuery.listAll(actor);
   }
 
-  private async applyPrivacyToFeedItems<
-    T extends {
-      userId?: string;
-      location?: string;
-      name?: string;
-      handle?: string;
-    },
-  >(items: T[], viewerUserId: string, buddyUserIds: Set<string>): Promise<T[]> {
-    const authorIds = [
-      ...new Set(items.map((item) => item.userId).filter(Boolean) as string[]),
-    ];
-    if (!authorIds.length) return items;
-
-    const privacyMap =
-      await this.userService.findPrivacyLevelsByExternalIds(authorIds);
-
-    return items.map((item) => {
-      const authorId = item.userId?.trim();
-      if (!authorId || authorId === viewerUserId) return item;
-
-      const canView = canViewPersonalInfo(
-        privacyMap.get(authorId),
-        false,
-        buddyUserIds.has(authorId),
-      );
-      if (canView) return item;
-
-      return {
-        ...item,
-        location: '',
-        name: '用户',
-        handle: '@user',
-      };
-    });
+  listByActivity(activityLegacyId: number, actor: RequestActor) {
+    return this.postQuery.listByActivity(activityLegacyId, actor);
   }
 
-  private async mapPostsWithLiked<
-    T extends {
-      userId?: string;
-      location?: string;
-      name?: string;
-      handle?: string;
-    },
-  >(
-    posts: PostRecord[],
-    mapper: (post: PostRecord, liked: boolean, appliedByMe: boolean) => T,
-    actor: RequestActor,
-  ): Promise<T[]> {
-    if (!posts.length) return [];
-
-    const visiblePosts = await this.filterPostsForViewer(posts, actor);
-    const postIds = visiblePosts.map((post) => String(post._id));
-    const [likedIds, appliedIds] = await Promise.all([
-      this.findLikedPostIds(actor.resolvedUserId, postIds),
-      this.findAppliedPostIds(actor.resolvedUserId, postIds),
-    ]);
-    const buddyUserIds = await this.userBlockService.loadBuddyUserIds(
-      actor.resolvedUserId,
-    );
-
-    const mapped = visiblePosts.map((post) => {
-      const id = String(post._id);
-      return mapper(post, likedIds.has(id), appliedIds.has(id));
-    });
-
-    return this.applyPrivacyToFeedItems(
-      mapped,
-      actor.resolvedUserId,
-      buddyUserIds,
-    );
-  }
-
-  async listPopular(limit = 20, actor: RequestActor) {
-    const rows = await this.repository.findPopular(limit);
-    return this.mapPostsWithLiked(rows, PostMapper.toHomeFeedItem, actor);
-  }
-
-  async listAll(actor: RequestActor) {
-    const rows = await this.repository.findAll();
-    return this.mapPostsWithLiked(rows, PostMapper.toHomeFeedItem, actor);
-  }
-
-  async listByActivity(activityLegacyId: number, actor: RequestActor) {
-    const rows = await this.repository.findByActivityLegacyId(activityLegacyId);
-    return this.mapPostsWithLiked(rows, PostMapper.toEventDetailItem, actor);
-  }
-
-  async listByActivityPage(
+  listByActivityPage(
     activityLegacyId: number,
     options: {
       limit?: number;
@@ -392,122 +292,41 @@ export class PostService implements OnModuleInit {
     },
     actor: RequestActor,
   ) {
-    const limit = clampActivityPostsLimit(options.limit);
-    const decodedCursor = options.cursor
-      ? decodePostCursor(options.cursor)
-      : null;
-    if (options.cursor && !decodedCursor) {
-      throw new BadRequestException('无效的分页游标');
-    }
-
-    const rows = await this.repository.findByActivityLegacyIdPage(
-      activityLegacyId,
-      { limit: limit + 1, cursor: decodedCursor },
-    );
-    const hasMore = rows.length > limit;
-    const pageRows = hasMore ? rows.slice(0, limit) : rows;
-
-    let items = await this.mapPostsWithLiked(
-      pageRows,
-      PostMapper.toEventDetailItem,
-      actor,
-    );
-
-    const anchorId = options.anchorPostId?.trim();
-    if (anchorId && !items.some((post) => post.id === anchorId)) {
-      const anchorRecord = await this.repository.findById(anchorId);
-      if (
-        anchorRecord &&
-        anchorRecord.activityLegacyId === activityLegacyId &&
-        anchorRecord.status !== 'hidden' &&
-        anchorRecord.listedInFeed !== false
-      ) {
-        const [anchorItem] = await this.mapPostsWithLiked(
-          [anchorRecord],
-          PostMapper.toEventDetailItem,
-          actor,
-        );
-        if (anchorItem) {
-          items = [anchorItem, ...items.filter((post) => post.id !== anchorId)];
-        }
-      }
-    }
-
-    const nextCursor =
-      hasMore && pageRows.length > 0
-        ? encodePostCursor(pageRows[pageRows.length - 1])
-        : undefined;
-
-    return { items, nextCursor, hasMore };
+    return this.postQuery.listByActivityPage(activityLegacyId, options, actor);
   }
 
-  async listByOwner(actor: RequestActor) {
-    const filter = resolveOwnerFilterFromActor(actor);
-    const rows = await this.repository.findByOwner(filter);
-    const postIds = rows.map((row) => String(row._id));
-    const applicationsByPost =
-      await this.postInteraction.listApplicationsGroupedByPostIds(
-        postIds,
-        actor,
-      );
-
-    return rows.map((row) => {
-      const postId = String(row._id);
-      const applications = applicationsByPost.get(postId) ?? [];
-      return PostMapper.toProfileItem(row, applications);
-    });
+  listByOwner(actor: RequestActor) {
+    return this.postQuery.listByOwner(actor);
   }
 
-  listApplicationsForPost(postId: string, actor: RequestActor) {
-    return this.postInteraction.listApplicationsForPost(postId, actor);
+  findPostById(id: string): Promise<PostRecord | null> {
+    return this.postQuery.findPostById(id);
   }
 
-  async findPostById(id: string): Promise<PostRecord | null> {
-    return this.repository.findById(id);
-  }
-
-  async findOwnerRecruitingPostForActivity(
+  findOwnerRecruitingPostForActivity(
     activityLegacyId: number,
     actor: RequestActor,
-  ): Promise<{
-    id: string;
-    body: string;
-    eventTitle?: string;
-    activityLegacyId?: number;
-    departureCity?: string;
-  } | null> {
-    const record = await this.findOwnerRecruitingPostRecord(
+  ) {
+    return this.postQuery.findOwnerRecruitingPostForActivity(
       activityLegacyId,
       actor,
     );
-    if (!record) return null;
-    return {
-      id: String(record._id),
-      body: record.body ?? '',
-      eventTitle: record.eventTitle,
-      activityLegacyId: record.activityLegacyId,
-      departureCity: record.departureCity,
-    };
   }
 
-  async findOwnerRecruitingPostRecord(
-    activityLegacyId: number,
-    actor: RequestActor,
-  ): Promise<PostRecord | null> {
-    return this.repository.findOwnerRecruitingPostForActivity(
-      resolveOwnerFilterFromActor(actor),
+  findOwnerRecruitingPostRecord(activityLegacyId: number, actor: RequestActor) {
+    return this.postQuery.findOwnerRecruitingPostRecord(
       activityLegacyId,
+      actor,
     );
   }
 
-  async findOwnerRecruitingPostRecordsForActivity(
+  findOwnerRecruitingPostRecordsForActivity(
     activityLegacyId: number,
     actor: RequestActor,
-  ): Promise<PostRecord[]> {
-    if (!actor.clientUserId?.trim()) return [];
-    return this.repository.findOwnerRecruitingPostsForActivity(
-      resolveOwnerFilterFromActor(actor),
+  ) {
+    return this.postQuery.findOwnerRecruitingPostRecordsForActivity(
       activityLegacyId,
+      actor,
     );
   }
 

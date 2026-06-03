@@ -142,15 +142,9 @@ export class TeamChatService {
       })),
     );
 
-    const sessions = await Promise.all(
-      [...threadKeys.values()].map((thread) =>
-        this.buildSessionDto(
-          thread.postId,
-          thread.applicantUserId,
-          actor,
-          thread.isOwner,
-        ),
-      ),
+    const sessions = await this.buildSessionsBatch(
+      [...threadKeys.values()],
+      actor,
     );
 
     return sessions
@@ -541,6 +535,192 @@ export class TeamChatService {
 
     const retention = await this.resolveRetention(post);
     return { post, application, retention };
+  }
+
+  private async buildSessionsBatch(
+    threads: Array<{
+      postId: string;
+      applicantUserId: string;
+      isOwner: boolean;
+    }>,
+    actor: RequestActor,
+  ): Promise<TeamChatSessionDto[]> {
+    if (!threads.length) return [];
+
+    const actorUserId = actor.resolvedUserId;
+    const pairFilter = threads.map((thread) => ({
+      postId: thread.postId,
+      userId: thread.applicantUserId.trim(),
+    }));
+    const messagePairFilter = threads.map((thread) => ({
+      postId: thread.postId,
+      applicantUserId: thread.applicantUserId.trim(),
+    }));
+
+    const [applications, posts, lastMessageAgg, readRows, messageKeyRows] =
+      await Promise.all([
+        this.applicationModel.find({ $or: pairFilter }).lean(),
+        this.repository.findByIds([...new Set(threads.map((t) => t.postId))]),
+        this.messageModel.aggregate<{
+          _id: { postId: string; applicantUserId: string };
+          body?: string;
+          createdAt?: Date;
+        }>([
+          { $match: { $or: messagePairFilter } },
+          { $sort: { createdAt: -1 } },
+          {
+            $group: {
+              _id: { postId: '$postId', applicantUserId: '$applicantUserId' },
+              body: { $first: '$body' },
+              createdAt: { $first: '$createdAt' },
+            },
+          },
+        ]),
+        this.threadReadModel
+          .find({
+            userId: actorUserId,
+            $or: messagePairFilter.map((row) => ({
+              postId: row.postId,
+              applicantUserId: row.applicantUserId,
+            })),
+          })
+          .lean(),
+        this.messageModel
+          .find({ $or: messagePairFilter })
+          .select({ postId: 1, applicantUserId: 1 })
+          .lean(),
+      ]);
+
+    const applicationByKey = new Map(
+      applications.map((row) => [this.threadKey(row.postId, row.userId), row]),
+    );
+    const postById = new Map(posts.map((row) => [String(row._id), row]));
+    const lastMessageByKey = new Map(
+      lastMessageAgg.map((row) => [
+        this.threadKey(row._id.postId, row._id.applicantUserId),
+        row,
+      ]),
+    );
+    const readByKey = new Map(
+      readRows.map((row) => [
+        this.threadKey(row.postId, row.applicantUserId),
+        row,
+      ]),
+    );
+    const threadsWithMessages = new Set(
+      messageKeyRows.map((row) =>
+        this.threadKey(row.postId, row.applicantUserId),
+      ),
+    );
+
+    const retentionByLegacyId = new Map<
+      number,
+      Awaited<ReturnType<TeamChatService['resolveRetention']>>
+    >();
+
+    const eligible = threads.filter((thread) => {
+      const key = this.threadKey(thread.postId, thread.applicantUserId);
+      const application = applicationByKey.get(key);
+      if (!application) return false;
+      if (application.ownerOpenedChatAt) return true;
+      return threadsWithMessages.has(key);
+    });
+
+    const built = await Promise.all(
+      eligible.map(async (thread) => {
+        const trimmedApplicant = thread.applicantUserId.trim();
+        const key = this.threadKey(thread.postId, trimmedApplicant);
+        const application = applicationByKey.get(key)!;
+        const post = postById.get(thread.postId);
+        if (!post) return null;
+
+        const ownerMatch = isResourceOwnedByActor(
+          { userId: post.userId, authorName: post.authorName },
+          actor,
+        );
+        const isApplicant = trimmedApplicant === actorUserId;
+        if (!ownerMatch && !isApplicant) return null;
+
+        const legacyId = post.activityLegacyId;
+        let retention: Awaited<
+          ReturnType<TeamChatService['resolveRetention']>
+        > = {};
+        if (legacyId != null) {
+          const cached = retentionByLegacyId.get(legacyId);
+          if (cached) {
+            retention = cached;
+          } else {
+            retention = await this.resolveRetention(post);
+            retentionByLegacyId.set(legacyId, retention);
+          }
+        } else {
+          retention = await this.resolveRetention(post);
+        }
+
+        const lastMessage = lastMessageByKey.get(key);
+        const peerUserId = thread.isOwner ? trimmedApplicant : post.userId;
+        const peerProfile =
+          await this.userService.resolveProfileFromStoredAuthor({
+            userId: peerUserId,
+            authorName: thread.isOwner
+              ? application.authorName
+              : post.authorName,
+          });
+        const buddyPreview = await this.resolvePeerBuddyPreview(
+          post,
+          trimmedApplicant,
+          thread.isOwner,
+        );
+
+        const lastBody =
+          lastMessage?.body?.trim() ||
+          application.message?.trim() ||
+          DEFAULT_APPLY_MESSAGE;
+        const lastAt =
+          lastMessage?.createdAt != null
+            ? new Date(lastMessage.createdAt).toISOString()
+            : application.createdAt != null
+              ? new Date(application.createdAt).toISOString()
+              : new Date().toISOString();
+
+        const read = readByKey.get(key);
+        const unreadFilter: Record<string, unknown> = {
+          postId: thread.postId,
+          applicantUserId: trimmedApplicant,
+          senderUserId: { $ne: actorUserId },
+        };
+        if (read?.lastReadAt) {
+          unreadFilter.createdAt = { $gt: read.lastReadAt };
+        }
+        const unreadCount =
+          await this.messageModel.countDocuments(unreadFilter);
+
+        return {
+          sessionId: buildTeamChatSessionId(thread.postId, trimmedApplicant),
+          postId: thread.postId,
+          applicantUserId: trimmedApplicant,
+          postTitle: post.eventTitle,
+          ...retention,
+          peerUserId,
+          peerName:
+            peerProfile?.name ??
+            (thread.isOwner
+              ? application.authorName?.trim()
+              : post.authorName?.trim()) ??
+            '用户',
+          peerAvatar: peerProfile?.avatar,
+          buddyPreview,
+          lastMessage: lastBody,
+          lastMessageAt: lastAt,
+          unreadCount,
+          applicationStatus: application.status,
+          postRecruitmentStatus: PostMapper.toStatusLabel(post.status),
+          isOwner: thread.isOwner,
+        };
+      }),
+    );
+
+    return built.filter((session) => session != null) as TeamChatSessionDto[];
   }
 
   private threadKey(postId: string, applicantUserId: string): string {
