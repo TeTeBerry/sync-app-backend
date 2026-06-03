@@ -13,6 +13,7 @@ import { ActivityModule } from '../activity/activity.module';
 import { UserModule } from '../user/user.module';
 import { LiveInfoController } from './live-info.controller';
 import { LiveInfoService } from './live-info.service';
+import { OnSiteIdentityService } from './on-site-identity.service';
 import { WristbandVerifyService } from './wristband-verify.service';
 
 @Module({
@@ -26,7 +27,7 @@ import { WristbandVerifyService } from './wristband-verify.service';
     ]),
   ],
   controllers: [LiveInfoController],
-  providers: [LiveInfoService, WristbandVerifyService],
-  exports: [LiveInfoService],
+  providers: [LiveInfoService, OnSiteIdentityService, WristbandVerifyService],
+  exports: [LiveInfoService, OnSiteIdentityService],
 })
 export class LiveInfoModule {}

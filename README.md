@@ -152,7 +152,7 @@ npm run db:reset
 | POST | `.../live-info/updates` | 发布 `{ ratings: [{ categoryId, score }], remark? }` |
 | POST | `.../live-info/updates/:updateId/like` | 点赞切换 |
 
-Query：`userId`、`authorName`（与其它活动 API 一致）。报告约 90 分钟过期；发布需当日已认证手环。Demo 活动 `legacyId=4` 启动时种子一条现场报告。
+Query：`userId`、`authorName`（与其它活动 API 一致）。报告约 90 分钟过期；发布需当日已认证手环。`feed` 按新鲜度 + 点赞 + 备注加权排序（非纯 `createdAt`）。当日手环认证用户在同活动的组队帖上带 `authorOnSiteVerified: true`（`OnSiteIdentityService`）。Demo 活动 `legacyId=4` 启动时种子一条现场报告。
 
 ## 专属电音行程 `itinerary`
 

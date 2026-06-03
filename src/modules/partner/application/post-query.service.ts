@@ -16,6 +16,7 @@ import {
   decodePostCursor,
   encodePostCursor,
 } from '../domain/post-cursor.util';
+import { OnSiteIdentityService } from '../../live-info/on-site-identity.service';
 
 /** Read-side post queries (lists, enrichment, owner lookups). */
 @Injectable()
@@ -26,6 +27,7 @@ export class PostQueryService {
     private readonly userService: UserService,
     private readonly userBlockService: UserBlockService,
     private readonly postInteraction: PostInteractionService,
+    private readonly onSiteIdentity: OnSiteIdentityService,
   ) {}
 
   async listPopular(limit = 20, actor: RequestActor) {
@@ -163,16 +165,22 @@ export class PostQueryService {
 
   private async mapPostsWithLiked<T extends { userId?: string }>(
     posts: PostRecord[],
-    mapper: (post: PostRecord, liked: boolean, appliedByMe: boolean) => T,
+    mapper: (
+      post: PostRecord,
+      liked: boolean,
+      appliedByMe: boolean,
+      authorOnSiteVerified: boolean,
+    ) => T,
     actor: RequestActor,
   ): Promise<T[]> {
     if (!posts.length) return [];
 
     const visiblePosts = await this.filterPostsForViewer(posts, actor);
     const postIds = visiblePosts.map((post) => String(post._id));
-    const [likedIds, appliedIds] = await Promise.all([
+    const [likedIds, appliedIds, onSiteByActivity] = await Promise.all([
       this.postInteraction.findLikedPostIds(actor.resolvedUserId, postIds),
       this.postInteraction.findAppliedPostIds(actor.resolvedUserId, postIds),
+      this.loadOnSiteCertifiedByActivity(visiblePosts),
     ]);
     const buddyUserIds = await this.userBlockService.loadBuddyUserIds(
       actor.resolvedUserId,
@@ -180,7 +188,11 @@ export class PostQueryService {
 
     const mapped = visiblePosts.map((post) => {
       const id = String(post._id);
-      return mapper(post, likedIds.has(id), appliedIds.has(id));
+      const activityId = post.activityLegacyId;
+      const certified =
+        activityId != null &&
+        onSiteByActivity.get(activityId)?.has(post.userId) === true;
+      return mapper(post, likedIds.has(id), appliedIds.has(id), certified);
     });
 
     return this.applyPrivacyToFeedItems(
@@ -188,6 +200,32 @@ export class PostQueryService {
       actor.resolvedUserId,
       buddyUserIds,
     );
+  }
+
+  private async loadOnSiteCertifiedByActivity(
+    posts: PostRecord[],
+  ): Promise<Map<number, Set<string>>> {
+    const userIdsByActivity = new Map<number, string[]>();
+    for (const post of posts) {
+      const activityId = post.activityLegacyId;
+      const userId = post.userId?.trim();
+      if (activityId == null || !userId) continue;
+      const list = userIdsByActivity.get(activityId) ?? [];
+      list.push(userId);
+      userIdsByActivity.set(activityId, list);
+    }
+
+    const result = new Map<number, Set<string>>();
+    await Promise.all(
+      [...userIdsByActivity.entries()].map(async ([activityId, userIds]) => {
+        const certified = await this.onSiteIdentity.getOnSiteCertifiedUserIds(
+          activityId,
+          userIds,
+        );
+        result.set(activityId, certified);
+      }),
+    );
+    return result;
   }
 
   private async filterPostsForViewer(

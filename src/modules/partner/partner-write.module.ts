@@ -6,12 +6,14 @@ import { AccountRiskModule } from '../account-risk/account-risk.module';
 import { UserModule } from '../user/user.module';
 import { PostWriteService } from './application/post-write.service';
 import { PartnerRepositoryModule } from './partner-repository.module';
+import { LiveInfoModule } from '../live-info/live-info.module';
 
 @Module({
   imports: [
     PartnerRepositoryModule,
     UserModule,
     AccountRiskModule,
+    LiveInfoModule,
     forwardRef(() => ActivityModule),
     ChromaModule,
     PostAgentAdaptersModule,

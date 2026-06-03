@@ -33,6 +33,8 @@ import {
 import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { buildMatchCriteriaPatch } from '../../../ai/match/buddy-match-criteria.util';
 import { inferPostContentTypes } from '../utils/post-content-type.util';
+import { OnSiteIdentityService } from '../../live-info/on-site-identity.service';
+
 @Injectable()
 export class PostWriteService {
   private readonly logger = new Logger(PostWriteService.name);
@@ -49,7 +51,29 @@ export class PostWriteService {
     private readonly postNotification: IPostNotificationPort,
     @Inject(POST_MODERATION_PORT)
     private readonly postModeration: IPostModerationPort,
+    private readonly onSiteIdentity: OnSiteIdentityService,
   ) {}
+
+  private async toCreatedEventDetailItem(
+    post: PostRecord,
+    liked = false,
+    appliedByMe = false,
+  ) {
+    const activityLegacyId = post.activityLegacyId;
+    const authorOnSiteVerified =
+      activityLegacyId != null
+        ? await this.onSiteIdentity.isUserOnSiteCertified(
+            post.userId,
+            activityLegacyId,
+          )
+        : false;
+    return PostMapper.toEventDetailItem(
+      post,
+      liked,
+      appliedByMe,
+      authorOnSiteVerified,
+    );
+  }
 
   async createPost(
     dto: CreatePostDto,
@@ -192,7 +216,7 @@ export class PostWriteService {
         created.activityLegacyId,
         rejectionReason,
       );
-      return PostMapper.toEventDetailItem(created);
+      return this.toCreatedEventDetailItem(created);
     }
 
     this.scheduleEmbeddingUpsert({
@@ -208,7 +232,7 @@ export class PostWriteService {
       status,
     });
 
-    return PostMapper.toEventDetailItem(created);
+    return this.toCreatedEventDetailItem(created);
   }
 
   scheduleEmbeddingUpsert(input: {

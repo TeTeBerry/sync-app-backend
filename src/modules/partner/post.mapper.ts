@@ -41,7 +41,11 @@ export class PostMapper {
     return STATUS_LABEL[status ?? 'recruiting'] ?? '招募中';
   }
 
-  static toHomeFeedItem(post: PostRecord, liked = false) {
+  static toHomeFeedItem(
+    post: PostRecord,
+    liked = false,
+    authorOnSiteVerified = false,
+  ) {
     return {
       id: String(post._id),
       userId: post.userId,
@@ -59,6 +63,7 @@ export class PostMapper {
       status: PostMapper.toStatusLabel(post.status),
       contentTypes: post.contentTypes ?? [],
       images: post.images ?? [],
+      ...(authorOnSiteVerified ? { authorOnSiteVerified: true } : {}),
     };
   }
 
@@ -66,6 +71,7 @@ export class PostMapper {
     post: PostRecord,
     liked = false,
     appliedByMe = false,
+    authorOnSiteVerified = false,
   ) {
     const createdAt =
       post.createdAt instanceof Date
@@ -90,6 +96,7 @@ export class PostMapper {
       avatar: post.authorAvatar ?? '',
       status: PostMapper.toStatusLabel(post.status),
       images: post.images ?? [],
+      ...(authorOnSiteVerified ? { authorOnSiteVerified: true } : {}),
     };
   }
 

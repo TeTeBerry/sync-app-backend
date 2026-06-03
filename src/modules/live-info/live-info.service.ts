@@ -23,6 +23,7 @@ import { UserService } from '../user/user.service';
 import { PublishLiveInfoDto } from './dto/publish-live-info.dto';
 import { SubmitLiveInfoWristbandDto } from './dto/submit-wristband.dto';
 import { aggregateLiveInfoSummary } from './domain/live-info-aggregate.util';
+import { sortLiveInfoUpdatesByScore } from './domain/live-info-feed-sort.util';
 import {
   LIVE_INFO_PUBLISH_COOLDOWN_MS,
   LIVE_INFO_UPDATE_TTL_MS,
@@ -163,14 +164,15 @@ export class LiveInfoService implements OnModuleInit {
       : null;
 
     const now = new Date();
-    const activeUpdates = await this.updateModel
-      .find({
-        activityLegacyId,
-        expiresAt: { $gt: now },
-      })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean();
+    const activeUpdates = sortLiveInfoUpdatesByScore(
+      await this.updateModel
+        .find({
+          activityLegacyId,
+          expiresAt: { $gt: now },
+        })
+        .limit(50)
+        .lean(),
+    );
 
     const { summary, certCount } = aggregateLiveInfoSummary(
       activeUpdates.map((u) => ({ ratings: u.ratings })),

@@ -36,11 +36,13 @@ import { PostService } from './post.service';
 import { PostTeamPairService } from './application/post-team-pair.service';
 import { TeamChatController } from './team-chat.controller';
 import { TeamChatService } from './team-chat.service';
+import { LiveInfoModule } from '../live-info/live-info.module';
 
 @Module({
   imports: [
     UserModule,
     AccountRiskModule,
+    LiveInfoModule,
     forwardRef(() => ActivityModule),
     PartnerRepositoryModule,
     PartnerWriteModule,
