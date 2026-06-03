@@ -12,12 +12,16 @@ import {
 } from '../../database/schemas/content-report.schema';
 import { AccountRiskService } from '../account-risk/account-risk.service';
 import { CreateReportDto } from './dto/create-report.dto';
-import type { ReportTargetType } from '../../database/schemas/content-report.schema';
+import type {
+  ReportReviewStatus,
+  ReportTargetType,
+} from '../../database/schemas/content-report.schema';
 
 export type ReportStatusResult = {
   reported: boolean;
   category?: string;
   createdAt?: string;
+  reviewStatus?: ReportReviewStatus;
 };
 
 @Injectable()
@@ -42,6 +46,7 @@ export class ReportService {
         targetUserId: dto.targetUserId?.trim(),
         category: dto.category,
         reason: dto.reason?.trim(),
+        reviewStatus: 'pending',
       });
 
       if (dto.category === 'scalper') {
@@ -81,7 +86,7 @@ export class ReportService {
         targetType,
         targetId: trimmedId,
       })
-      .select('category createdAt')
+      .select('category createdAt reviewStatus acknowledgedAt')
       .lean();
 
     if (!row) {
@@ -89,11 +94,37 @@ export class ReportService {
     }
 
     const createdAt = (row as { createdAt?: Date }).createdAt;
+    const reviewStatus = await this.resolveReviewStatus(
+      row.reviewStatus,
+      targetType,
+      trimmedId,
+      row.targetUserId,
+    );
 
     return {
       reported: true,
       category: row.category,
       createdAt: createdAt?.toISOString(),
+      reviewStatus,
     };
+  }
+
+  private async resolveReviewStatus(
+    stored: ReportReviewStatus | undefined,
+    targetType: ReportTargetType,
+    targetId: string,
+    targetUserId?: string,
+  ): Promise<ReportReviewStatus> {
+    if (stored === 'acknowledged') return 'acknowledged';
+
+    const uid = await this.accountRisk.resolveReportTargetUserId(
+      targetType,
+      targetId,
+      targetUserId,
+    );
+    if (uid && (await this.accountRisk.isUserPostRestricted(uid))) {
+      return 'acknowledged';
+    }
+    return 'pending';
   }
 }

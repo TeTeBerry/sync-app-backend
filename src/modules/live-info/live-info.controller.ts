@@ -9,6 +9,9 @@ import {
 } from '@nestjs/common';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
+import { LIVE_INFO_CATEGORY_IDS } from './domain/live-info-categories';
+import type { LiveInfoCategoryId } from './domain/live-info-categories';
+import { parseCertifiedOnlyQuery } from './domain/live-info-snapshot-filter.util';
 import { PublishLiveInfoDto } from './dto/publish-live-info.dto';
 import { SubmitLiveInfoWristbandDto } from './dto/submit-wristband.dto';
 import { LiveInfoService } from './live-info.service';
@@ -21,8 +24,22 @@ export class LiveInfoController {
   getSnapshot(
     @Param('legacyId', ParseIntPipe) legacyId: number,
     @CurrentActor() actor: RequestActor,
+    @Query('zoneTag') zoneTag?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('certifiedOnly') certifiedOnly?: string,
   ) {
-    return this.liveInfoService.getSnapshot(legacyId, actor);
+    const parsedCategory = categoryId?.trim();
+    const categoryFilter = LIVE_INFO_CATEGORY_IDS.includes(
+      parsedCategory as LiveInfoCategoryId,
+    )
+      ? (parsedCategory as LiveInfoCategoryId)
+      : undefined;
+
+    return this.liveInfoService.getSnapshot(legacyId, actor, {
+      zoneTag: zoneTag?.trim() || undefined,
+      categoryId: categoryFilter,
+      certifiedOnly: parseCertifiedOnlyQuery(certifiedOnly),
+    });
   }
 
   @Post('wristband')

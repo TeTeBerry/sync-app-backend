@@ -29,8 +29,15 @@ export class EventLiveUpdate {
   @Prop({ type: [LiveInfoRatingSchema], required: true })
   ratings!: { categoryId: LiveInfoCategoryId; score: number }[];
 
+  @Prop({ required: true, index: true, default: 'venue' })
+  zoneTag!: string;
+
   @Prop()
   remark?: string;
+
+  /** Hash of ratings + remark for per-user duplicate detection. */
+  @Prop({ index: true })
+  contentFingerprint?: string;
 
   @Prop({ type: Date, required: true, index: true })
   expiresAt!: Date;
@@ -43,4 +50,11 @@ export const EventLiveUpdateSchema =
   SchemaFactory.createForClass(EventLiveUpdate);
 
 EventLiveUpdateSchema.index({ activityLegacyId: 1, createdAt: -1 });
+EventLiveUpdateSchema.index({ activityLegacyId: 1, zoneTag: 1, expiresAt: 1 });
+EventLiveUpdateSchema.index({
+  activityLegacyId: 1,
+  userId: 1,
+  contentFingerprint: 1,
+  createdAt: -1,
+});
 EventLiveUpdateSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });

@@ -5,6 +5,7 @@ export type ContentReportDocument = HydratedDocument<ContentReport>;
 
 export type ReportTargetType = 'post' | 'user' | 'comment';
 export type ReportCategory = 'ads' | 'scalper' | 'vulgar';
+export type ReportReviewStatus = 'pending' | 'acknowledged';
 
 @Schema({ timestamps: true })
 export class ContentReport {
@@ -25,6 +26,13 @@ export class ContentReport {
 
   @Prop()
   reason?: string;
+
+  /** Reporter-visible processing state (e.g. after account risk sanction). */
+  @Prop({ enum: ['pending', 'acknowledged'], default: 'pending' })
+  reviewStatus?: ReportReviewStatus;
+
+  @Prop()
+  acknowledgedAt?: Date;
 }
 
 export const ContentReportSchema = SchemaFactory.createForClass(ContentReport);

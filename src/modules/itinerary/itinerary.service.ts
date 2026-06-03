@@ -8,6 +8,7 @@ import {
 } from '../../database/schemas/user-itinerary.schema';
 import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
+import { ItineraryBuddyRecruitHintService } from './itinerary-buddy-recruit-hint.service';
 import type { ItineraryDay } from '../../database/schemas/user-itinerary.schema';
 import type { SaveItineraryDto } from './dto/save-itinerary.dto';
 import type { GenerateItineraryDto } from './dto/generate-itinerary.dto';
@@ -20,7 +21,20 @@ export class ItineraryService {
     private readonly itineraryModel: Model<UserItineraryDocument>,
     private readonly scheduleService: ItineraryScheduleService,
     private readonly generationService: ItineraryGenerationService,
+    private readonly buddyRecruitHintService: ItineraryBuddyRecruitHintService,
   ) {}
+
+  getBuddyRecruitHint(
+    activityLegacyId: number,
+    selectedDjIds: string[],
+    actor: RequestActor,
+  ) {
+    return this.buddyRecruitHintService.getHint(
+      activityLegacyId,
+      selectedDjIds,
+      actor,
+    );
+  }
 
   getSchedule(
     activityLegacyId: number,

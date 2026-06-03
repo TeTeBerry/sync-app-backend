@@ -165,6 +165,23 @@ export class AccountRiskService {
     });
   }
 
+  /** Whether the user currently cannot post/comment (used for report status). */
+  async isUserPostRestricted(userId: string): Promise<boolean> {
+    const id = userId?.trim();
+    if (!id || isDemoOwnerClient(id)) return false;
+
+    await this.maybeClearExpiredRestriction(id);
+    const user = await this.userModel
+      .findOne({ externalId: id })
+      .select('accountRiskStatus postRestrictedUntil')
+      .lean();
+
+    const status = (user?.accountRiskStatus ?? 'normal') as AccountRiskStatus;
+    const until = user?.postRestrictedUntil;
+    if (status === 'normal' || !until) return false;
+    return until.getTime() > Date.now();
+  }
+
   async resolveReportTargetUserId(
     targetType: 'post' | 'user' | 'comment',
     targetId: string,
@@ -318,6 +335,11 @@ export class AccountRiskService {
           postRestrictedUntil: mergedUntil,
         },
       },
+    );
+
+    await this.reportModel.updateMany(
+      { targetUserId: userId, reviewStatus: { $ne: 'acknowledged' } },
+      { $set: { reviewStatus: 'acknowledged', acknowledgedAt: now } },
     );
 
     this.logger.warn({

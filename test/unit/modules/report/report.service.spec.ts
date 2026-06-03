@@ -11,6 +11,7 @@ describe('ReportService', () => {
   const accountRisk = {
     resolveReportTargetUserId: jest.fn().mockResolvedValue('author-1'),
     recordScalperReportAgainstUser: jest.fn(),
+    isUserPostRestricted: jest.fn().mockResolvedValue(false),
   };
 
   let service: ReportService;
@@ -41,6 +42,7 @@ describe('ReportService', () => {
       targetUserId: 'author-1',
       category: 'ads',
       reason: undefined,
+      reviewStatus: 'pending',
     });
   });
 
@@ -83,6 +85,8 @@ describe('ReportService', () => {
         lean: jest.fn().mockResolvedValue({
           category: 'scalper',
           createdAt,
+          reviewStatus: 'pending',
+          targetUserId: 'author-9',
         }),
       }),
     });
@@ -97,7 +101,29 @@ describe('ReportService', () => {
       reported: true,
       category: 'scalper',
       createdAt: createdAt.toISOString(),
+      reviewStatus: 'pending',
     });
+  });
+
+  it('getStatus returns acknowledged when target user is restricted', async () => {
+    (reportModel.findOne as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          category: 'scalper',
+          reviewStatus: 'pending',
+          targetUserId: 'bad-user',
+        }),
+      }),
+    });
+    (accountRisk.isUserPostRestricted as jest.Mock).mockResolvedValue(true);
+
+    const result = await service.getStatus(
+      'post',
+      'post-x',
+      toRequestActor('demo-mia'),
+    );
+
+    expect(result.reviewStatus).toBe('acknowledged');
   });
 
   it('resolves demo owner reporter id', async () => {

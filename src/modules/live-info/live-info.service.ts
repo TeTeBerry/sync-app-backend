@@ -30,8 +30,24 @@ import {
   shanghaiEndOfEventDate,
   shanghaiEventDate,
 } from './domain/live-info-date.util';
+import {
+  LIVE_INFO_DUPLICATE_FINGERPRINT_MS,
+  LIVE_INFO_MAX_PUBLISHES_PER_HOUR,
+} from './domain/live-info-publish-limits.util';
+import { liveInfoUpdateFingerprint } from './utils/live-info-update-fingerprint.util';
 import { toLiveInfoFeedItemDto, toLiveInfoViewerDto } from './live-info.mapper';
+import {
+  filterLiveInfoUpdates,
+  parseCertifiedOnlyQuery,
+  type LiveInfoSnapshotQuery,
+} from './domain/live-info-snapshot-filter.util';
+import {
+  isZoneTagAllowed,
+  normalizeZoneTag,
+  resolveLiveInfoZones,
+} from './domain/live-info-zones.util';
 import { LIVE_INFO_SEED_UPDATES } from './live-info.seed';
+import { OnSiteIdentityService } from './on-site-identity.service';
 import {
   wristbandImageFileKey,
   wristbandImageUrlRegex,
@@ -54,6 +70,7 @@ export class LiveInfoService implements OnModuleInit {
     private readonly activityService: ActivityService,
     private readonly userService: UserService,
     private readonly wristbandVerifyService: WristbandVerifyService,
+    private readonly onSiteIdentity: OnSiteIdentityService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -148,8 +165,13 @@ export class LiveInfoService implements OnModuleInit {
     };
   }
 
-  async getSnapshot(activityLegacyId: number, actor: RequestActor) {
-    await this.ensureActivity(activityLegacyId);
+  async getSnapshot(
+    activityLegacyId: number,
+    actor: RequestActor,
+    query: LiveInfoSnapshotQuery = {},
+  ) {
+    const activity = await this.ensureActivity(activityLegacyId);
+    const zones = resolveLiveInfoZones(activity);
     const eventDate = shanghaiEventDate();
     const viewerId = this.resolveViewerId(actor);
 
@@ -164,22 +186,44 @@ export class LiveInfoService implements OnModuleInit {
       : null;
 
     const now = new Date();
-    const activeUpdates = sortLiveInfoUpdatesByScore(
-      await this.updateModel
-        .find({
-          activityLegacyId,
-          expiresAt: { $gt: now },
-        })
-        .limit(50)
-        .lean(),
+    const rawUpdates = await this.updateModel
+      .find({
+        activityLegacyId,
+        expiresAt: { $gt: now },
+      })
+      .limit(80)
+      .lean();
+
+    const authorIds = [
+      ...new Set(
+        rawUpdates.map((u) => u.userId?.trim()).filter(Boolean) as string[],
+      ),
+    ];
+    const onSiteUserIds = await this.onSiteIdentity.getOnSiteCertifiedUserIds(
+      activityLegacyId,
+      authorIds,
     );
+
+    const filtered = filterLiveInfoUpdates(
+      rawUpdates.map((u) => ({
+        ...u,
+        zoneTag: normalizeZoneTag(u.zoneTag),
+      })),
+      query,
+      onSiteUserIds,
+    );
+
+    const activeUpdates = sortLiveInfoUpdatesByScore(filtered);
 
     const { summary, certCount } = aggregateLiveInfoSummary(
       activeUpdates.map((u) => ({ ratings: u.ratings })),
     );
 
     const feed = activeUpdates.map((doc) =>
-      toLiveInfoFeedItemDto(doc as EventLiveUpdateDocument, viewerId),
+      toLiveInfoFeedItemDto(doc as EventLiveUpdateDocument, viewerId, {
+        zones,
+        authorOnSiteVerified: onSiteUserIds.has(doc.userId?.trim() ?? ''),
+      }),
     );
 
     const viewer = toLiveInfoViewerDto(
@@ -190,6 +234,7 @@ export class LiveInfoService implements OnModuleInit {
     return {
       activityLegacyId,
       eventDate,
+      zones,
       viewer,
       summary,
       certCount,
@@ -328,19 +373,50 @@ export class LiveInfoService implements OnModuleInit {
     body: PublishLiveInfoDto,
     actor: RequestActor,
   ) {
-    await this.ensureActivity(activityLegacyId);
+    const activity = await this.ensureActivity(activityLegacyId);
+    const zones = resolveLiveInfoZones(activity);
+    const zoneTag = normalizeZoneTag(body.zoneTag);
+    if (!isZoneTagAllowed(zoneTag, zones)) {
+      throw new BadRequestException('无效的现场区域');
+    }
+
     const uid = this.resolveUser(actor);
     const eventDate = shanghaiEventDate();
     await this.requireCertified(activityLegacyId, uid, eventDate);
 
-    const cooldownSince = new Date(Date.now() - LIVE_INFO_PUBLISH_COOLDOWN_MS);
+    const now = Date.now();
+    const cooldownSince = new Date(now - LIVE_INFO_PUBLISH_COOLDOWN_MS);
     const recent = await this.updateModel.findOne({
       activityLegacyId,
       userId: uid,
       createdAt: { $gt: cooldownSince },
     });
     if (recent) {
-      throw new BadRequestException('发布过于频繁，请稍后再试');
+      throw new BadRequestException('发布过于频繁，请 15 分钟后再试');
+    }
+
+    const hourSince = new Date(now - 60 * 60 * 1000);
+    const hourlyCount = await this.updateModel.countDocuments({
+      activityLegacyId,
+      userId: uid,
+      createdAt: { $gt: hourSince },
+    });
+    if (hourlyCount >= LIVE_INFO_MAX_PUBLISHES_PER_HOUR) {
+      throw new BadRequestException('今日发布次数过多，请稍后再试');
+    }
+
+    const fingerprint = liveInfoUpdateFingerprint(body);
+    const duplicateSince = new Date(now - LIVE_INFO_DUPLICATE_FINGERPRINT_MS);
+    const duplicate = await this.updateModel.findOne({
+      activityLegacyId,
+      userId: uid,
+      contentFingerprint: fingerprint,
+      createdAt: { $gt: duplicateSince },
+    });
+    if (duplicate) {
+      throw new BadRequestException(
+        '内容与近期现场资讯重复，请修改评分或备注后再发',
+      );
     }
 
     const profile = await this.userService.resolveProfile(actor);
@@ -351,15 +427,25 @@ export class LiveInfoService implements OnModuleInit {
       userId: uid,
       authorName: profile?.name ?? actor.displayName?.trim() ?? '用户',
       avatar: profile?.avatar,
+      zoneTag,
       ratings: body.ratings,
       remark: body.remark?.trim(),
+      contentFingerprint: fingerprint,
       expiresAt,
       likedByUserIds: [],
     });
 
+    const onSite = await this.onSiteIdentity.isUserOnSiteCertified(
+      uid,
+      activityLegacyId,
+    );
+
     return {
       ok: true as const,
-      update: toLiveInfoFeedItemDto(doc, uid),
+      update: toLiveInfoFeedItemDto(doc, uid, {
+        zones,
+        authorOnSiteVerified: onSite,
+      }),
     };
   }
 
@@ -393,9 +479,20 @@ export class LiveInfoService implements OnModuleInit {
       throw new NotFoundException('动态不存在');
     }
 
+    const activity =
+      await this.activityService.findByLegacyId(activityLegacyId);
+    const zones = resolveLiveInfoZones(activity);
+    const onSite = await this.onSiteIdentity.isUserOnSiteCertified(
+      uid,
+      activityLegacyId,
+    );
+
     return {
       ok: true as const,
-      update: toLiveInfoFeedItemDto(fresh as EventLiveUpdateDocument, uid),
+      update: toLiveInfoFeedItemDto(fresh as EventLiveUpdateDocument, uid, {
+        zones,
+        authorOnSiteVerified: onSite,
+      }),
     };
   }
 
@@ -416,6 +513,7 @@ export class LiveInfoService implements OnModuleInit {
         userId: seed.userId,
         authorName: seed.authorName,
         avatar: seed.avatar,
+        zoneTag: seed.zoneTag ?? 'venue',
         ratings: seed.ratings,
         remark: seed.remark,
         expiresAt,

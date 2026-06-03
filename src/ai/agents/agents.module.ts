@@ -47,6 +47,7 @@ import { UserProfileAgent } from './user-profile.agent';
     RiskAgent,
     UserProfileAgent,
     NoticeAgent,
+    MatchService,
   ],
 })
 export class AgentsModule {}

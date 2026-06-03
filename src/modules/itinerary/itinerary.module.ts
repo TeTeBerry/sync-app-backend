@@ -17,15 +17,20 @@ import {
   ItineraryGenerationLogSchema,
 } from '../../database/schemas/itinerary-generation-log.schema';
 import { ActivityModule } from '../activity/activity.module';
+import { AgentsModule } from '../../ai/agents/agents.module';
+import { PartnerRepositoryModule } from '../partner/partner-repository.module';
 import { ItineraryController } from './itinerary.controller';
 import { ItineraryService } from './itinerary.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
 import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryCacheService } from './itinerary-cache.service';
+import { ItineraryBuddyRecruitHintService } from './itinerary-buddy-recruit-hint.service';
 
 @Module({
   imports: [
     ActivityModule,
+    AgentsModule,
+    PartnerRepositoryModule,
     MongooseModule.forFeature([
       { name: ArtistPerformance.name, schema: ArtistPerformanceSchema },
       { name: FestivalSession.name, schema: FestivalSessionSchema },
@@ -42,6 +47,7 @@ import { ItineraryCacheService } from './itinerary-cache.service';
     ItineraryScheduleService,
     ItineraryGenerationService,
     ItineraryCacheService,
+    ItineraryBuddyRecruitHintService,
   ],
   exports: [ItineraryService],
 })

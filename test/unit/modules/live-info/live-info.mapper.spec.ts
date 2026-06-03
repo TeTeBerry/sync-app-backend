@@ -37,4 +37,30 @@ describe('toLiveInfoFeedItemDto', () => {
 
     expect(dto.liked).toBe(false);
   });
+
+  it('includes zone fields and on-site verification', () => {
+    const doc = {
+      ...mockUpdate([]),
+      zoneTag: 'stage_a',
+    } as unknown as EventLiveUpdateDocument;
+
+    const dto = toLiveInfoFeedItemDto(doc, undefined, {
+      zones: [{ id: 'stage_a', label: 'A 舞台' }],
+      authorOnSiteVerified: true,
+    });
+
+    expect(dto.zoneTag).toBe('stage_a');
+    expect(dto.zoneLabel).toBe('A 舞台');
+    expect(dto.certified).toBe(true);
+    expect(dto.authorOnSiteVerified).toBe(true);
+  });
+
+  it('marks author not on site when verification is false', () => {
+    const dto = toLiveInfoFeedItemDto(mockUpdate([]), undefined, {
+      authorOnSiteVerified: false,
+    });
+
+    expect(dto.certified).toBe(false);
+    expect(dto.authorOnSiteVerified).toBeUndefined();
+  });
 });

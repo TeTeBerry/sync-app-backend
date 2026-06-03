@@ -1,6 +1,11 @@
 import { formatTimeAgo } from '../../common/utils/day-time.util';
 import type { EventLiveUpdateDocument } from '../../database/schemas/event-live-update.schema';
 import type { EventLiveWristbandDocument } from '../../database/schemas/event-live-wristband.schema';
+import {
+  normalizeZoneTag,
+  zoneLabelForTag,
+  type LiveInfoZoneConfig,
+} from './domain/live-info-zones.util';
 
 function formatRelativeTime(value?: Date | string): string {
   return formatTimeAgo(value, { compact: true });
@@ -10,7 +15,11 @@ export type LiveInfoFeedItemDto = {
   id: string;
   userName: string;
   avatar?: string;
+  /** @deprecated Prefer authorOnSiteVerified; kept for clients expecting publish gate. */
   certified: boolean;
+  authorOnSiteVerified?: boolean;
+  zoneTag: string;
+  zoneLabel: string;
   timeLabel: string;
   ratings: { categoryId: string; score: number }[];
   remark?: string;
@@ -21,13 +30,24 @@ export type LiveInfoFeedItemDto = {
 export function toLiveInfoFeedItemDto(
   doc: EventLiveUpdateDocument,
   viewerUserId?: string,
+  options?: {
+    zones?: LiveInfoZoneConfig[];
+    authorOnSiteVerified?: boolean;
+  },
 ): LiveInfoFeedItemDto {
   const likedBy = doc.likedByUserIds ?? [];
+  const zoneTag = normalizeZoneTag(doc.zoneTag);
+  const zones = options?.zones ?? [];
+  const onSite = options?.authorOnSiteVerified === true;
+
   return {
     id: String(doc._id),
     userName: doc.authorName?.trim() || '用户',
     avatar: doc.avatar,
-    certified: true,
+    certified: onSite,
+    authorOnSiteVerified: onSite ? true : undefined,
+    zoneTag,
+    zoneLabel: zoneLabelForTag(zones, zoneTag),
     timeLabel: formatRelativeTime(
       (doc as EventLiveUpdateDocument & { createdAt?: Date }).createdAt,
     ),

@@ -24,6 +24,9 @@ export class LiveInfoRatingDto {
 }
 
 export class PublishLiveInfoDto {
+  @IsString()
+  zoneTag!: string;
+
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
