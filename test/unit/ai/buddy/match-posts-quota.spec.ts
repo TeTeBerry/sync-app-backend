@@ -43,6 +43,7 @@ function buildUseCase(deps: {
         name: '风暴电音节',
         code: 'storm',
       }),
+      resolveOwnerPostForMatch: jest.fn().mockResolvedValue(null),
       buildRecommendedPostCards,
     } as never,
     { assertCanMatch, consumeIfMatched } as unknown as AiMatchQuotaService,

@@ -19,8 +19,16 @@ export interface PostModerationResult {
   sanitizedBody?: string;
 }
 
+export interface PostModerationAssessOptions {
+  /** Skip LLM when structured form posts already passed rule + duplicate checks. */
+  rulesOnly?: boolean;
+}
+
 export interface IPostModerationPort {
-  assessPost(input: PostModerationInput): Promise<PostModerationResult>;
+  assessPost(
+    input: PostModerationInput,
+    options?: PostModerationAssessOptions,
+  ): Promise<PostModerationResult>;
   assessPostImage(
     input: PostModerationInput & { image: string },
   ): Promise<PostModerationResult>;

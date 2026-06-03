@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { TICKET_PUBLISH_FORBIDDEN_MESSAGE } from '@src/ai/buddy/ticket-publish-policy.util';
 import { PostWriteService } from '@src/modules/partner/application/post-write.service';
@@ -19,6 +19,7 @@ describe('PostWriteService', () => {
   const repository = {
     create: jest.fn(),
     countByOwnerAndActivity: jest.fn(),
+    findOwnerSimilarRecruitingPost: jest.fn().mockResolvedValue(null),
   } as unknown as IPostRepository;
 
   const userService = {
@@ -45,6 +46,9 @@ describe('PostWriteService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (repository.findOwnerSimilarRecruitingPost as jest.Mock).mockResolvedValue(
+      null,
+    );
     service = new PostWriteService(
       repository,
       userService,
@@ -53,6 +57,31 @@ describe('PostWriteService', () => {
       postNotification,
       postModeration,
     );
+  });
+
+  it('rejects similar recruiting posts in the same activity', async () => {
+    (userService.resolveProfile as jest.Mock).mockResolvedValue({
+      name: 'Zara Chen',
+    });
+    (activityService.findByLegacyId as jest.Mock).mockResolvedValue({
+      legacyId: 9,
+      name: '风暴电音节',
+    });
+    (repository.findOwnerSimilarRecruitingPost as jest.Mock).mockResolvedValue({
+      _id: 'existing',
+      body: '找队友，6.13-6.14，上海，1人',
+      status: 'recruiting',
+    });
+
+    await expect(
+      service.createPost(
+        { body: '找队友 6.13-6.14 上海 1人', activityLegacyId: 9 },
+        toRequestActor('demo-user', 'Zara Chen'),
+        { skipRiskCheck: true },
+      ),
+    ).rejects.toThrow(ConflictException);
+
+    expect(repository.create).not.toHaveBeenCalled();
   });
 
   it('rejects ticket resale posts before persistence', async () => {

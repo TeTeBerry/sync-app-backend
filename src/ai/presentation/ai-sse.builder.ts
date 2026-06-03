@@ -7,8 +7,11 @@ import {
 import {
   buildRecommendGateEmptyReply,
   buildRecommendGateFoundReply,
+  buildRequireBuddyPostFirstReply,
   RECOMMEND_GATE_SUGGESTED_REPLIES,
+  REQUIRE_BUDDY_POST_SUGGESTED_REPLIES,
 } from '../gate/recommend-gate.util';
+import { enterCollectPostBodyState } from '../conversation';
 import { PUBLISH_CONFIRM_SUGGESTED_REPLIES } from '../publish/publish-confirm.util';
 import type { PostIntentCreateAttempt } from '../post-intent.service';
 import { buildActivityEnterConfirmationReply } from '../utils/activity-enter.util';
@@ -97,6 +100,29 @@ export class AiStreamEventBuilder {
         degraded,
       },
       this.recommendGateSuggestedRepliesEvent(),
+      this.conversationPatchEvent(sink),
+    ];
+  }
+
+  buildRequireBuddyPostFirstEvents(
+    sink: ReplySink,
+    activityLegacyId: number | undefined,
+    activityLabel: string,
+  ): AiStreamEvent[] {
+    const replyText = buildRequireBuddyPostFirstReply(activityLabel);
+    sink.setReply(replyText);
+    sink.setState(
+      enterCollectPostBodyState({
+        activityLegacyId,
+        fromSelfPost: true,
+      }),
+    );
+    return [
+      { type: 'delta', content: replyText },
+      {
+        type: 'suggested_replies',
+        replies: [...REQUIRE_BUDDY_POST_SUGGESTED_REPLIES],
+      },
       this.conversationPatchEvent(sink),
     ];
   }

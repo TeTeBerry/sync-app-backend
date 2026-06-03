@@ -42,6 +42,7 @@ describe('MatchPostsFromChatUseCase profile dedupe', () => {
       {
         isMatchExistingPostsIntent: () => true,
         resolveActivity,
+        resolveOwnerPostForMatch: jest.fn().mockResolvedValue(null),
         buildRecommendedPostCards: jest.fn(),
       } as never,
       {
@@ -84,6 +85,7 @@ describe('MatchPostsFromChatUseCase profile dedupe', () => {
       {
         isMatchExistingPostsIntent: () => false,
         resolveActivity,
+        resolveOwnerPostForMatch: jest.fn().mockResolvedValue(null),
         buildRecommendedPostCards: jest.fn().mockResolvedValue([]),
         filterMatchesForShortcutTag: jest.fn().mockResolvedValue([]),
       } as never,

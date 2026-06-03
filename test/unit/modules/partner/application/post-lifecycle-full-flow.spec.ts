@@ -5,6 +5,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { PostWriteService } from '@src/modules/partner/application/post-write.service';
+import { arePostBodiesSimilar } from '@src/modules/partner/utils/post-body-similarity.util';
 import { PostTeamPairService } from '@src/modules/partner/application/post-team-pair.service';
 import { PostInteractionService } from '@src/modules/partner/post-interaction.service';
 import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
@@ -105,6 +106,27 @@ describe('Post lifecycle full business flow', () => {
         posts.set(id, next);
         return next;
       }),
+      findOwnerSimilarRecruitingPost: jest.fn(
+        async (
+          userId: string,
+          body: string,
+          activityLegacyId?: number,
+          excludePostId?: string,
+        ) => {
+          for (const row of posts.values()) {
+            if (row.userId !== userId || row.status !== 'recruiting') continue;
+            if (
+              activityLegacyId != null &&
+              row.activityLegacyId !== activityLegacyId
+            ) {
+              continue;
+            }
+            if (excludePostId && String(row._id) === excludePostId) continue;
+            if (arePostBodiesSimilar(body, row.body ?? '')) return row;
+          }
+          return null;
+        },
+      ),
     } as unknown as IPostRepository;
 
     const userService = {

@@ -48,7 +48,14 @@ export interface IPostRepository {
     userId: string,
     body: string,
     activityLegacyId?: number,
+    excludePostId?: string,
   ): Promise<boolean>;
+  findOwnerSimilarRecruitingPost(
+    userId: string,
+    body: string,
+    activityLegacyId?: number,
+    excludePostId?: string,
+  ): Promise<PostRecord | null>;
   existsOwnerRecruitingPostForActivity(
     userId: string,
     activityLegacyId: number,

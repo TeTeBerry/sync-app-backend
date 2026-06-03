@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  isAiShortcutTag,
-  normalizeAiShortcutInput,
-} from '../../common/utils/demo-owner.util';
+import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { CreatePostDto } from '../../modules/partner/dto/create-post.dto';
 import { PostService } from '../../modules/partner/post.service';
@@ -37,6 +34,7 @@ import {
 } from '../publish/publish-confirm.util';
 import {
   buildDeclineRecommendCollectBodyReply,
+  buildRequireBuddyPostFirstReply,
   isAwaitingRecommendationsGate,
   isAwaitingSelfPostBodyCollection,
   isDeclineRecommendationsIntent,
@@ -264,39 +262,23 @@ export class CreatePostFromChatUseCase {
       !isDeclineRecommendationsIntent(trimmedInput) &&
       !publishConfirmReady;
 
-    if (isShortcutWithActivity && hasActivity && !publishConfirmReady) {
-      const draftBody = await this.buddyContext.buildPostBody({
-        ctx,
-        input: trimmedInput,
-        activityName: resolvedActivity?.name,
-        parsedBody: parsed?.body,
-        messages,
-        activityLegacyId: resolvedActivity?.legacyId,
-      });
-
-      const draftTags = this.buddyContext.resolveTags(
-        trimmedInput,
-        parsed?.tags,
-        draftBody,
-      );
-
+    if (
+      isShortcutWithActivity &&
+      hasActivity &&
+      !publishConfirmReady &&
+      !inSelfPostCollectFlow
+    ) {
       onStateChange?.(
-        enterPublishConfirmState({
+        enterCollectPostBodyState({
           activityLegacyId: resolvedActivity?.legacyId,
-          draftBody,
+          fromSelfPost: true,
         }),
       );
-
       return {
-        kind: 'pending_confirmation',
-        activityLegacyId: resolvedActivity?.legacyId,
-        replyText: buildPublishConfirmReply({
-          activityLabel: resolvedActivity?.name ?? '活动',
-          draftBody,
-          shortcutTag: normalizeAiShortcutInput(trimmedInput),
-          draftTags,
-        }),
-        draftBody,
+        kind: 'rejected',
+        replyText: buildRequireBuddyPostFirstReply(
+          resolvedActivity?.name ?? '活动',
+        ),
       };
     }
 

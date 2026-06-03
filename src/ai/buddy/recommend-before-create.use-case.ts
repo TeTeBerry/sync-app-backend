@@ -13,9 +13,11 @@ import {
   isDeclineRecommendationsIntent,
 } from '../gate/recommend-gate.util';
 import { buildMatchCriteriaForSearch } from '../match/buddy-match-criteria.util';
+import { resolveOwnerRecruitingPostForMatch } from '../match/resolve-owner-post-for-match.util';
 import { PostService } from '../../modules/partner/post.service';
 import { BuddyContextService } from './buddy-context.service';
 import { shouldSkipActivityScopedBuddyRecommend } from './activity-scope-guard.util';
+import { isBuddyTeamSearchIntent } from './buddy-team-search-intent.util';
 import { MatchPostsFromChatUseCase } from './match-posts.use-case';
 import type { PostIntentMatchResult } from './buddy.types';
 
@@ -71,12 +73,18 @@ export class RecommendBeforeCreateUseCase {
     );
     if (!resolvedActivity?.legacyId) return null;
 
-    const ownerPost = actor.clientUserId
-      ? await this.postService.findOwnerRecruitingPostRecord(
+    const ownerPosts = actor.clientUserId
+      ? await this.postService.findOwnerRecruitingPostRecordsForActivity(
           resolvedActivity.legacyId,
           actor,
         )
-      : null;
+      : [];
+
+    if (isBuddyTeamSearchIntent(trimmed) && !ownerPosts.length) {
+      return null;
+    }
+
+    const ownerPost = resolveOwnerRecruitingPostForMatch(ownerPosts, trimmed);
 
     const criteria = buildMatchCriteriaForSearch({
       activityLegacyId: resolvedActivity.legacyId,

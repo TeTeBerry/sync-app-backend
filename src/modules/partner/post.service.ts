@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -499,6 +500,17 @@ export class PostService implements OnModuleInit {
     );
   }
 
+  async findOwnerRecruitingPostRecordsForActivity(
+    activityLegacyId: number,
+    actor: RequestActor,
+  ): Promise<PostRecord[]> {
+    if (!actor.clientUserId?.trim()) return [];
+    return this.repository.findOwnerRecruitingPostsForActivity(
+      resolveOwnerFilterFromActor(actor),
+      activityLegacyId,
+    );
+  }
+
   async createPost(
     dto: CreatePostDto,
     actor: RequestActor,
@@ -549,7 +561,23 @@ export class PostService implements OnModuleInit {
     }
 
     const patch: Partial<Post> = {};
-    if (dto.body?.trim()) patch.body = dto.body.trim();
+    if (dto.body?.trim()) {
+      const nextBody = dto.body.trim();
+      if (post.status === 'recruiting') {
+        const similar = await this.repository.findOwnerSimilarRecruitingPost(
+          post.userId,
+          nextBody,
+          post.activityLegacyId,
+          String(post._id),
+        );
+        if (similar) {
+          throw new ConflictException(
+            '与其他招募帖内容过于相近，请修改后再保存。',
+          );
+        }
+      }
+      patch.body = nextBody;
+    }
     if (dto.eventTitle?.trim()) patch.eventTitle = dto.eventTitle.trim();
     if (dto.location?.trim()) patch.location = dto.location.trim();
     if (dto.departureCity?.trim())

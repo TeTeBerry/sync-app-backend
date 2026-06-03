@@ -2,12 +2,17 @@ import type { ConversationState } from '../conversation';
 import { ChatMessageDto } from '../../shared/chat';
 
 /** 助手已展示搭子推荐、等待用户决定是否自己发帖 */
-export const RECOMMEND_GATE_MARKER = '【先推荐搭子】';
+export const RECOMMEND_GATE_MARKER = '【推荐搭子】';
 
 export const RECOMMEND_GATE_SUGGESTED_REPLIES = ['自己发帖'] as const;
 
 /** 助手已请用户填写组队帖正文，等待下一条用户消息 */
 export const SELF_POST_COLLECT_BODY_MARKER = '【填写组队帖】';
+
+/** 用户尚未发布招募帖，需先填写组队信息再匹配他人帖 */
+export const REQUIRE_BUDDY_POST_MARKER = '【先填写组队信息】';
+
+export const REQUIRE_BUDDY_POST_SUGGESTED_REPLIES = ['组队发帖'] as const;
 
 /** 无匹配结果时引导用户下一条消息作为发帖正文 */
 export const MATCH_EMPTY_POST_BODY_PROMPT = '你可以：告诉我内容帮你发布帖子';
@@ -69,5 +74,14 @@ export function buildRecommendGateEmptyReply(activityLabel: string): string {
     `暂未在「${activityLabel}」找到相近的组队帖。`,
     '',
     '想发什么直接说，我帮你发～',
+  ].join('\n');
+}
+
+export function buildRequireBuddyPostFirstReply(activityLabel: string): string {
+  return [
+    REQUIRE_BUDDY_POST_MARKER,
+    `在「${activityLabel}」找同行前，请先填写你的组队信息，方便他人了解你的需求。`,
+    '',
+    '可点下方「组队发帖」用表单填写，或直接发：时间、地点、人数（如 6.13-6.14 上海 2人 拼房）。',
   ].join('\n');
 }

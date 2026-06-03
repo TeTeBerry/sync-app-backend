@@ -5,6 +5,7 @@ import type {
   NotificationMeta,
 } from '../../database/schemas/notification.schema';
 import { NotificationService } from '../../modules/notification/notification.service';
+import { categoryForInteractionType } from '../../modules/notification/notification-category.util';
 import type { NotificationTemplateKey } from '../../modules/notification/notification-templates.util';
 import { toRequestActor } from '../../common/auth/actor-query.util';
 import type { RequestActor } from '../../common/auth/request-actor.types';
@@ -178,7 +179,7 @@ export class NoticeAgent {
 
     await this.dispatch({
       userId: uid,
-      category: 'general',
+      category: 'application',
       templateKey: 'teamAccepted',
       templateParams: { actor: ownerName?.trim() || '发帖人' },
       meta: {
@@ -200,7 +201,7 @@ export class NoticeAgent {
 
     await this.dispatch({
       userId: uid,
-      category: 'general',
+      category: 'application',
       templateKey: 'teamDissolved',
       templateParams: { actor: actorName?.trim() || '对方' },
       meta: {
@@ -339,8 +340,7 @@ export class NoticeAgent {
       return;
     }
 
-    const category: NotificationCategory =
-      interactionType === 'like' ? 'like' : 'comment';
+    const category = categoryForInteractionType(interactionType);
 
     await this.dispatch({
       userId: ownerUserId,

@@ -17,7 +17,10 @@ jest.mock('@src/ai/llm/llm.service', () => ({
 import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { AiTurnPipeline } from '@src/ai/orchestration/ai-turn.pipeline';
 import { AiSseBuilder } from '@src/ai/presentation/ai-sse.builder';
-import { RECOMMEND_GATE_MARKER } from '@src/ai/gate/recommend-gate.util';
+import {
+  RECOMMEND_GATE_MARKER,
+  REQUIRE_BUDDY_POST_MARKER,
+} from '@src/ai/gate/recommend-gate.util';
 
 describe('AiTurnPipeline homepage activity gating', () => {
   const agenticReplyService = {
@@ -41,6 +44,9 @@ describe('AiTurnPipeline homepage activity gating', () => {
   };
   const buddyContext = {
     resolveActivityLegacyIdFromChat: jest.fn(),
+    maybeRequireBuddyPostBeforeTeamSearch: jest
+      .fn()
+      .mockResolvedValue({ required: false }),
   };
   const activityService = {
     findByCode: jest
@@ -73,6 +79,9 @@ describe('AiTurnPipeline homepage activity gating', () => {
     });
     postIntentService.tryMatchPostsFromChat.mockResolvedValue(null);
     postIntentService.tryProactiveRecommendBeforeCreate.mockResolvedValue(null);
+    buddyContext.maybeRequireBuddyPostBeforeTeamSearch.mockResolvedValue({
+      required: false,
+    });
   });
 
   it('skips proactive recommend on home when no activity is inferred', async () => {
@@ -200,6 +209,34 @@ describe('AiTurnPipeline homepage activity gating', () => {
     expect(
       postIntentService.tryProactiveRecommendBeforeCreate,
     ).not.toHaveBeenCalled();
+  });
+
+  it('requires buddy post before shortcut search_posts when user has no recruiting post', async () => {
+    intentRouter.resolve.mockResolvedValue({
+      kind: 'search_posts',
+      source: 'rule',
+    });
+    buddyContext.maybeRequireBuddyPostBeforeTeamSearch.mockResolvedValue({
+      required: true,
+      activityLabel: '风暴电音节',
+    });
+
+    const result = await pipeline.runTurn(
+      {
+        ...baseDto,
+        activityLegacyId: 9,
+        messages: [{ role: 'user', content: '找拼房' }],
+      },
+      [{ role: 'user', content: '找拼房' }],
+      '找拼房',
+      { version: 1, flow: 'idle' },
+      'req-require-buddy-shortcut',
+      'scoped-session',
+    );
+
+    expect(postIntentService.tryMatchPostsFromChat).not.toHaveBeenCalled();
+    expect(result.conversationState.flow).toBe('collect_post_body');
+    expect(result.assistantReply).toContain(REQUIRE_BUDDY_POST_MARKER);
   });
 
   it('enters collect_post_body when search_posts finds no matches on event detail', async () => {

@@ -80,6 +80,20 @@ describe('NoticeAgent', () => {
     );
   });
 
+  it('creates application notification with application category', async () => {
+    await agent.notifyApplication(post, 'post-1', 'actor-3', 'Luna');
+
+    expect(notificationService.createFromTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        templateKey: 'application',
+        meta: expect.objectContaining({
+          category: 'application',
+          type: 'application',
+        }),
+      }),
+    );
+  });
+
   it('notifies activity update recipients who opted in', async () => {
     await agent.notifyActivityUpdate(
       ['user-a', 'user-b'],

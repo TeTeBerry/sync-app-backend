@@ -7,6 +7,7 @@ export type NotificationType = 'general' | 'interaction' | 'system' | 'match';
 export type NotificationCategory =
   | 'comment'
   | 'like'
+  | 'application'
   | 'buddy_recommend'
   | 'system'
   | 'general';
@@ -25,7 +26,7 @@ export type NotificationInteractionType =
   | 'team_accepted';
 
 export interface NotificationMeta {
-  /** NoticeAgent category (comment / like / buddy_recommend / system). */
+  /** UI grouping (comment / like / application / system / general). */
   category?: NotificationCategory;
   /** Target activity for event-detail navigation. */
   activityLegacyId?: number;

@@ -227,6 +227,20 @@ export class AiTurnPipeline {
     profileSync: UserProfileSyncResult | null,
     timings: AiTurnTimings,
   ): Promise<AiStreamEvent[]> {
+    const requireBuddy =
+      await this.buddyContext.maybeRequireBuddyPostBeforeTeamSearch(
+        lastInput,
+        dto.activityLegacyId,
+        dto.actor,
+      );
+    if (requireBuddy.required) {
+      return this.sseBuilder.buildRequireBuddyPostFirstEvents(
+        sink,
+        dto.activityLegacyId,
+        requireBuddy.activityLabel,
+      );
+    }
+
     const matchStart = Date.now();
     const matched = await this.postIntentService.tryMatchPostsFromChat({
       messages: fullMessages,
@@ -316,6 +330,20 @@ export class AiTurnPipeline {
       );
       if (postEvents.length > 0) return postEvents;
       return this.collectDeterministicOnly(dto, fullMessages, lastInput, sink);
+    }
+
+    const requireBuddy =
+      await this.buddyContext.maybeRequireBuddyPostBeforeTeamSearch(
+        lastInput,
+        effectiveActivityLegacyId,
+        dto.actor,
+      );
+    if (requireBuddy.required) {
+      return this.sseBuilder.buildRequireBuddyPostFirstEvents(
+        sink,
+        effectiveActivityLegacyId,
+        requireBuddy.activityLabel,
+      );
     }
 
     const matchStart = Date.now();

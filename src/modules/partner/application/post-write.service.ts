@@ -76,12 +76,18 @@ export class PostWriteService {
       throw new BadRequestException(TICKET_PUBLISH_FORBIDDEN_MESSAGE);
     }
 
+    const structuredBuddyForm =
+      Boolean(dto.contentTypes?.length) && Boolean(dto.tags?.length);
+
     if (!options?.skipRiskCheck) {
-      const risk = await this.postModeration.assessPost({
-        body: bodyToSave,
-        actor,
-        activityLegacyId: dto.activityLegacyId ?? activity?.legacyId,
-      });
+      const risk = await this.postModeration.assessPost(
+        {
+          body: bodyToSave,
+          actor,
+          activityLegacyId: dto.activityLegacyId ?? activity?.legacyId,
+        },
+        structuredBuddyForm ? { rulesOnly: true } : undefined,
+      );
       if (!risk.publishable) {
         status = 'hidden';
         rejectionReason = risk.reason;
@@ -105,6 +111,20 @@ export class PostWriteService {
     const contentTypes = dto.contentTypes?.length
       ? dto.contentTypes
       : inferPostContentTypes({ tags: dto.tags, body: bodyToSave });
+
+    const similarRecruiting =
+      await this.repository.findOwnerSimilarRecruitingPost(
+        ownerUserId,
+        bodyToSave,
+        activityLegacyId,
+      );
+    if (similarRecruiting) {
+      throw new ConflictException(
+        activityLegacyId != null
+          ? `您在「${eventTitle}」已有内容相近的招募帖，请勿重复发布。可编辑原帖或将其标记完成后再发新帖。`
+          : '您已有内容相近的招募帖正在招募中，请勿重复发布。可编辑原帖或将其标记完成后再发新帖。',
+      );
+    }
 
     // 同一活动发帖数量限制：最多 8 篇
     const MAX_POSTS_PER_ACTIVITY = 8;

@@ -9,6 +9,7 @@ import {
   PostRecord,
 } from './interfaces/post.repository.interface';
 import type { PostPageCursor } from './domain/post-cursor.util';
+import { arePostBodiesSimilar } from './utils/post-body-similarity.util';
 
 function buildOwnerFilter(filter: PostQueryFilter) {
   const base = buildOwnerMongoFilter(filter.userId, filter.authorName);
@@ -150,24 +151,53 @@ export class PostRepository implements IPostRepository {
     return rows[0]?.total ?? 0;
   }
 
-  async existsDuplicateBody(
+  async findOwnerSimilarRecruitingPost(
     userId: string,
     body: string,
     activityLegacyId?: number,
-  ): Promise<boolean> {
-    const normalized = body.trim();
-    if (!normalized) return false;
+    excludePostId?: string,
+  ): Promise<PostRecord | null> {
+    const trimmed = body.trim();
+    if (!trimmed) return null;
 
     const query: Record<string, unknown> = {
       userId,
-      body: normalized,
+      status: 'recruiting',
     };
     if (activityLegacyId != null) {
       query.activityLegacyId = activityLegacyId;
     }
 
-    const existing = await this.model.findOne(query).select('_id').lean();
-    return Boolean(existing);
+    const candidates = await this.model
+      .find(query)
+      .select('_id body status activityLegacyId')
+      .sort({ createdAt: -1 })
+      .limit(32)
+      .lean();
+
+    for (const row of candidates) {
+      if (excludePostId && String(row._id) === excludePostId) continue;
+      if (arePostBodiesSimilar(trimmed, row.body ?? '')) {
+        return row as PostRecord;
+      }
+    }
+
+    return null;
+  }
+
+  async existsDuplicateBody(
+    userId: string,
+    body: string,
+    activityLegacyId?: number,
+    excludePostId?: string,
+  ): Promise<boolean> {
+    const similar = await this.findOwnerSimilarRecruitingPost(
+      userId,
+      body,
+      activityLegacyId,
+      excludePostId,
+    );
+    return Boolean(similar);
   }
 
   async existsOwnerRecruitingPostForActivity(

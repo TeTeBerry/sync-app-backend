@@ -108,6 +108,17 @@ export class MatchPostsFromChatUseCase {
     const hintKind =
       buddySearchHint?.kind ?? inferBuddySearchHintKind(hintDisplay);
 
+    const ownerPost =
+      params.matchCriteria != null
+        ? null
+        : actor.clientUserId
+          ? await this.buddyContext.resolveOwnerPostForMatch(
+              resolvedActivity.legacyId,
+              actor,
+              trimmed,
+            )
+          : null;
+
     const criteria =
       params.matchCriteria ??
       buildMatchCriteriaForSearch({
@@ -115,6 +126,7 @@ export class MatchPostsFromChatUseCase {
         activityName: resolvedActivity.name,
         activityCode: resolvedActivity.code,
         activityDate: resolvedActivity.date,
+        ownerPost,
         conversation: ctx,
         profileCity: resolvedProfileSync?.profile?.city,
         userInput: trimmed,

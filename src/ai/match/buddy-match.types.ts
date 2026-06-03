@@ -23,4 +23,6 @@ export interface BuddyMatchCriteria {
   requesterBody?: string;
   /** Post ids that must never be recommended back (e.g. criteria seed owner post) */
   excludePostIds?: string[];
+  /** AI shortcut chip the user tapped (找拼车 / 找拼房 / 找队友 …) */
+  searchShortcutTag?: string;
 }

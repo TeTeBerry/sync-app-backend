@@ -34,6 +34,7 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
   const repository = {
     create: jest.fn(),
     countByOwnerAndActivity: jest.fn(),
+    findOwnerSimilarRecruitingPost: jest.fn().mockResolvedValue(null),
   } as unknown as IPostRepository;
 
   const userService = {
@@ -60,6 +61,9 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (repository.findOwnerSimilarRecruitingPost as jest.Mock).mockResolvedValue(
+      null,
+    );
     service = new PostWriteService(
       repository,
       userService,
@@ -109,6 +113,10 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
         contentTypes: ['team', 'accommodation'],
         status: 'recruiting',
       }),
+    );
+    expect(postModeration.assessPost).toHaveBeenCalledWith(
+      expect.objectContaining({ body: dto.body }),
+      { rulesOnly: true },
     );
   });
 

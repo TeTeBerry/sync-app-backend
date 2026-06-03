@@ -73,7 +73,8 @@ export class RiskAgent {
       if (isDuplicate) {
         return {
           publishable: false,
-          reason: '你已发布过相同内容的组队帖，请勿重复刷屏或抄袭',
+          reason:
+            '您已有内容相近的招募帖正在招募中，请勿重复发布。可编辑原帖或将其标记完成后再发新帖。',
           violationType: 'duplicate',
           severity: 'medium',
         };

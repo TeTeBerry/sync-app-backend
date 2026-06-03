@@ -3,6 +3,7 @@ import { RiskAgent } from '../agents/risk.agent';
 import type {
   IPostModerationPort,
   PostCommentModerationInput,
+  PostModerationAssessOptions,
   PostModerationInput,
   PostModerationResult,
 } from '../../modules/partner/ports/post-moderation.port';
@@ -11,12 +12,18 @@ import type {
 export class PostModerationAdapter implements IPostModerationPort {
   constructor(private readonly riskAgent: RiskAgent) {}
 
-  assessPost(input: PostModerationInput): Promise<PostModerationResult> {
-    return this.riskAgent.assess({
-      body: input.body,
-      actor: input.actor,
-      activityLegacyId: input.activityLegacyId,
-    });
+  assessPost(
+    input: PostModerationInput,
+    options?: PostModerationAssessOptions,
+  ): Promise<PostModerationResult> {
+    return this.riskAgent.assess(
+      {
+        body: input.body,
+        actor: input.actor,
+        activityLegacyId: input.activityLegacyId,
+      },
+      { rulesOnly: options?.rulesOnly },
+    );
   }
 
   assessPostImage(

@@ -6,6 +6,9 @@ import type { PostRecord } from '../../modules/partner/interfaces/post.repositor
 import type { ConversationContext } from '../conversation/conversation-context.parser';
 import type { BuddyMatchCriteria, BuddyMatchIntent } from './buddy-match.types';
 import { intentsForShortcutTag } from './shortcut-post-match.util';
+import { syntheticPostRecordFromShortcut } from './resolve-owner-post-for-match.util';
+
+export { resolveOwnerRecruitingPostForMatch } from './resolve-owner-post-for-match.util';
 
 const DEPARTURE_FROM_BODY_RE = /从\s*([^\s，,。]+?)\s*出发/;
 
@@ -125,6 +128,32 @@ export function collectRequesterTags(
   return [...tags];
 }
 
+export function mergeBuddySearchIntents(
+  shortcutIntents?: BuddyMatchIntent[],
+  ownerIntents?: BuddyMatchIntent[],
+  freeText?: string,
+): BuddyMatchIntent[] {
+  const merged: BuddyMatchIntent[] = [];
+
+  if (shortcutIntents?.length) {
+    for (const intent of shortcutIntents) {
+      if (!merged.includes(intent)) merged.push(intent);
+    }
+    for (const intent of ownerIntents ?? []) {
+      if (!merged.includes(intent)) merged.push(intent);
+    }
+  } else if (ownerIntents?.length) {
+    for (const intent of ownerIntents) {
+      if (!merged.includes(intent)) merged.push(intent);
+    }
+  } else {
+    return inferIntentsFromPost([], freeText ?? '');
+  }
+
+  if (!merged.length) merged.push('team');
+  return merged;
+}
+
 export function criteriaFromPostRecord(
   post: PostRecord,
   activity?: { name?: string; code?: string },
@@ -185,6 +214,10 @@ export function buildMatchCriteriaForSearch(params: {
       ? normalizeAiShortcutInput(trimmedInput)
       : undefined;
 
+  const shortcutOnlyBody = shortcutTag
+    ? syntheticPostRecordFromShortcut(shortcutTag).body
+    : undefined;
+
   return {
     activityLegacyId: params.activityLegacyId,
     activityName: params.activityName ?? fromOwner?.activityName,
@@ -197,10 +230,12 @@ export function buildMatchCriteriaForSearch(params: {
     zone: params.zone ?? fromOwner?.zone,
     headcount: params.conversation?.peopleCount ?? fromOwner?.headcount,
     genderPref: params.conversation?.genderPreference ?? fromOwner?.genderPref,
-    intents:
-      shortcutIntents ??
-      fromOwner?.intents ??
-      inferIntentsFromPost([], params.userInput ?? ''),
+    intents: mergeBuddySearchIntents(
+      shortcutIntents,
+      fromOwner?.intents,
+      trimmedInput && !shortcutIntents ? trimmedInput : undefined,
+    ),
+    searchShortcutTag: shortcutTag,
     requesterTags: collectRequesterTags(
       fromOwner?.requesterTags,
       params.ownerPost?.tags,
@@ -212,13 +247,7 @@ export function buildMatchCriteriaForSearch(params: {
     requesterBody:
       params.ownerPost?.body?.trim() ??
       fromOwner?.requesterBody ??
-      (shortcutTag === '找拼卡' || shortcutTag === '找拼车'
-        ? '拼卡 拼车 顺风车 顺路 包车 出发'
-        : shortcutTag === '找拼房'
-          ? '拼住宿 拼房 酒店 同行'
-          : shortcutTag === '找队友'
-            ? '组队 搭子 同行 缺人'
-            : undefined),
+      shortcutOnlyBody,
     excludePostIds: params.ownerPost?._id
       ? [String(params.ownerPost._id)]
       : undefined,
@@ -269,6 +298,9 @@ export function buildRerankUserNeed(criteria: BuddyMatchCriteria): string {
   }
 
   const structured: string[] = [];
+  if (criteria.searchShortcutTag) {
+    structured.push(`当前搜索：${criteria.searchShortcutTag}`);
+  }
   if (criteria.activityName) structured.push(`活动：${criteria.activityName}`);
   if (criteria.departureCity)
     structured.push(`出发地：${criteria.departureCity}`);
@@ -294,9 +326,10 @@ export function buildRerankUserNeed(criteria: BuddyMatchCriteria): string {
 export function criteriaToEmbeddingText(criteria: BuddyMatchCriteria): string {
   const body = criteria.requesterBody?.trim();
 
-  // 有用户发帖内容时，只用帖子内容做精准匹配，不拼接其他宽泛字段
+  // 有用户发帖内容时以帖子正文为主；快捷键补充搜索意图（拼车等）
   if (body) {
-    return body;
+    const shortcut = criteria.searchShortcutTag?.trim();
+    return shortcut ? `${shortcut} ${body}`.trim() : body;
   }
 
   // fallback：没有帖子内容时，用结构化需求信息

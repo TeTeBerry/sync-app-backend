@@ -4,6 +4,7 @@ import {
   criteriaFromPostRecord,
   inferDepartureCityFromText,
   inferIntentsFromPost,
+  mergeBuddySearchIntents,
 } from '@src/ai/match/buddy-match-criteria.util';
 import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
 
@@ -54,6 +55,42 @@ describe('buddy-match-criteria.util', () => {
     expect(criteria.excludePostIds).toEqual(['mine']);
   });
 
+  it('merges shortcut intent with owner post body and tags for AI search', () => {
+    const ownerPost = {
+      _id: 'mine',
+      userId: 'me',
+      body: '上海出发，2人女生同行，可拼房',
+      departureCity: '上海',
+      tags: ['拼房', '女生'],
+      activityLegacyId: 4,
+      status: 'recruiting',
+    } as PostRecord;
+
+    const criteria = buildMatchCriteriaForSearch({
+      activityLegacyId: 4,
+      activityName: '风暴电音节',
+      ownerPost,
+      userInput: '找拼车',
+    });
+
+    expect(criteria.searchShortcutTag).toBe('找拼车');
+    expect(criteria.intents).toEqual(
+      expect.arrayContaining(['carpool', 'lodging']),
+    );
+    expect(criteria.requesterBody).toContain('上海出发');
+    expect(criteria.requesterTags).toEqual(
+      expect.arrayContaining(['拼房', '女生']),
+    );
+  });
+
+  it('mergeBuddySearchIntents keeps shortcut lane and owner details', () => {
+    expect(mergeBuddySearchIntents(['carpool'], ['lodging', 'team'])).toEqual([
+      'carpool',
+      'lodging',
+      'team',
+    ]);
+  });
+
   it('buildRerankUserNeed prioritizes requester body and structured fields', () => {
     const need = buildRerankUserNeed({
       activityLegacyId: 4,
@@ -75,6 +112,15 @@ describe('buddy-match-criteria.util', () => {
     expect(need).toContain('内场');
     expect(need).toContain('2025-05-01');
     expect(need).toContain('女生');
+  });
+
+  it('buildRerankUserNeed includes shortcut search lane when present', () => {
+    const need = buildRerankUserNeed({
+      activityLegacyId: 4,
+      requesterBody: '上海出发求拼车',
+      searchShortcutTag: '找拼车',
+    });
+    expect(need).toContain('当前搜索：找拼车');
   });
 
   it('buildRerankUserNeed truncates very long requester body', () => {

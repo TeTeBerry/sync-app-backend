@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import {
   isAiShortcutTag,
   normalizeAiShortcutInput,
 } from '../../common/utils/demo-owner.util';
 import { ActivityService } from '../../modules/activity/activity.service';
 import { PostService } from '../../modules/partner/post.service';
+import { resolveOwnerRecruitingPostForMatch } from '../match/resolve-owner-post-for-match.util';
+import type { PostRecord } from '../../modules/partner/interfaces/post.repository.interface';
+import { isBuddyTeamSearchIntent } from './buddy-team-search-intent.util';
 import type { RecommendedPostCard } from '../../shared/chat';
 import { inferAuthorGenderFromPost } from '../../common/utils/infer-author-gender.util';
 import { BUDDY_RECOMMEND_CARD_SNIPPET_MAX } from '../match/buddy-match.constants';
@@ -50,6 +54,54 @@ export class BuddyContextService {
     private readonly postService: PostService,
     private readonly activityService: ActivityService,
   ) {}
+
+  /**
+   * 找队友/拼房/拼车/拼卡等搜索前，须已有本活动招募帖；否则返回引导文案所需的活动名。
+   */
+  /** Pick the recruiting post whose type/tags best match the shortcut (or newest if only one). */
+  async resolveOwnerPostForMatch(
+    activityLegacyId: number,
+    actor: RequestActor,
+    userInput?: string,
+  ): Promise<PostRecord | null> {
+    if (!actor.clientUserId?.trim()) return null;
+    const posts =
+      await this.postService.findOwnerRecruitingPostRecordsForActivity(
+        activityLegacyId,
+        actor,
+      );
+    return resolveOwnerRecruitingPostForMatch(posts, userInput);
+  }
+
+  async maybeRequireBuddyPostBeforeTeamSearch(
+    input: string,
+    activityLegacyId: number | undefined,
+    actor: RequestActor,
+  ): Promise<{ required: true; activityLabel: string } | { required: false }> {
+    if (activityLegacyId == null || Number.isNaN(activityLegacyId)) {
+      return { required: false };
+    }
+    if (!isBuddyTeamSearchIntent(input)) {
+      return { required: false };
+    }
+
+    const ownerPost = actor.clientUserId
+      ? await this.postService.findOwnerRecruitingPostRecord(
+          activityLegacyId,
+          actor,
+        )
+      : null;
+    if (ownerPost) {
+      return { required: false };
+    }
+
+    const activity =
+      await this.activityService.findByLegacyId(activityLegacyId);
+    return {
+      required: true,
+      activityLabel: activity?.name?.trim() || '本活动',
+    };
+  }
 
   async resolveActivity(
     ctx: ConversationContext,

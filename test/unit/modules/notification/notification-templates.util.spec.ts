@@ -7,6 +7,8 @@ describe('notification-templates.util', () => {
   it('maps template keys to notice categories', () => {
     expect(NOTIFICATION_CATEGORY_BY_TEMPLATE.like).toBe('like');
     expect(NOTIFICATION_CATEGORY_BY_TEMPLATE.comment).toBe('comment');
+    expect(NOTIFICATION_CATEGORY_BY_TEMPLATE.application).toBe('application');
+    expect(NOTIFICATION_CATEGORY_BY_TEMPLATE.teamAccepted).toBe('application');
     expect(NOTIFICATION_CATEGORY_BY_TEMPLATE.postRejected).toBe('system');
   });
 

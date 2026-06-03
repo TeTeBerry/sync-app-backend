@@ -51,6 +51,7 @@ import type { PostIntentCreateAttempt } from '@src/ai/post-intent.service';
 import type { PostIntentMatchResult } from '@src/ai/buddy/buddy.types';
 import {
   RECOMMEND_GATE_MARKER,
+  REQUIRE_BUDDY_POST_MARKER,
   SELF_POST_COLLECT_BODY_MARKER,
 } from '@src/ai/gate/recommend-gate.util';
 import { PUBLISH_CONFIRM_SUGGESTED_REPLIES } from '@src/ai/publish/publish-confirm.util';
@@ -100,6 +101,9 @@ describe('AiService buddy flow', () => {
 
   const buddyContext = {
     resolveActivityLegacyIdFromChat: jest.fn().mockResolvedValue(undefined),
+    maybeRequireBuddyPostBeforeTeamSearch: jest
+      .fn()
+      .mockResolvedValue({ required: false }),
   };
   const activityService = {
     findByCode: jest
@@ -127,6 +131,9 @@ describe('AiService buddy flow', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    buddyContext.maybeRequireBuddyPostBeforeTeamSearch.mockResolvedValue({
+      required: false,
+    });
     chatService.getSession.mockResolvedValue({
       history: [],
       conversationState: null,
@@ -175,6 +182,36 @@ describe('AiService buddy flow', () => {
       '匹配次数',
     );
     expect(events.some((e) => e.type === 'done')).toBe(false);
+  });
+
+  it('shortcut without own post → require buddy info before recommend', async () => {
+    intentRouter.resolve.mockResolvedValue({
+      kind: 'search_posts',
+      source: 'rule',
+    });
+    buddyContext.maybeRequireBuddyPostBeforeTeamSearch.mockResolvedValue({
+      required: true,
+      activityLabel: '风暴电音节',
+    });
+
+    const events = await collectEvents(
+      service.streamChat(
+        { ...baseDto, messages: [{ role: 'user', content: '找队友' }] },
+        { requestId: 'req-require-buddy' },
+      ),
+    );
+
+    expect(postIntentService.tryMatchPostsFromChat).not.toHaveBeenCalled();
+    expect(
+      postIntentService.tryProactiveRecommendBeforeCreate,
+    ).not.toHaveBeenCalled();
+    const delta = events.find((e) => e.type === 'delta');
+    expect(
+      delta &&
+        'content' in delta &&
+        delta.content.includes(REQUIRE_BUDDY_POST_MARKER),
+    ).toBe(true);
+    expect(events.some((e) => e.type === 'suggested_replies')).toBe(true);
   });
 
   it.each([

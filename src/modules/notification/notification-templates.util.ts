@@ -22,12 +22,12 @@ export const NOTIFICATION_CATEGORY_BY_TEMPLATE: Record<
   like: 'like',
   comment: 'comment',
   commentReply: 'comment',
-  application: 'general',
+  application: 'application',
   postRejected: 'system',
   postHidden: 'system',
   activityUpdate: 'system',
-  teamDissolved: 'general',
-  teamAccepted: 'general',
+  teamDissolved: 'application',
+  teamAccepted: 'application',
 };
 
 const TEMPLATE_DEFAULTS: Record<
