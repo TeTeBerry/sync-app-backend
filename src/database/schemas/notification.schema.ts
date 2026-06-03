@@ -34,8 +34,6 @@ export interface NotificationMeta {
   postId?: string;
   /** Partner interaction kind; drives client routing when present. */
   type?: NotificationInteractionType;
-  /** @deprecated Prefer activityLegacyId (number). */
-  activityId?: string;
   actorUserId?: string;
   actorUserName?: string;
   /** i18n template key, e.g. notifications.types.like */

@@ -51,7 +51,6 @@ describe('toLiveInfoFeedItemDto', () => {
 
     expect(dto.zoneTag).toBe('stage_a');
     expect(dto.zoneLabel).toBe('A 舞台');
-    expect(dto.certified).toBe(true);
     expect(dto.authorOnSiteVerified).toBe(true);
   });
 
@@ -60,7 +59,6 @@ describe('toLiveInfoFeedItemDto', () => {
       authorOnSiteVerified: false,
     });
 
-    expect(dto.certified).toBe(false);
     expect(dto.authorOnSiteVerified).toBeUndefined();
   });
 });

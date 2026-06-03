@@ -1,5 +1,5 @@
 import {
-  addMapDays,
+  addUtcDays,
   computeMapExpiresAt,
   computePackageValidUntil,
   buildEventEntitlementQuotas,
@@ -17,7 +17,7 @@ describe('event-entitlement.util', () => {
   it('computes remaining quotas for pro', () => {
     const limits = getPackageTierDefinition('pro').limits;
     const usage = { aiMatchUsed: 3, contactUnlockUsed: 2, postPinUsed: 0 };
-    const mapExpiresAt = addMapDays(purchasedAt, limits.mapDays);
+    const mapExpiresAt = addUtcDays(purchasedAt, limits.mapDays);
     const quotas = buildEventEntitlementQuotas(
       limits,
       usage,
@@ -35,7 +35,7 @@ describe('event-entitlement.util', () => {
   it('treats ultra ai/contact as unlimited', () => {
     const limits = getPackageTierDefinition('ultra').limits;
     const usage = { aiMatchUsed: 100, contactUnlockUsed: 50, postPinUsed: 0 };
-    const mapExpiresAt = addMapDays(purchasedAt, limits.mapDays);
+    const mapExpiresAt = addUtcDays(purchasedAt, limits.mapDays);
 
     expect(canConsumeAiMatch(limits, usage)).toBe(true);
     expect(canConsumeContactUnlock(limits, usage)).toBe(true);

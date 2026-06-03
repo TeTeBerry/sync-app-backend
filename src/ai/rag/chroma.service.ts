@@ -547,21 +547,6 @@ export class ChromaService implements OnModuleInit {
     }
   }
 
-  /** @deprecated Prefer queryPostsForMatch for activity + user isolation */
-  async queryPostsByActivity(
-    text: string,
-    activityCode: string,
-    activityLegacyId?: number,
-    n = 5,
-  ): Promise<PostMatchResult[]> {
-    const result = await this.queryPostsForMatch(text, {
-      activityCode,
-      activityLegacyId,
-      n,
-    });
-    return result.matches;
-  }
-
   async query(text: string, n = 3): Promise<Document[]> {
     if (!this.collection || !text.trim()) return [];
 

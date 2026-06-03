@@ -16,7 +16,7 @@ jest.mock('@src/ai/llm/llm.service', () => ({
 
 import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { AiTurnPipeline } from '@src/ai/orchestration/ai-turn.pipeline';
-import { AiSseBuilder } from '@src/ai/presentation/ai-sse.builder';
+import { AiStreamEventBuilder } from '@src/ai/presentation/ai-sse.builder';
 import {
   RECOMMEND_GATE_MARKER,
   REQUIRE_BUDDY_POST_MARKER,
@@ -60,7 +60,7 @@ describe('AiTurnPipeline homepage activity gating', () => {
     postIntentService as never,
     userProfileAgent as never,
     intentRouter as never,
-    new AiSseBuilder(),
+    new AiStreamEventBuilder(),
     buddyContext as never,
     activityService as never,
   );

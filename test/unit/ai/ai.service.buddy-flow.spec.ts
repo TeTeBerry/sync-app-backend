@@ -46,7 +46,7 @@ jest.mock('@src/modules/chat/chat.service', () => ({
 
 import { AiService } from '@src/ai/ai.service';
 import { AiTurnPipeline } from '@src/ai/orchestration/ai-turn.pipeline';
-import { AiSseBuilder } from '@src/ai/presentation/ai-sse.builder';
+import { AiStreamEventBuilder } from '@src/ai/presentation/ai-sse.builder';
 import type { PostIntentCreateAttempt } from '@src/ai/post-intent.service';
 import type { PostIntentMatchResult } from '@src/ai/buddy/buddy.types';
 import {
@@ -117,7 +117,7 @@ describe('AiService buddy flow', () => {
     postIntentService as never,
     userProfileAgent as never,
     intentRouter as never,
-    new AiSseBuilder(),
+    new AiStreamEventBuilder(),
     buddyContext as never,
     activityService as never,
   );

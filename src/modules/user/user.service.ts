@@ -98,11 +98,6 @@ export class UserService implements OnModuleInit {
     );
   }
 
-  /** @deprecated Use `resolveProfileFromStoredAuthor`. */
-  resolveProfileFromLegacy(userId?: string, authorName?: string) {
-    return this.resolveProfileFromStoredAuthor({ userId, authorName });
-  }
-
   private resolveExternalId(actor: RequestActor): string {
     return actor.resolvedUserId;
   }

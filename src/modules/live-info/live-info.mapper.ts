@@ -15,8 +15,6 @@ export type LiveInfoFeedItemDto = {
   id: string;
   userName: string;
   avatar?: string;
-  /** @deprecated Prefer authorOnSiteVerified; kept for clients expecting publish gate. */
-  certified: boolean;
   authorOnSiteVerified?: boolean;
   zoneTag: string;
   zoneLabel: string;
@@ -44,7 +42,6 @@ export function toLiveInfoFeedItemDto(
     id: String(doc._id),
     userName: doc.authorName?.trim() || '用户',
     avatar: doc.avatar,
-    certified: onSite,
     authorOnSiteVerified: onSite ? true : undefined,
     zoneTag,
     zoneLabel: zoneLabelForTag(zones, zoneTag),

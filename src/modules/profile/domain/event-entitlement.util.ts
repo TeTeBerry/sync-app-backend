@@ -45,11 +45,6 @@ export function addUtcDays(from: Date, days: number): Date {
   return result;
 }
 
-/** @deprecated Prefer addUtcDays — kept for existing call sites. */
-export function addMapDays(from: Date, mapDays: number): Date {
-  return addUtcDays(from, mapDays);
-}
-
 export function computePackageValidUntil(
   purchasedAt: Date,
   validityDays: number = PACKAGE_ENTITLEMENT_VALIDITY_DAYS,

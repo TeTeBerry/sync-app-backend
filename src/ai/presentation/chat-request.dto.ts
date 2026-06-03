@@ -7,7 +7,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { RequestActorDto } from '../../common/auth/request-actor.dto';
-import { ChatMessageDto } from './chat-message.dto';
+import { ChatMessageDto } from '../../shared/chat/chat-message.dto';
 
 export class ChatRequestDto {
   @IsArray()

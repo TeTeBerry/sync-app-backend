@@ -208,6 +208,3 @@ export class AiStreamEventBuilder {
     return [];
   }
 }
-
-/** @deprecated Use `AiStreamEventBuilder`. */
-export const AiSseBuilder = AiStreamEventBuilder;

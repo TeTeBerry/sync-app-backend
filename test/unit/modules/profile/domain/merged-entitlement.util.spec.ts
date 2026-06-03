@@ -1,4 +1,4 @@
-import { addMapDays } from '@src/modules/profile/domain/event-entitlement.util';
+import { addUtcDays } from '@src/modules/profile/domain/event-entitlement.util';
 import { getPackageTierDefinition } from '@src/modules/profile/domain/package-tier.config';
 import { mergeFreeAndPaidQuotas } from '@src/modules/profile/domain/merged-entitlement.util';
 import { createEmptyUsage } from '@src/modules/profile/domain/event-entitlement.util';
@@ -21,7 +21,7 @@ describe('merged-entitlement.util', () => {
   it('combines free and pro_plus paid remaining', () => {
     const tier = getPackageTierDefinition('pro_plus');
     const purchasedAt = new Date('2026-05-01T00:00:00.000Z');
-    const mapExpiresAt = addMapDays(purchasedAt, tier.limits.mapDays);
+    const mapExpiresAt = addUtcDays(purchasedAt, tier.limits.mapDays);
     const usage = {
       ...createEmptyUsage(),
       aiMatchUsed: 5,

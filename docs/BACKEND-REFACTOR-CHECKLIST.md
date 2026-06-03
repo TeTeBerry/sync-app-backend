@@ -145,7 +145,7 @@
 - [x] `ChatMessageDto`：AI 层 import 迁至 `src/shared/chat`（不再引 `ai/presentation/chat-message.dto`）
 - [x] `ai/conversation`：`conversation-state.types` 重导出移除；`index` 导出 `shared/chat` 类型
 - [x] 删除 `conversation-state.bootstrap.ts`（仅用 `migrateConversationStateFromHistory`）
-- [x] 保留 `ai/presentation/chat-message.dto.ts` 薄 re-export（兼容外部旧路径）
+- [x] ~~`ai/presentation/chat-message.dto.ts` 薄 re-export~~ → 已删，AI 层直引 `shared/chat`
 
 ### Partner / 历史作者 / 风控
 
@@ -163,7 +163,7 @@
 
 | 项 | 说明 |
 |----|------|
-| `resolveProfileFromLegacy` | 无调用方可删别名 |
+| ~~`resolveProfileFromLegacy`~~ | ✅ 已删除 |
 | `GET /posts/:id/comments` 列表 | 产品未消费 |
 | 生产 `AUTH_ALLOW_DEMO=false` | P0 运维验收，非代码债 |
 | 微信 E2E、JWT-only smoke | P0 验收 |
