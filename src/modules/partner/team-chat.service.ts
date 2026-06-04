@@ -32,6 +32,12 @@ import type { PostBuddyPreviewDto } from './dto/post-buddy-preview.dto';
 import { pickBestMatchingPostRecord } from './utils/buddy-post-match.util';
 import type { TeamChatMessageDto } from './dto/team-chat-message.dto';
 import type { TeamChatSessionDto } from './dto/team-chat-session.dto';
+import {
+  APPLICANT_MESSAGING_LIMIT_HINT,
+  APPLICANT_MESSAGING_WINDOW_MS,
+  applicantMessagingHintWhenBlocked,
+  canApplicantSendBeforeOwnerReply,
+} from './team-chat-applicant-messaging';
 import { PostMapper } from './post.mapper';
 import { buddyPreviewFromApplicationRow } from './light-apply.util';
 import {
@@ -298,6 +304,13 @@ export class TeamChatService {
       throw new BadRequestException('临时会话已过期');
     }
 
+    await this.assertApplicantCanSendMessage(
+      postId,
+      applicantUserId,
+      ctx.post.userId,
+      actor.resolvedUserId,
+    );
+
     const doc = await this.messageModel.create({
       postId,
       applicantUserId: applicantUserId.trim(),
@@ -377,6 +390,13 @@ export class TeamChatService {
       actor.resolvedUserId,
     );
 
+    const messaging = await this.resolveActorMessagingPolicy(
+      postId,
+      applicantUserId.trim(),
+      post.userId,
+      actorUserId,
+    );
+
     return {
       sessionId: buildTeamChatSessionId(postId, applicantUserId),
       postId,
@@ -396,6 +416,77 @@ export class TeamChatService {
       applicationStatus: application.status,
       postRecruitmentStatus: PostMapper.toStatusLabel(post.status),
       isOwner,
+      canSendMessage: messaging.canSend,
+      messagingHint: messaging.hint,
+    };
+  }
+
+  private async assertApplicantCanSendMessage(
+    postId: string,
+    applicantUserId: string,
+    postOwnerUserId: string,
+    actorUserId: string,
+  ): Promise<void> {
+    const trimmedApplicant = applicantUserId.trim();
+    if (trimmedApplicant !== actorUserId.trim()) {
+      return;
+    }
+
+    const messaging = await this.resolveApplicantMessagingState(
+      postId,
+      trimmedApplicant,
+      postOwnerUserId.trim(),
+    );
+    if (!messaging.canSend) {
+      throw new ForbiddenException(APPLICANT_MESSAGING_LIMIT_HINT);
+    }
+  }
+
+  private async resolveActorMessagingPolicy(
+    postId: string,
+    applicantUserId: string,
+    postOwnerUserId: string,
+    actorUserId: string,
+  ): Promise<{ canSend: boolean; hint?: string }> {
+    if (applicantUserId !== actorUserId.trim()) {
+      return { canSend: true };
+    }
+    return this.resolveApplicantMessagingState(
+      postId,
+      applicantUserId,
+      postOwnerUserId,
+    );
+  }
+
+  private async resolveApplicantMessagingState(
+    postId: string,
+    applicantUserId: string,
+    postOwnerUserId: string,
+  ): Promise<{ canSend: boolean; hint?: string }> {
+    const ownerHasReplied = Boolean(
+      await this.messageModel.exists({
+        postId,
+        applicantUserId,
+        senderUserId: postOwnerUserId,
+      }),
+    );
+
+    const since = new Date(Date.now() - APPLICANT_MESSAGING_WINDOW_MS);
+    const applicantMessageCount = await this.messageModel.countDocuments({
+      postId,
+      applicantUserId,
+      senderUserId: applicantUserId,
+      createdAt: { $gte: since },
+    });
+
+    const canSend = canApplicantSendBeforeOwnerReply({
+      ownerHasReplied,
+      applicantMessageCount,
+    });
+
+    return {
+      canSend,
+      hint: applicantMessagingHintWhenBlocked(canSend),
     };
   }
 
@@ -715,6 +806,13 @@ export class TeamChatService {
         const unreadCount =
           await this.messageModel.countDocuments(unreadFilter);
 
+        const messaging = await this.resolveActorMessagingPolicy(
+          thread.postId,
+          trimmedApplicant,
+          post.userId,
+          actorUserId,
+        );
+
         return {
           sessionId: buildTeamChatSessionId(thread.postId, trimmedApplicant),
           postId: thread.postId,
@@ -736,6 +834,8 @@ export class TeamChatService {
           applicationStatus: application.status,
           postRecruitmentStatus: PostMapper.toStatusLabel(post.status),
           isOwner: thread.isOwner,
+          canSendMessage: messaging.canSend,
+          messagingHint: messaging.hint,
         };
       }),
     );

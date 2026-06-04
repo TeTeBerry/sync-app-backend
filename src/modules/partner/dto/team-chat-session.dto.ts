@@ -20,4 +20,8 @@ export type TeamChatSessionDto = {
   postRecruitmentStatus: '招募中' | '已组队' | '已隐藏';
   /** Whether the current user is the post owner. */
   isOwner: boolean;
+  /** Whether the current actor may send a new message in this thread. */
+  canSendMessage: boolean;
+  /** Applicant-only hint when sending is blocked. */
+  messagingHint?: string;
 };
