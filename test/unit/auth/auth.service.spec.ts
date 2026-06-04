@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ForbiddenException } from '@nestjs/common';
 import { AuthService } from '../../../src/modules/auth/auth.service';
 import { WechatMiniService } from '../../../src/modules/auth/wechat-mini.service';
+import { WechatUserRiskService } from '../../../src/modules/auth/wechat-user-risk.service';
 import { UserService } from '../../../src/modules/user/user.service';
 import { USER_REPOSITORY } from '../../../src/modules/user/interfaces/user.repository.interface';
 
@@ -14,11 +15,20 @@ describe('AuthService', () => {
     upsertByExternalId: jest.fn(),
     upsertWechatUser: jest.fn(),
     findByOpenid: jest.fn(),
+    getTokenVersion: jest.fn().mockResolvedValue(0),
+    updateByExternalId: jest.fn(),
   };
 
   const userService = {
     getMe: jest.fn(),
     syncUserProfileVector: jest.fn(),
+  };
+
+  const wechatUserRisk = {
+    isEnabled: jest.fn(() => false),
+    fetchAndAssertRiskRank: jest.fn().mockResolvedValue(0),
+    shouldRefreshStoredRank: jest.fn(() => false),
+    assertRankAllowed: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -47,6 +57,7 @@ describe('AuthService', () => {
         },
         { provide: USER_REPOSITORY, useValue: users },
         { provide: UserService, useValue: userService },
+        { provide: WechatUserRiskService, useValue: wechatUserRisk },
       ],
     }).compile();
 
@@ -100,6 +111,12 @@ describe('AuthService', () => {
         },
         { provide: USER_REPOSITORY, useValue: users },
         { provide: UserService, useValue: userService },
+        {
+          provide: WechatUserRiskService,
+          useValue: {
+            fetchAndAssertRiskRank: jest.fn().mockResolvedValue(0),
+          },
+        },
       ],
     }).compile();
 
@@ -119,10 +136,14 @@ describe('AuthService', () => {
       avatar: 'https://wx.qlogo.cn/mmopen/avatar.png',
     });
 
-    await svc.loginWithWechatCode('wx-code', {
-      nickName: 'Berry',
-      avatarUrl: 'https://wx.qlogo.cn/mmopen/avatar.png',
-    });
+    await svc.loginWithWechatCode(
+      'wx-code',
+      {
+        nickName: 'Berry',
+        avatarUrl: 'https://wx.qlogo.cn/mmopen/avatar.png',
+      },
+      '127.0.0.1',
+    );
 
     expect(users.upsertWechatUser).toHaveBeenCalledWith(
       'openid-1',
@@ -146,7 +167,7 @@ describe('AuthService', () => {
       ],
       providers: [
         AuthService,
-        WechatMiniService,
+        { provide: WechatMiniService, useValue: {} },
         {
           provide: ConfigService,
           useValue: {
@@ -156,8 +177,9 @@ describe('AuthService', () => {
             },
           },
         },
-        { provide: USER_REPOSITORY, useValue: users },
         { provide: UserService, useValue: userService },
+        { provide: WechatUserRiskService, useValue: wechatUserRisk },
+        { provide: USER_REPOSITORY, useValue: users },
       ],
     }).compile();
 

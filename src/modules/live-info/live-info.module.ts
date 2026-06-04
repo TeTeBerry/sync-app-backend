@@ -9,6 +9,7 @@ import {
   EventLiveWristbandSchema,
 } from '../../database/schemas/event-live-wristband.schema';
 import { ParserModule } from '../../ai/parser/parser.module';
+import { AuthModule } from '../auth/auth.module';
 import { ActivityModule } from '../activity/activity.module';
 import { UserModule } from '../user/user.module';
 import { LiveInfoController } from './live-info.controller';
@@ -18,6 +19,7 @@ import { WristbandVerifyService } from './wristband-verify.service';
 
 @Module({
   imports: [
+    AuthModule,
     ParserModule,
     ActivityModule,
     UserModule,

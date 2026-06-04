@@ -113,8 +113,8 @@ describe('MatchPostsFromChatUseCase quota', () => {
 
   it('consumes quota only when postCards.length > 0', async () => {
     const { useCase, consumeIfMatched } = buildUseCase({
-      matchItems: [{ postId: 'p1', snippet: '找队友' }],
-      postCards: [{ postId: 'p1', snippet: '找队友' }],
+      matchItems: [{ postId: 'p1', snippet: '找组队' }],
+      postCards: [{ postId: 'p1', snippet: '找组队' }],
     });
 
     await useCase.execute({

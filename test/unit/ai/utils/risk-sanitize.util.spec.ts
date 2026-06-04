@@ -28,25 +28,25 @@ describe('risk-sanitize.util', () => {
   });
 
   it('detects travel safety keywords', () => {
-    expect(needsTravelSafetyTip('上海拼车去深圳')).toBe(true);
+    expect(needsTravelSafetyTip('上海同路去深圳')).toBe(true);
     expect(needsTravelSafetyTip('13号A区有人吗')).toBe(false);
   });
 
   it('appends safety tip for carpool posts', () => {
     const result = appendTravelSafetyTip(
-      '上海出发，2人拼车',
-      '上海出发，2人拼车',
+      '上海出发，2人同路',
+      '上海出发，2人同路',
     );
     expect(result).toContain(TRAVEL_SAFETY_TIP);
   });
 
   it('does not duplicate safety tip', () => {
     const withTip = `正文\n\n${TRAVEL_SAFETY_TIP}`;
-    expect(appendTravelSafetyTip(withTip, '拼车')).toBe(withTip);
+    expect(appendTravelSafetyTip(withTip, '同路')).toBe(withTip);
   });
 
   it('builds publishable body with fallback desensitization (no safety tip in post body)', () => {
-    const result = buildPublishableBody('电话13812345678，2人拼车');
+    const result = buildPublishableBody('电话13812345678，2人同路');
     expect(result).not.toContain('【已脱敏】');
     expect(result).not.toContain('13812345678');
     expect(result).not.toContain(TRAVEL_SAFETY_TIP);

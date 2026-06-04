@@ -11,6 +11,10 @@ import type { ActivityService } from '@src/modules/activity/activity.service';
 import type { ChromaService } from '@src/ai/rag/chroma.service';
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
+import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
+import type { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
+import type { OnSiteIdentityService } from '@src/modules/live-info/on-site-identity.service';
+import type { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
 
 jest.mock('chromadb', () => require('../../../../mocks/chromadb'));
 
@@ -19,7 +23,7 @@ jest.mock('@langchain/core/documents', () =>
 );
 
 function buddySheetPayload() {
-  const body = '找队友、找拼房，6.13-6.14，上海，2人，希望女生优先';
+  const body = '找组队、找拼房，6.13-6.14，上海，2人，希望女生优先';
   return {
     body: `${body}\n\n#组队 #拼房`,
     activityLegacyId: 9,
@@ -57,6 +61,25 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
     assessPost: jest.fn(),
   } as unknown as IPostModerationPort;
 
+  const userProfileSync = {
+    applyBuddyPostHints: jest.fn(),
+  } as unknown as UserProfileSyncService;
+
+  const accountRisk = {
+    assertCanPublish: jest.fn().mockResolvedValue(undefined),
+    recordTicketPolicyViolation: jest.fn(),
+    recordPublishRiskViolation: jest.fn(),
+  } as unknown as AccountRiskService;
+
+  const onSiteIdentity = {
+    isUserOnSiteCertified: jest.fn().mockResolvedValue(false),
+  } as unknown as OnSiteIdentityService;
+
+  const wechatContentSecurity = {
+    assertTextSafe: jest.fn().mockResolvedValue(undefined),
+    assertTextsSafe: jest.fn().mockResolvedValue(undefined),
+  } as unknown as WechatContentSecurityService;
+
   let service: PostWriteService;
 
   beforeEach(() => {
@@ -67,10 +90,14 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
     service = new PostWriteService(
       repository,
       userService,
+      userProfileSync,
+      accountRisk,
       activityService,
       chromaService,
       postNotification,
       postModeration,
+      onSiteIdentity,
+      wechatContentSecurity,
     );
     (userService.resolveProfile as jest.Mock).mockResolvedValue({
       name: 'Test User',

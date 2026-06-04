@@ -14,10 +14,22 @@ import type { IPostNotificationPort } from '@src/modules/partner/ports/post-noti
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
 import type { PostRecruitmentService } from '@src/modules/recruitment/application/post-recruitment.service';
 import type { TeamChatService } from '@src/modules/partner/team-chat.service';
+import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
+import type { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
 
 const defaultTeamChatService = {
   createInitialMessageOnApply: jest.fn().mockResolvedValue(undefined),
 } as unknown as TeamChatService;
+
+const defaultAccountRisk = {
+  assertCanPublish: jest.fn().mockResolvedValue(undefined),
+  recordPublishRiskViolation: jest.fn(),
+} as unknown as AccountRiskService;
+
+const defaultWechatContentSecurity = {
+  assertTextSafe: jest.fn().mockResolvedValue(undefined),
+  assertTextsSafe: jest.fn().mockResolvedValue(undefined),
+} as unknown as WechatContentSecurityService;
 
 describe('PostInteractionService.addComment', () => {
   const repository = {
@@ -80,9 +92,11 @@ describe('PostInteractionService.addComment', () => {
       { deleteMany: jest.fn() } as never,
       {} as never,
       userService,
+      defaultAccountRisk,
       defaultTeamChatService,
       postNotification,
       postModeration,
+      defaultWechatContentSecurity,
       postRecruitmentService,
       {} as never,
     );
@@ -192,9 +206,11 @@ describe('PostInteractionService.likePost', () => {
       { deleteMany: jest.fn() } as never,
       {} as never,
       {} as UserService,
+      defaultAccountRisk,
       defaultTeamChatService,
       postNotification,
       {} as IPostModerationPort,
+      defaultWechatContentSecurity,
       {} as PostRecruitmentService,
       {} as never,
     );
@@ -286,9 +302,11 @@ describe('PostInteractionService.applyToPost', () => {
       { deleteMany: jest.fn() } as never,
       {} as never,
       {} as UserService,
+      defaultAccountRisk,
       defaultTeamChatService,
       postNotification,
       {} as IPostModerationPort,
+      defaultWechatContentSecurity,
       {} as PostRecruitmentService,
       {} as never,
     );
@@ -313,7 +331,7 @@ describe('PostInteractionService.applyToPost', () => {
       toRequestActor('demo-kyle', 'Kyle'),
     );
 
-    expect(result).toEqual({ ok: true, alreadyApplied: true });
+    expect(result).toMatchObject({ ok: true, alreadyApplied: true });
     expect(applicationModel.create).not.toHaveBeenCalled();
   });
 

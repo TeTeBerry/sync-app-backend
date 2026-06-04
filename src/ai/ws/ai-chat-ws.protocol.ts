@@ -9,7 +9,7 @@ export type AiChatWsSimpleClientMessage = {
   userId?: string;
   userName?: string;
   userPhone?: string;
-  /** Upload URL from POST /api/uploads/images, or legacy data URL */
+  /** Upload URL from POST /api/uploads/images (WeChat img_sec_check at upload). */
   image?: string;
   images?: string[];
   requestId?: string;

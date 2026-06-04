@@ -206,7 +206,7 @@ export class AiTurnPipeline {
       return null;
     }
 
-    // Activity shortcut chips (组队队友/拼车等) only need post search — skip profile LLM.
+    // Activity shortcut chips (组队队友/同路等) only need post search — skip profile LLM.
     if (kind === 'search_posts' && isAiShortcutTag(input)) {
       return null;
     }

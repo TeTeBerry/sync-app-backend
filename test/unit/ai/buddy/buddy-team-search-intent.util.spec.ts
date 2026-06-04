@@ -2,9 +2,9 @@ import { isBuddyTeamSearchIntent } from '@src/ai/buddy/buddy-team-search-intent.
 
 describe('buddy-team-search-intent.util', () => {
   it('treats shortcut tags as team search', () => {
-    expect(isBuddyTeamSearchIntent('找队友')).toBe(true);
+    expect(isBuddyTeamSearchIntent('找组队')).toBe(true);
     expect(isBuddyTeamSearchIntent('找拼房')).toBe(true);
-    expect(isBuddyTeamSearchIntent('找拼车')).toBe(true);
+    expect(isBuddyTeamSearchIntent('找同路伙伴')).toBe(true);
     expect(isBuddyTeamSearchIntent('找拼卡')).toBe(true);
     expect(isBuddyTeamSearchIntent('组队队友')).toBe(true);
     expect(isBuddyTeamSearchIntent('帮我dd')).toBe(true);

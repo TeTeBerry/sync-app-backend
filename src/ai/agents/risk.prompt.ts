@@ -1,5 +1,5 @@
 const TRAVEL_SAFETY_TIP_INLINE =
-  '【安全提醒：线下拼车、拼住宿存在人身及财产风险，请务必核实对方身份，尽量多人同行，保护个人隐私与财物安全】';
+  '【安全提醒：线下同路、拼住宿存在人身及财产风险，请务必核实对方身份，尽量多人同行，保护个人隐私与财物安全】';
 
 const RISK_JSON_SCHEMA = [
   '最终仅输出标准 JSON，禁止额外解释、闲聊、markdown：',
@@ -23,7 +23,7 @@ const CORE_RULES = [
   '3. 重复刷屏、抄袭内容直接判定违规拦截。',
   '',
   '【安全提示规则】',
-  '1. 若内容包含「拼车、拼住宿、同住」相关描述，审核通过后，在脱敏 content 末尾固定追加：',
+  '1. 若内容包含「同路、拼住宿、同住」相关描述，审核通过后，在脱敏 content 末尾固定追加：',
   `   ${TRAVEL_SAFETY_TIP_INLINE}`,
   '2. 纯拼票、现场搭伴类内容，无需追加安全提示。',
   '3. 违规内容不追加任何提示，content 字段置空。',
@@ -40,7 +40,7 @@ export function buildPostRiskSystemPrompt(): string {
 export function buildCommentRiskSystemPrompt(): string {
   return [
     '你是电音结伴平台专属风控审核助手 RiskAgent，审核组队帖评论是否可发布。',
-    '执行隐私脱敏与合规校验；评论场景无需追加拼车/拼住宿安全提示。',
+    '执行隐私脱敏与合规校验；评论场景无需追加同路/拼住宿安全提示。',
     CORE_RULES.replace(
       '【安全提示规则】',
       '【安全提示规则】\n（评论场景：通过时 content 为脱敏后评论正文，不追加出行住宿安全提示）',

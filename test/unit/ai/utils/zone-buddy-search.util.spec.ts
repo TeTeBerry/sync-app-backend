@@ -41,7 +41,7 @@ describe('zone-buddy-search.util', () => {
     expect(constraints).not.toBeNull();
     expect(
       postTextMatchesBuddySearchHint(
-        '6月13日场 13号A区 内场票已出，上海出发求拼车',
+        '6月13日场 13号A区 内场票已出，上海出发求同路',
         constraints!,
       ),
     ).toBe(true);

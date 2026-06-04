@@ -15,6 +15,11 @@ import {
   isDemoOwnerClient,
 } from '../../common/utils/demo-owner.util';
 import { UpdateUserMeDto } from './dto/update-user-me.dto';
+import {
+  assertUserUgcTexts,
+  collectProfilePatchUgcTexts,
+} from '../../common/media/user-ugc-text.util';
+import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import { AccountRiskService } from '../account-risk/account-risk.service';
 import type { AccountRiskPublicStatus } from '../account-risk/account-risk.service';
 import { ChromaService } from '../../ai/rag/chroma.service';
@@ -63,6 +68,7 @@ export class UserService implements OnModuleInit {
     private readonly repository: IUserRepository,
     private readonly chromaService: ChromaService,
     private readonly accountRisk: AccountRiskService,
+    private readonly wechatContentSecurity: WechatContentSecurityService,
   ) {}
 
   async onModuleInit() {
@@ -161,6 +167,10 @@ export class UserService implements OnModuleInit {
     body: UpdateUserMeDto,
     actor: RequestActor,
   ): Promise<UserMeDto> {
+    await assertUserUgcTexts(
+      this.wechatContentSecurity,
+      collectProfilePatchUgcTexts(body),
+    );
     const externalId = this.resolveExternalId(actor);
     const existing = await this.repository.findByExternalId(externalId);
     const updated = existing

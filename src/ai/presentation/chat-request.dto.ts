@@ -28,7 +28,7 @@ export class ChatRequestDto {
   @IsString()
   userPhone?: string;
 
-  /** Upload URL or legacy base64 data URL */
+  /** URL from POST /uploads/images (WeChat img_sec_check at upload). */
   @IsOptional()
   @IsString()
   image?: string;

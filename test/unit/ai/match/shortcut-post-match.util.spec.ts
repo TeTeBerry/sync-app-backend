@@ -6,15 +6,15 @@ import {
 describe('shortcut-post-match.util', () => {
   it('maps 拼卡 to carpool intent', () => {
     expect(intentsForShortcutTag('拼卡')).toEqual(['carpool']);
-    expect(intentsForShortcutTag('拼车')).toEqual(['carpool']);
+    expect(intentsForShortcutTag('同路')).toEqual(['carpool']);
   });
 
   it('matches carpool posts for 拼卡 shortcut', () => {
     expect(
       postMatchesShortcutTag(
         {
-          body: '上海出发求拼车到深圳，2人女生',
-          tags: ['#拼车'],
+          body: '上海出发求同路到深圳，2人女生',
+          tags: ['#同路'],
         },
         '拼卡',
       ),

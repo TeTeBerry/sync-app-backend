@@ -20,7 +20,7 @@ describe('buddy-match-criteria.util', () => {
     const post = {
       _id: 'p1',
       userId: 'u2',
-      body: '上海出发求拼车',
+      body: '上海出发求同路',
       departureCity: '上海',
       activityLegacyId: 4,
       eventTitle: '风暴电音节',
@@ -71,10 +71,10 @@ describe('buddy-match-criteria.util', () => {
       activityLegacyId: 4,
       activityName: '风暴电音节',
       ownerPost,
-      userInput: '找拼车',
+      userInput: '找同路伙伴',
     });
 
-    expect(criteria.searchShortcutTag).toBe('找拼车');
+    expect(criteria.searchShortcutTag).toBe('找同路伙伴');
     expect(criteria.intents).toEqual(
       expect.arrayContaining(['carpool', 'lodging']),
     );
@@ -97,18 +97,18 @@ describe('buddy-match-criteria.util', () => {
       activityLegacyId: 4,
       activityName: '风暴电音节',
       departureCity: '上海',
-      requesterTags: ['拼车'],
+      requesterTags: ['同路'],
       intents: ['carpool', 'team'],
       zone: '内场',
       eventDate: '2025-05-01',
       genderPref: '女生',
-      requesterBody: '上海出发求拼车到深圳，2人女生同行',
+      requesterBody: '上海出发求同路到深圳，2人女生同行',
     });
 
-    expect(need.startsWith('上海出发求拼车到深圳，2人女生同行')).toBe(true);
+    expect(need.startsWith('上海出发求同路到深圳，2人女生同行')).toBe(true);
     expect(need).toContain('活动：风暴电音节');
     expect(need).toContain('出发地：上海');
-    expect(need).toContain('#拼车');
+    expect(need).toContain('#同路');
     expect(need).toContain('carpool');
     expect(need).toContain('内场');
     expect(need).toContain('2025-05-01');
@@ -118,10 +118,10 @@ describe('buddy-match-criteria.util', () => {
   it('buildRerankUserNeed includes shortcut search lane when present', () => {
     const need = buildRerankUserNeed({
       activityLegacyId: 4,
-      requesterBody: '上海出发求拼车',
-      searchShortcutTag: '找拼车',
+      requesterBody: '上海出发求同路',
+      searchShortcutTag: '找同路伙伴',
     });
-    expect(need).toContain('当前搜索：找拼车');
+    expect(need).toContain('当前搜索：找同路伙伴');
   });
 
   it('buildRerankUserNeed truncates very long requester body', () => {
@@ -138,7 +138,7 @@ describe('buddy-match-criteria.util', () => {
 
   describe('inferIntentsFromPost', () => {
     it('detects carpool intent', () => {
-      expect(inferIntentsFromPost([], '上海出发求拼车')).toContain('carpool');
+      expect(inferIntentsFromPost([], '上海出发求同路')).toContain('carpool');
       expect(inferIntentsFromPost([], '顺风车有无')).toContain('carpool');
     });
 
@@ -184,7 +184,7 @@ describe('buddy-match-criteria.util', () => {
     });
 
     it('allows multiple intents', () => {
-      const intents = inferIntentsFromPost([], '求拼车拼房');
+      const intents = inferIntentsFromPost([], '求同路拼房');
       expect(intents).toContain('carpool');
       expect(intents).toContain('lodging');
     });

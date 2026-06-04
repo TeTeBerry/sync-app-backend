@@ -12,7 +12,7 @@ export type PostContentType =
 const CONTENT_TYPE_LABELS: Record<PostContentType, string> = {
   team: '组队队友',
   accommodation: '住宿同行',
-  carpool: '拼车同行',
+  carpool: '同路同行',
   ticket: '转票',
   other: '其他',
 };
@@ -21,15 +21,15 @@ const CONTENT_TYPE_LABELS: Record<PostContentType, string> = {
 const TAG_TO_TYPE: Record<string, PostContentType> = {
   组队队友: 'team',
   组队: 'team',
-  找队友: 'team',
+  找组队: 'team',
   求组队: 'team',
   住宿同行: 'accommodation',
   拼房: 'accommodation',
   拼房同行: 'accommodation',
   住宿: 'accommodation',
   酒店: 'accommodation',
-  拼车同行: 'carpool',
-  拼车: 'carpool',
+  同路同行: 'carpool',
+  同路: 'carpool',
   拼卡: 'carpool',
   顺路: 'carpool',
   顺风车: 'carpool',
@@ -42,7 +42,7 @@ const TAG_TO_TYPE: Record<string, PostContentType> = {
 /** buddyType → 内容类型映射 */
 const BUDDY_TYPE_TO_TYPE: Record<string, PostContentType> = {
   住宿同行: 'accommodation',
-  拼车: 'carpool',
+  同路: 'carpool',
   观演: 'team',
   组队: 'team',
 };
@@ -55,10 +55,10 @@ const BODY_PATTERNS: Array<{ pattern: RegExp; type: PostContentType }> = [
     type: 'ticket',
   },
   { pattern: /拼房|住宿|酒店|同房|合住/i, type: 'accommodation' },
-  { pattern: /拼卡|拼车|顺路|顺风车|接送|包车/i, type: 'carpool' },
+  { pattern: /拼卡|同路|顺路|顺风车|接送|包车/i, type: 'carpool' },
   {
     pattern:
-      /组队|找队友|求组队|搭子|结伴|同行|姐妹|兄弟|cpdd|有人吗|有姐妹|缺\d|[A-Za-z]区|\d+号/i,
+      /组队|找组队|求组队|搭子|结伴|同行|姐妹|兄弟|cpdd|有人吗|有姐妹|缺\d|[A-Za-z]区|\d+号/i,
     type: 'team',
   },
 ];

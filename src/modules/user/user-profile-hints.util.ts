@@ -107,7 +107,7 @@ const PROFILE_GENRE_CHINESE_MATCHERS: ReadonlyArray<{
   { pattern: /技术屋|tech house/i, label: 'Tech House' },
 ];
 
-const BUDDY_MATE_RE = /找队友|找搭子|结伴|组队|拼房|拼车|同行|dd/i;
+const BUDDY_MATE_RE = /找组队|找搭子|结伴|组队|拼房|同路|同行|dd/i;
 
 export function normalizeProfileGenres(raw?: string[]): string[] {
   const genres = new Set<string>();
@@ -269,7 +269,7 @@ export function buildBuddyPostProfileHints(params: {
     contentTypes.includes('team') ||
     contentTypes.includes('accommodation') ||
     contentTypes.includes('carpool') ||
-    /#?组队|#?拼房|#?拼车|找队友|找搭子/.test(tagText) ||
+    /#?组队|#?拼房|#?同路|找组队|找搭子/.test(tagText) ||
     BUDDY_MATE_RE.test(body);
 
   const hints: UserMatchProfileHints = {};

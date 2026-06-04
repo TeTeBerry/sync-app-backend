@@ -196,7 +196,7 @@ describe('AiService buddy flow', () => {
 
     const events = await collectEvents(
       service.streamChat(
-        { ...baseDto, messages: [{ role: 'user', content: '找队友' }] },
+        { ...baseDto, messages: [{ role: 'user', content: '找组队' }] },
         { requestId: 'req-require-buddy' },
       ),
     );
@@ -467,7 +467,7 @@ describe('AiService buddy flow', () => {
       createResult: {
         kind: 'rejected',
         replyText:
-          '平台禁止发布转票、出票、票务相关信息。如需找同行伙伴，请改为组队、拼车或住宿类帖子。',
+          '平台禁止发布转票、出票、票务相关信息。如需找同行伙伴，请改为组队、同路或住宿类帖子。',
       } satisfies PostIntentCreateAttempt,
       expectCreate: true,
       assert: (

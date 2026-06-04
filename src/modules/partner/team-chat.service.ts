@@ -40,6 +40,7 @@ import {
 } from './interfaces/post.repository.interface';
 import { PostRecord } from './interfaces/post.repository.interface';
 import { Inject } from '@nestjs/common';
+import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 
 const DEFAULT_APPLY_MESSAGE = '你好，我想加入你的组队～';
 
@@ -70,6 +71,7 @@ export class TeamChatService {
     private readonly threadReadModel: Model<PostApplicationThreadReadDocument>,
     private readonly userService: UserService,
     private readonly activityService: ActivityService,
+    private readonly wechatContentSecurity: WechatContentSecurityService,
   ) {}
 
   async createInitialMessageOnApply(
@@ -78,6 +80,9 @@ export class TeamChatService {
     message?: string,
   ): Promise<void> {
     const body = message?.trim() || DEFAULT_APPLY_MESSAGE;
+    if (message?.trim()) {
+      await this.wechatContentSecurity.assertTextSafe(message.trim());
+    }
     try {
       await this.messageModel.create({
         postId,
@@ -280,6 +285,7 @@ export class TeamChatService {
     if (!trimmed) {
       throw new BadRequestException('消息不能为空');
     }
+    await this.wechatContentSecurity.assertTextSafe(trimmed);
 
     const ctx = await this.assertThreadParticipant(
       postId,

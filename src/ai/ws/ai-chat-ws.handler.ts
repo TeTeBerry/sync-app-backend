@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  ForbiddenException,
+  HttpException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import type { IncomingMessage } from 'http';
@@ -8,6 +13,8 @@ import {
   type ClassifyBearerAuthResult,
 } from '../../common/auth/jwt-bearer.util';
 import { AuthService } from '../../modules/auth/auth.service';
+import { resolveClientIpFromRequest } from '../../common/http/resolve-client-ip.util';
+import { WECHAT_USER_RISK_BLOCKED_MESSAGE } from '../../modules/auth/wechat-user-risk.service';
 import {
   parseActivityLegacyIdHeader,
   resolveEffectiveActivityLegacyId,
@@ -229,6 +236,22 @@ export class AiChatWsHandler {
       });
       if (!actorResult.ok) {
         send({ type: 'error', message: actorResult.message });
+        return;
+      }
+
+      try {
+        await this.authService.assertActorAllowedToUseApp(
+          actorResult.actor,
+          resolveClientIpFromRequest(request),
+        );
+      } catch (error) {
+        const message =
+          error instanceof ForbiddenException
+            ? (error.message as string)
+            : error instanceof HttpException
+              ? String(error.message)
+              : WECHAT_USER_RISK_BLOCKED_MESSAGE;
+        send({ type: 'error', message });
         return;
       }
 

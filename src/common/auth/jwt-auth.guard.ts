@@ -14,6 +14,7 @@ import {
   resolveDemoActorFromQuery,
 } from './resolve-request-actor';
 import { AuthService } from '../../modules/auth/auth.service';
+import { resolveClientIpFromRequest } from '../http/resolve-client-ip.util';
 
 const LOGIN_REQUIRED_MESSAGE = '请先登录';
 
@@ -44,7 +45,12 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     if (auth.kind === 'valid') {
-      request.actor = jwtBearerToRequestActor(auth.actor);
+      const actor = jwtBearerToRequestActor(auth.actor);
+      request.actor = actor;
+      await this.authService.assertActorAllowedToUseApp(
+        actor,
+        resolveClientIpFromRequest(request),
+      );
       return true;
     }
 

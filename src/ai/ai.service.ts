@@ -10,6 +10,7 @@ import {
 import { AiRateLimitService } from './ai-rate-limit.service';
 import { logAiTurn } from './utils/log-ai-turn.util';
 import { AiTurnPipeline } from './orchestration/ai-turn.pipeline';
+import { WechatContentSecurityService } from '../modules/auth/wechat-content-security.service';
 import { extractAssistantMessageMetadata } from './presentation/chat-message-metadata.util';
 
 export interface AiChatTurnContext {
@@ -55,6 +56,7 @@ export class AiService {
     private readonly agenticReplyService: DeterministicReplyService,
     private readonly turnPipeline: AiTurnPipeline,
     private readonly rateLimit: AiRateLimitService,
+    private readonly wechatContentSecurity: WechatContentSecurityService,
   ) {}
 
   async *streamChat(
@@ -105,6 +107,21 @@ export class AiService {
               : error instanceof Error
                 ? error.message
                 : '图片格式无效',
+        };
+        return;
+      }
+    }
+
+    for (const message of contextMessages) {
+      if (message.role !== 'user') continue;
+      const text = message.content?.trim();
+      if (!text) continue;
+      try {
+        await this.wechatContentSecurity.assertTextSafe(text);
+      } catch (error) {
+        yield {
+          type: 'error',
+          message: error instanceof Error ? error.message : '文本安全检测失败',
         };
         return;
       }

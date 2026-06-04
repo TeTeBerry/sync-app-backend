@@ -35,7 +35,7 @@ describe('MatchService', () => {
           userId: 'demo-luna',
           status: 'recruiting',
           activityLegacyId: 4,
-          body: '上海出发求拼车到深圳，2人女生',
+          body: '上海出发求同路到深圳，2人女生',
           departureCity: '上海',
           eventTitle: '风暴电音节',
         },
@@ -44,7 +44,7 @@ describe('MatchService', () => {
           userId: 'demo-ryan',
           status: 'recruiting',
           activityLegacyId: 4,
-          body: '广州拼车出发',
+          body: '广州同路出发',
           departureCity: '广州',
           eventTitle: '风暴电音节',
         },
@@ -80,7 +80,7 @@ describe('MatchService', () => {
         activityName: '风暴电音节',
         departureCity: '上海',
         intents: ['team'],
-        requesterBody: '上海出发求拼车',
+        requesterBody: '上海出发求同路',
       },
       actor: toRequestActor('user-1'),
       limit: BUDDY_RECOMMEND_LIMIT,
@@ -101,7 +101,7 @@ describe('MatchService', () => {
           userId: 'demo-luna',
           status: 'recruiting',
           activityLegacyId: 4,
-          body: '上海出发求拼车到深圳，2人女生',
+          body: '上海出发求同路到深圳，2人女生',
           departureCity: '上海',
           eventTitle: '风暴电音节',
         },
@@ -226,7 +226,7 @@ describe('MatchService', () => {
           activityLegacyId: 4,
           body: '帖子B 向量更远',
           departureCity: '上海',
-          tags: ['拼车'],
+          tags: ['同路'],
           eventTitle: '风暴电音节',
         },
       ]),
@@ -263,14 +263,14 @@ describe('MatchService', () => {
       criteria: {
         activityLegacyId: 4,
         departureCity: '上海',
-        requesterTags: ['拼车'],
-        requesterBody: '上海 #拼车',
+        requesterTags: ['同路'],
+        requesterBody: '上海 #同路',
       },
       limit: 2,
     });
 
     expect(postMatchRerankService.rerank).toHaveBeenCalledWith(
-      expect.stringContaining('上海 #拼车'),
+      expect.stringContaining('上海 #同路'),
       expect.arrayContaining([
         expect.objectContaining({
           postId: 'post-a',
@@ -281,7 +281,7 @@ describe('MatchService', () => {
           postId: 'post-b',
           body: '帖子B 向量更远',
           departureCity: '上海',
-          tags: ['拼车'],
+          tags: ['同路'],
         }),
       ]),
     );

@@ -1,6 +1,6 @@
-/** 线下拼车/拼住宿安全提示（合规内容末尾追加） */
+/** 线下同路/拼住宿安全提示（合规内容末尾追加） */
 export const TRAVEL_SAFETY_TIP =
-  '【安全提醒：线下拼车、拼住宿存在人身及财产风险，请务必核实对方身份，尽量多人同行，保护个人隐私与财物安全】';
+  '【安全提醒：线下同路、拼住宿存在人身及财产风险，请务必核实对方身份，尽量多人同行，保护个人隐私与财物安全】';
 
 const PHONE_PATTERN = /(?<!\d)1[3-9]\d(?:[\s-]?\d){8}(?!\d)/g;
 
@@ -20,7 +20,7 @@ const ORDER_NO_PATTERN =
   /(?:订单号|订单编号|支付单号|交易号)[：:\s]*[\w-]{8,}/gi;
 
 const TRAVEL_SAFETY_KEYWORDS =
-  /拼车|拼住宿|同住|拼房|合住|一起住|拼车去|拼酒店|拼民宿/;
+  /同路|拼住宿|同住|拼房|合住|一起住|同路去|拼酒店|拼民宿/;
 
 /** Remove internal desensitization placeholders from publishable text. */
 export function stripDesensitizationMarkers(text: string): string {
@@ -58,7 +58,7 @@ export function appendTravelSafetyTip(
   sourceHint: string,
 ): string {
   if (!needsTravelSafetyTip(sourceHint)) return content.trim();
-  if (content.includes('安全提醒：线下拼车')) return content.trim();
+  if (content.includes('安全提醒：线下同路')) return content.trim();
   const trimmed = content.trim();
   return trimmed ? `${trimmed}\n\n${TRAVEL_SAFETY_TIP}` : TRAVEL_SAFETY_TIP;
 }

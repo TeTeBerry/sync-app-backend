@@ -22,6 +22,7 @@ import {
 } from '../../database/schemas/post-like.schema';
 import { Post, PostSchema } from '../../database/schemas/post.schema';
 import { ChromaModule } from '../../ai/rag/chroma.module';
+import { AuthModule } from '../auth/auth.module';
 import { ActivityModule } from '../activity/activity.module';
 import { NotificationModule } from '../notification/notification.module';
 import { RecruitmentModule } from '../recruitment/recruitment.module';
@@ -40,6 +41,7 @@ import { LiveInfoModule } from '../live-info/live-info.module';
 
 @Module({
   imports: [
+    AuthModule,
     UserModule,
     AccountRiskModule,
     LiveInfoModule,

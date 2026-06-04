@@ -48,7 +48,7 @@ export const POST_COMMENT_SEED: PostCommentSeedEntry[] = [
       {
         userId: 'demo-mia',
         authorName: 'Mia',
-        body: '广州出发 +1，有车位可以拼车到深圳。',
+        body: '广州出发 +1，有车位可以同路到深圳。',
         ageMs: 50 * 60_000,
       },
       {
@@ -60,7 +60,7 @@ export const POST_COMMENT_SEED: PostCommentSeedEntry[] = [
     ],
   },
   {
-    postBodyContains: '13号A区 内场票已出，上海出发求拼车',
+    postBodyContains: '13号A区 内场票已出，上海出发求同路',
     activityLegacyId: 4,
     comments: [
       {
@@ -116,7 +116,7 @@ export const POST_COMMENT_SEED: PostCommentSeedEntry[] = [
       {
         userId: 'demo-nova',
         authorName: 'Nova',
-        body: '女生一枚，可以一起拼车接机吗？',
+        body: '女生一枚，可以一起同路接机吗？',
         ageMs: 15 * 60_000,
         replies: [
           {

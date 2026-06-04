@@ -60,6 +60,8 @@ import { PostRecruitmentService } from '../recruitment/application/post-recruitm
 import { PostTeamPairService } from './application/post-team-pair.service';
 import { POST_COMMENT_SEED } from './post-comment.seed';
 import { TeamChatService, buildTeamChatSessionId } from './team-chat.service';
+import { assertUserUgcTexts } from '../../common/media/user-ugc-text.util';
+import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import {
   PostApplicationMessage,
   PostApplicationMessageDocument,
@@ -88,6 +90,7 @@ export class PostInteractionService {
     private readonly postNotification: IPostNotificationPort,
     @Inject(POST_MODERATION_PORT)
     private readonly postModeration: IPostModerationPort,
+    private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly postRecruitmentService: PostRecruitmentService,
     private readonly postTeamPairService: PostTeamPairService,
   ) {}
@@ -194,6 +197,15 @@ export class PostInteractionService {
 
     const lightApply = normalizeLightApplyInput(body?.lightApply);
     const note = body?.message?.trim();
+    const initialMessagePreview = lightApply
+      ? buildLightApplyInitialMessage(lightApply, note)
+      : note;
+    await assertUserUgcTexts(this.wechatContentSecurity, [
+      note,
+      lightApply?.departureCity,
+      lightApply?.genderPref,
+      initialMessagePreview,
+    ]);
     const teamChat = this.buildApplyTeamChatRef(id, actorUserId);
 
     const existing = await this.applicationModel
@@ -203,9 +215,7 @@ export class PostInteractionService {
       return { ok: true as const, alreadyApplied: true, teamChat };
     }
 
-    const initialMessage = lightApply
-      ? buildLightApplyInitialMessage(lightApply, note)
-      : note;
+    const initialMessage = initialMessagePreview;
 
     try {
       await this.applicationModel.create({
@@ -390,6 +400,7 @@ export class PostInteractionService {
     }
 
     await this.accountRisk.assertCanPublish(actor);
+    await this.wechatContentSecurity.assertTextSafe(trimmed);
 
     const risk = await this.postModeration.assessComment({
       body: trimmed,

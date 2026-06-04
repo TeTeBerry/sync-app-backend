@@ -9,7 +9,7 @@ import { PostRecord } from './interfaces/post.repository.interface';
 const CONTENT_TYPE_TAG: Record<string, string> = {
   team: '#组队',
   accommodation: '#拼房',
-  carpool: '#拼车',
+  carpool: '#同路',
   ticket: '#票务',
   social: '#社交',
   food: '#美食',

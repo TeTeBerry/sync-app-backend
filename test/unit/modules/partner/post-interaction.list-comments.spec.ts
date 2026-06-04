@@ -32,9 +32,16 @@ describe('PostInteractionService.listComments pagination', () => {
       { deleteMany: jest.fn() } as never,
       {} as never,
       userService,
+      {
+        assertCanPublish: jest.fn().mockResolvedValue(undefined),
+      } as unknown as never,
       {} as unknown as TeamChatService,
       {} as unknown as IPostNotificationPort,
       {} as unknown as IPostModerationPort,
+      {
+        assertTextSafe: jest.fn().mockResolvedValue(undefined),
+        assertTextsSafe: jest.fn().mockResolvedValue(undefined),
+      } as unknown as never,
       {} as unknown as PostRecruitmentService,
       {} as unknown as never,
     );

@@ -4,14 +4,13 @@ import { JwtModule } from '@nestjs/jwt';
 import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { WechatAccessTokenService } from './wechat-access-token.service';
-import { WechatContentSecurityService } from './wechat-content-security.service';
-import { WechatMiniService } from './wechat-mini.service';
+import { WechatMiniModule } from './wechat-mini.module';
 
 @Module({
   imports: [
     ConfigModule,
     UserModule,
+    WechatMiniModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -24,17 +23,7 @@ import { WechatMiniService } from './wechat-mini.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [
-    AuthService,
-    WechatMiniService,
-    WechatAccessTokenService,
-    WechatContentSecurityService,
-  ],
-  exports: [
-    AuthService,
-    JwtModule,
-    WechatAccessTokenService,
-    WechatContentSecurityService,
-  ],
+  providers: [AuthService],
+  exports: [AuthService, JwtModule, WechatMiniModule],
 })
 export class AuthModule {}

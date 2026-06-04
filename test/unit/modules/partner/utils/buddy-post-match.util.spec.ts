@@ -19,8 +19,8 @@ function post(partial: Partial<PostRecord> & { _id: string }): PostRecord {
 describe('buddy-post-match.util', () => {
   const host = post({
     _id: 'host',
-    body: '上海出发拼车',
-    tags: ['拼车'],
+    body: '上海出发同路',
+    tags: ['同路'],
     contentTypes: ['carpool'],
     departureCity: '上海',
   });
@@ -29,8 +29,8 @@ describe('buddy-post-match.util', () => {
     const carpool = extractBuddyPostMatchSignalsFromRecord(
       post({
         _id: 'c1',
-        body: '拼车',
-        tags: ['拼车'],
+        body: '同路',
+        tags: ['同路'],
         contentTypes: ['carpool'],
         departureCity: '上海',
       }),
@@ -49,8 +49,8 @@ describe('buddy-post-match.util', () => {
       post({ _id: 't1', body: '组队', contentTypes: ['team'] }),
       post({
         _id: 'c1',
-        body: '拼车同行',
-        tags: ['拼车'],
+        body: '同路同行',
+        tags: ['同路'],
         contentTypes: ['carpool'],
         departureCity: '上海',
         createdAt: new Date('2026-01-02'),

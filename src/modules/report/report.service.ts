@@ -12,6 +12,7 @@ import {
 } from '../../database/schemas/content-report.schema';
 import { AccountRiskService } from '../account-risk/account-risk.service';
 import { CreateReportDto } from './dto/create-report.dto';
+import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import type {
   ReportReviewStatus,
   ReportTargetType,
@@ -30,6 +31,7 @@ export class ReportService {
     @InjectModel(ContentReport.name)
     private readonly reportModel: Model<ContentReportDocument>,
     private readonly accountRisk: AccountRiskService,
+    private readonly wechatContentSecurity: WechatContentSecurityService,
   ) {}
 
   async submit(
@@ -37,6 +39,7 @@ export class ReportService {
     actor: RequestActor,
   ): Promise<{ ok: true; id: string }> {
     const reporterUserId = actor.resolvedUserId;
+    await this.wechatContentSecurity.assertTextSafe(dto.reason?.trim() ?? '');
 
     try {
       const created = await this.reportModel.create({

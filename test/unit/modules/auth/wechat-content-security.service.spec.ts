@@ -90,4 +90,40 @@ describe('WechatContentSecurityService', () => {
 
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  it('passes text when msg_sec_check returns errcode 0', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      json: async () => ({ errcode: 0 }),
+    });
+
+    await service.assertTextSafe('找组队拼房');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/wxa/msg_sec_check'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+  });
+
+  it('rejects risky text with errcode 87014', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      json: async () => ({ errcode: 87014 }),
+    });
+
+    await expect(service.assertTextSafe('违规文本')).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('assertTextsSafe skips empty fields', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      json: async () => ({ errcode: 0 }),
+    });
+
+    await service.assertTextsSafe(['', undefined, '  ', 'ok']);
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
 });

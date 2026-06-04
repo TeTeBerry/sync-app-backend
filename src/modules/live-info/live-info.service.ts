@@ -54,6 +54,8 @@ import {
 } from './utils/wristband-image-key.util';
 import { readUploadImageAsDataUrl } from './utils/wristband-upload-url.util';
 import { WristbandVerifyService } from './wristband-verify.service';
+import { assertUserImageRefSync } from '../../common/media/user-image-ref.util';
+import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 
 const WRISTBAND_DUPLICATE_MESSAGE =
   '该手环照片已使用过，请拍摄本人手腕佩戴的活动腕带';
@@ -71,6 +73,7 @@ export class LiveInfoService implements OnModuleInit {
     private readonly userService: UserService,
     private readonly wristbandVerifyService: WristbandVerifyService,
     private readonly onSiteIdentity: OnSiteIdentityService,
+    private readonly wechatContentSecurity: WechatContentSecurityService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -253,6 +256,7 @@ export class LiveInfoService implements OnModuleInit {
     if (!imageUrl) {
       throw new BadRequestException('请上传手环照片');
     }
+    assertUserImageRefSync(imageUrl);
 
     const eventDate = shanghaiEventDate();
     const validUntil = shanghaiEndOfEventDate(eventDate);
@@ -383,6 +387,7 @@ export class LiveInfoService implements OnModuleInit {
     const uid = this.resolveUser(actor);
     const eventDate = shanghaiEventDate();
     await this.requireCertified(activityLegacyId, uid, eventDate);
+    await this.wechatContentSecurity.assertTextSafe(body.remark?.trim() ?? '');
 
     const now = Date.now();
     const cooldownSince = new Date(now - LIVE_INFO_PUBLISH_COOLDOWN_MS);

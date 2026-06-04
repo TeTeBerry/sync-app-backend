@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { LlmService } from '../llm/llm.service';
-import { decodeBase64Payload, toDataUrl } from '../utils/image-base64.util';
+import { resolveImageInput } from '../utils/image-ref.util';
 import { matchRiskRules } from '../risk/risk-rules.util';
 import {
   buildPublishableBody,
@@ -140,8 +140,7 @@ export class RiskAgent {
       return textRisk;
     }
 
-    const { mimeType, base64 } = decodeBase64Payload(imageRaw);
-    const dataUrl = toDataUrl(mimeType, base64);
+    const dataUrl = await resolveImageInput(imageRaw);
 
     const llmResult = await this.llmService.invokeVisionJson<LlmRiskResult>(
       buildImageRiskSystemPrompt(),

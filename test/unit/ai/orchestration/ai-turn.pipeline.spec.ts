@@ -121,10 +121,10 @@ describe('AiTurnPipeline homepage activity gating', () => {
     const result = await pipeline.runTurn(
       {
         ...baseDto,
-        messages: [{ role: 'user', content: '风暴电音节 找队友' }],
+        messages: [{ role: 'user', content: '风暴电音节 找组队' }],
       },
-      [{ role: 'user', content: '风暴电音节 找队友' }],
-      '风暴电音节 找队友',
+      [{ role: 'user', content: '风暴电音节 找组队' }],
+      '风暴电音节 找组队',
       { version: 1, flow: 'idle' },
       'req-home-storm',
       'home-session',

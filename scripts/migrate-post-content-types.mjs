@@ -11,26 +11,26 @@ const MONGO_URI =
 
 /** 标签/快捷词 → 内容类型映射 */
 const TAG_TO_TYPE = {
-  '组队队友': 'team',
-  '组队': 'team',
-  '找队友': 'team',
-  '求组队': 'team',
-  '住宿同行': 'accommodation',
-  '拼房': 'accommodation',
-  '拼房同行': 'accommodation',
-  '住宿': 'accommodation',
-  '酒店': 'accommodation',
-  '拼车同行': 'carpool',
-  '拼车': 'carpool',
-  '顺路': 'carpool',
-  '顺风车': 'carpool',
+  组队队友: 'team',
+  组队: 'team',
+  找组队: 'team',
+  求组队: 'team',
+  住宿同行: 'accommodation',
+  拼房: 'accommodation',
+  拼房同行: 'accommodation',
+  住宿: 'accommodation',
+  酒店: 'accommodation',
+  同路同行: 'carpool',
+  同路: 'carpool',
+  顺路: 'carpool',
+  顺风车: 'carpool',
 };
 
 /** 正文关键词 → 内容类型映射 */
 const BODY_PATTERNS = [
   { pattern: /拼房|住宿|酒店|同房|合住/i, type: 'accommodation' },
-  { pattern: /拼车|顺路|顺风车|接送|包车/i, type: 'carpool' },
-  { pattern: /组队|找队友|求组队|搭子|结伴|同行/i, type: 'team' },
+  { pattern: /同路|顺路|顺风车|接送|包车/i, type: 'carpool' },
+  { pattern: /组队|找组队|求组队|搭子|结伴|同行/i, type: 'team' },
 ];
 
 function inferContentTypesFromTags(tags) {
@@ -82,10 +82,7 @@ async function main() {
     for await (const post of cursor) {
       scanned++;
       const contentTypes = inferPostContentTypes(post);
-      await posts.updateOne(
-        { _id: post._id },
-        { $set: { contentTypes } },
-      );
+      await posts.updateOne({ _id: post._id }, { $set: { contentTypes } });
       updated++;
       if (updated % 100 === 0) {
         console.log(`Progress: ${updated} posts updated...`);

@@ -23,7 +23,7 @@ const IMAGE_PARSE_SYSTEM = [
   '- eventName: 活动名称',
   '- eventTime: 活动时间',
   '- location: 地点',
-  '- buddyType: 组队类型（住宿/拼车/观演等）',
+  '- buddyType: 组队类型（住宿/同路/观演等）',
   '- description: 组队需求描述（50字内）',
   '- tags: 带 # 前缀标签数组',
   '- activityKeyword, activityLegacyId, ready',

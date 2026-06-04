@@ -5,9 +5,9 @@ export const DEMO_OWNER_DISPLAY_NAME = 'Zara Chen';
 
 /** 活动详情页 AI 快捷标签（与前端 aiShortcutTags.ts 对齐） */
 export const AI_SHORTCUT_TAGS = [
-  '找队友',
+  '找组队',
   '找拼房',
-  '找拼车',
+  '找同路伙伴',
   '找拼卡',
 ] as const;
 
@@ -17,15 +17,15 @@ const LEGACY_AI_SHORTCUT_TAGS = [
   '拼房同行',
   '组队队友',
   '住宿同行',
-  '拼车同行',
+  '同路同行',
   '拼卡',
 ] as const;
 
 const LEGACY_TO_CANONICAL: Record<string, (typeof AI_SHORTCUT_TAGS)[number]> = {
-  组队队友: '找队友',
+  组队队友: '找组队',
   住宿同行: '找拼房',
   拼房同行: '找拼房',
-  拼车同行: '找拼车',
+  同路同行: '找同路伙伴',
   拼卡: '找拼卡',
 };
 
@@ -34,8 +34,8 @@ export const AI_SHORTCUT_TAG_ALIASES: Record<
   string,
   (typeof AI_SHORTCUT_TAGS)[number]
 > = {
-  帮我dd: '找队友',
-  拼车: '找拼车',
+  帮我dd: '找组队',
+  同路: '找同路伙伴',
 };
 
 export function normalizeAiShortcutInput(input: string): string {

@@ -36,7 +36,7 @@ const TEXT_PARSE_SYSTEM = [
   '- tags: 字符串数组，每项带 # 前缀，如 #住宿 #女生优先',
   '- activityKeyword: 活动关键词',
   '- activityLegacyId: 数字，若用户或上下文已明确',
-  '- buddyType: 组队类型，如 住宿同行/拼车/观演',
+  '- buddyType: 组队类型，如 住宿同行/同路/观演',
   '- ready: 活动与核心出行信息（日期、人数、出发城市）是否已足够直接发帖',
 ].join('\n');
 

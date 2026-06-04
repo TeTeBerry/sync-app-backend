@@ -28,6 +28,12 @@ import { ApplyToPostDto } from './dto/apply-to-post.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PostMapper } from './post.mapper';
+import { normalizeUserImageUrls } from '../../common/media/user-image-ref.util';
+import {
+  assertUserUgcTexts,
+  collectPostWriteUgcTexts,
+} from '../../common/media/user-ugc-text.util';
+import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import {
   POST_SEED,
   STORM_ACTIVITY_LEGACY_ID,
@@ -71,6 +77,7 @@ export class PostService implements OnModuleInit {
     private readonly postInteraction: PostInteractionService,
     private readonly postRecruitmentService: PostRecruitmentService,
     private readonly postTeamPairService: PostTeamPairService,
+    private readonly wechatContentSecurity: WechatContentSecurityService,
   ) {}
 
   async onModuleInit() {
@@ -380,6 +387,11 @@ export class PostService implements OnModuleInit {
       throw new ForbiddenException('无权编辑该帖子');
     }
 
+    await assertUserUgcTexts(
+      this.wechatContentSecurity,
+      collectPostWriteUgcTexts(dto),
+    );
+
     const patch: Partial<Post> = {};
     if (dto.body?.trim()) {
       const nextBody = dto.body.trim();
@@ -402,7 +414,7 @@ export class PostService implements OnModuleInit {
     if (dto.location?.trim()) patch.location = dto.location.trim();
     if (dto.departureCity?.trim())
       patch.departureCity = dto.departureCity.trim();
-    if (dto.images) patch.images = dto.images;
+    if (dto.images) patch.images = normalizeUserImageUrls(dto.images);
 
     if (dto.body?.trim() || dto.departureCity?.trim() || dto.location?.trim()) {
       const criteriaPatch = buildMatchCriteriaPatch({

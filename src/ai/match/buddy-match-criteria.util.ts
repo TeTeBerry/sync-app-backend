@@ -56,7 +56,7 @@ export function inferDepartureCityFromText(
     }
 
     for (const city of KNOWN_CITIES) {
-      if (text.includes(city) && /出发|拼车|同行/.test(text)) {
+      if (text.includes(city) && /出发|同路|同行/.test(text)) {
         return city;
       }
     }
@@ -72,7 +72,7 @@ export function inferIntentsFromPost(
   const haystack = [...tags, body].join(' ').toLowerCase();
   const intents = new Set<BuddyMatchIntent>();
 
-  if (/拼卡|拼车|顺风车|包车/.test(haystack)) intents.add('carpool');
+  if (/拼卡|同路|顺风车|包车/.test(haystack)) intents.add('carpool');
   if (/拼住宿|拼房|住宿/.test(haystack)) intents.add('lodging');
   if (/组队|搭子|同行|缺\d/.test(haystack)) intents.add('team');
   if (/票|内场|看台|区/.test(haystack)) intents.add('ticket');
@@ -372,7 +372,7 @@ export function criteriaToEmbeddingText(criteria: BuddyMatchCriteria): string {
   const body = criteria.requesterBody?.trim();
   const profileSuffix = profileEmbeddingSuffix(criteria);
 
-  // 有用户发帖内容时以帖子正文为主；快捷键补充搜索意图（拼车等）
+  // 有用户发帖内容时以帖子正文为主；快捷键补充搜索意图（同路等）
   if (body) {
     const shortcut = criteria.searchShortcutTag?.trim();
     const base = shortcut ? `${shortcut} ${body}`.trim() : body;

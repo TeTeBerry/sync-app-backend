@@ -2,7 +2,7 @@ import { inferIntentTagsFromText } from './infer-intent-tags.util';
 import { inferPostContentTypes } from '../../modules/partner/utils/post-content-type.util';
 
 export const TICKET_PUBLISH_FORBIDDEN_MESSAGE =
-  '平台禁止发布转票、出票、票务相关信息。如需找同行伙伴，请改为组队、拼车或住宿类帖子。';
+  '平台禁止发布转票、出票、票务相关信息。如需找同行伙伴，请改为组队、同路或住宿类帖子。';
 
 /** Explicit ticket-trade keywords — always block publish. */
 const TICKET_PUBLISH_KEYWORD_RE = /转票|出票|票务|倒票|黄牛/i;

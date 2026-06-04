@@ -7,7 +7,7 @@ describe('post-content-type.util (组队发帖标签)', () => {
   it('maps sheet tags to content types', () => {
     expect(inferContentTypesFromTags(['#组队'])).toEqual(['team']);
     expect(inferContentTypesFromTags(['#拼房'])).toEqual(['accommodation']);
-    expect(inferContentTypesFromTags(['#拼车'])).toEqual(['carpool']);
+    expect(inferContentTypesFromTags(['#同路'])).toEqual(['carpool']);
     expect(inferContentTypesFromTags(['#拼卡'])).toEqual(['carpool']);
   });
 

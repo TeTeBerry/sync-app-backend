@@ -174,6 +174,13 @@ describe('Post lifecycle full business flow', () => {
       chromaService,
       postNotification,
       postModeration,
+      {
+        isUserOnSiteCertified: jest.fn().mockResolvedValue(false),
+      } as never,
+      {
+        assertTextSafe: jest.fn().mockResolvedValue(undefined),
+        assertTextsSafe: jest.fn().mockResolvedValue(undefined),
+      } as never,
     );
 
     postRecruitmentService = {
@@ -274,33 +281,41 @@ describe('Post lifecycle full business flow', () => {
       { deleteMany: jest.fn() } as never,
       {} as never,
       { resolveProfileFromStoredAuthor: jest.fn() } as unknown as UserService,
+      {
+        assertCanPublish: jest.fn().mockResolvedValue(undefined),
+        recordPublishRiskViolation: jest.fn(),
+      } as never,
       teamChatService as never,
       postNotification,
       postModeration,
+      {
+        assertTextSafe: jest.fn().mockResolvedValue(undefined),
+        assertTextsSafe: jest.fn().mockResolvedValue(undefined),
+      } as never,
       postRecruitmentService as unknown as PostRecruitmentService,
       teamPairService,
     );
   });
 
   it('runs publish → match preview → apply → accept → reopen dissolve', async () => {
-    // 1. 帖主发拼车招募帖
+    // 1. 帖主发同路招募帖
     const hostCreated = await postWriteService.createPost(
       {
-        body: '上海出发求拼车\n\n#拼车',
+        body: '上海出发求同路\n\n#同路',
         activityLegacyId: ACTIVITY_ID,
         eventTitle: '测试活动',
         location: '上海',
-        tags: ['#拼车'],
+        tags: ['#同路'],
         contentTypes: ['carpool'],
       },
       toRequestActor(OWNER_ID, 'Owner'),
     );
     const hostId = hostCreated.id;
 
-    // 2. 申请人发组队帖 + 拼车帖（同活动）
+    // 2. 申请人发组队帖 + 同路帖（同活动）
     await postWriteService.createPost(
       {
-        body: '找队友',
+        body: '找组队',
         activityLegacyId: ACTIVITY_ID,
         eventTitle: '测试活动',
         tags: ['#组队'],
@@ -310,11 +325,11 @@ describe('Post lifecycle full business flow', () => {
     );
     const carpoolCreated = await postWriteService.createPost(
       {
-        body: '拼车同行',
+        body: '同路同行',
         activityLegacyId: ACTIVITY_ID,
         eventTitle: '测试活动',
         location: '上海',
-        tags: ['#拼车'],
+        tags: ['#同路'],
         contentTypes: ['carpool'],
         departureCity: '上海',
       },
@@ -327,7 +342,7 @@ describe('Post lifecycle full business flow', () => {
     );
     expect(applicantPosts.length).toBe(2);
 
-    // 3. 申请卡片应选拼车帖
+    // 3. 申请卡片应选同路帖
     const best = pickBestMatchingPostRecord(hostRecord, applicantPosts);
     expect(String(best?._id)).toBe(String(carpoolCreated.id));
 
@@ -335,7 +350,7 @@ describe('Post lifecycle full business flow', () => {
     const applyResult = await interactionService.applyToPost(
       hostId,
       toRequestActor(APPLICANT_ID, 'Applicant'),
-      { message: '可以一起拼车吗' },
+      { message: '可以一起同路吗' },
     );
     expect(applyResult).toEqual(
       expect.objectContaining({
@@ -349,7 +364,7 @@ describe('Post lifecycle full business flow', () => {
     expect(teamChatService.createInitialMessageOnApply).toHaveBeenCalledWith(
       hostId,
       APPLICANT_ID,
-      '可以一起拼车吗',
+      '可以一起同路吗',
     );
     expect(postNotification.notifyApplication).toHaveBeenCalled();
 
@@ -374,7 +389,7 @@ describe('Post lifecycle full business flow', () => {
       'Owner',
     );
 
-    // 申请人拼车帖应变已组队
+    // 申请人同路帖应变已组队
     const applicantCarpool = posts.get(String(carpoolCreated.id))!;
     expect(applicantCarpool.status).toBe('completed');
 

@@ -192,7 +192,7 @@ export function resolveHomeFestivalShortcutCode(
 }
 
 /**
- * Chip / exact submit only. Compound messages like「风暴电音节 找队友」are not shortcuts —
+ * Chip / exact submit only. Compound messages like「风暴电音节 找组队」are not shortcuts —
  * activity may still be inferred via chat for buddy recommend / create_post.
  */
 export function isHomeFestivalShortcutInput(input: string): boolean {
@@ -258,7 +258,7 @@ export function buildHomeFestivalShortcutReply(
     '',
     HOME_FESTIVAL_ENTER_ACTIVITY_PROMPT,
     '',
-    `直接回复活动名（如「${def.chipLabel}」）即可；我不会自动绑定活动，等你确认后再帮你找队友或发帖。`,
+    `直接回复活动名（如「${def.chipLabel}」）即可；我不会自动绑定活动，等你确认后再帮你找组队或发帖。`,
   ]);
 }
 

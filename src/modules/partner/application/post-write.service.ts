@@ -34,6 +34,12 @@ import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { buildMatchCriteriaPatch } from '../../../ai/match/buddy-match-criteria.util';
 import { inferPostContentTypes } from '../utils/post-content-type.util';
 import { OnSiteIdentityService } from '../../live-info/on-site-identity.service';
+import { normalizeUserImageUrls } from '../../../common/media/user-image-ref.util';
+import {
+  assertUserUgcTexts,
+  collectPostWriteUgcTexts,
+} from '../../../common/media/user-ugc-text.util';
+import { WechatContentSecurityService } from '../../auth/wechat-content-security.service';
 
 @Injectable()
 export class PostWriteService {
@@ -52,6 +58,7 @@ export class PostWriteService {
     @Inject(POST_MODERATION_PORT)
     private readonly postModeration: IPostModerationPort,
     private readonly onSiteIdentity: OnSiteIdentityService,
+    private readonly wechatContentSecurity: WechatContentSecurityService,
   ) {}
 
   private async toCreatedEventDetailItem(
@@ -81,6 +88,10 @@ export class PostWriteService {
     options?: { skipRiskCheck?: boolean },
   ) {
     await this.accountRisk.assertCanPublish(actor);
+    await assertUserUgcTexts(
+      this.wechatContentSecurity,
+      collectPostWriteUgcTexts(dto),
+    );
 
     const profile = await this.userService.resolveProfile(actor);
     const ownerUserId = actor.resolvedUserId;
@@ -178,6 +189,7 @@ export class PostWriteService {
     }
 
     const listedInFeed = dto.listedInFeed !== false;
+    const images = normalizeUserImageUrls(dto.images);
 
     const created = await this.repository.create({
       userId: ownerUserId,
@@ -196,7 +208,7 @@ export class PostWriteService {
       listedInFeed,
       likes: 0,
       comments: 0,
-      images: dto.images ?? [],
+      images,
     });
 
     const postId = String(created._id);

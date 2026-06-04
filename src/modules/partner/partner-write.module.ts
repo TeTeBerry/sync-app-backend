@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
 import { ChromaModule } from '../../ai/rag/chroma.module';
 import { PostAgentAdaptersModule } from '../../ai/adapters/post-agent-adapters.module';
 import { ActivityModule } from '../activity/activity.module';
@@ -10,6 +11,7 @@ import { LiveInfoModule } from '../live-info/live-info.module';
 
 @Module({
   imports: [
+    AuthModule,
     PartnerRepositoryModule,
     UserModule,
     AccountRiskModule,

@@ -152,7 +152,7 @@ describe('match-ranking.util', () => {
       criteria: {
         activityLegacyId: 4,
         departureCity: '上海',
-        requesterTags: ['拼车'],
+        requesterTags: ['同路'],
       },
     };
 
@@ -167,8 +167,8 @@ describe('match-ranking.util', () => {
         candidate('tag-fit', {
           distance: 0.45,
           postDepartureCity: '上海',
-          postTags: ['拼车'],
-          postBody: '上海 #拼车 缺1',
+          postTags: ['同路'],
+          postBody: '上海 #同路 缺1',
         }),
       ],
       context,
@@ -176,6 +176,6 @@ describe('match-ranking.util', () => {
     );
 
     expect(ranked[0]?.postId).toBe('vector-closer');
-    expect(ranked[1]?.matchReason).toBe('标签契合：#拼车');
+    expect(ranked[1]?.matchReason).toBe('标签契合：#同路');
   });
 });

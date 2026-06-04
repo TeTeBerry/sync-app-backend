@@ -105,10 +105,22 @@ export default () => ({
         process.env.WECHAT_MINI_APP_SECRET ?? process.env.WX_APP_SECRET,
         '',
       ),
-      /** When true and AppId/Secret set, POST /uploads/images runs wxa/img_sec_check. */
+      /** When true and AppId/Secret set, UGC images/text run wxa/img_sec_check & msg_sec_check. */
       contentSecurityEnabled:
         cleanEnv(process.env.WECHAT_CONTENT_SECURITY_ENABLED, 'true') ===
         'true',
+      /** When true, WeChat login + JWT users must pass `wxa/getuserriskrank` (scene 2 UGC). */
+      userRiskEnabled:
+        cleanEnv(process.env.WECHAT_USER_RISK_ENABLED, 'true') === 'true',
+      /** Allow risk_rank 0..N inclusive; block when rank > N (default 2 → allow 0–2). */
+      userRiskMaxRank: parseInt(
+        cleanEnv(process.env.WECHAT_USER_RISK_MAX_RANK, '2'),
+        10,
+      ),
+      userRiskRecheckHours: parseInt(
+        cleanEnv(process.env.WECHAT_USER_RISK_RECHECK_HOURS, '24'),
+        10,
+      ),
     },
   },
 

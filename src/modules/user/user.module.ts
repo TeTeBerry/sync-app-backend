@@ -16,11 +16,13 @@ import { UserBlockService } from './user-block.service';
 import { UserController } from './user.controller';
 import { UserRepository } from './user.repository';
 import { AccountRiskModule } from '../account-risk/account-risk.module';
+import { WechatMiniModule } from '../auth/wechat-mini.module';
 import { UserProfileSyncService } from './user-profile-sync.service';
 import { UserService } from './user.service';
 
 @Module({
   imports: [
+    WechatMiniModule,
     AccountRiskModule,
     ChromaModule,
     MongooseModule.forFeature([

@@ -56,7 +56,7 @@ export class BuddyContextService {
   ) {}
 
   /**
-   * 找队友/拼房/拼车/拼卡等搜索前，须已有本活动招募帖；否则返回引导文案所需的活动名。
+   * 找组队/拼房/同路/拼卡等搜索前，须已有本活动招募帖；否则返回引导文案所需的活动名。
    */
   /** Pick the recruiting post whose type/tags best match the shortcut (or newest if only one). */
   async resolveOwnerPostForMatch(
@@ -240,7 +240,7 @@ export class BuddyContextService {
     return `${normalized.slice(0, BUDDY_RECOMMEND_CARD_SNIPPET_MAX)}…`;
   }
 
-  /** 快捷标签检索：只保留对应类型（如拼卡/拼车）的他人帖子 */
+  /** 快捷标签检索：只保留对应类型（如拼卡/同路）的他人帖子 */
   async filterMatchesForShortcutTag(
     matches: MatchedPostItem[],
     shortcut: string,

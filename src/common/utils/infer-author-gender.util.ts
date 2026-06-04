@@ -62,7 +62,7 @@ export function inferAuthorGenderFromPost(post: {
   }
 
   if (
-    /(\d+)缺\d*男生|缺\d*男生|(\d+)人男生|男生拼车|男生同行|北京出发.*男生/i.test(
+    /(\d+)缺\d*男生|缺\d*男生|(\d+)人男生|男生同路|男生同行|北京出发.*男生/i.test(
       haystack,
     ) &&
     !/男生女生都可|男女都可/i.test(haystack)
