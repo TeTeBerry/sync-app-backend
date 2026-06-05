@@ -63,10 +63,10 @@ describe('intent-router.rules', () => {
     expect(hit?.kind).toBe('search_posts');
   });
 
-  it('routes 找拼卡 shortcut with bound activity to search_posts', () => {
-    const hit = resolveChatIntentFastPath('找拼卡', {
+  it('routes 找卡座 shortcut with bound activity to search_posts', () => {
+    const hit = resolveChatIntentFastPath('找卡座', {
       messages: [],
-      input: '找拼卡',
+      input: '找卡座',
       activityLegacyId: 4,
     });
     expect(hit?.kind).toBe('search_posts');

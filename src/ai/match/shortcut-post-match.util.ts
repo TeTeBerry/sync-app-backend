@@ -8,7 +8,7 @@ export function intentsForShortcutTag(
 ): BuddyMatchIntent[] | undefined {
   const tag = normalizeAiShortcutInput(shortcut);
   switch (tag) {
-    case '找拼卡':
+    case '找卡座':
     case '找同路伙伴':
       return ['carpool'];
     case '找拼房':
@@ -35,7 +35,7 @@ export function postMatchesShortcutTag(
   });
 
   switch (tag) {
-    case '找拼卡':
+    case '找卡座':
       return (
         types.includes('carpool') ||
         /拼卡|同路|顺路|顺风车|包车/i.test(haystack)

@@ -1,4 +1,13 @@
 {
   "collection": "@nestjs/schematics",
-  "sourceRoot": "src"
+  "sourceRoot": "src",
+  "compilerOptions": {
+    "assets": [
+      {
+        "include": "../public-h5/**/*",
+        "outDir": "dist/public-h5",
+        "watchAssets": true
+      }
+    ]
+  }
 }

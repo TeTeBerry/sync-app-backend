@@ -397,7 +397,7 @@ export class LiveInfoService implements OnModuleInit {
       createdAt: { $gt: cooldownSince },
     });
     if (recent) {
-      throw new BadRequestException('发布过于频繁，请 15 分钟后再试');
+      throw new BadRequestException('发布过于频繁，请 5 分钟后再试');
     }
 
     const hourSince = new Date(now - 60 * 60 * 1000);

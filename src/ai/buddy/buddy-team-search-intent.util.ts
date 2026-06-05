@@ -1,9 +1,9 @@
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import { detectUserIntent } from '../intent/user-intent';
 
-/** 与活动详情 / AI 助手「找组队、找拼房、找同路伙伴、找拼卡」等组队搜索相关的用户输入 */
+/** 与活动详情 / AI 助手「找组队、找拼房、找同路伙伴、找卡座」等组队搜索相关的用户输入 */
 const TEAM_SEARCH_PHRASE_RE =
-  /找组队|找拼房|找同路伙伴|找拼卡|组队友|找搭子|找同行|结伴|帮我组队|帮我dd/i;
+  /找组队|找拼房|找同路伙伴|找卡座|组队友|找搭子|找同行|结伴|帮我组队|帮我dd/i;
 
 /**
  * 用户意图为「找同行/组队搜索」（快捷标签或自然语言），

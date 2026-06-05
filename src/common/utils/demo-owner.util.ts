@@ -8,7 +8,7 @@ export const AI_SHORTCUT_TAGS = [
   '找组队',
   '找拼房',
   '找同路伙伴',
-  '找拼卡',
+  '找卡座',
 ] as const;
 
 /** 历史标签，仍视为快捷标签以兼容旧会话 */
@@ -26,7 +26,7 @@ const LEGACY_TO_CANONICAL: Record<string, (typeof AI_SHORTCUT_TAGS)[number]> = {
   住宿同行: '找拼房',
   拼房同行: '找拼房',
   同路同行: '找同路伙伴',
-  拼卡: '找拼卡',
+  拼卡: '找卡座',
 };
 
 /** 展示文案别名 → 标准快捷标签（与前端 aiShortcutTags 对齐） */

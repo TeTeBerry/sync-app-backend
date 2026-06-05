@@ -31,17 +31,17 @@ describe('ticket-publish-policy.util', () => {
     );
   });
 
-  it('allows 找拼卡 buddy posts (not ticket resale)', () => {
+  it('allows 找卡座 buddy posts (not ticket resale)', () => {
     expect(
       isTicketPublishProhibited({
-        body: '找拼卡，6.13-6.14，上海，1人',
+        body: '找卡座，6.13-6.14，上海，1人',
         tags: ['#拼卡'],
         contentTypes: ['carpool'],
       }),
     ).toBe(false);
     expect(
       isTicketPublishProhibited({
-        body: '找拼卡，6.13-6.14，上海，1人',
+        body: '找卡座，6.13-6.14，上海，1人',
         tags: ['#拼卡'],
         contentTypes: ['ticket'],
       }),

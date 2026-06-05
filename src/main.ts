@@ -11,6 +11,21 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
+/** 解析 H5 静态目录（勿依赖 process.cwd，避免从 monorepo 根目录启动时 404） */
+function resolveH5PublicDir(): string | null {
+  const candidates = [
+    join(__dirname, 'public-h5'),
+    join(__dirname, '..', 'public-h5'),
+    join(process.cwd(), 'public-h5'),
+  ];
+  for (const dir of candidates) {
+    if (existsSync(join(dir, 'storm-radiate-map.html'))) {
+      return dir;
+    }
+  }
+  return null;
+}
+
 /** Headers the H5 client may send (REST + WebSocket preflight). */
 const PROD_ALLOWED_HEADERS = [
   'Content-Type',
@@ -81,6 +96,17 @@ async function bootstrap() {
   }
   app.use('/uploads', expressStatic(join(process.cwd(), uploadDir)));
 
+  const h5PublicDir = resolveH5PublicDir();
+  if (h5PublicDir) {
+    app.use(
+      '/h5',
+      expressStatic(h5PublicDir, {
+        index: false,
+        maxAge: IS_PRODUCTION ? '1h' : 0,
+      }),
+    );
+  }
+
   app.enableShutdownHooks();
 
   const corsOptions = resolveCorsOptions();
@@ -111,6 +137,14 @@ async function bootstrap() {
     const httpServer = app.getHttpServer();
     app.get(AiChatWsServer).attach(httpServer);
     logger.log(`🚀 API: http://localhost:${port}/api`);
+    if (h5PublicDir) {
+      logger.log(
+        `🗺️  Storm H5: http://localhost:${port}/h5/storm-radiate-map.html`,
+      );
+      logger.log(`   (static root: ${h5PublicDir})`);
+    } else {
+      logger.warn('⚠️  public-h5 not found — /h5/* will 404');
+    }
     logger.log(`✅ AI WebSocket: ws://localhost:${port}${AI_CHAT_WS_PATH}`);
     logger.log(`📦 MongoDB: ${mongoUri.replace(/\/\/.*@/, '//***@')}`);
     if (IS_PRODUCTION && !process.env.CORS_ORIGINS) {

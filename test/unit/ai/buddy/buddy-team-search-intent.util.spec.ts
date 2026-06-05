@@ -5,7 +5,7 @@ describe('buddy-team-search-intent.util', () => {
     expect(isBuddyTeamSearchIntent('找组队')).toBe(true);
     expect(isBuddyTeamSearchIntent('找拼房')).toBe(true);
     expect(isBuddyTeamSearchIntent('找同路伙伴')).toBe(true);
-    expect(isBuddyTeamSearchIntent('找拼卡')).toBe(true);
+    expect(isBuddyTeamSearchIntent('找卡座')).toBe(true);
     expect(isBuddyTeamSearchIntent('组队队友')).toBe(true);
     expect(isBuddyTeamSearchIntent('帮我dd')).toBe(true);
   });

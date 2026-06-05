@@ -9,7 +9,7 @@ import { inferPostContentTypes } from '../../modules/partner/utils/post-content-
 function shortcutBodyHint(shortcut: string): string {
   const tag = normalizeAiShortcutInput(shortcut);
   switch (tag) {
-    case '找拼卡':
+    case '找卡座':
     case '找同路伙伴':
       return '拼卡 同路 顺风车 顺路 包车 出发';
     case '找拼房':

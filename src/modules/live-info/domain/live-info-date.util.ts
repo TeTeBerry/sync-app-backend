@@ -22,4 +22,4 @@ export function certExpiryLabelForDate(eventDate: string): string {
 }
 
 export const LIVE_INFO_UPDATE_TTL_MS = 90 * 60 * 1000;
-export const LIVE_INFO_PUBLISH_COOLDOWN_MS = 15 * 60 * 1000;
+export const LIVE_INFO_PUBLISH_COOLDOWN_MS = 5 * 60 * 1000;
