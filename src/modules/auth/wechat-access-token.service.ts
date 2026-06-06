@@ -63,6 +63,16 @@ export class WechatAccessTokenService {
     }
 
     if (payload.errcode && payload.errcode !== 0) {
+      if (payload.errcode === 40125) {
+        throw new ServiceUnavailableException(
+          '微信小程序 AppSecret 无效，请在微信公众平台核对 WECHAT_MINI_APP_SECRET',
+        );
+      }
+      if (payload.errcode === 40013) {
+        throw new ServiceUnavailableException(
+          '微信小程序 AppId 无效，请检查 WECHAT_MINI_APP_ID 配置',
+        );
+      }
       throw new ServiceUnavailableException(
         payload.errmsg || `获取微信 access_token 失败 (${payload.errcode})`,
       );

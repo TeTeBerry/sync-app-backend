@@ -40,6 +40,7 @@ import {
   collectPostWriteUgcTexts,
 } from '../../../common/media/user-ugc-text.util';
 import { WechatContentSecurityService } from '../../auth/wechat-content-security.service';
+import { MediaSecurityCheckService } from '../../media-security/media-security-check.service';
 
 @Injectable()
 export class PostWriteService {
@@ -59,6 +60,7 @@ export class PostWriteService {
     private readonly postModeration: IPostModerationPort,
     private readonly onSiteIdentity: OnSiteIdentityService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
+    private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
 
   private async toCreatedEventDetailItem(
@@ -197,6 +199,16 @@ export class PostWriteService {
     const normalizedImages = normalizeUserImageUrls(dto.images);
     if (!allowsImages && normalizedImages.length > 0) {
       throw new BadRequestException('组队帖不支持上传图片');
+    }
+    if (
+      allowsImages &&
+      normalizedImages.length > 0 &&
+      this.wechatContentSecurity.isEnabled()
+    ) {
+      await this.mediaChecks.assertImagesApprovedForUser(
+        normalizedImages,
+        ownerUserId,
+      );
     }
     const images = allowsImages ? normalizedImages : [];
 

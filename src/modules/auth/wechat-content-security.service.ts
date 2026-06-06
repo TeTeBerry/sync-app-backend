@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { chunkTextForWechatSecCheck } from '../../common/media/user-text-chunk.util';
 import { WechatAccessTokenService } from './wechat-access-token.service';
+import WechatImgSecCheckFormData = require('form-data');
 
 /** WeChat `img_sec_check` media size limit. */
 export const WECHAT_IMG_SEC_CHECK_MAX_BYTES = 1024 * 1024;
@@ -14,6 +15,12 @@ export const WECHAT_IMG_SEC_CHECK_MAX_BYTES = 1024 * 1024;
 interface WechatSecCheckResponse {
   errcode?: number;
   errmsg?: string;
+}
+
+interface WechatMediaCheckAsyncResponse {
+  errcode?: number;
+  errmsg?: string;
+  trace_id?: string;
 }
 
 @Injectable()
@@ -33,6 +40,27 @@ export class WechatContentSecurityService {
       return false;
     }
     return this.accessToken.isConfigured();
+  }
+
+  isAsyncImageCheckEnabled(): boolean {
+    if (!this.isEnabled()) {
+      return false;
+    }
+    return (
+      this.config.get<string>('auth.wechatMini.imageCheckMode', 'async') ===
+      'async'
+    );
+  }
+
+  mediaCheckScene(): number {
+    return this.config.get<number>('auth.wechatMini.mediaCheckScene', 4);
+  }
+
+  mediaCheckExpireMinutes(): number {
+    return this.config.get<number>(
+      'auth.wechatMini.mediaCheckExpireMinutes',
+      35,
+    );
   }
 
   /**
@@ -71,6 +99,58 @@ export class WechatContentSecurityService {
   }
 
   /**
+   * Async image moderation via WeChat `wxa/media_check_async`.
+   * Result arrives on message push (`wxa_media_check`).
+   */
+  async submitImageCheckAsync(params: {
+    mediaUrl: string;
+    openid: string;
+    scene?: number;
+  }): Promise<{ traceId: string }> {
+    if (!this.isAsyncImageCheckEnabled()) {
+      throw new ServiceUnavailableException('微信异步图片检测未启用');
+    }
+
+    const token = await this.accessToken.getAccessToken();
+    const url = `https://api.weixin.qq.com/wxa/media_check_async?access_token=${encodeURIComponent(token)}`;
+    const body = {
+      media_url: params.mediaUrl.trim(),
+      media_type: 2,
+      version: 2,
+      scene: params.scene ?? this.mediaCheckScene(),
+      openid: params.openid.trim(),
+    };
+
+    let payload: WechatMediaCheckAsyncResponse;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      payload = (await res.json()) as WechatMediaCheckAsyncResponse;
+    } catch (error) {
+      this.logger.warn(
+        `WeChat media_check_async failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw new ServiceUnavailableException('图片安全检测暂不可用，请稍后重试');
+    }
+
+    if (payload.errcode !== 0 || !payload.trace_id?.trim()) {
+      this.logger.warn(
+        `WeChat media_check_async unexpected errcode=${payload.errcode} errmsg=${payload.errmsg ?? ''}`,
+      );
+      throw new ServiceUnavailableException(
+        payload.errmsg || '图片安全检测提交失败，请稍后重试',
+      );
+    }
+
+    return { traceId: payload.trace_id.trim() };
+  }
+
+  /**
    * Synchronous image moderation via WeChat `wxa/img_sec_check`.
    * @see https://developers.weixin.qq.com/miniprogram/dev/framework/security.imgSecCheck.html
    */
@@ -88,24 +168,30 @@ export class WechatContentSecurityService {
     }
 
     const mime = params.mime?.toLowerCase() || 'image/jpeg';
-    const ext =
-      mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
+    if (mime === 'image/webp') {
+      throw new BadRequestException(
+        '微信图片安全检测不支持 WebP，请使用 JPEG 或 PNG',
+      );
+    }
+    const ext = mime === 'image/png' ? 'png' : 'jpg';
 
     const token = await this.accessToken.getAccessToken();
-    const form = new FormData();
-    form.append(
-      'media',
-      new Blob([new Uint8Array(params.buffer)], { type: mime }),
-      `upload.${ext}`,
-    );
+    const form = new WechatImgSecCheckFormData();
+    form.append('media', params.buffer, {
+      filename: `upload.${ext}`,
+      contentType: mime,
+      knownLength: params.buffer.length,
+    });
 
     const url = `https://api.weixin.qq.com/wxa/img_sec_check?access_token=${encodeURIComponent(token)}`;
 
     let payload: WechatSecCheckResponse;
     try {
+      // Node fetch + form-data stream often yields WeChat 47001; send full buffer instead.
       const res = await fetch(url, {
         method: 'POST',
-        body: form,
+        body: form.getBuffer() as unknown as BodyInit,
+        headers: form.getHeaders(),
       });
       payload = (await res.json()) as WechatSecCheckResponse;
     } catch (error) {
@@ -173,12 +259,18 @@ export class WechatContentSecurityService {
       throw new BadRequestException(messages.riskyMessage);
     }
 
-    if (payload.errcode === 40006) {
+    if (payload.errcode === 40006 || payload.errcode === 47001) {
       throw new BadRequestException(messages.formatMessage);
     }
 
     if (payload.errcode === 44991 || payload.errcode === 45009) {
       throw new ServiceUnavailableException(messages.busyMessage);
+    }
+
+    if (payload.errcode === 48001) {
+      throw new ServiceUnavailableException(
+        '小程序未开通内容安全接口权限，请在微信公众平台开通内容安全服务',
+      );
     }
 
     this.logger.warn(

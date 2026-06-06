@@ -287,7 +287,7 @@ export class LiveInfoService implements OnModuleInit {
 
     let imageDataUrl: string;
     try {
-      imageDataUrl = readUploadImageAsDataUrl(imageUrl);
+      imageDataUrl = await readUploadImageAsDataUrl(imageUrl);
     } catch (err) {
       if (err instanceof BadRequestException) throw err;
       this.logger.warn(`read wristband image failed: ${String(err)}`);

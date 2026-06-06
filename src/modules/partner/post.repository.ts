@@ -148,6 +148,7 @@ export class PostRepository implements IPostRepository {
         activityLegacyId,
         status: { $ne: 'hidden' },
         ...FEED_LISTED_FILTER,
+        ...TEAM_POST_FEED_FILTER,
       })
       .sort({ createdAt: -1 })
       .lean();
@@ -157,7 +158,11 @@ export class PostRepository implements IPostRepository {
     activityLegacyId: number,
   ): Promise<PostRecord[]> {
     return this.model
-      .find({ activityLegacyId, status: 'recruiting' })
+      .find({
+        activityLegacyId,
+        status: 'recruiting',
+        ...TEAM_POST_FEED_FILTER,
+      })
       .sort({ createdAt: -1 })
       .lean();
   }
@@ -170,6 +175,7 @@ export class PostRepository implements IPostRepository {
       activityLegacyId,
       status: { $ne: 'hidden' },
       ...FEED_LISTED_FILTER,
+      ...TEAM_POST_FEED_FILTER,
     };
     if (options.cursor) {
       filter.$or = [

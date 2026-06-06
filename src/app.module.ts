@@ -23,6 +23,8 @@ import { LiveInfoModule } from './modules/live-info/live-info.module';
 import { ItineraryModule } from './modules/itinerary/itinerary.module';
 import { TravelGuideModule } from './modules/travel-guide/travel-guide.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { CosModule } from './modules/cos/cos.module';
+import { MediaSecurityModule } from './modules/media-security/media-security.module';
 import { HealthModule } from './common/health/health.module';
 import { AuthCoreModule } from './common/auth/auth-core.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -61,6 +63,8 @@ import { RequestActorMiddleware } from './common/middleware/request-actor.middle
     ItineraryModule,
     TravelGuideModule,
     UploadModule,
+    CosModule,
+    MediaSecurityModule,
     HealthModule,
   ],
   providers: [RequestActorMiddleware, ActivityContextMiddleware],
@@ -73,6 +77,8 @@ export class AppModule implements NestModule {
         { path: 'auth/wechat', method: RequestMethod.POST },
         { path: 'auth/dev', method: RequestMethod.POST },
         { path: 'health', method: RequestMethod.GET },
+        { path: 'wechat/message', method: RequestMethod.GET },
+        { path: 'wechat/message', method: RequestMethod.POST },
       )
       .forRoutes('*');
   }

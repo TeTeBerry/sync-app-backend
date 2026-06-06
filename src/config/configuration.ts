@@ -1,3 +1,10 @@
+import {
+  defaultCosUploadResource,
+  resolveCosBucket,
+  resolveCosPublicBaseUrl,
+  resolveCosRegion,
+} from '../common/cos/cos-config.util';
+
 /**
  * 环境变量集中配置
  */
@@ -105,10 +112,21 @@ export default () => ({
         process.env.WECHAT_MINI_APP_SECRET ?? process.env.WX_APP_SECRET,
         '',
       ),
-      /** When true and AppId/Secret set, UGC images/text run wxa/img_sec_check & msg_sec_check. */
+      /** When true and AppId/Secret set, UGC images/text run WeChat sec-check APIs. */
       contentSecurityEnabled:
         cleanEnv(process.env.WECHAT_CONTENT_SECURITY_ENABLED, 'true') ===
         'true',
+      /** `sync` → img_sec_check at verify (default); `async` → media_check_async + message push. */
+      imageCheckMode: cleanEnv(process.env.WECHAT_IMAGE_CHECK_MODE, 'sync'),
+      mediaCheckScene: parseInt(
+        cleanEnv(process.env.WECHAT_MEDIA_CHECK_SCENE, '4'),
+        10,
+      ),
+      mediaCheckExpireMinutes: parseInt(
+        cleanEnv(process.env.WECHAT_MEDIA_CHECK_EXPIRE_MINUTES, '35'),
+        10,
+      ),
+      messageToken: cleanEnv(process.env.WECHAT_MESSAGE_TOKEN, ''),
       /** When true, WeChat login + JWT users must pass `wxa/getuserriskrank` (scene 2 UGC). */
       userRiskEnabled:
         cleanEnv(process.env.WECHAT_USER_RISK_ENABLED, 'true') === 'true',
@@ -137,6 +155,31 @@ export default () => ({
       10,
     ),
     qps: parseInt(cleanEnv(process.env.TENCENT_MAP_QPS, '5'), 10),
+  },
+
+  cos: {
+    /** STS 签发（客户端直传 PutObject / 分片上传） */
+    stsSecretId: cleanEnv(process.env.TENCENT_STS_SECRET_ID),
+    stsSecretKey: cleanEnv(process.env.TENCENT_STS_SECRET_KEY),
+    /** 服务端 SDK（deleteObject 必需；getObject / putObject 视桶策略与上传方式） */
+    serverSecretId: cleanEnv(process.env.COS_SECRET_ID),
+    serverSecretKey: cleanEnv(process.env.COS_SECRET_KEY),
+    bucket: resolveCosBucket(),
+    region: resolveCosRegion(),
+    publicBaseUrl: resolveCosPublicBaseUrl(),
+    /** STS policy resource ARN; `{userId}` is replaced per authenticated user. */
+    uploadResource: cleanEnv(
+      process.env.COS_UPLOAD_RESOURCE,
+      defaultCosUploadResource(),
+    ),
+    stsDurationSeconds: parseInt(
+      cleanEnv(process.env.COS_STS_DURATION_SECONDS, '1800'),
+      10,
+    ),
+    signedUrlExpiresSeconds: parseInt(
+      cleanEnv(process.env.COS_SIGNED_URL_EXPIRES_SECONDS, '3600'),
+      10,
+    ),
   },
 
   itinerary: {

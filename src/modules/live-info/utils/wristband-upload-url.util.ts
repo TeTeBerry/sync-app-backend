@@ -1,48 +1,55 @@
 import { BadRequestException } from '@nestjs/common';
-import { existsSync, readFileSync } from 'fs';
 import { basename, extname, join } from 'path';
+import { existsSync, readFileSync } from 'fs';
+import {
+  assertUserImageRefSync,
+  isAllowedUserUploadImageUrl,
+} from '../../../common/media/user-image-ref.util';
+import { resolveCosPublicHost } from '../../../common/cos/cos-config.util';
 
 function resolveUploadDir(): string {
   return process.env.UPLOAD_DIR?.trim() || './uploads';
 }
 
-function resolvePublicBaseUrls(): string[] {
-  const configured = process.env.UPLOAD_PUBLIC_BASE_URL?.trim();
-  const port = process.env.PORT?.trim() || '3000';
-  const bases = new Set<string>();
-  if (configured) {
-    bases.add(configured.replace(/\/$/, ''));
+function isCosUploadImageUrl(imageUrl: string): boolean {
+  try {
+    return new URL(imageUrl.trim()).hostname === resolveCosPublicHost();
+  } catch {
+    return false;
   }
-  bases.add(`http://127.0.0.1:${port}`);
-  bases.add(`http://localhost:${port}`);
-  return [...bases];
 }
 
-/** 仅允许本服务 /uploads 下、来源在白名单内的图片 URL。 */
+/** Allowed upload API / COS URLs for wristband images. */
 export function assertAllowedUploadImageUrl(imageUrl: string): void {
-  let parsed: URL;
-  try {
-    parsed = new URL(imageUrl.trim());
-  } catch {
-    throw new BadRequestException('无效的图片地址');
-  }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    throw new BadRequestException('图片地址须为 http(s) URL');
-  }
-  const pathname = decodeURIComponent(parsed.pathname);
-  if (!pathname.startsWith('/uploads/') || pathname.includes('..')) {
+  const trimmed = imageUrl.trim();
+  if (!isAllowedUserUploadImageUrl(trimmed)) {
     throw new BadRequestException('请使用本站上传接口返回的图片地址');
   }
-  const origin = `${parsed.protocol}//${parsed.host}`;
-  const allowed = resolvePublicBaseUrls();
-  if (!allowed.some((base) => origin === base)) {
-    throw new BadRequestException('图片地址不在允许的来源内');
-  }
 }
 
-export function readUploadImageAsDataUrl(imageUrl: string): string {
+export async function readUploadImageAsDataUrl(
+  imageUrl: string,
+): Promise<string> {
   assertAllowedUploadImageUrl(imageUrl);
-  const pathname = decodeURIComponent(new URL(imageUrl.trim()).pathname);
+  const trimmed = imageUrl.trim();
+
+  if (isCosUploadImageUrl(trimmed)) {
+    const response = await fetch(trimmed);
+    if (!response.ok) {
+      throw new BadRequestException('无法读取上传的图片，请重新上传');
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const mime =
+      response.headers
+        .get('content-type')
+        ?.split(';')[0]
+        ?.trim()
+        .toLowerCase() || inferMimeFromUrl(trimmed);
+    return `data:${mime};base64,${buffer.toString('base64')}`;
+  }
+
+  assertUserImageRefSync(trimmed);
+  const pathname = decodeURIComponent(new URL(trimmed).pathname);
   const filename = basename(pathname);
   if (!filename || filename === '.' || filename === '..') {
     throw new BadRequestException('无效的图片路径');
@@ -63,4 +70,11 @@ export function readUploadImageAsDataUrl(imageUrl: string): string {
         : 'image/jpeg';
 
   return `data:${mime};base64,${buffer.toString('base64')}`;
+}
+
+function inferMimeFromUrl(imageUrl: string): string {
+  const lower = imageUrl.toLowerCase();
+  if (lower.includes('.png')) return 'image/png';
+  if (lower.includes('.webp')) return 'image/webp';
+  return 'image/jpeg';
 }

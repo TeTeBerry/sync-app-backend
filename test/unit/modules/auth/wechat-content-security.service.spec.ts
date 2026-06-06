@@ -61,8 +61,37 @@ describe('WechatContentSecurityService', () => {
     expect(accessToken.getAccessToken).toHaveBeenCalled();
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/wxa/img_sec_check'),
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.any(Buffer),
+      }),
     );
+  });
+
+  it('rejects WebP before calling WeChat img_sec_check', async () => {
+    await expect(
+      service.assertImageSafe({
+        buffer: Buffer.from('webp'),
+        mime: 'image/webp',
+        size: 4,
+      }),
+    ).rejects.toThrow(/WebP/);
+
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('maps img_sec_check errcode 47001 to format error', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      json: async () => ({ errcode: 47001, errmsg: 'data format error' }),
+    });
+
+    await expect(
+      service.assertImageSafe({
+        buffer: Buffer.from('jpeg-bytes'),
+        mime: 'image/jpeg',
+        size: 10,
+      }),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('rejects risky images with errcode 87014', async () => {

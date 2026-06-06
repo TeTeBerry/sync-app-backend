@@ -41,6 +41,14 @@ describe('user-image-ref.util', () => {
     ).not.toThrow();
   });
 
+  it('accepts COS post upload URLs', () => {
+    expect(() =>
+      assertUserImageRefSync(
+        'https://syncapp-1304288643.cos.ap-shanghai.myqcloud.com/uploads/posts/user-1/1710000000000_abc.jpg',
+      ),
+    ).not.toThrow();
+  });
+
   it('normalizes allowed URL list', () => {
     expect(
       normalizeUserImageUrls([
