@@ -154,54 +154,6 @@ export const TRAVEL_GUIDE_HOT_ACTIVITIES: HotActivityMapProfile[] = [
     ],
   },
   {
-    activityLegacyId: 2,
-    activityCode: 'edc',
-    venue: {
-      title: '苏州阳澄湖半岛旅游度假区',
-      address: '江苏省苏州市苏州工业园区阳澄环路',
-      lat: 31.168,
-      lng: 120.742,
-    },
-    readableAddress: '苏州市工业园区·阳澄湖半岛（EDC China 主会场片区）',
-    hubRoutes: [
-      hubRoute(
-        'suzhou-north-rail',
-        '苏州北站',
-        {
-          title: '苏州北站',
-          address: '苏州市相城区',
-          lat: 31.369,
-          lng: 120.642,
-        },
-        ['苏州北站', '高铁苏州北'],
-        {
-          distanceM: 28_000,
-          durationSec: 2_100,
-          durationMin: 35,
-          distanceKm: 28,
-        },
-        '打车约35分钟；节假日建议提前预约网约车',
-      ),
-      hubRoute(
-        'sunan-airport',
-        '苏南硕放国际机场',
-        {
-          title: '苏南硕放国际机场',
-          address: '无锡市新吴区',
-          lat: 31.494,
-          lng: 120.429,
-        },
-        ['硕放机场', '苏南机场', '无锡机场'],
-        {
-          distanceM: 45_000,
-          durationSec: 3_000,
-          durationMin: 50,
-          distanceKm: 45,
-        },
-      ),
-    ],
-  },
-  {
     activityLegacyId: 5,
     activityCode: 'edc-thailand',
     venue: {

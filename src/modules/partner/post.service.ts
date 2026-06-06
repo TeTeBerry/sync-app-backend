@@ -37,6 +37,7 @@ import { WechatContentSecurityService } from '../auth/wechat-content-security.se
 import {
   POST_SEED,
   STORM_ACTIVITY_LEGACY_ID,
+  SHARE_DEMO_POST_SEED,
   STORM_COMPLETED_DEMO_POST_SEED,
   STORM_DEMO_POST_SEED,
 } from './post.seed';
@@ -108,6 +109,30 @@ export class PostService implements OnModuleInit {
     }
 
     try {
+      await this.ensureShareDemoPosts();
+    } catch (error) {
+      this.logger.warn(
+        `Share demo posts init failed: ${(error as Error).message}`,
+      );
+    }
+
+    try {
+      await this.stripImagesFromTeamPosts();
+    } catch (error) {
+      this.logger.warn(
+        `Team post image cleanup failed: ${(error as Error).message}`,
+      );
+    }
+
+    try {
+      await this.purgePostsForRemovedActivities();
+    } catch (error) {
+      this.logger.warn(
+        `Expired activity post cleanup failed: ${(error as Error).message}`,
+      );
+    }
+
+    try {
       await this.patchStormDemoDepartureCities();
     } catch (error) {
       this.logger.warn(
@@ -164,6 +189,42 @@ export class PostService implements OnModuleInit {
     for (const seed of STORM_COMPLETED_DEMO_POST_SEED) {
       const exists = await this.postModel.exists({
         activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+        userId: seed.userId,
+        body: seed.body,
+      });
+      if (exists) continue;
+      await this.postModel.create(seed);
+    }
+  }
+
+  /** Team / recruiting posts must not retain image attachments. */
+  private async stripImagesFromTeamPosts(): Promise<void> {
+    await this.postModel.updateMany(
+      {
+        contentTypes: { $ne: 'share' },
+        'images.0': { $exists: true },
+      },
+      { $set: { images: [] } },
+    );
+  }
+
+  private async purgePostsForRemovedActivities(): Promise<void> {
+    const activities = await this.activityService.findAll();
+    const validLegacyIds = activities.map((activity) => activity.legacyId);
+    const result = await this.postModel.deleteMany({
+      activityLegacyId: { $exists: true, $nin: validLegacyIds },
+    });
+    if (result.deletedCount > 0) {
+      this.logger.log(
+        `Purged ${result.deletedCount} posts tied to removed activities`,
+      );
+    }
+  }
+
+  /** 探索页分享帖 demo（带图，仅 share 类型） */
+  private async ensureShareDemoPosts(): Promise<void> {
+    for (const seed of SHARE_DEMO_POST_SEED) {
+      const exists = await this.postModel.exists({
         userId: seed.userId,
         body: seed.body,
       });
@@ -285,6 +346,13 @@ export class PostService implements OnModuleInit {
 
   listAll(actor: RequestActor) {
     return this.postQuery.listAll(actor);
+  }
+
+  listShare(
+    options: { limit?: number; sort?: 'new' | 'hot'; cursor?: string },
+    actor: RequestActor,
+  ) {
+    return this.postQuery.listShare(options, actor);
   }
 
   listByActivity(activityLegacyId: number, actor: RequestActor) {
@@ -414,7 +482,12 @@ export class PostService implements OnModuleInit {
     if (dto.location?.trim()) patch.location = dto.location.trim();
     if (dto.departureCity?.trim())
       patch.departureCity = dto.departureCity.trim();
-    if (dto.images) patch.images = normalizeUserImageUrls(dto.images);
+    if (dto.images) {
+      const allowsImages = (post.contentTypes ?? []).includes('share');
+      if (allowsImages) {
+        patch.images = normalizeUserImageUrls(dto.images);
+      }
+    }
 
     if (dto.body?.trim() || dto.departureCity?.trim() || dto.location?.trim()) {
       const criteriaPatch = buildMatchCriteriaPatch({

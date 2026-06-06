@@ -53,12 +53,13 @@ describe('festival-shortcut.util', () => {
     expect(reply).toContain('不会自动绑定活动');
   });
 
-  it('resolves edc and tomorrowland shortcuts', () => {
-    expect(resolveHomeFestivalShortcutCode('EDC China')).toBe('edc');
+  it('resolves tomorrowland and guan shortcuts', () => {
     expect(resolveHomeFestivalShortcutCode('Tomorrowland Thailand')).toBe(
       'tomorrowland',
     );
-    expect(resolveHomeFestivalShortcutCode('横琴VAC电音节')).toBe('vac-zhuhai');
     expect(resolveHomeFestivalShortcutCode('GUAN电音节')).toBe('guan');
+    expect(resolveHomeFestivalShortcutCode('EDC Thailand')).toBe(
+      'edc-thailand',
+    );
   });
 });

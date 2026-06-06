@@ -4,6 +4,7 @@ import { RedisService } from '../../redis/redis.service';
 import { ActivityService } from '../activity/activity.service';
 import { ActivityRegistrationService } from '../activity/registration/activity-registration.service';
 import { PostService } from '../partner/post.service';
+import { getActivityTypeLabel } from '../activity/utils/activity-type.util';
 
 /** Matches frontend `HOME_POPULAR_POSTS_PERSIST_LIMIT`. */
 const HOME_POPULAR_POSTS_LIMIT = 8;
@@ -30,7 +31,7 @@ export class HomeService {
       date: item.date ?? '',
       location: item.location ?? '',
       image: item.image ?? '',
-      category: item.hot ? '户外电音' : 'EDM节',
+      category: getActivityTypeLabel(item.activityType),
       hot: Boolean(item.hot),
       attendees: item.attendees ?? 0,
       going: registeredLegacyIds.has(item.legacyId),

@@ -18,9 +18,7 @@ export const STORM_FESTIVAL_ARTISTS = [
 
 export type HomeFestivalShortcutCode =
   | 'storm'
-  | 'edc'
   | 'tomorrowland'
-  | 'vac-zhuhai'
   | 'guan'
   | 'edc-thailand';
 
@@ -49,25 +47,6 @@ export const HOME_FESTIVAL_SHORTCUTS: readonly HomeFestivalShortcutDef[] = [
     artists: STORM_FESTIVAL_ARTISTS,
   },
   {
-    code: 'edc',
-    chipLabel: 'EDC China',
-    submitText: 'EDC China',
-    fallbackName: 'EDC China 2025',
-    fallbackDate: '03/22-23',
-    fallbackLocation: '苏州阳澄湖半岛旅游度假区',
-    artists: [
-      'MARSHMELLO',
-      'ILLENIUM',
-      'THE CHAINSMOKERS',
-      'AFROJACK B2B R3HAB',
-      '999999999',
-      'Axwell',
-      'Valentino Khan',
-      'ACRAZE',
-      'Sub Zero Project',
-    ],
-  },
-  {
     code: 'tomorrowland',
     chipLabel: 'Tomorrowland',
     submitText: 'Tomorrowland Thailand',
@@ -82,26 +61,6 @@ export const HOME_FESTIVAL_SHORTCUTS: readonly HomeFestivalShortcutDef[] = [
       'NERVO',
       'Alok',
       'Dimitri Vegas',
-    ],
-  },
-  {
-    code: 'vac-zhuhai',
-    chipLabel: 'VAC横琴',
-    submitText: '横琴VAC电音节',
-    fallbackName: '2026横琴VAC电音节',
-    fallbackDate: '04/18-19',
-    fallbackLocation: '横琴长隆度假区',
-    artists: [
-      'Kygo',
-      'John Summit',
-      'Porter Robinson',
-      'Charlotte de Witte',
-      'SLANDER',
-      'Gorgon City',
-      'Gryffin',
-      'Odd Mob',
-      'Ray Volpe',
-      'Markus Schulz',
     ],
   },
   {
@@ -158,13 +117,6 @@ export function resolveHomeFestivalShortcutCode(
       return def.code;
     }
     if (
-      def.code === 'edc' &&
-      /\bedc\b/i.test(trimmed) &&
-      !/泰国|thailand/i.test(trimmed)
-    ) {
-      return def.code;
-    }
-    if (
       def.code === 'edc-thailand' &&
       /edc/i.test(trimmed) &&
       /泰国|thailand/i.test(trimmed)
@@ -175,9 +127,6 @@ export function resolveHomeFestivalShortcutCode(
       def.code === 'tomorrowland' &&
       /tomorrowland|tml|明日世界|tmw/i.test(trimmed)
     ) {
-      return def.code;
-    }
-    if (def.code === 'vac-zhuhai' && /vac|横琴|vision/i.test(trimmed)) {
       return def.code;
     }
     if (def.code === 'guan' && /guan/i.test(trimmed)) {

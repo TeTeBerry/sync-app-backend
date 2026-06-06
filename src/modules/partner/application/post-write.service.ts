@@ -160,36 +160,45 @@ export class PostWriteService {
       ? dto.contentTypes
       : inferPostContentTypes({ tags: dto.tags, body: bodyToSave });
 
-    const similarRecruiting =
-      await this.repository.findOwnerSimilarRecruitingPost(
-        ownerUserId,
-        bodyToSave,
-        activityLegacyId,
-      );
-    if (similarRecruiting) {
-      throw new ConflictException(
-        activityLegacyId != null
-          ? `您在「${eventTitle}」已有内容相近的招募帖，请勿重复发布。可编辑原帖或将其标记完成后再发新帖。`
-          : '您已有内容相近的招募帖正在招募中，请勿重复发布。可编辑原帖或将其标记完成后再发新帖。',
-      );
-    }
+    const isSharePost = contentTypes.includes('share');
 
-    // 同一活动发帖数量限制：最多 8 篇
-    const MAX_POSTS_PER_ACTIVITY = 8;
-    if (activityLegacyId != null) {
-      const activityPostCount = await this.repository.countByOwnerAndActivity(
-        ownerUserId,
-        activityLegacyId,
-      );
-      if (activityPostCount >= MAX_POSTS_PER_ACTIVITY) {
-        throw new ConflictException(
-          `您在「${eventTitle}」已发布 ${MAX_POSTS_PER_ACTIVITY} 篇帖子，达到上限。请先删除或修改之前的帖子后再发布。`,
+    if (!isSharePost) {
+      const similarRecruiting =
+        await this.repository.findOwnerSimilarRecruitingPost(
+          ownerUserId,
+          bodyToSave,
+          activityLegacyId,
         );
+      if (similarRecruiting) {
+        throw new ConflictException(
+          activityLegacyId != null
+            ? `您在「${eventTitle}」已有内容相近的招募帖，请勿重复发布。可编辑原帖或将其标记完成后再发新帖。`
+            : '您已有内容相近的招募帖正在招募中，请勿重复发布。可编辑原帖或将其标记完成后再发新帖。',
+        );
+      }
+
+      // 同一活动组队帖数量限制：最多 8 篇
+      const MAX_POSTS_PER_ACTIVITY = 8;
+      if (activityLegacyId != null) {
+        const activityPostCount = await this.repository.countByOwnerAndActivity(
+          ownerUserId,
+          activityLegacyId,
+        );
+        if (activityPostCount >= MAX_POSTS_PER_ACTIVITY) {
+          throw new ConflictException(
+            `您在「${eventTitle}」已发布 ${MAX_POSTS_PER_ACTIVITY} 篇帖子，达到上限。请先删除或修改之前的帖子后再发布。`,
+          );
+        }
       }
     }
 
     const listedInFeed = dto.listedInFeed !== false;
-    const images = normalizeUserImageUrls(dto.images);
+    const allowsImages = contentTypes.includes('share');
+    const normalizedImages = normalizeUserImageUrls(dto.images);
+    if (!allowsImages && normalizedImages.length > 0) {
+      throw new BadRequestException('组队帖不支持上传图片');
+    }
+    const images = allowsImages ? normalizedImages : [];
 
     const created = await this.repository.create({
       userId: ownerUserId,

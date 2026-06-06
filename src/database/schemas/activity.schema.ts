@@ -24,8 +24,24 @@ export class Activity {
   @Prop()
   location?: string;
 
+  /** GCJ-02 latitude for map markers (WeChat / Tencent map). */
+  @Prop()
+  latitude?: number;
+
+  /** GCJ-02 longitude for map markers (WeChat / Tencent map). */
+  @Prop()
+  longitude?: number;
+
+  /** Map filter region: mainland China / overseas / HK-Macao-Taiwan. */
+  @Prop({ enum: ['domestic', 'overseas', 'hmt'], default: 'domestic' })
+  region?: string;
+
   @Prop()
   image?: string;
+
+  /** Activity catalog type: outdoor festival vs indoor EDM (default festival). */
+  @Prop({ default: 'festival', enum: ['festival', 'indoor'] })
+  activityType?: string;
 
   @Prop({ default: false })
   hot?: boolean;

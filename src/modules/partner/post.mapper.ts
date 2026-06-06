@@ -5,6 +5,11 @@ import {
 import type { PostApplicationItemDto } from './dto/post-application-item.dto';
 import type { PostBuddyPreviewDto } from './dto/post-buddy-preview.dto';
 import { PostRecord } from './interfaces/post.repository.interface';
+import { postAllowsImages } from './utils/post-content-type.util';
+
+function resolvePostImages(post: PostRecord): string[] {
+  return postAllowsImages(post.contentTypes) ? (post.images ?? []) : [];
+}
 
 const CONTENT_TYPE_TAG: Record<string, string> = {
   team: '#组队',
@@ -62,7 +67,8 @@ export class PostMapper {
       avatar: post.authorAvatar ?? '',
       status: PostMapper.toStatusLabel(post.status),
       contentTypes: post.contentTypes ?? [],
-      images: post.images ?? [],
+      tags: post.tags ?? [],
+      images: resolvePostImages(post),
       ...(authorOnSiteVerified ? { authorOnSiteVerified: true } : {}),
     };
   }
@@ -94,7 +100,7 @@ export class PostMapper {
       comments: post.comments ?? 0,
       avatar: post.authorAvatar ?? '',
       status: PostMapper.toStatusLabel(post.status),
-      images: post.images ?? [],
+      images: resolvePostImages(post),
       ...(authorOnSiteVerified ? { authorOnSiteVerified: true } : {}),
     };
   }
@@ -143,7 +149,7 @@ export class PostMapper {
       date: formatDateLabel(post.createdAt),
       activityLegacyId: post.activityLegacyId,
       contentTypes: post.contentTypes ?? [],
-      images: post.images ?? [],
+      images: resolvePostImages(post),
       applications,
       pendingApplicationCount: pendingApplications.length,
     };

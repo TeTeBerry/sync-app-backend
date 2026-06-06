@@ -52,3 +52,46 @@ export function clampActivityPostsLimit(limit?: number): number {
   if (limit == null || Number.isNaN(limit)) return 10;
   return Math.min(Math.max(Math.floor(limit), 1), 20);
 }
+
+export type HotPostPageCursor = {
+  likes: number;
+  createdAt: Date;
+  id: Types.ObjectId;
+};
+
+export function encodeHotPostCursor(post: PostRecord): string {
+  const createdAt =
+    post.createdAt instanceof Date
+      ? post.createdAt
+      : new Date(String(post.createdAt ?? 0));
+  const payload = {
+    l: Number(post.likes ?? 0),
+    c: createdAt.toISOString(),
+    i: String(post._id),
+  };
+  return toBase64Url(JSON.stringify(payload));
+}
+
+export function decodeHotPostCursor(cursor: string): HotPostPageCursor | null {
+  try {
+    const raw = fromBase64Url(cursor);
+    const parsed = JSON.parse(raw) as { l?: number; c?: string; i?: string };
+    if (
+      parsed.l == null ||
+      !parsed.c ||
+      !parsed.i ||
+      !Types.ObjectId.isValid(parsed.i)
+    ) {
+      return null;
+    }
+    const createdAt = new Date(parsed.c);
+    if (Number.isNaN(createdAt.getTime())) return null;
+    return {
+      likes: Number(parsed.l),
+      createdAt,
+      id: new Types.ObjectId(parsed.i),
+    };
+  } catch {
+    return null;
+  }
+}

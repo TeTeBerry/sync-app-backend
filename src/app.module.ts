@@ -18,6 +18,7 @@ import { PostAgentAdaptersModule } from './ai/adapters/post-agent-adapters.modul
 import { NotificationModule } from './modules/notification/notification.module';
 import { PartnerModule } from './modules/partner/partner.module';
 import { ReportModule } from './modules/report/report.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
 import { LiveInfoModule } from './modules/live-info/live-info.module';
 import { ItineraryModule } from './modules/itinerary/itinerary.module';
 import { TravelGuideModule } from './modules/travel-guide/travel-guide.module';
@@ -55,6 +56,7 @@ import { RequestActorMiddleware } from './common/middleware/request-actor.middle
     AiModule,
     NotificationModule,
     ReportModule,
+    FeedbackModule,
     LiveInfoModule,
     ItineraryModule,
     TravelGuideModule,

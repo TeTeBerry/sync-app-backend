@@ -1,6 +1,7 @@
 import {
   inferContentTypesFromTags,
   inferPostContentTypes,
+  postAllowsImages,
 } from '@src/modules/partner/utils/post-content-type.util';
 
 describe('post-content-type.util (组队发帖标签)', () => {
@@ -34,5 +35,11 @@ describe('post-content-type.util (组队发帖标签)', () => {
     });
     expect(types).toContain('team');
     expect(types).toContain('accommodation');
+  });
+
+  it('allows images only for share posts', () => {
+    expect(postAllowsImages(['share'])).toBe(true);
+    expect(postAllowsImages(['team'])).toBe(false);
+    expect(postAllowsImages(['team', 'accommodation'])).toBe(false);
   });
 });

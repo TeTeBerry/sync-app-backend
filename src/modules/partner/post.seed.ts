@@ -15,25 +15,6 @@ export const POST_SEED = [
     likes: 47,
     comments: 8,
     createdAt: new Date(Date.now() - 60_000),
-    images: [
-      'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80',
-    ],
-  },
-  {
-    userId: 'demo-kyle',
-    authorName: 'Kyle',
-    authorHandle: '@kyle_beats',
-    authorAvatar:
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&q=80&fit=crop&crop=face',
-    activityLegacyId: 2,
-    eventTitle: 'EDC China 2025',
-    location: '苏州',
-    body: '苏州阳澄湖场已结束，求同好分享现场攻略，明年还想再去！',
-    tags: ['#组队', '#苏州', '#EDC'],
-    status: 'recruiting',
-    likes: 31,
-    comments: 6,
-    createdAt: new Date(Date.now() - 32 * 60_000),
   },
   {
     userId: 'demo-max',
@@ -50,10 +31,6 @@ export const POST_SEED = [
     likes: 18,
     comments: 3,
     createdAt: new Date(Date.now() - 2 * 60 * 60_000),
-    images: [
-      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=80',
-      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&q=80',
-    ],
   },
   {
     userId: 'demo-zara',
@@ -102,11 +79,6 @@ export const POST_SEED = [
     likes: 12,
     comments: 1,
     createdAt: new Date(Date.now() - 7 * 60 * 60_000),
-    images: [
-      'https://images.unsplash.com/photo-1459749411177-0479bf78d6f2?w=800&q=80',
-      'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800&q=80',
-      'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800&q=80',
-    ],
   },
   {
     userId: 'demo-nova',
@@ -123,12 +95,6 @@ export const POST_SEED = [
     likes: 24,
     comments: 3,
     createdAt: new Date(Date.now() - 2 * 60 * 60_000),
-    images: [
-      'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80',
-      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80',
-      'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800&q=80',
-      'https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?w=800&q=80',
-    ],
   },
   {
     userId: 'demo-zara',
@@ -145,22 +111,6 @@ export const POST_SEED = [
     likes: 31,
     comments: 6,
     createdAt: new Date('2026-05-20'),
-  },
-  {
-    userId: 'demo-zara',
-    authorName: 'Zara Chen',
-    authorHandle: '@zara',
-    authorAvatar:
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
-    activityLegacyId: 6,
-    eventTitle: '2026横琴VAC电音节',
-    location: '珠海',
-    body: '4月横琴 VAC 已组队，还可以一起现场集合，想认识同频朋友的可以来。',
-    tags: [],
-    status: 'completed',
-    likes: 18,
-    comments: 3,
-    createdAt: new Date('2026-04-20'),
   },
 ];
 
@@ -184,14 +134,6 @@ export const STORM_DEMO_POST_SEED = [
     likes: 52,
     comments: 9,
     createdAt: new Date(Date.now() - 45 * 60_000),
-    images: [
-      'https://picsum.photos/seed/sync-storm-luna-hero/800/600',
-      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=80',
-      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&q=80',
-      'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800&q=80',
-      'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800&q=80',
-      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80',
-    ],
   },
   {
     userId: 'demo-sean',
@@ -203,19 +145,12 @@ export const STORM_DEMO_POST_SEED = [
     eventTitle: '风暴电音节 深圳站',
     location: '北京',
     departureCity: '北京',
-    body: '北京EDC，从广州出发，求同行！主图是去年压轴时刻，下面4张记录了一整天的旅程，今年2人求再拼同路人🚗',
+    body: '北京出发深圳 STORM，从广州可同路接驳，今年 2 人求再拼 1 位同路人🚗',
     tags: ['#北京', '#同路', '#广州出发'],
     status: 'recruiting',
     likes: 35,
     comments: 1,
     createdAt: new Date(Date.now() - 4 * 60 * 60_000),
-    images: [
-      'https://picsum.photos/seed/sync-storm-sean-hero/800/600',
-      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=80',
-      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&q=80',
-      'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800&q=80',
-      'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800&q=80',
-    ],
   },
   {
     userId: 'demo-ryan',
@@ -371,9 +306,6 @@ export const STORM_COMPLETED_DEMO_POST_SEED = [
     likes: 67,
     comments: 14,
     createdAt: new Date(Date.now() - 20 * 60 * 60_000),
-    images: [
-      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=80',
-    ],
   },
   {
     userId: 'demo-yuki',
@@ -392,10 +324,6 @@ export const STORM_COMPLETED_DEMO_POST_SEED = [
     likes: 41,
     comments: 9,
     createdAt: new Date(Date.now() - 28 * 60 * 60_000),
-    images: [
-      'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800&q=80',
-      'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=800&q=80',
-    ],
   },
   {
     userId: 'demo-eli',
@@ -450,9 +378,70 @@ export const STORM_COMPLETED_DEMO_POST_SEED = [
     likes: 55,
     comments: 11,
     createdAt: new Date(Date.now() - 52 * 60 * 60_000),
-    images: [
-      'https://picsum.photos/seed/sync-storm-reno-hero/800/600',
-      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&q=80',
-    ],
+  },
+];
+
+const CONCERT_IMAGES = [
+  'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80',
+  'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=80',
+  'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80',
+  'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800&q=80',
+];
+
+/** Explore share-feed demo posts (images allowed only for share type). */
+export const SHARE_DEMO_POST_SEED = [
+  {
+    userId: 'explore-ryan',
+    authorName: 'Ryan',
+    authorHandle: '@ryan_wav',
+    authorAvatar:
+      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&q=80&fit=crop&crop=face',
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+    eventTitle: '风暴电音节 深圳站',
+    location: '深圳',
+    body: '风暴现场氛围真的绝了，B 区能量满满！舞台灯光太炸裂，整个人都飞起来了 🔥🔥 #现场',
+    tags: ['#现场', '#电音'],
+    contentTypes: ['share'],
+    status: 'recruiting',
+    likes: 128,
+    comments: 34,
+    createdAt: new Date(Date.now() - 2 * 60_000),
+    images: [CONCERT_IMAGES[0], CONCERT_IMAGES[1]],
+  },
+  {
+    userId: 'explore-mia',
+    authorName: 'Mia',
+    authorHandle: '@mia_bass',
+    authorAvatar:
+      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&q=80&fit=crop&crop=face',
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+    eventTitle: '风暴电音节 深圳站',
+    location: '深圳',
+    body: 'VIP 区视角绝了，主舞台 drop 瞬间全场沸腾！分享几张今晚的高光时刻 ✨ #现场',
+    tags: ['#现场', '#VIP'],
+    contentTypes: ['share'],
+    status: 'recruiting',
+    likes: 96,
+    comments: 21,
+    createdAt: new Date(Date.now() - 18 * 60_000),
+    images: [CONCERT_IMAGES[2], CONCERT_IMAGES[3], CONCERT_IMAGES[0]],
+  },
+  {
+    userId: 'explore-leo',
+    authorName: 'Leo',
+    authorHandle: '@leo_storm',
+    authorAvatar:
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&q=80&fit=crop&crop=face',
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
+    eventTitle: '风暴电音节 深圳站',
+    location: '深圳',
+    body: 'B 区前排能量拉满，灯光一打全场都在跳！#现场',
+    tags: ['#现场'],
+    contentTypes: ['share'],
+    status: 'recruiting',
+    likes: 74,
+    comments: 15,
+    createdAt: new Date(Date.now() - 60 * 60_000),
+    images: [CONCERT_IMAGES[1]],
   },
 ];

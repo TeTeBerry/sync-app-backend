@@ -8,8 +8,12 @@ import {
   PostQueryFilter,
   PostRecord,
 } from './interfaces/post.repository.interface';
-import type { PostPageCursor } from './domain/post-cursor.util';
+import type {
+  HotPostPageCursor,
+  PostPageCursor,
+} from './domain/post-cursor.util';
 import { arePostBodiesSimilar } from './utils/post-body-similarity.util';
+import { TEAM_POST_FEED_FILTER } from './utils/post-content-type.util';
 
 function buildOwnerFilter(filter: PostQueryFilter) {
   const base = buildOwnerMongoFilter(filter.userId, filter.authorName);
@@ -30,7 +34,11 @@ export class PostRepository implements IPostRepository {
 
   async findPopular(limit: number): Promise<PostRecord[]> {
     return this.model
-      .find({ status: { $ne: 'hidden' }, ...FEED_LISTED_FILTER })
+      .find({
+        status: { $ne: 'hidden' },
+        ...FEED_LISTED_FILTER,
+        ...TEAM_POST_FEED_FILTER,
+      })
       .sort({ likes: -1, createdAt: -1 })
       .limit(limit)
       .lean();
@@ -41,6 +49,95 @@ export class PostRepository implements IPostRepository {
       .find({ status: { $ne: 'hidden' }, ...FEED_LISTED_FILTER })
       .sort({ createdAt: -1 })
       .lean();
+  }
+
+  async findShareFeed(options: {
+    limit: number;
+    sort: 'new' | 'hot';
+  }): Promise<PostRecord[]> {
+    const filter = {
+      status: { $ne: 'hidden' },
+      ...FEED_LISTED_FILTER,
+      contentTypes: 'share',
+    };
+    if (options.sort === 'hot') {
+      return this.model
+        .find(filter)
+        .sort({ likes: -1, createdAt: -1 })
+        .limit(options.limit)
+        .lean();
+    }
+
+    return this.model
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .limit(options.limit)
+      .lean();
+  }
+
+  async findShareFeedPage(options: {
+    limit: number;
+    sort: 'new' | 'hot';
+    cursor?: PostPageCursor | null;
+    hotCursor?: HotPostPageCursor | null;
+  }): Promise<PostRecord[]> {
+    const baseFilter = {
+      status: { $ne: 'hidden' },
+      ...FEED_LISTED_FILTER,
+      contentTypes: 'share',
+    };
+
+    if (options.sort === 'hot') {
+      const filter: Record<string, unknown> = { ...baseFilter };
+      const hotCursor = options.hotCursor;
+      if (hotCursor) {
+        filter.$or = [
+          { likes: { $lt: hotCursor.likes } },
+          {
+            likes: hotCursor.likes,
+            createdAt: { $lt: hotCursor.createdAt },
+          },
+          {
+            likes: hotCursor.likes,
+            createdAt: hotCursor.createdAt,
+            _id: { $lt: hotCursor.id },
+          },
+        ];
+      }
+      return this.model
+        .find(filter)
+        .sort({ likes: -1, createdAt: -1, _id: -1 })
+        .limit(options.limit)
+        .lean();
+    }
+
+    const filter: Record<string, unknown> = { ...baseFilter };
+    const cursor = options.cursor;
+    if (cursor) {
+      filter.$or = [
+        { createdAt: { $lt: cursor.createdAt } },
+        {
+          createdAt: cursor.createdAt,
+          _id: { $lt: cursor.id },
+        },
+      ];
+    }
+
+    return this.model
+      .find(filter)
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(options.limit)
+      .lean();
+  }
+
+  async countShareAuthors(): Promise<number> {
+    const userIds = await this.model.distinct('userId', {
+      status: { $ne: 'hidden' },
+      ...FEED_LISTED_FILTER,
+      contentTypes: 'share',
+      userId: { $exists: true, $nin: [null, ''] },
+    });
+    return userIds.length;
   }
 
   async findByActivityLegacyId(

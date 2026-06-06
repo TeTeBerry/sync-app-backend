@@ -20,6 +20,14 @@ import {
 import { NoticeAgent } from '../../ai/agents/notice.agent';
 import { ActivityRegistrationService } from './registration/activity-registration.service';
 import { UpdateActivityDto } from './dto/update-activity.dto';
+import {
+  extractYearFromText,
+  isActivityEnded,
+} from '../../common/utils/activity-date.util';
+import {
+  ActivityRegistration,
+  ActivityRegistrationDocument,
+} from '../../database/schemas/activity-registration.schema';
 import { ACTIVITY_SEED } from './activity.seed';
 
 export interface CreateActivityInput {
@@ -41,6 +49,27 @@ function slugifyActivityCode(raw: string): string {
   return compact || `event-${Date.now()}`;
 }
 
+const ACTIVITY_MAP_COORD_PATCHES = [
+  {
+    legacyId: 1,
+    latitude: 12.9367,
+    longitude: 100.8839,
+    region: 'overseas',
+  },
+  {
+    legacyId: 4,
+    latitude: 22.704518,
+    longitude: 113.771513,
+    region: 'domestic',
+  },
+  {
+    legacyId: 5,
+    latitude: 7.96,
+    longitude: 98.35,
+    region: 'overseas',
+  },
+] as const;
+
 function formatActivityDate(eventDate?: string): string | undefined {
   if (!eventDate) return undefined;
   const match = eventDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -60,6 +89,8 @@ export interface ResolveOrCreateActivityInput {
 export class ActivityService implements OnModuleInit {
   constructor(
     @InjectModel(Activity.name) private model: Model<ActivityDocument>,
+    @InjectModel(ActivityRegistration.name)
+    private registrationModel: Model<ActivityRegistrationDocument>,
     @Optional() private readonly chromaService?: ChromaService,
     @Optional() private readonly noticeAgent?: NoticeAgent,
     @Optional()
@@ -69,6 +100,7 @@ export class ActivityService implements OnModuleInit {
 
   async onModuleInit() {
     await this.initData();
+    await this.removeExpiredActivities();
     await this.removeDeprecatedActivities();
   }
 
@@ -80,6 +112,46 @@ export class ActivityService implements OnModuleInit {
         setDefaultsOnInsert: true,
       });
     }
+
+    await this.model.updateMany(
+      { activityType: { $exists: false } },
+      { $set: { activityType: 'festival' } },
+    );
+
+    for (const patch of ACTIVITY_MAP_COORD_PATCHES) {
+      await this.model.updateOne(
+        { legacyId: patch.legacyId },
+        {
+          $set: {
+            latitude: patch.latitude,
+            longitude: patch.longitude,
+            region: patch.region,
+          },
+        },
+      );
+    }
+  }
+
+  /** Remove festivals whose catalog dates have passed. */
+  async removeExpiredActivities() {
+    const all = await this.model.find().lean();
+    const expiredLegacyIds: number[] = [];
+
+    for (const activity of all) {
+      const yearHint =
+        extractYearFromText(activity.name) ??
+        extractYearFromText(activity.date);
+      if (isActivityEnded(activity.date, { yearHint })) {
+        expiredLegacyIds.push(activity.legacyId);
+      }
+    }
+
+    if (!expiredLegacyIds.length) return;
+
+    await this.model.deleteMany({ legacyId: { $in: expiredLegacyIds } });
+    await this.registrationModel.deleteMany({
+      activityLegacyId: { $in: expiredLegacyIds },
+    });
   }
 
   /** Drop retired festivals still present from older seeds (e.g. S2O). */
@@ -91,7 +163,14 @@ export class ActivityService implements OnModuleInit {
         { code: 'sync-live-sh' },
         { legacyId: 7 },
         { code: 'ultra' },
+        { code: 'edc' },
+        { legacyId: 2 },
+        { code: 'vac-zhuhai' },
+        { legacyId: 6 },
       ],
+    });
+    await this.registrationModel.deleteMany({
+      activityLegacyId: { $in: [2, 6] },
     });
   }
 

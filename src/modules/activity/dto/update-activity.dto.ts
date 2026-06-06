@@ -1,4 +1,12 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
+import { ACTIVITY_TYPES } from '../utils/activity-type.util';
 
 export class UpdateActivityDto {
   @IsOptional()
@@ -16,6 +24,10 @@ export class UpdateActivityDto {
   @IsOptional()
   @IsString()
   image?: string;
+
+  @IsOptional()
+  @IsIn([...ACTIVITY_TYPES])
+  activityType?: (typeof ACTIVITY_TYPES)[number];
 
   @IsOptional()
   @IsBoolean()

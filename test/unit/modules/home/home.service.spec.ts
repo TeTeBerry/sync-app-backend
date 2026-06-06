@@ -86,14 +86,14 @@ describe('HomeService', () => {
         title: 'Storm Fest',
         hot: true,
         going: true,
-        category: '户外电音',
+        category: '电音节',
       }),
       expect.objectContaining({
         id: 7,
         title: 'Regular Fest',
         hot: false,
         going: false,
-        category: 'EDM节',
+        category: '电音节',
       }),
     ]);
     expect(registrationService.listRegisteredLegacyIds).toHaveBeenCalledWith(

@@ -247,6 +247,26 @@ export class TeamChatService {
     return { ok: true, unreadCount: 0 };
   }
 
+  async dismissThread(
+    postId: string,
+    applicantUserId: string,
+    actor: RequestActor,
+  ): Promise<{ ok: true }> {
+    await this.assertThreadParticipant(postId, applicantUserId, actor);
+    await this.assertChatOpened(postId, applicantUserId);
+    const now = new Date();
+    await this.threadReadModel.updateOne(
+      {
+        postId,
+        applicantUserId: applicantUserId.trim(),
+        userId: actor.resolvedUserId,
+      },
+      { $set: { hiddenAt: now, lastReadAt: now } },
+      { upsert: true },
+    );
+    return { ok: true };
+  }
+
   async listMessages(
     postId: string,
     applicantUserId: string,
@@ -795,6 +815,13 @@ export class TeamChatService {
               : new Date().toISOString();
 
         const read = readByKey.get(key);
+        if (read?.hiddenAt) {
+          const hiddenAtMs = new Date(read.hiddenAt).getTime();
+          const lastAtMs = new Date(lastAt).getTime();
+          if (lastAtMs <= hiddenAtMs) {
+            return null;
+          }
+        }
         const unreadFilter: Record<string, unknown> = {
           postId: thread.postId,
           applicantUserId: trimmedApplicant,

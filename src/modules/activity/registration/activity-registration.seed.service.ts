@@ -16,7 +16,7 @@ export class ActivityRegistrationSeedService implements OnModuleInit {
 
   async onModuleInit() {
     await this.registrationModel.deleteMany({
-      activityLegacyId: { $in: [3, 7] },
+      activityLegacyId: { $in: [2, 3, 6, 7] },
     });
     for (const item of ACTIVITY_REGISTRATION_SEED) {
       await this.registrationModel.findOneAndUpdate(

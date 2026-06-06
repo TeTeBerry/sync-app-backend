@@ -176,46 +176,6 @@ export const POST_COMMENT_SEED: PostCommentSeedEntry[] = [
     ],
   },
   {
-    postBodyContains: '4月横琴 VAC 已组队',
-    activityLegacyId: 6,
-    comments: [
-      {
-        userId: 'demo-nova',
-        authorName: 'Nova',
-        body: '现场见！想一起逛周边吗？',
-        ageMs: 48 * 60_000,
-        replies: [
-          {
-            userId: 'demo-zara',
-            authorName: 'Zara Chen',
-            body: '可以呀，我们一般下午进场前集合～',
-            ageMs: 42 * 60_000,
-          },
-        ],
-      },
-      {
-        userId: 'demo-max',
-        authorName: 'Max',
-        body: 'VAC 去年去过，可以分享检票和接驳攻略。',
-        ageMs: 30 * 60_000,
-        replies: [
-          {
-            userId: 'demo-zara',
-            authorName: 'Zara Chen',
-            body: '感谢！私你我对一下集合点～',
-            ageMs: 26 * 60_000,
-          },
-        ],
-      },
-      {
-        userId: 'demo-kyle',
-        authorName: 'Kyle',
-        body: '+1 想认识同频搭子，有群吗？',
-        ageMs: 10 * 60_000,
-      },
-    ],
-  },
-  {
     postBodyContains: '6月深圳 STORM 室内场首进',
     activityLegacyId: 4,
     comments: [

@@ -19,6 +19,10 @@ export class PostApplicationThreadRead {
   @Prop({ required: true })
   lastReadAt: Date;
 
+  /** When set, session is hidden from list until a newer message arrives. */
+  @Prop()
+  hiddenAt?: Date;
+
   createdAt?: Date;
   updatedAt?: Date;
 }

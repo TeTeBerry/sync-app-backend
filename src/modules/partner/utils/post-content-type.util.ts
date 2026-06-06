@@ -7,6 +7,7 @@ export type PostContentType =
   | 'accommodation'
   | 'carpool'
   | 'ticket'
+  | 'share'
   | 'other';
 
 const CONTENT_TYPE_LABELS: Record<PostContentType, string> = {
@@ -14,6 +15,7 @@ const CONTENT_TYPE_LABELS: Record<PostContentType, string> = {
   accommodation: '住宿同行',
   carpool: '同路同行',
   ticket: '转票',
+  share: '现场分享',
   other: '其他',
 };
 
@@ -37,6 +39,9 @@ const TAG_TO_TYPE: Record<string, PostContentType> = {
   出票: 'ticket',
   票务: 'ticket',
   折价: 'ticket',
+  现场: 'share',
+  分享: 'share',
+  电音: 'share',
 };
 
 /** buddyType → 内容类型映射 */
@@ -141,3 +146,13 @@ export function inferPostContentTypes(params: {
 export function getContentTypeLabel(type: PostContentType): string {
   return CONTENT_TYPE_LABELS[type] ?? '其他';
 }
+
+/** Only share posts may carry image attachments in feeds. */
+export function postAllowsImages(contentTypes?: string[] | null): boolean {
+  return (contentTypes ?? []).includes('share');
+}
+
+/** Mongo filter: recruiting / team posts (excludes explore share feed). */
+export const TEAM_POST_FEED_FILTER = {
+  contentTypes: { $ne: 'share' },
+} as const;
