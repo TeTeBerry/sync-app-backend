@@ -28,6 +28,7 @@ function createContext(
 describe('JwtAuthGuard', () => {
   const authService = {
     resolveBearerAuth: jest.fn(),
+    assertActorAllowedToUseApp: jest.fn().mockResolvedValue(undefined),
   } as unknown as AuthService;
 
   const reflector = {

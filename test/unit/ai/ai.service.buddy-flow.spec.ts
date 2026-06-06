@@ -99,6 +99,10 @@ describe('AiService buddy flow', () => {
     checkLimit: jest.fn().mockResolvedValue({ allowed: true }),
   };
 
+  const wechatContentSecurity = {
+    assertTextSafe: jest.fn().mockResolvedValue(undefined),
+  };
+
   const buddyContext = {
     resolveActivityLegacyIdFromChat: jest.fn().mockResolvedValue(undefined),
     maybeRequireBuddyPostBeforeTeamSearch: jest
@@ -127,6 +131,7 @@ describe('AiService buddy flow', () => {
     agenticReplyService as never,
     turnPipeline,
     rateLimit as never,
+    wechatContentSecurity as never,
   );
 
   beforeEach(() => {

@@ -65,6 +65,10 @@ describe('PostWriteService', () => {
     assertTextsSafe: jest.fn().mockResolvedValue(undefined),
   } as unknown as WechatContentSecurityService;
 
+  const mediaChecks = {
+    assertImagesApprovedForUser: jest.fn().mockResolvedValue(undefined),
+  } as unknown as import('@src/modules/media-security/media-security-check.service').MediaSecurityCheckService;
+
   let service: PostWriteService;
 
   beforeEach(() => {
@@ -83,6 +87,7 @@ describe('PostWriteService', () => {
       postModeration,
       onSiteIdentity,
       wechatContentSecurity,
+      mediaChecks,
     );
   });
 

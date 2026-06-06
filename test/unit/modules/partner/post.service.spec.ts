@@ -5,12 +5,13 @@ jest.mock('@langchain/core/documents', () =>
 );
 
 import { toRequestActor } from '@src/common/auth/actor-query.util';
-import { PostService } from '@src/modules/partner/post.service';
+import { PostQueryService } from '@src/modules/partner/application/post-query.service';
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { UserService } from '@src/modules/user/user.service';
 import type { UserBlockService } from '@src/modules/user/user-block.service';
 import type { PostInteractionService } from '@src/modules/partner/post-interaction.service';
+import type { OnSiteIdentityService } from '@src/modules/live-info/on-site-identity.service';
 
 function createPost(overrides: Partial<PostRecord> = {}): PostRecord {
   return {
@@ -31,7 +32,7 @@ function createPost(overrides: Partial<PostRecord> = {}): PostRecord {
   } as PostRecord;
 }
 
-describe('PostService.listPopular', () => {
+describe('PostQueryService.listPopular', () => {
   const repository = {
     findPopular: jest.fn(),
   } as unknown as IPostRepository;
@@ -50,21 +51,20 @@ describe('PostService.listPopular', () => {
     findAppliedPostIds: jest.fn(),
   } as unknown as PostInteractionService;
 
-  let service: PostService;
+  const onSiteIdentity = {
+    getOnSiteCertifiedUserIds: jest.fn().mockResolvedValue(new Set()),
+  } as unknown as OnSiteIdentityService;
+
+  let service: PostQueryService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new PostService(
+    service = new PostQueryService(
       repository,
-      {} as never,
       userService,
       userBlockService,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
       postInteraction,
-      {} as never,
+      onSiteIdentity,
     );
     (userBlockService.getBlockExclusionSet as jest.Mock).mockResolvedValue(
       new Set(),
@@ -80,6 +80,9 @@ describe('PostService.listPopular', () => {
     );
     (userService.findPrivacyLevelsByExternalIds as jest.Mock).mockResolvedValue(
       new Map(),
+    );
+    (onSiteIdentity.getOnSiteCertifiedUserIds as jest.Mock).mockResolvedValue(
+      new Set(),
     );
   });
 

@@ -14,11 +14,19 @@ describe('ReportService', () => {
     isUserPostRestricted: jest.fn().mockResolvedValue(false),
   };
 
+  const wechatContentSecurity = {
+    assertTextSafe: jest.fn().mockResolvedValue(undefined),
+  };
+
   let service: ReportService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new ReportService(reportModel as never, accountRisk as never);
+    service = new ReportService(
+      reportModel as never,
+      accountRisk as never,
+      wechatContentSecurity as never,
+    );
   });
 
   it('creates a report and returns id', async () => {

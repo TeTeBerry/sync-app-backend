@@ -181,6 +181,9 @@ describe('Post lifecycle full business flow', () => {
         assertTextSafe: jest.fn().mockResolvedValue(undefined),
         assertTextsSafe: jest.fn().mockResolvedValue(undefined),
       } as never,
+      {
+        assertImagesApprovedForUser: jest.fn().mockResolvedValue(undefined),
+      } as never,
     );
 
     postRecruitmentService = {

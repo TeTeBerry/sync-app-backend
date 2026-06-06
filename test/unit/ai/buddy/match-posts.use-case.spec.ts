@@ -20,6 +20,7 @@ describe('MatchPostsFromChatUseCase profile dedupe', () => {
       city: 0.18,
       genreOverlap: 0.14,
       likeMateCompatible: 0.1,
+      budgetCompatible: 0.04,
       profileVector: 0.2,
       personalization: 0.04,
     },
@@ -38,7 +39,10 @@ describe('MatchPostsFromChatUseCase profile dedupe', () => {
 
     const useCase = new MatchPostsFromChatUseCase(
       { match } as never,
-      { syncProfileFromChat } as never,
+      {
+        syncProfileFromChat,
+        getStoredMatchProfile: jest.fn().mockResolvedValue(null),
+      } as never,
       {
         isMatchExistingPostsIntent: () => true,
         resolveActivity,
@@ -81,7 +85,10 @@ describe('MatchPostsFromChatUseCase profile dedupe', () => {
 
     const useCase = new MatchPostsFromChatUseCase(
       { match } as never,
-      { syncProfileFromChat } as never,
+      {
+        syncProfileFromChat,
+        getStoredMatchProfile: jest.fn().mockResolvedValue(null),
+      } as never,
       {
         isMatchExistingPostsIntent: () => false,
         resolveActivity,

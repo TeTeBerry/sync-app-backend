@@ -80,6 +80,10 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
     assertTextsSafe: jest.fn().mockResolvedValue(undefined),
   } as unknown as WechatContentSecurityService;
 
+  const mediaChecks = {
+    assertImagesApprovedForUser: jest.fn().mockResolvedValue(undefined),
+  } as unknown as import('@src/modules/media-security/media-security-check.service').MediaSecurityCheckService;
+
   let service: PostWriteService;
 
   beforeEach(() => {
@@ -98,6 +102,7 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
       postModeration,
       onSiteIdentity,
       wechatContentSecurity,
+      mediaChecks,
     );
     (userService.resolveProfile as jest.Mock).mockResolvedValue({
       name: 'Test User',

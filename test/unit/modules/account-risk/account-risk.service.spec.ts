@@ -49,6 +49,7 @@ describe('AccountRiskService', () => {
       countDocuments: jest
         .fn()
         .mockResolvedValue(overrides?.counts?.scalperReports ?? 0),
+      updateMany: jest.fn().mockResolvedValue({}),
     };
 
     const postModel = {
@@ -98,7 +99,10 @@ describe('AccountRiskService', () => {
     const service = new AccountRiskService(
       eventModel as never,
       userModel as never,
-      { countDocuments: jest.fn().mockResolvedValue(0) } as never,
+      {
+        countDocuments: jest.fn().mockResolvedValue(0),
+        updateMany: jest.fn().mockResolvedValue({}),
+      } as never,
       {
         findById: jest.fn().mockReturnValue({
           select: jest.fn().mockReturnValue({

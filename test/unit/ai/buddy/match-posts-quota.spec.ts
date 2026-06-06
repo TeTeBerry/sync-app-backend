@@ -64,6 +64,7 @@ const profileSync: UserProfileSyncResult = {
     city: 0.18,
     genreOverlap: 0.14,
     likeMateCompatible: 0.1,
+    budgetCompatible: 0.04,
     profileVector: 0.2,
     personalization: 0.04,
   },
