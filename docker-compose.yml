@@ -38,11 +38,18 @@ services:
         condition: service_healthy
     ports:
       - '3000:3000'
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.production
+        required: false
     environment:
       - NODE_ENV=production
       - MONGODB_URI=mongodb://mongo:27017/sync-app
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      # H5 CORS whitelist — prefer CORS_ORIGINS in .env.production
+      # - CORS_ORIGINS=https://h5.your-domain.com
 
   chroma:
     profiles: [chroma]

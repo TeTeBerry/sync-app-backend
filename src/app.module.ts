@@ -36,6 +36,13 @@ import { RequestActorMiddleware } from './common/middleware/request-actor.middle
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
+      // Later files override earlier ones (e.g. .env.production over .env).
+      envFilePath: [
+        '.env',
+        '.env.local',
+        `.env.${process.env.NODE_ENV ?? 'development'}`,
+        `.env.${process.env.NODE_ENV ?? 'development'}.local`,
+      ],
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],

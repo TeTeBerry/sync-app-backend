@@ -1,3 +1,4 @@
+import { parseCorsOrigins } from '../common/cors/cors-config.util';
 import {
   defaultCosUploadResource,
   resolveCosBucket,
@@ -16,6 +17,11 @@ function cleanEnv(value?: string, fallback = ''): string {
 
 export default () => ({
   port: parseInt(cleanEnv(process.env.PORT, '3000'), 10),
+
+  cors: {
+    /** Comma-separated browser origins; production requires this for H5. */
+    origins: parseCorsOrigins(),
+  },
 
   mongodb: {
     uri: cleanEnv(

@@ -8,66 +8,13 @@ import { AI_CHAT_WS_PATH } from './ai/ws/ai-chat-ws.protocol';
 import { HttpExceptionFilter } from './common/filter/http-exception.filter';
 import { TransformInterceptor } from './common/interceptor/transform.interceptor';
 import { Logger, ValidationPipe } from '@nestjs/common';
+import {
+  describeCorsPolicy,
+  parseCorsOrigins,
+  resolveCorsOptions,
+} from './common/cors/cors-config.util';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-
-/** Headers the H5 client may send (REST + WebSocket preflight). */
-const PROD_ALLOWED_HEADERS = [
-  'Content-Type',
-  'Authorization',
-  'Accept',
-  'X-Activity-Id',
-  'X-Request-Id',
-];
-
-function resolveCorsOrigin():
-  | boolean
-  | string[]
-  | ((
-      origin: string | undefined,
-      callback: (err: Error | null, allow?: boolean) => void,
-    ) => void) {
-  const configured = process.env.CORS_ORIGINS?.split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
-  if (configured?.length) {
-    if (configured.length === 1 && configured[0] === '*') {
-      return true;
-    }
-    return configured;
-  }
-
-  if (IS_PRODUCTION) {
-    return false;
-  }
-
-  // Dev: reflect any Origin (localhost any port, 127.0.0.1, LAN IP for phone testing)
-  return true;
-}
-
-function resolveCorsOptions(): {
-  origin: ReturnType<typeof resolveCorsOrigin>;
-  credentials: boolean;
-  methods: string[];
-  allowedHeaders?: string[];
-} {
-  const options = {
-    origin: resolveCorsOrigin(),
-    credentials: true,
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-  };
-
-  // Dev: omit allowedHeaders so cors echoes Access-Control-Request-Headers
-  if (!IS_PRODUCTION) {
-    return options;
-  }
-
-  return {
-    ...options,
-    allowedHeaders: PROD_ALLOWED_HEADERS,
-  };
-}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
@@ -113,10 +60,12 @@ async function bootstrap() {
     logger.log(`🚀 API: http://localhost:${port}/api`);
     logger.log(`✅ AI WebSocket: ws://localhost:${port}${AI_CHAT_WS_PATH}`);
     logger.log(`📦 MongoDB: ${mongoUri.replace(/\/\/.*@/, '//***@')}`);
-    if (IS_PRODUCTION && !process.env.CORS_ORIGINS) {
-      logger.warn('⚠️  CORS disabled: set CORS_ORIGINS in production');
-    } else if (!IS_PRODUCTION) {
-      logger.log('🌐 CORS: dev mode (reflect origin, echo preflight headers)');
+    const corsOrigins = parseCorsOrigins();
+    const corsMessage = describeCorsPolicy(process.env.NODE_ENV, corsOrigins);
+    if (IS_PRODUCTION && !corsOrigins) {
+      logger.warn(`⚠️  ${corsMessage}`);
+    } else {
+      logger.log(`🌐 ${corsMessage}`);
     }
   } catch (error) {
     const message = (error as Error).message ?? String(error);

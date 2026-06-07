@@ -12,10 +12,11 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# Local env secrets (do not commit; .env.example is the committed template)
+# Local env secrets (do not commit; *.example is the committed template)
 .env
 .env.local
 .env.example
+.env.production
 .env.*.local
 
 # OS
