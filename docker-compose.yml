@@ -1,14 +1,13 @@
-# 默认启动 MongoDB + Redis；Chroma 可选：docker compose --profile chroma up -d chroma → :8000
 services:
   mongo:
     image: ${MONGO_IMAGE:-mongo:7}
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - '27017:27017'
     volumes:
       - mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -18,23 +17,39 @@ services:
     image: ${REDIS_IMAGE:-redis:7-alpine}
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 5s
 
-  # 可选：docker compose --profile chroma up -d chroma
+  # 你的 Nest 后端
+  app:
+    build: . # 用当前目录的 Dockerfile 构建
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy # 等 mongo 健康再启
+      redis:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongo:27017/sync-app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
   chroma:
     profiles: [chroma]
     image: ${CHROMA_IMAGE:-chromadb/chroma:0.5.23}
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - '8000:8000'
     volumes:
       - chroma_data:/chroma/chroma
     environment:
