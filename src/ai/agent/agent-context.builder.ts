@@ -28,29 +28,6 @@ export function buildAgentSessionContext(params: {
   ].join('\n');
 }
 
-/** @deprecated 保留给单测；运行时使用 buildAgentLlmMessages */
-export function buildAgentContextBlock(params: {
-  input: string;
-  messages: ChatMessageDto[];
-  activity?: Activity | null;
-  conversationState: ConversationState;
-}): string {
-  const history = params.messages
-    .slice(-CONTEXT_TURNS)
-    .map((message) => `[${message.role}] ${message.content.trim()}`)
-    .join('\n');
-
-  return [
-    buildAgentSessionContext(params),
-    '',
-    '【最近对话】',
-    history || '(无)',
-    '',
-    '【用户最新消息】',
-    params.input.trim(),
-  ].join('\n');
-}
-
 export function buildAgentLlmMessages(params: {
   input: string;
   messages: ChatMessageDto[];

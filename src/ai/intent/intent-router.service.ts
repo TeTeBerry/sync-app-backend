@@ -1,11 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ActivityService } from '../../modules/activity/activity.service';
 import { LlmService } from '../llm/llm.service';
-import {
-  inferReadOnlyIntent,
-  isReadOnlyTurn,
-} from '../policy/chat-turn-policy';
 import { ChatMessageDto } from '../../shared/chat';
 import {
   formatActivityCatalogDayLabels,
@@ -43,7 +38,6 @@ export class IntentRouterService {
     private readonly llmService: LlmService,
     private readonly activityService: ActivityService,
     private readonly intentCache: IntentCacheService,
-    private readonly config: ConfigService,
   ) {}
 
   async resolve(params: IntentRouterInput): Promise<ResolvedChatIntent> {
@@ -74,16 +68,6 @@ export class IntentRouterService {
       return ruleHit;
     }
 
-    const policyHit = this.tryPolicyReadOnlyIntent(
-      trimmed,
-      params.activityLegacyId,
-    );
-    if (policyHit) {
-      await this.intentCache.set(cacheKey, policyHit);
-      this.logIntentResolve(params, policyHit, Date.now() - startedAt, 'miss');
-      return policyHit;
-    }
-
     const activityMeta = await this.loadActivityMeta(params.activityLegacyId);
 
     const llmHit = await this.resolveByLlm(
@@ -104,26 +88,6 @@ export class IntentRouterService {
     await this.intentCache.set(cacheKey, fallback);
     this.logIntentResolve(params, fallback, Date.now() - startedAt, 'miss');
     return fallback;
-  }
-
-  private tryPolicyReadOnlyIntent(
-    trimmed: string,
-    activityLegacyId?: number,
-  ): ResolvedChatIntent | null {
-    if (!this.config.get<boolean>('ai.intent.skipLlmReadonly')) {
-      return null;
-    }
-    if (this.config.get<string>('ai.agent.mode') !== 'on') {
-      return null;
-    }
-    if (!isReadOnlyTurn(trimmed, activityLegacyId)) {
-      return null;
-    }
-
-    return {
-      kind: inferReadOnlyIntent(trimmed, activityLegacyId),
-      source: 'policy',
-    };
   }
 
   private logIntentResolve(

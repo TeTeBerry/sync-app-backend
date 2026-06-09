@@ -19,7 +19,7 @@ import type {
   AiStreamEvent,
   RecommendedActivityCard,
   RecommendedPostCard,
-} from './ai-stream-event.view';
+} from '../../shared/chat';
 
 export interface ReplySink {
   setReply: (text: string) => void;

@@ -12,7 +12,7 @@ import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import { mustForceCreatePostIntent } from '../policy/chat-turn-policy';
 import { PostingTurnOrchestrator } from './posting-turn.orchestrator';
 import { AgentFirstTurnHandler } from './handlers/agent-first-turn.handler';
-import { TurnHandlerRegistry } from './handlers/turn-handler.registry';
+import { DjInfoTurnHandler } from './handlers/dj-info-turn.handler';
 import type {
   AiTurnTimings,
   TurnHandlerContext,
@@ -60,7 +60,7 @@ export class AiTurnPipeline {
     private readonly buddyContext: BuddyContextService,
     private readonly activityService: ActivityService,
     private readonly agentFirstTurnHandler: AgentFirstTurnHandler,
-    private readonly turnHandlerRegistry: TurnHandlerRegistry,
+    private readonly djInfoTurnHandler: DjInfoTurnHandler,
     private readonly postingTurnOrchestrator: PostingTurnOrchestrator,
   ) {}
 
@@ -190,12 +190,9 @@ export class AiTurnPipeline {
           );
         }
         break;
-      case 'dj_info': {
-        const djEvents =
-          await this.turnHandlerRegistry.runSpecializedIntent(handlerCtx);
-        events = djEvents ?? [];
+      case 'dj_info':
+        events = await this.djInfoTurnHandler.run(handlerCtx);
         break;
-      }
       default:
         events = await this.postingTurnOrchestrator.run({
           dto,

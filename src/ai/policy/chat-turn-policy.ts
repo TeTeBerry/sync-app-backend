@@ -56,16 +56,6 @@ export function isReadOnlyTurn(
   return false;
 }
 
-export function inferReadOnlyIntent(
-  input: string,
-  activityLegacyId?: number,
-): 'dj_info' | 'quick_reply' {
-  if (isDjInfoIntent(input.trim())) {
-    return 'dj_info';
-  }
-  return 'quick_reply';
-}
-
 export function shouldBlockAgentForActivityInput(
   input: string,
   activityLegacyId: number,

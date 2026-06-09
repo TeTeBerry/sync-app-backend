@@ -93,11 +93,6 @@ export default () => ({
       mode: cleanEnv(process.env.AI_AGENT_MODE, 'off'),
       model: cleanEnv(process.env.AI_AGENT_MODEL, ''),
     },
-    intent: {
-      /** Skip Intent LLM for read-only turns when agent mode is on */
-      skipLlmReadonly:
-        cleanEnv(process.env.AI_INTENT_SKIP_LLM_READONLY, 'true') !== 'false',
-    },
   },
 
   redis: {

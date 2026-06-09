@@ -8,7 +8,7 @@ import {
 } from './agent-llm.service';
 import { DjInfoResolverService } from '../dj/dj-info-resolver.service';
 import { isActionableDjQuery } from './agent-dj-fallback.util';
-import { shouldRunAgentFirst } from './agent-first.util';
+import { shouldRunAgentFirst } from '../policy/chat-turn-policy';
 import { buildAgentLlmMessages } from './agent-context.builder';
 import { compareAgentShadow } from './agent-shadow.util';
 import type {

@@ -2,7 +2,7 @@ import type {
   AiStreamEvent,
   RecommendedActivityCard,
   RecommendedPostCard,
-} from './ai-stream-event.view';
+} from '../../shared/chat';
 import type { ChatMessageDto } from '../../shared/chat/chat-message.dto';
 
 export interface ChatMessageImageContext {

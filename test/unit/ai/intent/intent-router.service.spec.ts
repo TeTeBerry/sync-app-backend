@@ -14,7 +14,6 @@ jest.mock('@src/modules/activity/activity.service', () => ({
 
 import { IntentCacheService } from '@src/ai/intent/intent-cache.service';
 import { IntentRouterService } from '@src/ai/intent/intent-router.service';
-import * as intentRouterRules from '@src/ai/intent/intent-router.rules';
 import type { LlmService } from '@src/ai/llm/llm.service';
 import type { ActivityService } from '@src/modules/activity/activity.service';
 import { RedisService } from '@src/redis/redis.service';
@@ -35,15 +34,10 @@ describe('IntentRouterService', () => {
     setCacheValueEx: jest.fn().mockResolvedValue(undefined),
   } as unknown as RedisService;
 
-  let policySkipLlm = false;
-  let agentMode = 'off';
-
   const configService = {
     get: jest.fn((key: string) => {
       if (key === 'ai.intentCache.ttlMs') return 30_000;
       if (key === 'ai.intentCache.maxMemoryEntries') return 1000;
-      if (key === 'ai.intent.skipLlmReadonly') return policySkipLlm;
-      if (key === 'ai.agent.mode') return agentMode;
       return undefined;
     }),
   } as unknown as ConfigService;
@@ -53,15 +47,8 @@ describe('IntentRouterService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    policySkipLlm = false;
-    agentMode = 'off';
     intentCache = new IntentCacheService(redisService, configService);
-    router = new IntentRouterService(
-      llmService,
-      activityService,
-      intentCache,
-      configService,
-    );
+    router = new IntentRouterService(llmService, activityService, intentCache);
   });
 
   it('uses rule fast path without calling LLM', async () => {
@@ -249,51 +236,6 @@ describe('IntentRouterService', () => {
 
     expect(result).toEqual({ kind: 'dj_info', source: 'rule' });
     expect(llmService.invokeJson).not.toHaveBeenCalled();
-  });
-
-  it('skips Intent LLM for read-only turns when agent mode is on', async () => {
-    policySkipLlm = true;
-    agentMode = 'on';
-    const fastPathSpy = jest
-      .spyOn(intentRouterRules, 'resolveChatIntentFastPath')
-      .mockReturnValue(null);
-
-    const result = await router.resolve({
-      messages: [],
-      input: 'Marshmello 是什么风格',
-      activityLegacyId: 5,
-      sessionId: 'sess-policy',
-      requestId: 'req-policy',
-    });
-
-    expect(llmService.invokeJson).not.toHaveBeenCalled();
-    expect(result).toEqual({ kind: 'dj_info', source: 'policy' });
-
-    fastPathSpy.mockRestore();
-  });
-
-  it('still calls Intent LLM when skip-readonly policy is disabled', async () => {
-    policySkipLlm = false;
-    agentMode = 'on';
-    const fastPathSpy = jest
-      .spyOn(intentRouterRules, 'resolveChatIntentFastPath')
-      .mockReturnValue(null);
-    (llmService.invokeJson as jest.Mock).mockResolvedValue({
-      intent: 'dj_info',
-    });
-
-    const result = await router.resolve({
-      messages: [],
-      input: 'Marshmello 是什么风格',
-      activityLegacyId: 5,
-      sessionId: 'sess-policy-off',
-      requestId: 'req-policy-off',
-    });
-
-    expect(llmService.invokeJson).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ kind: 'dj_info', source: 'llm' });
-
-    fastPathSpy.mockRestore();
   });
 
   it('falls back to create_post when LLM is disabled', async () => {

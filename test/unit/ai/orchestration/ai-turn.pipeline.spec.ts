@@ -19,7 +19,6 @@ import { AiTurnPipeline } from '@src/ai/orchestration/ai-turn.pipeline';
 import { PostingTurnOrchestrator } from '@src/ai/orchestration/posting-turn.orchestrator';
 import { AgentFirstTurnHandler } from '@src/ai/orchestration/handlers/agent-first-turn.handler';
 import { DjInfoTurnHandler } from '@src/ai/orchestration/handlers/dj-info-turn.handler';
-import { TurnHandlerRegistry } from '@src/ai/orchestration/handlers/turn-handler.registry';
 import { AiStreamEventBuilder } from '@src/ai/presentation/ai-sse.builder';
 import {
   RECOMMEND_GATE_MARKER,
@@ -97,8 +96,9 @@ describe('AiTurnPipeline homepage activity gating', () => {
     djInfoResolver as never,
     sseBuilder,
   );
-  const turnHandlerRegistry = new TurnHandlerRegistry(
-    new DjInfoTurnHandler(djInfoService as never, sseBuilder),
+  const djInfoTurnHandler = new DjInfoTurnHandler(
+    djInfoService as never,
+    sseBuilder,
   );
 
   const pipeline = new AiTurnPipeline(
@@ -110,7 +110,7 @@ describe('AiTurnPipeline homepage activity gating', () => {
     buddyContext as never,
     activityService as never,
     agentFirstTurnHandler,
-    turnHandlerRegistry,
+    djInfoTurnHandler,
     postingTurnOrchestrator,
   );
 

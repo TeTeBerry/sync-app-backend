@@ -1,5 +1,4 @@
 import {
-  inferReadOnlyIntent,
   isReadOnlyTurn,
   mustForceCreatePostIntent,
   shouldBlockAgentForActivityInput,
@@ -33,11 +32,6 @@ describe('chat-turn-policy', () => {
     expect(isReadOnlyTurn('风暴电音节', undefined)).toBe(true);
     expect(isReadOnlyTurn('这场几点开始', 5)).toBe(true);
     expect(isReadOnlyTurn('13号 A区 有人吗', 4)).toBe(false);
-  });
-
-  it('infers read-only intent kind', () => {
-    expect(inferReadOnlyIntent('Marshmello 是什么风格', 5)).toBe('dj_info');
-    expect(inferReadOnlyIntent('风暴电音节', undefined)).toBe('quick_reply');
   });
 
   it('allows agent on homepage and read-only activity turns', () => {

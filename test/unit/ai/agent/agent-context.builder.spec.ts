@@ -1,12 +1,11 @@
 import {
-  buildAgentContextBlock,
   buildAgentLlmMessages,
   buildAgentSystemPrompt,
 } from '@src/ai/agent/agent-context.builder';
 
 describe('agent-context.builder', () => {
-  it('includes activity and history in context block', () => {
-    const block = buildAgentContextBlock({
+  it('includes activity and history in llm messages', () => {
+    const messages = buildAgentLlmMessages({
       input: 'Marshmello 是什么风格',
       messages: [{ role: 'user', content: '你好' }],
       activity: {
@@ -18,9 +17,15 @@ describe('agent-context.builder', () => {
       conversationState: { version: 1, flow: 'idle' },
     });
 
-    expect(block).toContain('风暴电音节 深圳站');
-    expect(block).toContain('Marshmello 是什么风格');
-    expect(block).toContain('flow: idle');
+    const system = messages[0].content ?? '';
+    expect(system).toContain('风暴电音节 深圳站');
+    expect(system).toContain('flow: idle');
+    expect(messages).toEqual(
+      expect.arrayContaining([
+        { role: 'user', content: '你好' },
+        { role: 'user', content: 'Marshmello 是什么风格' },
+      ]),
+    );
   });
 
   it('mentions tools in system prompt', () => {

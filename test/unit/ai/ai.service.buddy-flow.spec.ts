@@ -49,7 +49,6 @@ import { AiTurnPipeline } from '@src/ai/orchestration/ai-turn.pipeline';
 import { PostingTurnOrchestrator } from '@src/ai/orchestration/posting-turn.orchestrator';
 import { AgentFirstTurnHandler } from '@src/ai/orchestration/handlers/agent-first-turn.handler';
 import { DjInfoTurnHandler } from '@src/ai/orchestration/handlers/dj-info-turn.handler';
-import { TurnHandlerRegistry } from '@src/ai/orchestration/handlers/turn-handler.registry';
 import { AiStreamEventBuilder } from '@src/ai/presentation/ai-sse.builder';
 import type { PostIntentCreateAttempt } from '@src/ai/post-intent.service';
 import type { PostIntentMatchResult } from '@src/ai/buddy/buddy.types';
@@ -62,12 +61,9 @@ import { PUBLISH_CONFIRM_SUGGESTED_REPLIES } from '@src/ai/publish/publish-confi
 import { PUBLISH_CONFIRM_PROMPT_MARKER } from '@src/ai/publish/publish-confirm.util';
 
 async function collectEvents(
-  generator: AsyncGenerator<
-    import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent
-  >,
+  generator: AsyncGenerator<import('@src/shared/chat').AiStreamEvent>,
 ) {
-  const events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[] =
-    [];
+  const events: import('@src/shared/chat').AiStreamEvent[] = [];
   for await (const event of generator) {
     events.push(event);
   }
@@ -153,8 +149,9 @@ describe('AiService buddy flow', () => {
     djInfoResolver as never,
     sseBuilder,
   );
-  const turnHandlerRegistry = new TurnHandlerRegistry(
-    new DjInfoTurnHandler(djInfoService as never, sseBuilder),
+  const djInfoTurnHandler = new DjInfoTurnHandler(
+    djInfoService as never,
+    sseBuilder,
   );
 
   const turnPipeline = new AiTurnPipeline(
@@ -166,7 +163,7 @@ describe('AiService buddy flow', () => {
     buddyContext as never,
     activityService as never,
     agentFirstTurnHandler,
-    turnHandlerRegistry,
+    djInfoTurnHandler,
     postingTurnOrchestrator,
   );
 
@@ -283,9 +280,7 @@ describe('AiService buddy flow', () => {
         degraded: false,
       } satisfies PostIntentMatchResult,
       expectCreate: false,
-      assert: (
-        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
-      ) => {
+      assert: (events: import('@src/shared/chat').AiStreamEvent[]) => {
         expect(events.some((e) => e.type === 'post_recommendations')).toBe(
           true,
         );
@@ -310,9 +305,7 @@ describe('AiService buddy flow', () => {
         degraded: false,
       } satisfies PostIntentMatchResult,
       expectCreate: false,
-      assert: (
-        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
-      ) => {
+      assert: (events: import('@src/shared/chat').AiStreamEvent[]) => {
         expect(events.some((e) => e.type === 'post_recommendations')).toBe(
           false,
         );
@@ -340,9 +333,7 @@ describe('AiService buddy flow', () => {
         flow: 'recommend_gate' as const,
         gate: { activityLegacyId: 9, shownPostIds: ['p1'], empty: false },
       },
-      assert: (
-        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
-      ) => {
+      assert: (events: import('@src/shared/chat').AiStreamEvent[]) => {
         expect(events.some((e) => e.type === 'post_created')).toBe(false);
         const complete = events.find((e) => e.type === 'message_complete');
         expect(
@@ -382,9 +373,7 @@ describe('AiService buddy flow', () => {
         flow: 'collect_post_body' as const,
         publishDraft: { activityLegacyId: 9, fromSelfPost: true },
       },
-      assert: (
-        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
-      ) => {
+      assert: (events: import('@src/shared/chat').AiStreamEvent[]) => {
         expect(postIntentService.tryMatchPostsFromChat).not.toHaveBeenCalled();
         expect(
           postIntentService.tryProactiveRecommendBeforeCreate,
@@ -431,9 +420,7 @@ describe('AiService buddy flow', () => {
         flow: 'collect_post_body' as const,
         publishDraft: { activityLegacyId: 9 },
       },
-      assert: (
-        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
-      ) => {
+      assert: (events: import('@src/shared/chat').AiStreamEvent[]) => {
         expect(
           postIntentService.tryProactiveRecommendBeforeCreate,
         ).not.toHaveBeenCalled();
@@ -467,9 +454,7 @@ describe('AiService buddy flow', () => {
         flow: 'collect_post_body' as const,
         publishDraft: { activityLegacyId: 9, fromSelfPost: true },
       },
-      assert: (
-        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
-      ) => {
+      assert: (events: import('@src/shared/chat').AiStreamEvent[]) => {
         expect(events.some((e) => e.type === 'post_created')).toBe(true);
         const complete = events.find((e) => e.type === 'message_complete');
         expect(
@@ -496,9 +481,7 @@ describe('AiService buddy flow', () => {
         flow: 'recommend_gate' as const,
         gate: { activityLegacyId: 9, shownPostIds: ['p1'], empty: false },
       },
-      assert: (
-        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
-      ) => {
+      assert: (events: import('@src/shared/chat').AiStreamEvent[]) => {
         expect(events.some((e) => e.type === 'conversation_patch')).toBe(true);
         const complete = events.find((e) => e.type === 'message_complete');
         expect(
@@ -519,9 +502,7 @@ describe('AiService buddy flow', () => {
           '平台禁止发布转票、出票、票务相关信息。如需找同行伙伴，请改为组队、同路或住宿类帖子。',
       } satisfies PostIntentCreateAttempt,
       expectCreate: true,
-      assert: (
-        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
-      ) => {
+      assert: (events: import('@src/shared/chat').AiStreamEvent[]) => {
         expect(
           postIntentService.tryProactiveRecommendBeforeCreate,
         ).not.toHaveBeenCalled();
@@ -555,9 +536,7 @@ describe('AiService buddy flow', () => {
         flow: 'publish_confirm' as const,
         publishDraft: { activityLegacyId: 9, draftBody: '草稿' },
       },
-      assert: (
-        events: import('@src/ai/presentation/ai-stream-event.view').AiStreamEvent[],
-      ) => {
+      assert: (events: import('@src/shared/chat').AiStreamEvent[]) => {
         expect(
           postIntentService.tryProactiveRecommendBeforeCreate,
         ).not.toHaveBeenCalled();
