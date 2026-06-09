@@ -13,7 +13,7 @@ describe('conversation-state.flow', () => {
       activityLegacyId: 1,
       shownPostIds: ['p1'],
     });
-    expect(applyFlowSwitch(state, '自己发帖')).toEqual(
+    expect(applyFlowSwitch(state, '没有合适的')).toEqual(
       expect.objectContaining({
         flow: 'collect_post_body',
         publishDraft: expect.objectContaining({ fromSelfPost: true }),

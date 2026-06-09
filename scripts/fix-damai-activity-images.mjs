@@ -6,7 +6,7 @@
  *   node scripts/fix-damai-activity-images.mjs
  *   node scripts/fix-damai-activity-images.mjs path/to/damai-response.json
  *
- * With no args, uses built-in verticalPic URLs for GUAN + 风暴深圳.
+ * With no args, uses built-in verticalPic URL for 风暴深圳.
  * Re-import also applies images: npm run db:import-damai
  *
  * Env: MONGODB_URI / MONGO_URI (default mongodb://127.0.0.1:27017/sync-ai)
@@ -31,16 +31,6 @@ const DEFAULT_PAYLOAD = {
   keyword,
   pageData: {
     resultData: [
-      {
-        name: 'GUAN电音节',
-        nameNoHtml: 'GUAN电音节',
-        projectid: 1045457803269,
-        showtime: '2026.05.30-05.31',
-        venue: '广东现代国际展览中心(东莞)',
-        cityname: '东莞',
-        verticalPic:
-          'https://img.alicdn.com/bao/uploaded/i3/2251059038/O1CN01DqHXff2GdSmNgmavM_!!4611686018427383646-0-item_pic.jpg',
-      },
       {
         name: '2026口味王风暴电音节-深圳站',
         nameNoHtml: '2026口味王风暴电音节-深圳站',

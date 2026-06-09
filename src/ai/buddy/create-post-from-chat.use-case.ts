@@ -164,9 +164,7 @@ export class CreatePostFromChatUseCase {
           actor,
         );
       if (existing) {
-        const fromSelfPostIntent =
-          trimmedInput === '自己发帖' ||
-          isDeclineRecommendationsIntent(trimmedInput);
+        const fromSelfPostIntent = isDeclineRecommendationsIntent(trimmedInput);
         return {
           kind: 'existing_post',
           postId: existing.id,
@@ -218,21 +216,6 @@ export class CreatePostFromChatUseCase {
         replyText: buildDeclineRecommendCollectBodyReply(
           resolvedActivity?.name ?? '活动',
         ),
-      };
-    }
-
-    const isSelfPostIntent = trimmedInput === '自己发帖';
-
-    if (isSelfPostIntent && hasActivity && !publishConfirmReady) {
-      onStateChange?.(
-        enterCollectPostBodyState({
-          activityLegacyId: resolvedActivity?.legacyId,
-          fromSelfPost: true,
-        }),
-      );
-      return {
-        kind: 'rejected',
-        replyText: '想发什么直接说，我帮你发～',
       };
     }
 

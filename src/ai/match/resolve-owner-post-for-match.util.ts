@@ -10,7 +10,6 @@ function shortcutBodyHint(shortcut: string): string {
   const tag = normalizeAiShortcutInput(shortcut);
   switch (tag) {
     case '找卡座':
-    case '找同路伙伴':
       return '拼卡 同路 顺风车 顺路 包车 出发';
     case '找拼房':
       return '拼住宿 拼房 酒店 同行';
@@ -43,7 +42,7 @@ export function syntheticPostRecordFromShortcut(shortcut: string): PostRecord {
 
 /**
  * When the user has multiple recruiting posts, pick the one that aligns with the shortcut
- * (找同路伙伴 / 找拼房 / 找组队). Otherwise use the newest recruiting post.
+ * (找卡座 / 找拼房 / 找组队). Otherwise use the newest recruiting post.
  */
 export function resolveOwnerRecruitingPostForMatch(
   ownerPosts: PostRecord[],

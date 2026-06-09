@@ -71,10 +71,10 @@ describe('buddy-match-criteria.util', () => {
       activityLegacyId: 4,
       activityName: '风暴电音节',
       ownerPost,
-      userInput: '找同路伙伴',
+      userInput: '找卡座',
     });
 
-    expect(criteria.searchShortcutTag).toBe('找同路伙伴');
+    expect(criteria.searchShortcutTag).toBe('找卡座');
     expect(criteria.intents).toEqual(
       expect.arrayContaining(['carpool', 'lodging']),
     );
@@ -119,9 +119,9 @@ describe('buddy-match-criteria.util', () => {
     const need = buildRerankUserNeed({
       activityLegacyId: 4,
       requesterBody: '上海出发求同路',
-      searchShortcutTag: '找同路伙伴',
+      searchShortcutTag: '找卡座',
     });
-    expect(need).toContain('当前搜索：找同路伙伴');
+    expect(need).toContain('当前搜索：找卡座');
   });
 
   it('buildRerankUserNeed truncates very long requester body', () => {

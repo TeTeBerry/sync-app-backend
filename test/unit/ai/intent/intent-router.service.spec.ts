@@ -63,6 +63,76 @@ describe('IntentRouterService', () => {
     expect(llmService.invokeJson).not.toHaveBeenCalled();
   });
 
+  it('uses LLM for dj_info when rules miss', async () => {
+    (llmService.invokeJson as jest.Mock).mockResolvedValue({
+      intent: 'dj_info',
+    });
+
+    const result = await router.resolve({
+      messages: [
+        { role: 'user', content: 'Marshmello' },
+        { role: 'assistant', content: '想了解近期演出还是类似艺人？' },
+      ],
+      input: '近期演出',
+      activityLegacyId: 5,
+      sessionId: 'sess-dj',
+      requestId: 'req-dj',
+    });
+
+    expect(llmService.invokeJson).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ kind: 'dj_info', source: 'llm' });
+  });
+
+  it('uses LLM for performance follow-up with context', async () => {
+    (llmService.invokeJson as jest.Mock).mockResolvedValue({
+      intent: 'dj_info',
+    });
+
+    const result = await router.resolve({
+      messages: [
+        { role: 'user', content: 'Marshmello' },
+        { role: 'assistant', content: '想了解近期演出还是类似艺人？' },
+      ],
+      input: '近期演出',
+      sessionId: 'sess-dj-perf',
+      requestId: 'req-dj-perf',
+    });
+
+    expect(llmService.invokeJson).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ kind: 'dj_info', source: 'llm' });
+  });
+
+  it('uses rule fast path for similar-style DJ follow-up', async () => {
+    const result = await router.resolve({
+      messages: [
+        { role: 'user', content: 'Marshmello 什么风格' },
+        { role: 'assistant', content: 'Marshmello 以 Future Bass 为主。' },
+      ],
+      input: '帮我找类似风格的DJ',
+      activityLegacyId: 4,
+      sessionId: 'sess-dj-follow',
+      requestId: 'req-dj-follow',
+    });
+
+    expect(llmService.invokeJson).not.toHaveBeenCalled();
+    expect(result).toEqual({ kind: 'dj_info', source: 'rule' });
+  });
+
+  it('uses rule fast path for zone buddy search when activity is bound', async () => {
+    const result = await router.resolve({
+      messages: [{ role: 'user', content: '13号 A区 有人吗' }],
+      input: '13号 A区 有人吗',
+      activityLegacyId: 4,
+      sessionId: 'sess-2',
+      requestId: 'req-2',
+    });
+
+    expect(llmService.invokeJson).not.toHaveBeenCalled();
+    expect(result.kind).toBe('search_posts');
+    expect(result.source).toBe('rule');
+    expect(result.buddySearchHint?.displayLabel).toBe('13号 A区 有人吗');
+  });
+
   it('calls mocked LLM when rules miss and maps search_posts', async () => {
     (activityService.findByLegacyId as jest.Mock).mockResolvedValue({
       legacyId: 4,
@@ -75,11 +145,11 @@ describe('IntentRouterService', () => {
     });
 
     const result = await router.resolve({
-      messages: [{ role: 'user', content: '13号 A区 有人吗' }],
-      input: '13号 A区 有人吗',
+      messages: [{ role: 'user', content: '13号 A区' }],
+      input: '13号 A区',
       activityLegacyId: 4,
-      sessionId: 'sess-2',
-      requestId: 'req-2',
+      sessionId: 'sess-2-llm',
+      requestId: 'req-2-llm',
     });
 
     expect(llmService.invokeJson).toHaveBeenCalledTimes(1);
@@ -123,6 +193,49 @@ describe('IntentRouterService', () => {
     await router.resolve({ ...base, activityLegacyId: 9 });
 
     expect(llmService.invokeJson).toHaveBeenCalledTimes(2);
+  });
+
+  it('maps LLM dj_info intent', async () => {
+    (llmService.invokeJson as jest.Mock).mockResolvedValue({
+      intent: 'dj_info',
+    });
+
+    const result = await router.resolve({
+      messages: [],
+      input: '我想交个朋友聊聊天',
+      sessionId: 'sess-dj-llm',
+      requestId: 'req-dj-llm',
+    });
+
+    expect(result).toEqual({ kind: 'dj_info', source: 'llm' });
+  });
+
+  it('maps LLM chitchat to quick_reply instead of create_post', async () => {
+    (llmService.invokeJson as jest.Mock).mockResolvedValue({
+      intent: 'chitchat',
+    });
+
+    const result = await router.resolve({
+      messages: [],
+      input: '你好',
+      sessionId: 'sess-chitchat',
+      requestId: 'req-chitchat',
+    });
+
+    expect(result).toEqual({ kind: 'quick_reply', source: 'llm' });
+  });
+
+  it('uses rule fast path for dj_info without calling LLM', async () => {
+    const result = await router.resolve({
+      messages: [],
+      input: 'Marshmello 是什么风格',
+      activityLegacyId: 5,
+      sessionId: 'sess-dj-rule',
+      requestId: 'req-dj-rule',
+    });
+
+    expect(result).toEqual({ kind: 'dj_info', source: 'rule' });
+    expect(llmService.invokeJson).not.toHaveBeenCalled();
   });
 
   it('falls back to create_post when LLM is disabled', async () => {

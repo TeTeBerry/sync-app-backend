@@ -139,6 +139,9 @@ export class WechatUserRiskService {
     clientIp: string;
     scene?: number;
   }): Promise<number> {
+    if (!this.isEnabled()) {
+      return 0;
+    }
     const rank = await this.fetchRiskRank(params);
     this.assertRankAllowed(rank);
     return rank;

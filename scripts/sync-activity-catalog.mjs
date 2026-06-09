@@ -57,7 +57,7 @@ const ACTIVITY_SEED = [
     longitude: 98.35,
     region: 'overseas',
     image:
-      'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&q=80',
+      'https://ik.imagekit.io/TBR/Island%20Events/EDC%20Thailand%202026.png?updatedAt=1763068886366',
     hot: true,
     attendees: 180,
   },

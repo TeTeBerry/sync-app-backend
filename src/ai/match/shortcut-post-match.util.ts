@@ -9,7 +9,6 @@ export function intentsForShortcutTag(
   const tag = normalizeAiShortcutInput(shortcut);
   switch (tag) {
     case '找卡座':
-    case '找同路伙伴':
       return ['carpool'];
     case '找拼房':
       return ['lodging'];
@@ -40,8 +39,6 @@ export function postMatchesShortcutTag(
         types.includes('carpool') ||
         /拼卡|同路|顺路|顺风车|包车/i.test(haystack)
       );
-    case '找同路伙伴':
-      return types.includes('carpool') || /同路|顺路|顺风车/i.test(haystack);
     case '找拼房':
       return (
         types.includes('accommodation') ||

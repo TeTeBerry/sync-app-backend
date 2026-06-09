@@ -13,6 +13,8 @@ import { AgentsModule } from './agents/agents.module';
 import { PostAgentAdaptersModule } from './adapters/post-agent-adapters.module';
 import { BuddyModule } from './buddy/buddy.module';
 import { IntentRouterModule } from './intent/intent-router.module';
+import { DjInfoModule } from './dj/dj-info.module';
+import { ChatAgentModule } from './agent/chat-agent.module';
 import { AiRateLimitService } from './ai-rate-limit.service';
 import { AiTurnPipeline } from './orchestration/ai-turn.pipeline';
 import { AiStreamEventBuilder } from './presentation/ai-sse.builder';
@@ -33,6 +35,8 @@ import { AiChatWsServer } from './ws/ai-chat-ws.server';
     AgentsModule,
     IntentRouterModule,
     BuddyModule,
+    DjInfoModule,
+    ChatAgentModule,
   ],
   providers: [
     AiService,

@@ -28,21 +28,11 @@ const uri =
 
 const keyword = process.env.DAMAI_KEYWORD ?? '电音节';
 
-/** Sample payload (keyword 电音节, 3 API results — 2 match filter). */
+/** Sample payload (keyword 电音节, 2 API results — 1 match filter). */
 const INLINE_SAMPLE = {
   keyword: '电音节',
   pageData: {
     resultData: [
-      {
-        name: 'GUAN电音节',
-        nameNoHtml: 'GUAN电音节',
-        projectid: 1045457803269,
-        showtime: '2026.05.30-05.31',
-        venue: '广东现代国际展览中心(东莞)',
-        cityname: '东莞',
-        verticalPic:
-          'https://img.alicdn.com/bao/uploaded/i3/2251059038/O1CN01DqHXff2GdSmNgmavM_!!4611686018427383646-0-item_pic.jpg',
-      },
       {
         name: '2026口味王风暴电音节-深圳站',
         nameNoHtml: '2026口味王风暴电音节-深圳站',

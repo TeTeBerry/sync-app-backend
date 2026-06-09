@@ -19,7 +19,6 @@ export const STORM_FESTIVAL_ARTISTS = [
 export type HomeFestivalShortcutCode =
   | 'storm'
   | 'tomorrowland'
-  | 'guan'
   | 'edc-thailand';
 
 export interface HomeFestivalShortcutDef {
@@ -35,7 +34,7 @@ export interface HomeFestivalShortcutDef {
   artists: readonly string[];
 }
 
-/** Homepage AI festival chips — aligned with activity catalog + Damai GUAN */
+/** Homepage AI festival chips — aligned with activity catalog */
 export const HOME_FESTIVAL_SHORTCUTS: readonly HomeFestivalShortcutDef[] = [
   {
     code: 'storm',
@@ -64,30 +63,23 @@ export const HOME_FESTIVAL_SHORTCUTS: readonly HomeFestivalShortcutDef[] = [
     ],
   },
   {
-    code: 'guan',
-    chipLabel: 'GUAN电音节',
-    submitText: 'GUAN电音节',
-    fallbackName: 'GUAN电音节',
-    fallbackDate: '05/30-31',
-    fallbackLocation: '广东现代国际展览中心（东莞）',
-    artists: [
-      'Nicky Romero',
-      'MORTEN',
-      'MUST DIE!',
-      'OOKAY',
-      'T78',
-      'AN21',
-      'RetroVision',
-    ],
-  },
-  {
     code: 'edc-thailand',
     chipLabel: 'EDC Thailand',
     submitText: 'EDC Thailand',
     fallbackName: 'EDC Thailand 2026',
     fallbackDate: '12/18-20',
     fallbackLocation: '普吉岛 Rhythm Park',
-    artists: ['阵容陆续公布中', '可关注 EDC Thailand 官方渠道'],
+    artists: [
+      'MARTIN GARRIX',
+      'TIËSTO',
+      'DJ SNAKE',
+      'CHARLOTTE DE WITTE',
+      'SUBTRONICS',
+      'KASKADE',
+      'DOM DOLLA',
+      'VINTAGE CULTURE',
+      '更多阵容见专属电音行程',
+    ],
   },
 ] as const;
 
@@ -127,9 +119,6 @@ export function resolveHomeFestivalShortcutCode(
       def.code === 'tomorrowland' &&
       /tomorrowland|tml|明日世界|tmw/i.test(trimmed)
     ) {
-      return def.code;
-    }
-    if (def.code === 'guan' && /guan/i.test(trimmed)) {
       return def.code;
     }
     if (def.code === 'storm' && /风暴|storm/i.test(trimmed)) {

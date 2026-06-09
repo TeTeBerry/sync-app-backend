@@ -12,10 +12,10 @@ describe('intent-router.rules', () => {
     expect(hit?.source).toBe('rule');
   });
 
-  it('routes self-post decline to create_post when activity is bound', () => {
-    const hit = resolveChatIntentFastPath('自己发帖', {
+  it('routes recommendation decline to create_post when activity is bound', () => {
+    const hit = resolveChatIntentFastPath('没有合适的', {
       messages: [],
-      input: '自己发帖',
+      input: '没有合适的',
       activityLegacyId: 9,
     });
     expect(hit?.kind).toBe('create_post');
@@ -73,14 +73,34 @@ describe('intent-router.rules', () => {
     expect(hit?.source).toBe('rule');
   });
 
-  it('routes search-existing intent with bound activity to search_posts', () => {
-    const hit = resolveChatIntentFastPath('帮我看看有没有类似的组队帖', {
+  it('routes zone+搭子 search with bound activity to search_posts', () => {
+    const hit = resolveChatIntentFastPath('13号 A区 有人吗', {
       messages: [],
-      input: '帮我看看有没有类似的组队帖',
+      input: '13号 A区 有人吗',
       activityLegacyId: 4,
     });
     expect(hit?.kind).toBe('search_posts');
     expect(hit?.source).toBe('rule');
+  });
+
+  it('does not rule-route post search phrases (delegated to intent LLM)', () => {
+    expect(
+      resolveChatIntentFastPath('帮我看看有没有类似的组队帖', {
+        messages: [],
+        input: '帮我看看有没有类似的组队帖',
+        activityLegacyId: 4,
+      }),
+    ).toBeNull();
+  });
+
+  it('routes similar-style DJ follow-up to dj_info via rule', () => {
+    expect(
+      resolveChatIntentFastPath('帮我找类似风格的DJ', {
+        messages: [],
+        input: '帮我找类似风格的DJ',
+        activityLegacyId: 4,
+      }),
+    ).toEqual({ kind: 'dj_info', source: 'rule' });
   });
 
   it('routes obvious find-buddy phrase with bound activity to create_post', () => {
@@ -93,10 +113,10 @@ describe('intent-router.rules', () => {
     expect(hit?.source).toBe('rule');
   });
 
-  it('returns null for zone buddy text (LLM path)', () => {
-    const hit = resolveChatIntentFastPath('13号 A区 有人吗', {
+  it('returns null for zone-only text without buddy cue (LLM path)', () => {
+    const hit = resolveChatIntentFastPath('13号 A区', {
       messages: [],
-      input: '13号 A区 有人吗',
+      input: '13号 A区',
       activityLegacyId: 4,
     });
     expect(hit).toBeNull();
@@ -120,6 +140,14 @@ describe('intent-router.rules', () => {
     expect(hit?.source).toBe('rule');
   });
 
+  it('does not route AI攻略 to quick_reply on homepage without activity', () => {
+    const hit = resolveChatIntentFastPath('AI攻略', {
+      messages: [],
+      input: 'AI攻略',
+    });
+    expect(hit).toBeNull();
+  });
+
   it('routes 帮我规划行程 to quick_reply with bound activity', () => {
     const hit = resolveChatIntentFastPath('帮我规划行程', {
       messages: [],
@@ -130,6 +158,14 @@ describe('intent-router.rules', () => {
     expect(hit?.source).toBe('rule');
   });
 
+  it('does not route travel guide phrases on homepage without activity', () => {
+    const hit = resolveChatIntentFastPath('帮我规划行程', {
+      messages: [],
+      input: '帮我规划行程',
+    });
+    expect(hit).toBeNull();
+  });
+
   it('routes homepage festival shortcut to quick_reply without binding activity', () => {
     const hit = resolveChatIntentFastPath('风暴电音节', {
       messages: [],
@@ -137,6 +173,32 @@ describe('intent-router.rules', () => {
     });
     expect(hit?.kind).toBe('quick_reply');
     expect(hit?.source).toBe('rule');
+  });
+
+  it('routes DJ questions to dj_info via rule fast path', () => {
+    expect(
+      resolveChatIntentFastPath('Marshmello 是什么风格', {
+        messages: [],
+        input: 'Marshmello 是什么风格',
+        activityLegacyId: 5,
+      }),
+    ).toEqual({ kind: 'dj_info', source: 'rule' });
+    expect(
+      resolveChatIntentFastPath('这场有哪些 Techno DJ', {
+        messages: [],
+        input: '这场有哪些 Techno DJ',
+        activityLegacyId: 5,
+      }),
+    ).toEqual({ kind: 'dj_info', source: 'rule' });
+  });
+
+  it('routes activity brief questions to quick_reply when activity is bound', () => {
+    const hit = resolveChatIntentFastPath('这场几点开始', {
+      messages: [],
+      input: '这场几点开始',
+      activityLegacyId: 5,
+    });
+    expect(hit).toEqual({ kind: 'quick_reply', source: 'rule' });
   });
 
   it('routes activity name reply after enter prompt to activity_enter', () => {

@@ -9,6 +9,7 @@ export interface IntentRouterActivityContext {
 
 export const INTENT_ROUTER_FEW_SHOTS: Array<{
   user: string;
+  context?: string;
   activity?: string;
   intent: string;
   searchHint?: string;
@@ -68,12 +69,42 @@ export const INTENT_ROUTER_FEW_SHOTS: Array<{
     activity: '未绑定活动',
     intent: 'near_events',
   },
+  {
+    user: 'Marshmello 是什么风格',
+    activity: 'EDC Thailand 2026',
+    intent: 'dj_info',
+  },
+  {
+    user: '这场有哪些 Techno DJ',
+    activity: 'EDC Thailand 2026',
+    intent: 'dj_info',
+  },
+  {
+    user: '介绍一下 Korolova',
+    activity: '已绑定活动',
+    intent: 'dj_info',
+  },
+  {
+    user: '帮我找类似风格的DJ',
+    context:
+      '[user] Marshmello 什么风格\n[assistant] Marshmello 以 Future Bass、Pop EDM 为主。',
+    activity: '风暴电音节 深圳站',
+    intent: 'dj_info',
+  },
+  {
+    user: '近期演出',
+    context:
+      '[user] Marshmello\n[assistant] Marshmello 是 Future Bass 制作人。想了解近期演出还是类似艺人？',
+    activity: '未绑定活动',
+    intent: 'dj_info',
+  },
 ];
 
 export function buildIntentRouterSystemPrompt(): string {
   const fewShotBlock = INTENT_ROUTER_FEW_SHOTS.map((ex, i) =>
     [
       `示例${i + 1}:`,
+      ex.context ? `上下文:\n${ex.context}` : '',
       `用户: ${ex.user}`,
       ex.activity ? `活动: ${ex.activity}` : '',
       `→ {"intent":"${ex.intent}"${ex.searchHint ? `,"searchHint":"${ex.searchHint}"` : ''}}`,
@@ -90,7 +121,12 @@ export function buildIntentRouterSystemPrompt(): string {
     '  - create_post: 发帖、组队招募、补充人数城市后发布、确认发布、重新发帖',
     '  - quick_find_buddy: 未绑定活动时点击「帮我组队/dd」类快捷入口',
     '  - near_events: 查最近/热门活动',
+    '  - dj_info: 查 DJ/艺人风格、阵容按曲风筛选、介绍某位 DJ、或承接上文找类似风格艺人',
     '  - chitchat: 闲聊或无法判断',
+    '',
+    '多轮对话：',
+    '- 若上文在讨论某位 DJ/曲风，用户说「类似风格」「近期演出」「代表作」等简短跟进 → dj_info',
+    '- 不要把用户整句检索指令当成艺人名',
     '- searchHint: search_posts 时必填，检索用简短中文（如 6月13日、13号A区、A区）',
     '',
     '歧义说明（绑定活动时必看）：',

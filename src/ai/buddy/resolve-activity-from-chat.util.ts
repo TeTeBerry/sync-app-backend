@@ -10,7 +10,6 @@ const EVENT_HINT_KEYWORDS: Array<{ pattern: RegExp; keyword: string }> = [
   { pattern: /\bEDC\b/i, keyword: 'edc' },
   { pattern: /ultra|tomorrowland|tmw/i, keyword: 'ultra' },
   { pattern: /\bVAC\b|vision\s*&\s*colour/i, keyword: 'vac' },
-  { pattern: /GUAN|关峡/i, keyword: 'GUAN' },
   { pattern: /creamfields|百威/i, keyword: 'creamfields' },
 ];
 

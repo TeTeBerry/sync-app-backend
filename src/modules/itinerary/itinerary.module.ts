@@ -17,6 +17,7 @@ import {
   ItineraryGenerationLogSchema,
 } from '../../database/schemas/itinerary-generation-log.schema';
 import { ActivityModule } from '../activity/activity.module';
+import { DjModule } from '../dj/dj.module';
 import { AgentsModule } from '../../ai/agents/agents.module';
 import { PartnerRepositoryModule } from '../partner/partner-repository.module';
 import { ItineraryController } from './itinerary.controller';
@@ -29,6 +30,7 @@ import { ItineraryBuddyRecruitHintService } from './itinerary-buddy-recruit-hint
 @Module({
   imports: [
     ActivityModule,
+    DjModule,
     AgentsModule,
     PartnerRepositoryModule,
     MongooseModule.forFeature([
@@ -49,6 +51,6 @@ import { ItineraryBuddyRecruitHintService } from './itinerary-buddy-recruit-hint
     ItineraryCacheService,
     ItineraryBuddyRecruitHintService,
   ],
-  exports: [ItineraryService],
+  exports: [ItineraryService, ItineraryScheduleService],
 })
 export class ItineraryModule {}

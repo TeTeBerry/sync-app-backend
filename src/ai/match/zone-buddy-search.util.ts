@@ -344,7 +344,7 @@ export function buildZoneMatchFoundReply(
     return [
       `在「${activityLabel}」找到 ${matchLines.length} 条与${scope}相关的组队帖，点下方卡片查看：`,
       '',
-      '若不合适，回复「自己发帖」或补充你的出行需求，我再帮你发组队帖。',
+      '若不合适，可以补充你的出行需求，或点「组队发帖」填写。',
     ].join('\n');
   }
 

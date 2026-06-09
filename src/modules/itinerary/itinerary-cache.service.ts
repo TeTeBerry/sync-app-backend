@@ -37,7 +37,7 @@ export class ItineraryCacheService {
   }
 
   scheduleKey(activityLegacyId: number, dateKey?: string): string {
-    return `itinerary:schedule:${activityLegacyId}:${dateKey ?? 'all'}`;
+    return `itinerary:schedule:v4:${activityLegacyId}:${dateKey ?? 'all'}`;
   }
 
   generationKey(

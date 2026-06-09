@@ -24,6 +24,11 @@ import {
 import { isTravelGuideIntent } from '../utils/activity-guide.util';
 import { shouldSkipActivityScopedBuddyRecommend } from '../buddy/activity-scope-guard.util';
 import { BuddyContextService } from '../buddy/buddy-context.service';
+import { buildDjInfoSuggestedReplies } from '../dj/dj-info-suggested-replies.util';
+import { DjInfoResolverService } from '../dj/dj-info-resolver.service';
+import { DjInfoService } from '../dj/dj-info.service';
+import { ChatAgentOrchestratorService } from '../agent/chat-agent-orchestrator.service';
+import type { ChatAgentTurnResult } from '../agent/agent.types';
 import {
   isAwaitingSelfPostBodyCollection,
   isDeclineRecommendationsIntent,
@@ -44,6 +49,7 @@ export interface AiTurnTimings {
   ms_profile?: number;
   ms_buddy?: number;
   ms_match?: number;
+  ms_agent?: number;
 }
 
 export interface AiTurnResult {
@@ -67,6 +73,9 @@ export class AiTurnPipeline {
     private readonly sseBuilder: AiStreamEventBuilder,
     private readonly buddyContext: BuddyContextService,
     private readonly activityService: ActivityService,
+    private readonly djInfoService: DjInfoService,
+    private readonly djInfoResolver: DjInfoResolverService,
+    private readonly chatAgentOrchestrator: ChatAgentOrchestratorService,
   ) {}
 
   async runTurn(
@@ -119,6 +128,64 @@ export class AiTurnPipeline {
       intentSource: routed.source,
       ms_intent: timings.ms_intent,
     });
+
+    this.chatAgentOrchestrator.scheduleShadowComparison({
+      dto,
+      messages: fullMessages,
+      input: lastInput,
+      conversationState,
+      requestId,
+      sessionId,
+      legacyIntent: routed,
+    });
+
+    if (
+      this.chatAgentOrchestrator.getMode() === 'on' &&
+      this.chatAgentOrchestrator.shouldRunAgentFirst(
+        dto,
+        lastInput,
+        conversationState,
+      )
+    ) {
+      const agentStartedAt = Date.now();
+      const agentResult = await this.chatAgentOrchestrator.runTurn({
+        dto,
+        messages: fullMessages,
+        input: lastInput,
+        conversationState,
+        requestId,
+        sessionId,
+        legacyIntent: routed,
+      });
+      timings.ms_agent = Date.now() - agentStartedAt;
+
+      if (agentResult?.replyText) {
+        logAiTurn(this.logger, {
+          event: 'agent_turn',
+          requestId,
+          sessionId,
+          intent: routed.kind,
+          intentSource: 'agent',
+          agentTools: agentResult.toolsUsed,
+          ms_agent: timings.ms_agent,
+        });
+
+        const events = await this.collectAgentReply(
+          agentResult,
+          dto,
+          fullMessages,
+          lastInput,
+          sink,
+        );
+        return {
+          events,
+          assistantReply: sink.getReply(),
+          conversationState: sink.getState(),
+          intent: routed.kind,
+          timings,
+        };
+      }
+    }
 
     const profileStartedAt = Date.now();
     const profileSync = await this.syncProfileOnce(
@@ -173,6 +240,9 @@ export class AiTurnPipeline {
           );
         }
         break;
+      case 'dj_info':
+        events = await this.collectDjInfo(dto, fullMessages, lastInput, sink);
+        break;
       default:
         events = await this.collectBuddyIntentFlow(
           dto,
@@ -206,7 +276,7 @@ export class AiTurnPipeline {
       return null;
     }
 
-    // Activity shortcut chips (组队队友/同路等) only need post search — skip profile LLM.
+    // Activity shortcut chips (找组队/找拼房/找卡座等) only need post search — skip profile LLM.
     if (kind === 'search_posts' && isAiShortcutTag(input)) {
       return null;
     }
@@ -470,6 +540,61 @@ export class AiTurnPipeline {
     }
 
     return this.activityService.matchActivity(input);
+  }
+
+  private async collectAgentReply(
+    agentResult: ChatAgentTurnResult,
+    dto: ChatRequestDto,
+    fullMessages: ChatMessageDto[],
+    lastInput: string,
+    sink: ReplySink,
+  ): Promise<AiStreamEvent[]> {
+    const replyText = agentResult.replyText;
+    sink.setReply(replyText);
+    const events: AiStreamEvent[] = [{ type: 'delta', content: replyText }];
+
+    if (agentResult.toolsUsed.includes('query_dj_info')) {
+      const toolCall = agentResult.toolCalls.find(
+        (call) => call.name === 'query_dj_info',
+      );
+      const query = await this.djInfoResolver.resolve({
+        messages: fullMessages,
+        input: lastInput,
+        activityLegacyId: dto.activityLegacyId,
+        toolArgs: toolCall?.args,
+      });
+      const suggested = this.sseBuilder.djInfoSuggestedRepliesEvent(
+        buildDjInfoSuggestedReplies({
+          query,
+          activityLegacyId: dto.activityLegacyId,
+        }),
+      );
+      if (suggested) {
+        events.push(suggested);
+      }
+    }
+
+    return events;
+  }
+
+  private async collectDjInfo(
+    dto: ChatRequestDto,
+    fullMessages: ChatMessageDto[],
+    lastInput: string,
+    sink: ReplySink,
+  ): Promise<AiStreamEvent[]> {
+    const { replyText, suggestedReplies } =
+      await this.djInfoService.answerFromChat(lastInput, dto.activityLegacyId, {
+        messages: fullMessages,
+      });
+    sink.setReply(replyText);
+    const events: AiStreamEvent[] = [{ type: 'delta', content: replyText }];
+    const suggested =
+      this.sseBuilder.djInfoSuggestedRepliesEvent(suggestedReplies);
+    if (suggested) {
+      events.push(suggested);
+    }
+    return events;
   }
 
   private async collectDeterministicOnly(

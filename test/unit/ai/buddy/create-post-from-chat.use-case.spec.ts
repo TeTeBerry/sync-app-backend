@@ -124,8 +124,8 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
 
     const result = await useCase.execute({
       ...baseParams,
-      messages: [...gateMessages, { role: 'user', content: '自己发帖' }],
-      input: '自己发帖',
+      messages: [...gateMessages, { role: 'user', content: '没有合适的' }],
+      input: '没有合适的',
       onStateChange,
     });
 
@@ -160,7 +160,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
       },
       messages: [
         ...gateMessages,
-        { role: 'user', content: '自己发帖' },
+        { role: 'user', content: '没有合适的' },
         {
           role: 'assistant',
           content: `${SELF_POST_COLLECT_BODY_MARKER}\n请描述需求`,
@@ -206,7 +206,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
       },
       messages: [
         ...gateMessages,
-        { role: 'user', content: '自己发帖' },
+        { role: 'user', content: '没有合适的' },
         {
           role: 'assistant',
           content: `${SELF_POST_COLLECT_BODY_MARKER}\n请描述需求`,
@@ -237,8 +237,8 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
 
     const result = await useCase.execute({
       ...baseParams,
-      messages: [...gateMessages, { role: 'user', content: '自己发帖' }],
-      input: '自己发帖',
+      messages: [...gateMessages, { role: 'user', content: '没有合适的' }],
+      input: '没有合适的',
       onStateChange,
     });
 
@@ -276,7 +276,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
       messages: [
         ...gateMessages,
         { role: 'user', content: '上海' },
-        { role: 'user', content: '自己发帖' },
+        { role: 'user', content: '没有合适的' },
         {
           role: 'assistant',
           content: `${SELF_POST_COLLECT_BODY_MARKER}\n请描述需求`,
@@ -326,7 +326,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
       },
       messages: [
         ...gateMessages,
-        { role: 'user', content: '自己发帖' },
+        { role: 'user', content: '没有合适的' },
         {
           role: 'assistant',
           content: `${SELF_POST_COLLECT_BODY_MARKER}\n请描述需求`,

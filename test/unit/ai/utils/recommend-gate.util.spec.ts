@@ -16,7 +16,7 @@ import {
 
 describe('recommend-gate.util', () => {
   it('detects decline to self-post intents', () => {
-    expect(isDeclineRecommendationsIntent('自己发帖')).toBe(true);
+    expect(isDeclineRecommendationsIntent('自己发帖')).toBe(false);
     expect(isDeclineRecommendationsIntent('没有合适的')).toBe(true);
     expect(isDeclineRecommendationsIntent('帮我dd')).toBe(false);
   });
@@ -55,8 +55,8 @@ describe('recommend-gate.util', () => {
     expect(reply).toContain('暂未在「风暴电音节」找到相近的组队帖');
   });
 
-  it('exposes suggested reply chips for recommend gate', () => {
-    expect(RECOMMEND_GATE_SUGGESTED_REPLIES).toContain('自己发帖');
+  it('does not expose self-post suggested reply chips', () => {
+    expect(RECOMMEND_GATE_SUGGESTED_REPLIES).toEqual([]);
   });
 
   it('builds collect-body decline reply', () => {

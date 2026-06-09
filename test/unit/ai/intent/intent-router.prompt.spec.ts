@@ -5,11 +5,15 @@ import {
 } from '@src/ai/intent/intent-router.prompt';
 
 describe('intent-router.prompt', () => {
-  it('includes 10 few-shot examples', () => {
-    expect(INTENT_ROUTER_FEW_SHOTS).toHaveLength(10);
+  it('includes few-shot examples with dj_info', () => {
+    expect(INTENT_ROUTER_FEW_SHOTS.length).toBeGreaterThanOrEqual(10);
     const system = buildIntentRouterSystemPrompt();
     expect(system).toContain('13号 A区 有人吗');
     expect(system).toContain('search_posts');
+    expect(system).toContain('dj_info');
+    expect(system).toContain('Marshmello 是什么风格');
+    expect(system).toContain('帮我找类似风格的DJ');
+    expect(system).toContain('类似风格');
   });
 
   it('binds activity name, date and event days', () => {

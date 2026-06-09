@@ -23,7 +23,7 @@ export interface BuddyMatchCriteria {
   requesterBody?: string;
   /** Post ids that must never be recommended back (e.g. criteria seed owner post) */
   excludePostIds?: string[];
-  /** AI shortcut chip the user tapped (找同路伙伴 / 找拼房 / 找组队 …) */
+  /** AI shortcut chip the user tapped (找卡座 / 找拼房 / 找组队 …) */
   searchShortcutTag?: string;
   /** Persisted user profile — enriches embedding / rerank when no recruiting post body */
   profileFavorGenres?: string[];

@@ -90,6 +90,34 @@ export class LlmService {
     }
   }
 
+  /** 纯文本生成（翻译、摘要等） */
+  async invokeText(
+    system: string,
+    user: string,
+    timeoutMs = 15_000,
+  ): Promise<string | null> {
+    if (!this.enabled) return null;
+
+    try {
+      const response = await this.withTimeout(
+        this.jsonLlm.invoke([
+          new SystemMessage(system),
+          new HumanMessage(user),
+        ]),
+        timeoutMs,
+      );
+      const text = String(response.content ?? '').trim();
+      return text || null;
+    } catch (error) {
+      this.logger.warn(
+        `invokeText failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return null;
+    }
+  }
+
   /** 结构化 JSON 抽取（非 Function Calling，低温度） */
   async invokeJson<T>(
     system: string,

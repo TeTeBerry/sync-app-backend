@@ -25,10 +25,10 @@ describe('resolve-owner-post-for-match.util', () => {
     createdAt: new Date('2025-01-03'),
   } as PostRecord;
 
-  it('picks carpool recruiting post when shortcut is 找同路伙伴', () => {
+  it('picks carpool recruiting post when shortcut is 找卡座', () => {
     const picked = resolveOwnerRecruitingPostForMatch(
       [teamPost, carpoolPost],
-      '找同路伙伴',
+      '找卡座',
     );
     expect(String(picked?._id)).toBe('carpool');
   });
@@ -42,13 +42,13 @@ describe('resolve-owner-post-for-match.util', () => {
   });
 
   it('returns the only recruiting post without scoring', () => {
-    expect(resolveOwnerRecruitingPostForMatch([teamPost], '找同路伙伴')).toBe(
+    expect(resolveOwnerRecruitingPostForMatch([teamPost], '找卡座')).toBe(
       teamPost,
     );
   });
 
   it('builds synthetic shortcut target with carpool signals', () => {
-    const synthetic = syntheticPostRecordFromShortcut('找同路伙伴');
+    const synthetic = syntheticPostRecordFromShortcut('找卡座');
     expect(synthetic.contentTypes).toContain('carpool');
     expect(synthetic.body).toMatch(/同路/);
   });

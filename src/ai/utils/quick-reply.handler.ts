@@ -5,10 +5,7 @@ import {
   buildScopedFindBuddyReply,
 } from './activity-reply.util';
 import { buildHomeFestivalShortcutReplyFromCatalog } from './festival-shortcut.util';
-import {
-  buildActivityGuideReply,
-  isTravelGuideIntent,
-} from './activity-guide.util';
+import { isTravelGuideIntent } from './activity-guide.util';
 import { composeReply } from './reply-text.util';
 
 export async function buildQuickReplyResponse(
@@ -21,18 +18,15 @@ export async function buildQuickReplyResponse(
   const intent = detectUserIntent(input);
   const { activityService } = services;
 
-  if (isTravelGuideIntent(input)) {
-    if (activityLegacyId != null) {
-      const activity = await activityService.findByLegacyId(activityLegacyId);
-      return composeReply([
-        '🗺️ 好的，我来帮你规划出行攻略。',
-        '',
-        '直接说出出发地、人数、预算（经济/舒适/豪华）和是否自驾即可，例如：上海2人舒适自驾住2晚。',
-        '也可点下方「AI攻略」用表单填写。',
-        activity?.name ? `当前活动：${activity.name.trim()}` : '',
-      ]);
-    }
-    return buildActivityGuideReply(null);
+  if (isTravelGuideIntent(input) && activityLegacyId != null) {
+    const activity = await activityService.findByLegacyId(activityLegacyId);
+    return composeReply([
+      '🗺️ 好的，我来帮你规划出行攻略。',
+      '',
+      '直接说出出发地、人数、预算（经济/舒适/豪华）和是否自驾即可，例如：上海2人舒适自驾住2晚。',
+      '也可点下方「AI攻略」用表单填写。',
+      activity?.name ? `当前活动：${activity.name.trim()}` : '',
+    ]);
   }
 
   if (activityLegacyId == null) {

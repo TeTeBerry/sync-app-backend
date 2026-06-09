@@ -161,16 +161,20 @@ export class IntentRouterService {
       };
     }
 
-    if (
-      intent === 'create_post' ||
-      intent === 'legacy_cascade' ||
-      intent === 'chitchat'
-    ) {
+    if (intent === 'create_post' || intent === 'legacy_cascade') {
       return { kind: 'create_post', source: 'llm' };
     }
 
-    if (intent === 'quick_find_buddy' || intent === 'near_events') {
+    if (
+      intent === 'chitchat' ||
+      intent === 'quick_find_buddy' ||
+      intent === 'near_events'
+    ) {
       return { kind: 'quick_reply', source: 'llm' };
+    }
+
+    if (intent === 'dj_info') {
+      return { kind: 'dj_info', source: 'llm' };
     }
 
     return { kind: 'create_post', source: 'llm' };

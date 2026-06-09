@@ -3,16 +3,15 @@ import { isTicketResaleIntent } from '../buddy/activity-scope-guard.util';
 import { isDeclineRecommendationsIntent } from '../gate/recommend-gate.util';
 import { isInformalPostBodyInput } from '../conversation/existing-post-guidance.util';
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
-import {
-  detectUserIntent,
-  isSearchExistingPostsIntent,
-} from '../intent/user-intent';
+import { detectUserIntent } from '../intent/user-intent';
 import {
   isActivityEnterNameInput,
   isAwaitingActivityEnterSelection,
 } from '../utils/activity-enter.util';
 import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
 import { isTravelGuideIntent } from '../utils/activity-guide.util';
+import { isActivityBriefIntent } from '../utils/activity-brief-intent.util';
+import { isDjInfoIntent } from '../dj/dj-info-query.util';
 import { inferBuddySearchHintKind } from '../match/zone-buddy-search.util';
 import type { IntentRouterInput } from './intent-router.service';
 import type { ResolvedChatIntent } from './chat-intent.types';
@@ -35,7 +34,15 @@ export function resolveChatIntentFastPath(
     }
   }
 
-  if (isTravelGuideIntent(trimmed)) {
+  if (isTravelGuideIntent(trimmed) && params.activityLegacyId != null) {
+    return { kind: 'quick_reply', source: 'rule' };
+  }
+
+  if (isDjInfoIntent(trimmed)) {
+    return { kind: 'dj_info', source: 'rule' };
+  }
+
+  if (params.activityLegacyId != null && isActivityBriefIntent(trimmed)) {
     return { kind: 'quick_reply', source: 'rule' };
   }
 
@@ -63,20 +70,29 @@ export function resolveChatIntentFastPath(
       return { kind: 'create_post', source: 'rule' };
     }
 
-    if (isSearchExistingPostsIntent(trimmed)) {
-      const kind = inferBuddySearchHintKind(trimmed);
+    if (isInformalPostBodyInput(trimmed)) {
+      return { kind: 'create_post', source: 'rule' };
+    }
+
+    const buddySearchKind = inferBuddySearchHintKind(trimmed);
+    if (buddySearchKind && /(有人吗|有没有人|搭子)/.test(trimmed)) {
       return {
         kind: 'search_posts',
         source: 'rule',
-        buddySearchHint: { displayLabel: trimmed, kind },
+        buddySearchHint: { displayLabel: trimmed, kind: buddySearchKind },
       };
     }
 
     if (detectUserIntent(trimmed) === 'find_buddy') {
-      return { kind: 'create_post', source: 'rule' };
-    }
-
-    if (isInformalPostBodyInput(trimmed)) {
+      if (/(组队帖|结伴帖)/.test(trimmed)) {
+        return null;
+      }
+      if (
+        /(dj|艺人)/i.test(trimmed) &&
+        /(风格|曲风|类似|相近)/i.test(trimmed)
+      ) {
+        return null;
+      }
       return { kind: 'create_post', source: 'rule' };
     }
   }

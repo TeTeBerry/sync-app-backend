@@ -1,6 +1,13 @@
 import { parseTimeToMinutes } from './domain/time-minutes.util';
+import {
+  EDC_THAILAND_ARTIST_PERFORMANCE_SEED,
+  EDC_THAILAND_FESTIVAL_SESSION_SEED,
+  ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
+} from './edc-thailand-itinerary.seed';
 
 export const ITINERARY_DEMO_ACTIVITY_LEGACY_ID = 4;
+
+export { ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID };
 
 const MAIN_STAGE = 'main' as const;
 const MAIN_STAGE_LABEL = '主舞台';
@@ -35,7 +42,7 @@ function perf(input: SeedPerformance) {
   };
 }
 
-export const FESTIVAL_SESSION_SEED = [
+export const ALL_FESTIVAL_SESSION_SEED = [
   {
     activityLegacyId: ITINERARY_DEMO_ACTIVITY_LEGACY_ID,
     dateKey: 'jun13',
@@ -52,8 +59,10 @@ export const FESTIVAL_SESSION_SEED = [
   },
 ];
 
+export const FESTIVAL_SESSION_SEED = ALL_FESTIVAL_SESSION_SEED;
+
 /** 深圳风暴电音节 2026 完整阵容（activity legacyId 4）— 单主舞台，与官宣海报一致。 */
-export const ARTIST_PERFORMANCE_SEED = [
+export const STORM_ARTIST_PERFORMANCE_SEED = [
   perf({
     dateKey: 'jun13',
     dateLabel: '6月13日',
@@ -264,4 +273,16 @@ export const ARTIST_PERFORMANCE_SEED = [
     avatarSeed: 'illenium',
     genreColor: '#7b61ff',
   }),
+];
+
+export const ARTIST_PERFORMANCE_SEED = STORM_ARTIST_PERFORMANCE_SEED;
+
+export const ALL_ARTIST_PERFORMANCE_SEED = [
+  ...STORM_ARTIST_PERFORMANCE_SEED,
+  ...EDC_THAILAND_ARTIST_PERFORMANCE_SEED,
+];
+
+export const ALL_FESTIVAL_SESSION_SEED_COMBINED = [
+  ...ALL_FESTIVAL_SESSION_SEED,
+  ...EDC_THAILAND_FESTIVAL_SESSION_SEED,
 ];

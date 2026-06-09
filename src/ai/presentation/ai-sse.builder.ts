@@ -49,7 +49,10 @@ export class AiStreamEventBuilder {
     return { type: 'conversation_patch', state: sink.getState() };
   }
 
-  recommendGateSuggestedRepliesEvent(): AiStreamEvent {
+  recommendGateSuggestedRepliesEvent(): AiStreamEvent | null {
+    if (!RECOMMEND_GATE_SUGGESTED_REPLIES.length) {
+      return null;
+    }
     return {
       type: 'suggested_replies',
       replies: [...RECOMMEND_GATE_SUGGESTED_REPLIES],
@@ -60,6 +63,19 @@ export class AiStreamEventBuilder {
     return {
       type: 'suggested_replies',
       replies: [...PUBLISH_CONFIRM_SUGGESTED_REPLIES],
+    };
+  }
+
+  djInfoSuggestedRepliesEvent(replies: string[]): AiStreamEvent | null {
+    const unique = [
+      ...new Set(replies.map((reply) => reply.trim()).filter(Boolean)),
+    ];
+    if (!unique.length) {
+      return null;
+    }
+    return {
+      type: 'suggested_replies',
+      replies: unique,
     };
   }
 
@@ -92,6 +108,7 @@ export class AiStreamEventBuilder {
         empty: false,
       }),
     );
+    const suggestedReplies = this.recommendGateSuggestedRepliesEvent();
     return [
       { type: 'delta', content: replyText },
       {
@@ -99,7 +116,7 @@ export class AiStreamEventBuilder {
         posts: postCards,
         degraded,
       },
-      this.recommendGateSuggestedRepliesEvent(),
+      ...(suggestedReplies ? [suggestedReplies] : []),
       this.conversationPatchEvent(sink),
     ];
   }
@@ -141,9 +158,10 @@ export class AiStreamEventBuilder {
         empty: true,
       }),
     );
+    const suggestedReplies = this.recommendGateSuggestedRepliesEvent();
     return [
       { type: 'delta', content: replyText },
-      this.recommendGateSuggestedRepliesEvent(),
+      ...(suggestedReplies ? [suggestedReplies] : []),
       this.conversationPatchEvent(sink),
     ];
   }

@@ -7,19 +7,15 @@ const DAMAI_DETAIL_URL = 'https://detail.damai.cn/item.htm?id=';
 /** Project IDs excluded from import (user-requested removals). */
 const DAMAI_BLOCKED_PROJECT_IDS = new Set([
   1054171884343, // 潮起东方电音节廊坊站
+  1045457803269, // GUAN电音节
 ]);
 
-/** Curated participant counts for Damai imports (homepage cards). */
-const DAMAI_ATTENDEE_OVERRIDES = new Map([
-  [1045457803269, 128], // GUAN电音节
-]);
-
-function resolveDamaiAttendees(projectid) {
-  return DAMAI_ATTENDEE_OVERRIDES.get(projectid) ?? 0;
+function resolveDamaiAttendees() {
+  return 0;
 }
 
 /** Name substrings that exclude an item from import. */
-const DAMAI_BLOCKED_NAME_PATTERNS = [/潮起东方/];
+const DAMAI_BLOCKED_NAME_PATTERNS = [/潮起东方/, /GUAN/i];
 
 function normalizeDamaiShowtime(showtime) {
   const trimmed = String(showtime ?? '').trim();

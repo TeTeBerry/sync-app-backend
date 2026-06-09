@@ -80,7 +80,11 @@ describe('damai-import.util', () => {
     const payload = {
       pageData: {
         resultData: [
-          { name: 'GUAN电音节', projectid: 1, showtime: '2026.05.30-05.31' },
+          {
+            name: '2026横琴VAC电音节',
+            projectid: 3,
+            showtime: '2026.04.18-04.19',
+          },
           {
             name: '天上村前·苏荟新年电音汇',
             projectid: 2,
@@ -91,13 +95,13 @@ describe('damai-import.util', () => {
     };
     const { items, skipped } = parseDamaiSearchPayload(payload);
     expect(items).toHaveLength(1);
-    expect(items[0].name).toBe('GUAN电音节');
+    expect(items[0].name).toBe('2026横琴VAC电音节');
     expect(skipped).toHaveLength(1);
     expect(skipped[0].reason).toContain('电音节');
   });
 
-  it('sets curated attendee count for GUAN电音节', () => {
-    const { items } = parseDamaiSearchPayload({
+  it('blocks GUAN电音节 by project id and name', () => {
+    const { items, skipped } = parseDamaiSearchPayload({
       pageData: {
         resultData: [
           {
@@ -108,7 +112,8 @@ describe('damai-import.util', () => {
         ],
       },
     });
-    expect(items).toHaveLength(1);
-    expect(items[0].attendees).toBe(128);
+    expect(items).toHaveLength(0);
+    expect(skipped).toHaveLength(1);
+    expect(skipped[0].reason).toContain('blocked');
   });
 });

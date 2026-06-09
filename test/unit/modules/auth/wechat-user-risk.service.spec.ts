@@ -24,6 +24,13 @@ describe('WechatUserRiskService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (config.get as jest.Mock).mockImplementation((key: string) => {
+      if (key === 'auth.wechatMini.userRiskEnabled') return true;
+      if (key === 'auth.wechatMini.userRiskMaxRank') return 2;
+      if (key === 'auth.wechatMini.userRiskRecheckHours') return 24;
+      if (key === 'auth.wechatMini.appId') return 'wx-test-app';
+      return undefined;
+    });
     service = new WechatUserRiskService(config, accessToken);
     global.fetch = jest.fn();
   });
@@ -47,6 +54,21 @@ describe('WechatUserRiskService', () => {
       expect.stringContaining('/wxa/getuserriskrank'),
       expect.objectContaining({ method: 'POST' }),
     );
+  });
+
+  it('skips API when user risk is disabled', async () => {
+    (config.get as jest.Mock).mockImplementation((key: string) => {
+      if (key === 'auth.wechatMini.userRiskEnabled') return false;
+      return undefined;
+    });
+
+    const rank = await service.fetchAndAssertRiskRank({
+      openid: 'o-test',
+      clientIp: '1.2.3.4',
+    });
+
+    expect(rank).toBe(0);
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it('blocks rank above max', async () => {

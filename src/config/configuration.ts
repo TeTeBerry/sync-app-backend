@@ -88,6 +88,11 @@ export default () => ({
         10,
       ),
     },
+    agent: {
+      /** off | shadow (log compare) | on (agent-first for chat/DJ/festival) */
+      mode: cleanEnv(process.env.AI_AGENT_MODE, 'off'),
+      model: cleanEnv(process.env.AI_AGENT_MODEL, ''),
+    },
   },
 
   redis: {

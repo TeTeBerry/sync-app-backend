@@ -1,10 +1,10 @@
 import type { ConversationState } from '../conversation';
 import { ChatMessageDto } from '../../shared/chat';
 
-/** 助手已展示搭子推荐、等待用户决定是否自己发帖 */
+/** 助手已展示搭子推荐、等待用户决定是否继续搜索或补充需求 */
 export const RECOMMEND_GATE_MARKER = '【推荐搭子】';
 
-export const RECOMMEND_GATE_SUGGESTED_REPLIES = ['自己发帖'] as const;
+export const RECOMMEND_GATE_SUGGESTED_REPLIES = [] as const;
 
 /** 助手已请用户填写组队帖正文，等待下一条用户消息 */
 export const SELF_POST_COLLECT_BODY_MARKER = '【填写组队帖】';
@@ -18,7 +18,7 @@ export const REQUIRE_BUDDY_POST_SUGGESTED_REPLIES = ['组队发帖'] as const;
 export const MATCH_EMPTY_POST_BODY_PROMPT = '你可以：告诉我内容帮你发布帖子';
 
 const DECLINE_RECOMMEND_RE =
-  /^(自己发帖|发一条|发组队帖|没有合适的|没有合适|都不合适|不合适|不想用推荐|不想匹配|继续发帖|自己发|我来发帖)/;
+  /^(发一条|发组队帖|没有合适的|没有合适|都不合适|不合适|不想用推荐|不想匹配|继续发帖)/;
 
 export function isDeclineRecommendationsIntent(input: string): boolean {
   return DECLINE_RECOMMEND_RE.test(input.trim());
@@ -51,7 +51,7 @@ export function buildRecommendGateFoundReply(
     RECOMMEND_GATE_MARKER,
     `在「${activityLabel}」找到 ${matchCount} 条可能合适的组队帖，先看看是否想加入：`,
     '',
-    '若都不合适，回复「自己发帖」，我再帮你发一条招募帖。',
+    '若都不合适，可以告诉我你的具体需求，或点「组队发帖」填写。',
   ].join('\n');
 }
 

@@ -115,6 +115,27 @@ describe('AiService buddy flow', () => {
       .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
     matchActivity: jest.fn().mockResolvedValue(null),
   };
+  const djInfoService = {
+    answerFromChat: jest.fn().mockResolvedValue({
+      replyText: 'dj reply',
+      query: {
+        intent: 'artist_profile',
+        artistName: 'Marshmello',
+        styles: [],
+        scope: 'catalog',
+      },
+      suggestedReplies: [],
+    }),
+  };
+  const djInfoResolver = {
+    resolve: jest.fn(),
+  };
+  const chatAgentOrchestrator = {
+    getMode: jest.fn().mockReturnValue('off'),
+    shouldRunAgentFirst: jest.fn().mockReturnValue(false),
+    scheduleShadowComparison: jest.fn(),
+    runTurn: jest.fn().mockResolvedValue(null),
+  };
 
   const turnPipeline = new AiTurnPipeline(
     agenticReplyService as never,
@@ -124,6 +145,9 @@ describe('AiService buddy flow', () => {
     new AiStreamEventBuilder(),
     buddyContext as never,
     activityService as never,
+    djInfoService as never,
+    djInfoResolver as never,
+    chatAgentOrchestrator as never,
   );
 
   const service = new AiService(
@@ -245,7 +269,7 @@ describe('AiService buddy flow', () => {
         expect(events.some((e) => e.type === 'post_recommendations')).toBe(
           true,
         );
-        expect(events.some((e) => e.type === 'suggested_replies')).toBe(true);
+        expect(events.some((e) => e.type === 'suggested_replies')).toBe(false);
         const delta = events.find((e) => e.type === 'delta');
         expect(
           delta &&
@@ -272,7 +296,7 @@ describe('AiService buddy flow', () => {
         expect(events.some((e) => e.type === 'post_recommendations')).toBe(
           false,
         );
-        expect(events.some((e) => e.type === 'suggested_replies')).toBe(true);
+        expect(events.some((e) => e.type === 'suggested_replies')).toBe(false);
         const delta = events.find((e) => e.type === 'delta');
         expect(
           delta &&
@@ -283,7 +307,7 @@ describe('AiService buddy flow', () => {
     },
     {
       name: 'decline recommend → ask for custom body',
-      input: '自己发帖',
+      input: '没有合适的',
       intentKind: 'create_post' as const,
       matchResult: null,
       createResult: {
@@ -437,7 +461,7 @@ describe('AiService buddy flow', () => {
     },
     {
       name: 'decline recommend → pending_confirmation',
-      input: '自己发帖',
+      input: '没有合适的',
       intentKind: 'create_post' as const,
       matchResult: null,
       createResult: {

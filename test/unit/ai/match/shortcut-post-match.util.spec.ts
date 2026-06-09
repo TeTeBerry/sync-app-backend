@@ -6,7 +6,8 @@ import {
 describe('shortcut-post-match.util', () => {
   it('maps 拼卡 to carpool intent', () => {
     expect(intentsForShortcutTag('拼卡')).toEqual(['carpool']);
-    expect(intentsForShortcutTag('同路')).toEqual(['carpool']);
+    expect(intentsForShortcutTag('找拼卡')).toEqual(['carpool']);
+    expect(intentsForShortcutTag('同路')).toBeUndefined();
   });
 
   it('matches carpool posts for 拼卡 shortcut', () => {

@@ -4,9 +4,11 @@ describe('buddy-team-search-intent.util', () => {
   it('treats shortcut tags as team search', () => {
     expect(isBuddyTeamSearchIntent('找组队')).toBe(true);
     expect(isBuddyTeamSearchIntent('找拼房')).toBe(true);
-    expect(isBuddyTeamSearchIntent('找同路伙伴')).toBe(true);
+    expect(isBuddyTeamSearchIntent('找卡座')).toBe(true);
     expect(isBuddyTeamSearchIntent('找卡座')).toBe(true);
     expect(isBuddyTeamSearchIntent('组队队友')).toBe(true);
+    expect(isBuddyTeamSearchIntent('找同路伙伴')).toBe(false);
+    expect(isBuddyTeamSearchIntent('找拼车')).toBe(false);
     expect(isBuddyTeamSearchIntent('帮我dd')).toBe(true);
   });
 

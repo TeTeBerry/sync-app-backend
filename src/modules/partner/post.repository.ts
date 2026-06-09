@@ -195,7 +195,7 @@ export class PostRepository implements IPostRepository {
 
   async findByOwner(filter: PostQueryFilter): Promise<PostRecord[]> {
     return this.model
-      .find(buildOwnerFilter(filter))
+      .find({ ...buildOwnerFilter(filter), ...TEAM_POST_FEED_FILTER })
       .sort({ createdAt: -1 })
       .lean();
   }
@@ -246,6 +246,7 @@ export class PostRepository implements IPostRepository {
     return this.model.countDocuments({
       ...buildOwnerFilter(filter),
       status: 'completed',
+      ...TEAM_POST_FEED_FILTER,
     });
   }
 
@@ -254,7 +255,7 @@ export class PostRepository implements IPostRepository {
       .aggregate<{
         total: number;
       }>([
-        { $match: buildOwnerFilter(filter) },
+        { $match: { ...buildOwnerFilter(filter), ...TEAM_POST_FEED_FILTER } },
         { $group: { _id: null, total: { $sum: '$likes' } } },
       ])
       .exec();

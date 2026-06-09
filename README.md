@@ -40,6 +40,22 @@ npm run start:dev
 
 国内 Docker 拉取失败：`npm run infra:up:cn`
 
+### 云服务器 Docker 部署
+
+`.env.production` **不会随 git 上传**，须在服务器上单独创建：
+
+```bash
+cd ~/sync-app-backend
+cp .env.production.example .env.production   # 或 scp 本机已填好的文件
+nano .env.production                         # WECHAT_MINI_APP_ID、JWT_SECRET、QWEN_API_KEY 等
+
+sudo docker compose up -d --build
+sudo docker compose exec app printenv WECHAT_MINI_APP_ID   # 应有 wx...
+```
+
+`printenv` 为空 → 服务器上没有 `.env.production` 或文件里未写 `WECHAT_MINI_APP_ID`。  
+无 `docker` 权限时用 `sudo`；长期可把用户加入 `docker` 组后重新登录 SSH。
+
 向量检索（帖子匹配 / 行程 RAG）需 Chroma：`npm run infra:chroma`，并在 `.env` 设置 `CHROMA_URL=http://localhost:8000`。
 
 服务默认：`http://localhost:3000/api`
