@@ -8,7 +8,7 @@ export type ChatIntentKind =
   | 'activity_enter'
   | 'dj_info';
 
-export type ChatIntentSource = 'rule' | 'llm' | 'default';
+export type ChatIntentSource = 'rule' | 'llm' | 'default' | 'policy';
 
 export interface BuddySearchHintPayload {
   displayLabel: string;

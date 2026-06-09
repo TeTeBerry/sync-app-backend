@@ -26,7 +26,7 @@ describe('agent-context.builder', () => {
   it('mentions tools in system prompt', () => {
     const system = buildAgentSystemPrompt();
     expect(system).toContain('query_dj_info');
-    expect(system).toContain('similar_artists');
+    expect(system).toContain('类似风格');
     expect(system).toContain('get_festival_info');
     expect(system).toContain('get_activity_brief');
   });

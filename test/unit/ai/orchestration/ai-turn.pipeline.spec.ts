@@ -16,6 +16,10 @@ jest.mock('@src/ai/llm/llm.service', () => ({
 
 import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { AiTurnPipeline } from '@src/ai/orchestration/ai-turn.pipeline';
+import { PostingTurnOrchestrator } from '@src/ai/orchestration/posting-turn.orchestrator';
+import { AgentFirstTurnHandler } from '@src/ai/orchestration/handlers/agent-first-turn.handler';
+import { DjInfoTurnHandler } from '@src/ai/orchestration/handlers/dj-info-turn.handler';
+import { TurnHandlerRegistry } from '@src/ai/orchestration/handlers/turn-handler.registry';
 import { AiStreamEventBuilder } from '@src/ai/presentation/ai-sse.builder';
 import {
   RECOMMEND_GATE_MARKER,
@@ -81,17 +85,33 @@ describe('AiTurnPipeline homepage activity gating', () => {
     runTurn: jest.fn().mockResolvedValue(null),
   };
 
+  const sseBuilder = new AiStreamEventBuilder();
+  const postingTurnOrchestrator = new PostingTurnOrchestrator(
+    postIntentService as never,
+    buddyContext as never,
+    sseBuilder,
+    agenticReplyService as never,
+  );
+  const agentFirstTurnHandler = new AgentFirstTurnHandler(
+    chatAgentOrchestrator as never,
+    djInfoResolver as never,
+    sseBuilder,
+  );
+  const turnHandlerRegistry = new TurnHandlerRegistry(
+    new DjInfoTurnHandler(djInfoService as never, sseBuilder),
+  );
+
   const pipeline = new AiTurnPipeline(
     agenticReplyService as never,
     postIntentService as never,
     userProfileAgent as never,
     intentRouter as never,
-    new AiStreamEventBuilder(),
+    sseBuilder,
     buddyContext as never,
     activityService as never,
-    djInfoService as never,
-    djInfoResolver as never,
-    chatAgentOrchestrator as never,
+    agentFirstTurnHandler,
+    turnHandlerRegistry,
+    postingTurnOrchestrator,
   );
 
   const baseDto = {

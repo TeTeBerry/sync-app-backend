@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable } from '@nestjs/common';
+import { DashscopeChatClient } from '../llm/dashscope-chat.client';
 
 interface OpenAiToolCall {
   id?: string;
@@ -10,19 +10,11 @@ interface OpenAiToolCall {
   };
 }
 
-interface OpenAiChatMessage {
+export interface OpenAiChatMessage {
   role: string;
   content?: string | null;
   tool_calls?: OpenAiToolCall[];
   tool_call_id?: string;
-}
-
-interface OpenAiChatCompletionResponse {
-  choices?: Array<{
-    message?: OpenAiChatMessage;
-    finish_reason?: string;
-  }>;
-  error?: { message?: string };
 }
 
 function isQwenHybridThinkingModel(model: string): boolean {
@@ -31,18 +23,12 @@ function isQwenHybridThinkingModel(model: string): boolean {
 
 @Injectable()
 export class AgentLlmService {
-  private readonly logger = new Logger(AgentLlmService.name);
-  private readonly apiKey: string;
   private readonly model: string;
   readonly enabled: boolean;
 
-  constructor(private readonly config: ConfigService) {
-    this.apiKey = this.config.get<string>('llm.apiKey') ?? '';
-    this.enabled = Boolean(this.apiKey && this.apiKey !== 'MISSING_API_KEY');
-    this.model =
-      this.config.get<string>('ai.agent.model') ??
-      this.config.get<string>('llm.jsonModel') ??
-      'qwen-plus';
+  constructor(private readonly dashscope: DashscopeChatClient) {
+    this.enabled = this.dashscope.enabled;
+    this.model = this.dashscope.resolveAgentModel();
   }
 
   async chatWithTools(params: {
@@ -74,46 +60,25 @@ export class AgentLlmService {
       body.enable_thinking = false;
     }
 
-    const controller = new AbortController();
-    const timer = setTimeout(
-      () => controller.abort(),
-      params.timeoutMs ?? 25_000,
-    );
+    const data = await this.dashscope.postChatCompletions({
+      body,
+      timeoutMs: params.timeoutMs,
+    });
 
-    try {
-      const response = await fetch(
-        'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        },
-      );
-
-      const data = (await response.json()) as OpenAiChatCompletionResponse;
-      if (!response.ok) {
-        throw new Error(data.error?.message ?? `DashScope ${response.status}`);
-      }
-
-      return data.choices?.[0]?.message ?? null;
-    } catch (error) {
-      this.logger.warn(
-        `chatWithTools failed: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+    if (!data) {
       return null;
-    } finally {
-      clearTimeout(timer);
     }
+
+    const message = data.choices?.[0]?.message;
+    if (!message) {
+      return null;
+    }
+
+    return message as unknown as OpenAiChatMessage;
   }
 }
 
-export type { OpenAiChatMessage, OpenAiToolCall };
+export type { OpenAiToolCall };
 
 export function parseToolCallArgs(raw?: string): Record<string, unknown> {
   if (!raw?.trim()) {

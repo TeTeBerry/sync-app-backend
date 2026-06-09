@@ -8,31 +8,23 @@ import {
   UserProfileAgent,
   type UserProfileSyncResult,
 } from '../agents/user-profile.agent';
-import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
-import { isExplicitReplacePostIntent } from '../conversation/existing-post-guidance.util';
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
+import { mustForceCreatePostIntent } from '../policy/chat-turn-policy';
+import { PostingTurnOrchestrator } from './posting-turn.orchestrator';
+import { AgentFirstTurnHandler } from './handlers/agent-first-turn.handler';
+import { TurnHandlerRegistry } from './handlers/turn-handler.registry';
+import type {
+  AiTurnTimings,
+  TurnHandlerContext,
+} from './handlers/turn-handler.types';
 import {
   isActivityEnterNameInput,
   isAwaitingActivityEnterSelection,
   toRecommendedActivityCard,
 } from '../utils/activity-enter.util';
 import { resolveActivityId } from '../utils/activity-id.util';
-import {
-  isHomeFestivalShortcutInput,
-  resolveHomeFestivalShortcutCode,
-} from '../utils/festival-shortcut.util';
-import { isTravelGuideIntent } from '../utils/activity-guide.util';
-import { shouldSkipActivityScopedBuddyRecommend } from '../buddy/activity-scope-guard.util';
+import { resolveHomeFestivalShortcutCode } from '../utils/festival-shortcut.util';
 import { BuddyContextService } from '../buddy/buddy-context.service';
-import { buildDjInfoSuggestedReplies } from '../dj/dj-info-suggested-replies.util';
-import { DjInfoResolverService } from '../dj/dj-info-resolver.service';
-import { DjInfoService } from '../dj/dj-info.service';
-import { ChatAgentOrchestratorService } from '../agent/chat-agent-orchestrator.service';
-import type { ChatAgentTurnResult } from '../agent/agent.types';
-import {
-  isAwaitingSelfPostBodyCollection,
-  isDeclineRecommendationsIntent,
-} from '../gate/recommend-gate.util';
 import type { ConversationState } from '../conversation';
 import { enterCollectPostBodyState } from '../conversation';
 import { logAiTurn } from '../utils/log-ai-turn.util';
@@ -44,13 +36,7 @@ import {
   type ReplySink,
 } from '../presentation/ai-sse.builder';
 
-export interface AiTurnTimings {
-  ms_intent?: number;
-  ms_profile?: number;
-  ms_buddy?: number;
-  ms_match?: number;
-  ms_agent?: number;
-}
+export type { AiTurnTimings } from './handlers/turn-handler.types';
 
 export interface AiTurnResult {
   events: AiStreamEvent[];
@@ -73,9 +59,9 @@ export class AiTurnPipeline {
     private readonly sseBuilder: AiStreamEventBuilder,
     private readonly buddyContext: BuddyContextService,
     private readonly activityService: ActivityService,
-    private readonly djInfoService: DjInfoService,
-    private readonly djInfoResolver: DjInfoResolverService,
-    private readonly chatAgentOrchestrator: ChatAgentOrchestratorService,
+    private readonly agentFirstTurnHandler: AgentFirstTurnHandler,
+    private readonly turnHandlerRegistry: TurnHandlerRegistry,
+    private readonly postingTurnOrchestrator: PostingTurnOrchestrator,
   ) {}
 
   async runTurn(
@@ -103,10 +89,11 @@ export class AiTurnPipeline {
     const timings: AiTurnTimings = {};
 
     const intentStartedAt = Date.now();
-    const forceCreatePostIntent =
-      conversationState.flow === 'collect_post_body' ||
-      isAwaitingSelfPostBodyCollection(fullMessages, conversationState) ||
-      isDeclineRecommendationsIntent(lastInput.trim());
+    const forceCreatePostIntent = mustForceCreatePostIntent(
+      lastInput,
+      conversationState,
+      fullMessages,
+    );
 
     const routed = forceCreatePostIntent
       ? { kind: 'create_post' as const, source: 'rule' as const }
@@ -129,62 +116,32 @@ export class AiTurnPipeline {
       ms_intent: timings.ms_intent,
     });
 
-    this.chatAgentOrchestrator.scheduleShadowComparison({
+    const handlerCtx: TurnHandlerContext = {
       dto,
       messages: fullMessages,
       input: lastInput,
-      conversationState,
+      sink,
+      routed,
+      profileSync: null,
+      timings,
       requestId,
       sessionId,
-      legacyIntent: routed,
-    });
+    };
 
-    if (
-      this.chatAgentOrchestrator.getMode() === 'on' &&
-      this.chatAgentOrchestrator.shouldRunAgentFirst(
-        dto,
-        lastInput,
-        conversationState,
-      )
-    ) {
-      const agentStartedAt = Date.now();
-      const agentResult = await this.chatAgentOrchestrator.runTurn({
-        dto,
-        messages: fullMessages,
-        input: lastInput,
-        conversationState,
-        requestId,
-        sessionId,
-        legacyIntent: routed,
-      });
-      timings.ms_agent = Date.now() - agentStartedAt;
+    this.agentFirstTurnHandler.scheduleShadowComparison(handlerCtx);
 
-      if (agentResult?.replyText) {
-        logAiTurn(this.logger, {
-          event: 'agent_turn',
-          requestId,
-          sessionId,
-          intent: routed.kind,
-          intentSource: 'agent',
-          agentTools: agentResult.toolsUsed,
-          ms_agent: timings.ms_agent,
-        });
-
-        const events = await this.collectAgentReply(
-          agentResult,
-          dto,
-          fullMessages,
-          lastInput,
-          sink,
-        );
-        return {
-          events,
-          assistantReply: sink.getReply(),
-          conversationState: sink.getState(),
-          intent: routed.kind,
-          timings,
-        };
+    const agentFirst = await this.agentFirstTurnHandler.tryRun(handlerCtx);
+    if (agentFirst) {
+      if (agentFirst.timingsPatch?.ms_agent != null) {
+        timings.ms_agent = agentFirst.timingsPatch.ms_agent;
       }
+      return {
+        events: agentFirst.events,
+        assistantReply: sink.getReply(),
+        conversationState: sink.getState(),
+        intent: routed.kind,
+        timings,
+      };
     }
 
     const profileStartedAt = Date.now();
@@ -195,31 +152,24 @@ export class AiTurnPipeline {
       dto.actor,
     );
     timings.ms_profile = Date.now() - profileStartedAt;
+    handlerCtx.profileSync = profileSync;
 
     let events: AiStreamEvent[] = [];
     const buddyStartedAt = Date.now();
 
     switch (routed.kind) {
       case 'search_posts':
-        events = await this.collectMatchOnly(
-          dto,
-          fullMessages,
-          lastInput,
-          sink,
-          routed,
-          profileSync,
-          timings,
-        );
+        events = await this.collectMatchOnly(handlerCtx);
         break;
       case 'create_post':
-        events = await this.collectBuddyIntentFlow(
+        events = await this.postingTurnOrchestrator.run({
           dto,
-          fullMessages,
-          lastInput,
+          messages: fullMessages,
+          input: lastInput,
           sink,
           profileSync,
           timings,
-        );
+        });
         break;
       case 'quick_reply':
         events = await this.collectDeterministicOnly(
@@ -240,18 +190,21 @@ export class AiTurnPipeline {
           );
         }
         break;
-      case 'dj_info':
-        events = await this.collectDjInfo(dto, fullMessages, lastInput, sink);
+      case 'dj_info': {
+        const djEvents =
+          await this.turnHandlerRegistry.runSpecializedIntent(handlerCtx);
+        events = djEvents ?? [];
         break;
+      }
       default:
-        events = await this.collectBuddyIntentFlow(
+        events = await this.postingTurnOrchestrator.run({
           dto,
-          fullMessages,
-          lastInput,
+          messages: fullMessages,
+          input: lastInput,
           sink,
           profileSync,
           timings,
-        );
+        });
         break;
     }
 
@@ -276,7 +229,6 @@ export class AiTurnPipeline {
       return null;
     }
 
-    // Activity shortcut chips (找组队/找拼房/找卡座等) only need post search — skip profile LLM.
     if (kind === 'search_posts' && isAiShortcutTag(input)) {
       return null;
     }
@@ -289,17 +241,13 @@ export class AiTurnPipeline {
   }
 
   private async collectMatchOnly(
-    dto: ChatRequestDto,
-    fullMessages: ChatMessageDto[],
-    lastInput: string,
-    sink: ReplySink,
-    routed: { buddySearchHint?: BuddySearchHintPayload },
-    profileSync: UserProfileSyncResult | null,
-    timings: AiTurnTimings,
+    ctx: TurnHandlerContext,
   ): Promise<AiStreamEvent[]> {
+    const { dto, messages, input, sink, routed, profileSync, timings } = ctx;
+
     const requireBuddy =
       await this.buddyContext.maybeRequireBuddyPostBeforeTeamSearch(
-        lastInput,
+        input,
         dto.activityLegacyId,
         dto.actor,
       );
@@ -313,8 +261,8 @@ export class AiTurnPipeline {
 
     const matchStart = Date.now();
     const matched = await this.postIntentService.tryMatchPostsFromChat({
-      messages: fullMessages,
-      input: lastInput,
+      messages,
+      input,
       activityLegacyId: dto.activityLegacyId,
       actor: dto.actor,
       buddySearchHint: routed.buddySearchHint,
@@ -326,7 +274,7 @@ export class AiTurnPipeline {
     if (matched) {
       const activityLabel = matched.activityLabel ?? '本活动';
       const useRecommendGate =
-        isAiShortcutTag(lastInput) && dto.activityLegacyId != null;
+        isAiShortcutTag(input) && dto.activityLegacyId != null;
 
       if (useRecommendGate && matched.postCards.length) {
         return this.sseBuilder.buildRecommendGateFoundEvents(
@@ -369,142 +317,7 @@ export class AiTurnPipeline {
       return events;
     }
 
-    return this.collectDeterministicOnly(dto, fullMessages, lastInput, sink);
-  }
-
-  private async collectBuddyIntentFlow(
-    dto: ChatRequestDto,
-    fullMessages: ChatMessageDto[],
-    lastInput: string,
-    sink: ReplySink,
-    profileSync: UserProfileSyncResult | null,
-    timings: AiTurnTimings,
-  ): Promise<AiStreamEvent[]> {
-    const effectiveActivityLegacyId =
-      await this.resolveEffectiveActivityLegacyId(dto, fullMessages, lastInput);
-
-    if (
-      this.shouldSkipRecommendBeforeCreate(
-        fullMessages,
-        lastInput,
-        effectiveActivityLegacyId,
-        sink.getState(),
-      )
-    ) {
-      const postEvents = await this.applyPostAttempt(
-        dto,
-        fullMessages,
-        lastInput,
-        sink,
-        effectiveActivityLegacyId,
-      );
-      if (postEvents.length > 0) return postEvents;
-      return this.collectDeterministicOnly(dto, fullMessages, lastInput, sink);
-    }
-
-    const requireBuddy =
-      await this.buddyContext.maybeRequireBuddyPostBeforeTeamSearch(
-        lastInput,
-        effectiveActivityLegacyId,
-        dto.actor,
-      );
-    if (requireBuddy.required) {
-      return this.sseBuilder.buildRequireBuddyPostFirstEvents(
-        sink,
-        effectiveActivityLegacyId,
-        requireBuddy.activityLabel,
-      );
-    }
-
-    const matchStart = Date.now();
-    const recommended =
-      await this.postIntentService.tryProactiveRecommendBeforeCreate({
-        messages: fullMessages,
-        input: lastInput,
-        activityLegacyId: effectiveActivityLegacyId,
-        actor: dto.actor,
-        conversationState: sink.getState(),
-        profileSync,
-      });
-    timings.ms_match = Date.now() - matchStart;
-
-    if (recommended?.postCards.length) {
-      const activityLabel =
-        recommended.postCards[0]?.eventTitle ??
-        recommended.activityLabel ??
-        '本活动';
-      return this.sseBuilder.buildRecommendGateFoundEvents(
-        sink,
-        effectiveActivityLegacyId,
-        activityLabel,
-        recommended.postCards,
-        recommended.postCards.length,
-        recommended.degraded,
-      );
-    }
-
-    if (recommended && recommended.postCards.length === 0) {
-      const activityLabel = recommended.activityLabel ?? '本活动';
-      return this.sseBuilder.buildRecommendGateEmptyEvents(
-        sink,
-        effectiveActivityLegacyId,
-        activityLabel,
-      );
-    }
-
-    const postEvents = await this.applyPostAttempt(
-      dto,
-      fullMessages,
-      lastInput,
-      sink,
-      effectiveActivityLegacyId,
-    );
-    if (postEvents.length > 0) return postEvents;
-
-    return this.collectDeterministicOnly(dto, fullMessages, lastInput, sink);
-  }
-
-  private async resolveEffectiveActivityLegacyId(
-    dto: ChatRequestDto,
-    messages: ChatMessageDto[],
-    input: string,
-  ): Promise<number | undefined> {
-    if (dto.activityLegacyId != null && !Number.isNaN(dto.activityLegacyId)) {
-      return dto.activityLegacyId;
-    }
-    if (isHomeFestivalShortcutInput(input.trim())) {
-      return undefined;
-    }
-    return this.buddyContext.resolveActivityLegacyIdFromChat(messages, input);
-  }
-
-  private shouldSkipRecommendBeforeCreate(
-    messages: ChatMessageDto[],
-    lastInput: string,
-    effectiveActivityLegacyId: number | undefined,
-    state: ConversationState,
-  ): boolean {
-    const trimmed = lastInput.trim();
-    if (effectiveActivityLegacyId == null) return true;
-    if (isTravelGuideIntent(trimmed)) return true;
-    if (
-      shouldSkipActivityScopedBuddyRecommend(trimmed, effectiveActivityLegacyId)
-    ) {
-      return true;
-    }
-    if (isPublishConfirmIntent(trimmed)) return true;
-    if (isExplicitReplacePostIntent(trimmed)) return true;
-    if (isDeclineRecommendationsIntent(trimmed)) return true;
-    if (
-      state.flow === 'collect_post_body' ||
-      state.flow === 'publish_confirm'
-    ) {
-      return true;
-    }
-    if (isAwaitingSelfPostBodyCollection(messages, state)) {
-      return true;
-    }
-    return false;
+    return this.collectDeterministicOnly(dto, messages, input, sink);
   }
 
   private async collectActivityEnter(
@@ -542,61 +355,6 @@ export class AiTurnPipeline {
     return this.activityService.matchActivity(input);
   }
 
-  private async collectAgentReply(
-    agentResult: ChatAgentTurnResult,
-    dto: ChatRequestDto,
-    fullMessages: ChatMessageDto[],
-    lastInput: string,
-    sink: ReplySink,
-  ): Promise<AiStreamEvent[]> {
-    const replyText = agentResult.replyText;
-    sink.setReply(replyText);
-    const events: AiStreamEvent[] = [{ type: 'delta', content: replyText }];
-
-    if (agentResult.toolsUsed.includes('query_dj_info')) {
-      const toolCall = agentResult.toolCalls.find(
-        (call) => call.name === 'query_dj_info',
-      );
-      const query = await this.djInfoResolver.resolve({
-        messages: fullMessages,
-        input: lastInput,
-        activityLegacyId: dto.activityLegacyId,
-        toolArgs: toolCall?.args,
-      });
-      const suggested = this.sseBuilder.djInfoSuggestedRepliesEvent(
-        buildDjInfoSuggestedReplies({
-          query,
-          activityLegacyId: dto.activityLegacyId,
-        }),
-      );
-      if (suggested) {
-        events.push(suggested);
-      }
-    }
-
-    return events;
-  }
-
-  private async collectDjInfo(
-    dto: ChatRequestDto,
-    fullMessages: ChatMessageDto[],
-    lastInput: string,
-    sink: ReplySink,
-  ): Promise<AiStreamEvent[]> {
-    const { replyText, suggestedReplies } =
-      await this.djInfoService.answerFromChat(lastInput, dto.activityLegacyId, {
-        messages: fullMessages,
-      });
-    sink.setReply(replyText);
-    const events: AiStreamEvent[] = [{ type: 'delta', content: replyText }];
-    const suggested =
-      this.sseBuilder.djInfoSuggestedRepliesEvent(suggestedReplies);
-    if (suggested) {
-      events.push(suggested);
-    }
-    return events;
-  }
-
   private async collectDeterministicOnly(
     dto: ChatRequestDto,
     fullMessages: ChatMessageDto[],
@@ -626,26 +384,5 @@ export class AiTurnPipeline {
       events.push(this.sseBuilder.conversationPatchEvent(sink));
     }
     return events;
-  }
-
-  private async applyPostAttempt(
-    dto: ChatRequestDto,
-    fullMessages: ChatMessageDto[],
-    lastInput: string,
-    sink: ReplySink,
-    effectiveActivityLegacyId?: number,
-  ): Promise<AiStreamEvent[]> {
-    const postAttempt = await this.postIntentService.tryCreatePostFromChat({
-      messages: fullMessages,
-      input: lastInput,
-      actor: dto.actor,
-      activityLegacyId: effectiveActivityLegacyId ?? dto.activityLegacyId,
-      image: dto.image,
-      images: dto.images,
-      conversationState: sink.getState(),
-      onStateChange: (state) => sink.setState(state),
-    });
-
-    return this.sseBuilder.eventsFromPostAttempt(postAttempt, sink);
   }
 }

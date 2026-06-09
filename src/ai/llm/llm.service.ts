@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatAlibabaTongyiDashScope } from './chat-alibaba-tongyi-dashscope';
+import { DashscopeChatClient } from './dashscope-chat.client';
 
 const MULTIMODAL_API_URL =
   'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
@@ -44,9 +45,12 @@ export class LlmService {
   public readonly enabled: boolean;
   public readonly visionEnabled: boolean;
 
-  constructor(private readonly config: ConfigService) {
-    this.apiKey = this.config.get<string>('llm.apiKey') ?? '';
-    this.enabled = Boolean(this.apiKey && this.apiKey !== 'MISSING_API_KEY');
+  constructor(
+    private readonly config: ConfigService,
+    private readonly dashscope: DashscopeChatClient,
+  ) {
+    this.apiKey = this.dashscope.apiKey;
+    this.enabled = this.dashscope.enabled;
     this.visionEnabled = this.enabled;
     this.vlModel = this.config.get<string>('llm.vlModel') ?? 'qwen-vl-plus';
     this.defaultModel = this.config.get<string>('llm.model') ?? 'qwen-max';
