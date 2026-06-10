@@ -6,12 +6,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** Sync with `itinerary.seed.ts` storm fallback */
 export const STORM_LINEUP_ARTIST_NAMES = [
-  'BLONDEX',
+  'CRUSH',
+  'CRUBBIXZ',
+  'TIYA',
   'GHENGAR (GHASTLY)',
+  'BLONDEX',
   'ANDY C',
   'EXCISION',
   'MARSHMELLO',
-  'VIDOJEAN (VJ X OL)',
+  'WHYBEATZ',
+  'YOHAN',
+  'VIDOJEAN',
   'JULIAN JORDAN',
   'ODD MOB',
   'ERIC PRYDZ',
@@ -98,7 +103,15 @@ export const DISCOGS_LINEUP_ARTIST_IDS = {
 };
 
 /** Skip Discogs crawl — no reliable match; itinerary keeps seed genreLabel. */
-export const SEED_ONLY_LINEUP_ARTISTS = new Set(['&FRIENDS', 'PETERBLUE', 'RØZ']);
+export const SEED_ONLY_LINEUP_ARTISTS = new Set([
+  '&FRIENDS',
+  'PETERBLUE',
+  'RØZ',
+  /** Discogs homonyms — keep itinerary seed genreLabel */
+  'CRUSH',
+  'TIYA',
+  'YOHAN',
+]);
 
 /** Discogs search aliases for hard-to-match EDC lineup display names. */
 export const DISCOGS_LINEUP_SEARCH_ALIASES = {
@@ -113,6 +126,8 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   'WUJACKERS': 'Wukong',
   'GHENGAR (GHASTLY)': 'Ghengar',
   'VIDOJEAN (VJ X OL)': 'Vidojean',
+  VIDOJEAN: 'Vidojean',
+  WHYBEATZ: 'WhyBeatz',
 };
 
 /** Lineup display name → normalized keys of acceptable `djs.name` matches. */
@@ -122,6 +137,9 @@ export const LINEUP_COVERAGE_NAME_KEYS = {
   'WUJACKERS': ['wukong', 'bassjackers'],
   'GHENGAR (GHASTLY)': ['ghengar', 'ghastly'],
   'VIDOJEAN (VJ X OL)': ['vidojean'],
+  VIDOJEAN: ['vidojean'],
+  WHYBEATZ: ['whybeatz'],
+  CRUBBIXZ: ['crubbixz'],
 };
 
 export function normalizeArtistNameKey(name) {

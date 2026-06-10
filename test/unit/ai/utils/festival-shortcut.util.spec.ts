@@ -30,6 +30,11 @@ describe('festival-shortcut.util', () => {
       'BLONDEX',
       'GHENGAR',
       'Vidojean',
+      'CRUSH',
+      'CRUBBIXZ',
+      'TIYA',
+      'WHYBEATZ',
+      'YOHAN',
     ]);
   });
 

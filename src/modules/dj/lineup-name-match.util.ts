@@ -11,6 +11,9 @@ export const SEED_ONLY_LINEUP_ARTISTS = new Set([
   '&FRIENDS',
   'PETERBLUE',
   'RØZ',
+  'CRUSH',
+  'TIYA',
+  'YOHAN',
 ]);
 
 export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
@@ -24,6 +27,8 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   WUJACKERS: 'Wukong',
   'GHENGAR (GHASTLY)': 'Ghengar',
   'VIDOJEAN (VJ X OL)': 'Vidojean',
+  VIDOJEAN: 'Vidojean',
+  WHYBEATZ: 'WhyBeatz',
 };
 
 export const LINEUP_COVERAGE_NAME_KEYS: Record<string, string[]> = {
@@ -32,6 +37,9 @@ export const LINEUP_COVERAGE_NAME_KEYS: Record<string, string[]> = {
   WUJACKERS: ['wukong', 'bassjackers'],
   'GHENGAR (GHASTLY)': ['ghengar', 'ghastly'],
   'VIDOJEAN (VJ X OL)': ['vidojean'],
+  VIDOJEAN: ['vidojean'],
+  WHYBEATZ: ['whybeatz'],
+  CRUBBIXZ: ['crubbixz'],
 };
 
 export function expandFestivalArtistName(lineupName: string): string[] {

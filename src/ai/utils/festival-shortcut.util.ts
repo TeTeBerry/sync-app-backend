@@ -14,6 +14,11 @@ export const STORM_FESTIVAL_ARTISTS = [
   'BLONDEX',
   'GHENGAR',
   'Vidojean',
+  'CRUSH',
+  'CRUBBIXZ',
+  'TIYA',
+  'WHYBEATZ',
+  'YOHAN',
 ] as const;
 
 export type HomeFestivalShortcutCode =
