@@ -31,7 +31,6 @@ export class UserProfileSyncService {
       existing = {
         city: me.city,
         favorGenres: me.favorGenres,
-        likeMate: me.likeMate,
         budgetLevel: me.budgetLevel,
       };
     } catch {
@@ -48,7 +47,6 @@ export class UserProfileSyncService {
         {
           city: merged.city,
           favorGenres: merged.favorGenres,
-          likeMate: merged.likeMate,
           budgetLevel: merged.budgetLevel,
         },
         actor,
@@ -59,7 +57,6 @@ export class UserProfileSyncService {
         clientUserId: actor.clientUserId,
         city: merged.city,
         favorGenres: merged.favorGenres,
-        likeMate: merged.likeMate,
         budgetLevel: merged.budgetLevel,
       });
       return true;

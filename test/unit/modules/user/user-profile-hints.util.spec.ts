@@ -8,16 +8,14 @@ import {
 } from '@src/modules/user/user-profile-hints.util';
 
 describe('user-profile-hints.util', () => {
-  it('buildBuddyPostProfileHints maps location and buddy intent', () => {
+  it('buildBuddyPostProfileHints maps location from post', () => {
     const hints = buildBuddyPostProfileHints({
       body: '找组队，6.13-6.14，上海，2人',
       location: '上海',
       tags: ['#组队'],
-      contentTypes: ['team'],
     });
 
     expect(hints.city).toBe('上海');
-    expect(hints.likeMate).toBe(true);
   });
 
   it('extracts favorGenres from post body', () => {
@@ -25,7 +23,6 @@ describe('user-profile-hints.util', () => {
       body: '上海出发，喜欢 techno 和 house',
       location: '上海',
       tags: ['#组队'],
-      contentTypes: ['team'],
     });
 
     expect(hints.favorGenres).toEqual(
@@ -55,12 +52,10 @@ describe('user-profile-hints.util', () => {
       departure: '上海虹桥站',
       departureCity: '上海市',
       budgetTier: 'comfort',
-      headcount: 2,
     });
 
     expect(hints.city).toBe('上海');
     expect(hints.budgetLevel).toBe('high');
-    expect(hints.likeMate).toBe(true);
   });
 
   it('travelGuideBudgetTierToProfileLevel maps tiers', () => {

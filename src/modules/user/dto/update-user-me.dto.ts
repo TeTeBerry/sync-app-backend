@@ -45,10 +45,6 @@ export class UpdateUserMeDto {
 
   @IsOptional()
   @IsBoolean()
-  likeMate?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
   notificationsEnabled?: boolean;
 
   @IsOptional()

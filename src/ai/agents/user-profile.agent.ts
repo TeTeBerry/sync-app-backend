@@ -23,7 +23,6 @@ import type { UserMatchProfile as AgentUserMatchProfile } from './agent.types';
 interface LlmProfileExtract {
   city?: string;
   favorGenres?: string[];
-  likeMate?: boolean;
   budgetLevel?: string;
 }
 
@@ -37,7 +36,6 @@ const PROFILE_EXTRACT_SYSTEM = [
   '只输出 JSON，字段：',
   '- city: 用户所在或出发城市（中文，如「上海」）',
   '- favorGenres: 常玩电音风格字符串数组，如 ["EDM","Techno"]',
-  '- likeMate: 是否愿意与搭子结伴同行（boolean）',
   '- budgetLevel: 预算档位 low | medium | high',
   '若对话未提及某字段，省略该字段，不要猜测。',
 ].join('\n');
@@ -53,10 +51,6 @@ function mergeLlmExtract(
 
   const genres = normalizeProfileGenres(extracted.favorGenres);
   if (genres.length) hints.favorGenres = genres;
-
-  if (extracted.likeMate != null) {
-    hints.likeMate = Boolean(extracted.likeMate);
-  }
 
   const budgetLevel = normalizeProfileBudgetLevel(extracted.budgetLevel);
   if (budgetLevel) hints.budgetLevel = budgetLevel;
@@ -126,7 +120,6 @@ export class UserProfileAgent {
       existing = {
         city: me.city,
         favorGenres: me.favorGenres,
-        likeMate: me.likeMate,
         budgetLevel: me.budgetLevel,
       };
     } catch {
@@ -147,7 +140,6 @@ export class UserProfileAgent {
         {
           city: profile.city,
           favorGenres: profile.favorGenres,
-          likeMate: profile.likeMate,
           budgetLevel: profile.budgetLevel,
         },
         actor,
@@ -161,7 +153,6 @@ export class UserProfileAgent {
     return {
       city: profile.city,
       favorGenres: profile.favorGenres,
-      likeMate: profile.likeMate,
       budgetLevel: profile.budgetLevel,
     };
   }

@@ -102,7 +102,6 @@ export class TravelGuideGenerationService {
         departure: dto.departure,
         departureCity: dto.departureCity,
         budgetTier: dto.budgetTier,
-        headcount: dto.headcount,
       });
       return { plan: cachedPlan };
     }
@@ -152,7 +151,6 @@ export class TravelGuideGenerationService {
       departure: dto.departure,
       departureCity: dto.departureCity,
       budgetTier: dto.budgetTier,
-      headcount: dto.headcount,
     });
 
     return { plan };

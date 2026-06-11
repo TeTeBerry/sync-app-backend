@@ -47,7 +47,6 @@ export interface AgentParseInput {
 export interface UserMatchProfile {
   city?: string;
   favorGenres?: string[];
-  likeMate?: boolean;
   budgetLevel?: string;
 }
 

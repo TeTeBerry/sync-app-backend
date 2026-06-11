@@ -39,9 +39,6 @@ export class User {
   @Prop()
   budgetLevel: string;
 
-  @Prop({ default: false })
-  likeMate: boolean;
-
   @Prop({ default: true })
   notificationsEnabled: boolean;
 

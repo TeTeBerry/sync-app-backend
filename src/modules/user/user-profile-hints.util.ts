@@ -6,7 +6,6 @@ import {
 export interface UserMatchProfile {
   city?: string;
   favorGenres?: string[];
-  likeMate?: boolean;
   budgetLevel?: string;
 }
 
@@ -113,8 +112,6 @@ const PROFILE_GENRE_CHINESE_MATCHERS: ReadonlyArray<{
   { pattern: /技术屋|tech house/i, label: 'Tech House' },
 ];
 
-const BUDDY_MATE_RE = /找组队|找搭子|结伴|组队|拼房|同路|同行|dd/i;
-
 export function normalizeProfileGenres(raw?: string[]): string[] {
   const genres = new Set<string>();
   for (const item of raw ?? []) {
@@ -199,10 +196,6 @@ export function mergeUserProfileHints(
     );
   }
 
-  if (hints.likeMate != null) {
-    merged.likeMate = Boolean(hints.likeMate);
-  }
-
   const budgetLevel = normalizeProfileBudgetLevel(hints.budgetLevel);
   if (budgetLevel) merged.budgetLevel = budgetLevel;
 
@@ -227,8 +220,6 @@ export function userMatchProfilesEqual(
     .join(',');
   if (leftGenres !== rightGenres) return false;
 
-  if (Boolean(left?.likeMate) !== Boolean(right.likeMate)) return false;
-
   const leftBudget = left?.budgetLevel?.trim() ?? '';
   const rightBudget = right.budgetLevel?.trim() ?? '';
   return leftBudget === rightBudget;
@@ -238,7 +229,6 @@ export function hasUserMatchProfileSignal(profile: UserMatchProfile): boolean {
   return Boolean(
     profile.city?.trim() ||
     (profile.favorGenres?.length ?? 0) > 0 ||
-    profile.likeMate != null ||
     profile.budgetLevel,
   );
 }
@@ -249,7 +239,6 @@ export function hasUserMatchProfileHints(
   return Boolean(
     hints.city?.trim() ||
     (hints.favorGenres?.length ?? 0) > 0 ||
-    hints.likeMate != null ||
     hints.budgetLevel,
   );
 }
@@ -259,7 +248,6 @@ export function buildBuddyPostProfileHints(params: {
   location?: string;
   departureCity?: string;
   tags?: string[];
-  contentTypes?: string[];
 }): UserMatchProfileHints {
   const body = params.body.trim();
   const tagText = (params.tags ?? []).join(' ');
@@ -270,18 +258,9 @@ export function buildBuddyPostProfileHints(params: {
 
   const favorGenres = extractProfileGenresFromText(`${body}\n${tagText}`);
 
-  const contentTypes = params.contentTypes ?? [];
-  const wantsBuddy =
-    contentTypes.includes('team') ||
-    contentTypes.includes('accommodation') ||
-    contentTypes.includes('carpool') ||
-    /#?组队|#?拼房|#?同路|找组队|找搭子/.test(tagText) ||
-    BUDDY_MATE_RE.test(body);
-
   const hints: UserMatchProfileHints = {};
   if (city) hints.city = city;
   if (favorGenres.length) hints.favorGenres = favorGenres;
-  if (wantsBuddy) hints.likeMate = true;
 
   return hints;
 }
@@ -290,7 +269,6 @@ export function buildTravelGuideProfileHints(params: {
   departure: string;
   departureCity?: string;
   budgetTier: 'economy' | 'standard' | 'comfort';
-  headcount: number;
 }): UserMatchProfileHints {
   const city =
     normalizeCityName(params.departureCity) ??
@@ -301,9 +279,6 @@ export function buildTravelGuideProfileHints(params: {
     budgetLevel: travelGuideBudgetTierToProfileLevel(params.budgetTier),
   };
   if (city) hints.city = city;
-  if (params.headcount > 1) {
-    hints.likeMate = true;
-  }
 
   return hints;
 }

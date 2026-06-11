@@ -227,7 +227,6 @@ export class PostWriteService {
       location,
       departureCity,
       tags: dto.tags,
-      contentTypes: dto.contentTypes,
     });
 
     if (status === 'hidden') {

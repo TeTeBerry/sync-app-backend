@@ -41,7 +41,6 @@ export interface UserMeDto {
   city?: string;
   favorGenres?: string[];
   budgetLevel?: string;
-  likeMate?: boolean;
   notificationsEnabled?: boolean;
   privacyLevel?: 'public' | 'friends' | 'private';
   accountRisk?: AccountRiskPublicStatus;
@@ -58,7 +57,6 @@ const DEMO_PROFILE = {
   city: '上海',
   favorGenres: ['EDM', 'Techno'],
   budgetLevel: 'medium',
-  likeMate: true,
   notificationsEnabled: true,
   privacyLevel: 'public' as const,
 };
@@ -122,7 +120,6 @@ export class UserService implements OnModuleInit {
       city: record.city ?? DEMO_PROFILE.city,
       favorGenres: record.favorGenres ?? DEMO_PROFILE.favorGenres,
       budgetLevel: record.budgetLevel ?? DEMO_PROFILE.budgetLevel,
-      likeMate: record.likeMate ?? DEMO_PROFILE.likeMate,
       notificationsEnabled:
         record.notificationsEnabled ?? DEMO_PROFILE.notificationsEnabled,
       privacyLevel: record.privacyLevel ?? DEMO_PROFILE.privacyLevel,
