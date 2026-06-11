@@ -9,15 +9,13 @@ const actor = toRequestActor('user-1');
 
 describe('RiskAgent rules-only shortcut path', () => {
   const invokeJson = jest.fn();
-  const existsOwnerRecruitingPostForActivity = jest
-    .fn()
-    .mockResolvedValue(false);
+  const existsOwnerActivePostForActivity = jest.fn().mockResolvedValue(false);
   const existsDuplicateBody = jest.fn().mockResolvedValue(false);
 
   const agent = new RiskAgent(
     { invokeJson } as never,
     {
-      existsOwnerRecruitingPostForActivity,
+      existsOwnerActivePostForActivity,
       existsDuplicateBody,
     } as never,
   );

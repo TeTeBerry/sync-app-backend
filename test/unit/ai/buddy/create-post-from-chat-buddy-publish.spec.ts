@@ -51,7 +51,7 @@ describe('CreatePostFromChatUseCase buddy publish (WS chat)', () => {
       { notifyPostRejected: jest.fn() } as never,
       {
         createPost,
-        findOwnerRecruitingPostForActivity: jest.fn().mockResolvedValue(null),
+        findOwnerActivePostForActivity: jest.fn().mockResolvedValue(null),
       } as never,
       {
         shouldAttemptPostCreation: jest.fn().mockReturnValue(true),
@@ -116,7 +116,7 @@ describe('CreatePostFromChatUseCase buddy publish (WS chat)', () => {
       { notifyPostRejected } as never,
       {
         createPost,
-        findOwnerRecruitingPostForActivity: jest.fn().mockResolvedValue(null),
+        findOwnerActivePostForActivity: jest.fn().mockResolvedValue(null),
       } as never,
       {
         shouldAttemptPostCreation: jest.fn().mockReturnValue(true),

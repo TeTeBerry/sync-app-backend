@@ -1,4 +1,17 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
+import { ActivityLookupModule } from '../activity/activity-lookup.module';
+import { NotificationModule } from '../notification/notification.module';
+import { AccountRiskModule } from '../account-risk/account-risk.module';
+import { UserModule } from '../user/user.module';
+import { PostInteractionService } from './post-interaction.service';
+import { PostQueryService } from './application/post-query.service';
+import { PartnerWriteModule } from './partner-write.module';
+import { PostController } from './post.controller';
+import { PartnerRepositoryModule } from './partner-repository.module';
+import { PostService } from './post.service';
+import { LiveInfoModule } from '../live-info/live-info.module';
+import { MediaSecurityModule } from '../media-security/media-security.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
   PostApplication,
@@ -9,10 +22,6 @@ import {
   PostApplicationMessageSchema,
 } from '../../database/schemas/post-application-message.schema';
 import {
-  PostApplicationThreadRead,
-  PostApplicationThreadReadSchema,
-} from '../../database/schemas/post-application-thread-read.schema';
-import {
   PostComment,
   PostCommentSchema,
 } from '../../database/schemas/post-comment.schema';
@@ -21,22 +30,6 @@ import {
   PostLikeSchema,
 } from '../../database/schemas/post-like.schema';
 import { Post, PostSchema } from '../../database/schemas/post.schema';
-import { AuthModule } from '../auth/auth.module';
-import { ActivityLookupModule } from '../activity/activity-lookup.module';
-import { NotificationModule } from '../notification/notification.module';
-import { RecruitmentModule } from '../recruitment/recruitment.module';
-import { AccountRiskModule } from '../account-risk/account-risk.module';
-import { UserModule } from '../user/user.module';
-import { PostInteractionService } from './post-interaction.service';
-import { PostQueryService } from './application/post-query.service';
-import { PartnerWriteModule } from './partner-write.module';
-import { PostController } from './post.controller';
-import { PartnerRepositoryModule } from './partner-repository.module';
-import { PostService } from './post.service';
-import { PostTeamPairService } from './application/post-team-pair.service';
-import { ApplicationBuddyPreviewService } from './application/application-buddy-preview.service';
-import { LiveInfoModule } from '../live-info/live-info.module';
-import { MediaSecurityModule } from '../media-security/media-security.module';
 
 @Module({
   imports: [
@@ -48,7 +41,6 @@ import { MediaSecurityModule } from '../media-security/media-security.module';
     ActivityLookupModule,
     PartnerRepositoryModule,
     PartnerWriteModule,
-    RecruitmentModule,
     NotificationModule,
     MongooseModule.forFeature([
       { name: Post.name, schema: PostSchema },
@@ -58,29 +50,17 @@ import { MediaSecurityModule } from '../media-security/media-security.module';
         name: PostApplicationMessage.name,
         schema: PostApplicationMessageSchema,
       },
-      {
-        name: PostApplicationThreadRead.name,
-        schema: PostApplicationThreadReadSchema,
-      },
       { name: PostComment.name, schema: PostCommentSchema },
     ]),
   ],
   controllers: [PostController],
-  providers: [
-    PostInteractionService,
-    PostQueryService,
-    PostService,
-    ApplicationBuddyPreviewService,
-    PostTeamPairService,
-  ],
+  providers: [PostInteractionService, PostQueryService, PostService],
   exports: [
     PostService,
     PartnerWriteModule,
     PostInteractionService,
     PostQueryService,
     PartnerRepositoryModule,
-    RecruitmentModule,
-    ApplicationBuddyPreviewService,
   ],
 })
 export class PartnerModule {}

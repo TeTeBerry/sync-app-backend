@@ -56,19 +56,4 @@ export class ItineraryController {
   ) {
     return this.itineraryService.getSaved(legacyId, actor);
   }
-
-  @Get('buddy-recruit-hint')
-  getBuddyRecruitHint(
-    @Param('legacyId', ParseIntPipe) legacyId: number,
-    @Query('selectedDjIds') selectedDjIds: string | undefined,
-    @CurrentActor() actor: RequestActor,
-  ) {
-    const ids = selectedDjIds
-      ? selectedDjIds
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : [];
-    return this.itineraryService.getBuddyRecruitHint(legacyId, ids, actor);
-  }
 }

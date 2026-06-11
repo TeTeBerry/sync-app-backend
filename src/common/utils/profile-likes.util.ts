@@ -1,5 +1,5 @@
 /**
- * 个人页「获赞数」= 用户名下组队帖的 `likes` 之和（不含现场分享帖；与 GET /profile/posts 一致）。
+ * 个人页「获赞数」= 用户名下帖子的 `likes` 之和（不含现场分享帖；与 GET /profile/posts 一致）。
  */
 export function sumProfilePostLikes(
   posts: ReadonlyArray<{ likes?: number | null }>,

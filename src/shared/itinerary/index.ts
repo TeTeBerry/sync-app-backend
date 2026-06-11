@@ -1,7 +1,6 @@
 export type {
   GenerateItineraryPayload,
   GenerateItineraryResult,
-  ItineraryBuddyRecruitHint,
   ItineraryConflict,
   ItineraryDay,
   ItineraryDj,

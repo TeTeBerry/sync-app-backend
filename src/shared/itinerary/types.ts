@@ -76,12 +76,6 @@ export type ItineraryDay = {
   items: ItineraryTimelineItem[];
 };
 
-export type ItineraryBuddyRecruitHint = {
-  recruitingCount: number;
-  highlightGenre: string;
-  genreLabels: string[];
-};
-
 export type GenerateItineraryPayload = {
   selectedDjIds: string[];
   dateKey?: string;

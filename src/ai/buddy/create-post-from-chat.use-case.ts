@@ -157,11 +157,10 @@ export class CreatePostFromChatUseCase {
       actor.clientUserId &&
       !skipExistingPostGuidance
     ) {
-      const existing =
-        await this.postService.findOwnerRecruitingPostForActivity(
-          resolvedActivity.legacyId,
-          actor,
-        );
+      const existing = await this.postService.findOwnerActivePostForActivity(
+        resolvedActivity.legacyId,
+        actor,
+      );
       if (existing) {
         const fromBuddyPostEntryIntent = isBuddyPostEntryIntent(trimmedInput);
         return {

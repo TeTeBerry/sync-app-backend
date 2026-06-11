@@ -69,11 +69,7 @@ export class PostWriteService {
     private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
 
-  private async toCreatedEventDetailItem(
-    post: PostRecord,
-    liked = false,
-    appliedByMe = false,
-  ) {
+  private async toCreatedEventDetailItem(post: PostRecord, liked = false) {
     const activityLegacyId = post.activityLegacyId;
     const authorOnSiteVerified =
       activityLegacyId != null
@@ -82,12 +78,7 @@ export class PostWriteService {
             activityLegacyId,
           )
         : false;
-    return PostMapper.toEventDetailItem(
-      post,
-      liked,
-      appliedByMe,
-      authorOnSiteVerified,
-    );
+    return PostMapper.toEventDetailItem(post, liked, authorOnSiteVerified);
   }
 
   async createPost(
@@ -109,9 +100,9 @@ export class PostWriteService {
         ? await this.activityLookup.findByLegacyId(dto.activityLegacyId)
         : null;
 
-    const eventTitle = dto.eventTitle?.trim() || activity?.name || '组队帖';
+    const eventTitle = dto.eventTitle?.trim() || activity?.name || '帖子';
 
-    let status: PostStatus = 'recruiting';
+    let status: PostStatus = 'active';
     let bodyToSave = dto.body.trim();
     let rejectionReason: string | undefined;
 
@@ -169,21 +160,20 @@ export class PostWriteService {
     const isSharePost = contentTypes.includes('share');
 
     if (!isSharePost) {
-      const similarRecruiting =
-        await this.repository.findOwnerSimilarRecruitingPost(
-          ownerUserId,
-          bodyToSave,
-          activityLegacyId,
-        );
-      if (similarRecruiting) {
+      const similarActive = await this.repository.findOwnerSimilarActivePost(
+        ownerUserId,
+        bodyToSave,
+        activityLegacyId,
+      );
+      if (similarActive) {
         throw new ConflictException(
           activityLegacyId != null
-            ? `您在「${eventTitle}」已有内容相近的招募帖，请勿重复发布。可编辑原帖或将其标记完成后再发新帖。`
-            : '您已有内容相近的招募帖正在招募中，请勿重复发布。可编辑原帖或将其标记完成后再发新帖。',
+            ? `您在「${eventTitle}」已有内容相近的帖子，请勿重复发布。可编辑原帖后再发新帖。`
+            : '您已有内容相近的帖子，请勿重复发布。可编辑原帖后再发新帖。',
         );
       }
 
-      // 同一活动组队帖数量限制：最多 8 篇
+      // 同一活动帖子数量限制：最多 8 篇
       const MAX_POSTS_PER_ACTIVITY = 8;
       if (activityLegacyId != null) {
         const activityPostCount = await this.repository.countByOwnerAndActivity(

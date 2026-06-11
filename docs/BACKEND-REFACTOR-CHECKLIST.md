@@ -40,8 +40,8 @@
 
 ### 已实现
 
-- **PartnerModule**（`modules/partner/`）：`POST/PATCH/DELETE /posts`；`POST .../like|comments|applications`
-- **Schema**：`post-like`、`post-comment`、`post-application`
+- **PartnerModule**（`modules/partner/`）：`POST/PATCH/DELETE /posts`；`POST .../like|comments`
+- **Schema**：`post-like`、`post-comment`（`post-application` 仅保留删帖时历史数据清理）
 - **AiModule**：WebSocket（`/api/ai/chat/ws`）；`PostIntentService` 编排四 Agent
 - **Agents**：`text-parse` / `image-parse` / `risk`（`src/ai/agents/`）
 - **Chroma**：`sync_knowledge` + `sync_user_profiles`（**已移除** `sync_posts` 帖子向量）
@@ -91,11 +91,11 @@
 
 ## P2 — Partner 互动 ✅
 
-- [x] `post-like` / `post-comment` / `post-application` Schema
-- [x] `POST /posts/:id/like|comments|applications`
+- [x] `post-like` / `post-comment` Schema（`post-application` 仅删帖级联清理历史数据）
+- [x] `POST /posts/:id/like|comments`
 - [x] 计数更新、删帖级联（现有实现）
 - [ ] `GET /posts/:id/comments` 列表（前端暂未消费）
-- [x] `POST /posts/:id/like|comments|applications` 后通知帖主（`meta.activityLegacyId` / `postId` / `type`）
+- [x] `POST /posts/:id/like|comments` 后通知帖主（`meta.activityLegacyId` / `postId` / `type`）
 
 ---
 
@@ -255,7 +255,7 @@
 | GET | `/activities`… | ✅ |
 | POST/DELETE | `/activities/:id/register` | ✅ |
 | GET/POST/PATCH/DELETE | `/posts`… | ✅ |
-| POST | `/posts/:id/like|comments|applications` | ✅ |
+| POST | `/posts/:id/like|comments` | ✅ |
 | GET | `/profile`… | ✅ |
 | WS | `/ai/chat/ws` | ✅ |
 | GET | `/chat/sessions/:id` | ✅ |

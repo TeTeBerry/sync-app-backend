@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Post business smoke — create / list / like / comment / apply / update / delete.
+ * Post business smoke — create / list / like / comment / update / delete.
  * Requires running backend (default http://localhost:3000/api).
  */
 
@@ -133,46 +133,13 @@ step('GET /posts/:id/comments', async (ctx) => {
   ctx.commentId = data[0]?.id;
 });
 
-step('POST /posts/:id/applications', async (ctx) => {
-  const data = await request('POST', `posts/${ctx.postId}/applications`, {
-    userId: applicantId,
-    authorName: applicantName,
-  });
-  assert(data?.ok === true, 'apply should return ok');
-});
-
-step('POST /posts/:id/applications (duplicate)', async (ctx) => {
-  const data = await request('POST', `posts/${ctx.postId}/applications`, {
-    userId: applicantId,
-    authorName: applicantName,
-  });
-  assert(data?.alreadyApplied === true, 'duplicate apply should be idempotent');
-});
-
-step('POST /posts/:id/applications (own post → 400)', async (ctx) => {
-  await request('POST', `posts/${ctx.postId}/applications`, {
-    userId: ownerId,
-    authorName: ownerName,
-    expectStatus: 400,
-  });
-});
-
-step('POST /posts/:id/applications/:userId/accept', async (ctx) => {
-  const data = await request(
-    'POST',
-    `posts/${ctx.postId}/applications/${encodeURIComponent(applicantId)}/accept`,
-    { userId: ownerId, authorName: ownerName },
-  );
-  assert(data?.ok === true, 'accept should return ok');
-});
-
-step('PATCH /posts/:id (mark completed)', async (ctx) => {
+step('PATCH /posts/:id (update body)', async (ctx) => {
   const data = await request('PATCH', `posts/${ctx.postId}`, {
     userId: ownerId,
     authorName: ownerName,
-    body: { status: 'completed' },
+    body: { body: `${ctx.postBody ?? 'smoke post'} · updated` },
   });
-  assert(data?.status === '已组队' || data?.status === 'completed', 'status should be completed');
+  assert(typeof data?.content === 'string', 'update should return profile post');
 });
 
 step('DELETE /posts/:id (cleanup)', async (ctx) => {

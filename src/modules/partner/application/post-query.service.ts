@@ -102,29 +102,18 @@ export class PostQueryService {
   async listByOwner(actor: RequestActor) {
     const filter = resolveOwnerFilterFromActor(actor);
     const rows = await this.repository.findByOwner(filter);
-    const postIds = rows.map((row) => String(row._id));
-    const applicationsByPost =
-      await this.postInteraction.listApplicationsGroupedByPostIds(
-        postIds,
-        actor,
-      );
-
-    return rows.map((row) => {
-      const postId = String(row._id);
-      const applications = applicationsByPost.get(postId) ?? [];
-      return PostMapper.toProfileItem(row, applications);
-    });
+    return rows.map((row) => PostMapper.toProfileItem(row));
   }
 
   findPostById(id: string): Promise<PostRecord | null> {
     return this.repository.findById(id);
   }
 
-  findOwnerRecruitingPostForActivity(
+  findOwnerActivePostForActivity(
     activityLegacyId: number,
     actor: RequestActor,
   ) {
-    return this.findOwnerRecruitingPostRecord(activityLegacyId, actor).then(
+    return this.findOwnerActivePostRecord(activityLegacyId, actor).then(
       (record) => {
         if (!record) return null;
         return {
@@ -138,22 +127,22 @@ export class PostQueryService {
     );
   }
 
-  findOwnerRecruitingPostRecord(
+  findOwnerActivePostRecord(
     activityLegacyId: number,
     actor: RequestActor,
   ): Promise<PostRecord | null> {
-    return this.repository.findOwnerRecruitingPostForActivity(
+    return this.repository.findOwnerActivePostForActivity(
       resolveOwnerFilterFromActor(actor),
       activityLegacyId,
     );
   }
 
-  findOwnerRecruitingPostRecordsForActivity(
+  findOwnerActivePostRecordsForActivity(
     activityLegacyId: number,
     actor: RequestActor,
   ): Promise<PostRecord[]> {
     if (!actor.clientUserId?.trim()) return Promise.resolve([]);
-    return this.repository.findOwnerRecruitingPostsForActivity(
+    return this.repository.findOwnerActivePostsForActivity(
       resolveOwnerFilterFromActor(actor),
       activityLegacyId,
     );
@@ -164,7 +153,6 @@ export class PostQueryService {
     mapper: (
       post: PostRecord,
       liked: boolean,
-      appliedByMe: boolean,
       authorOnSiteVerified: boolean,
     ) => T,
     actor: RequestActor,
@@ -173,9 +161,8 @@ export class PostQueryService {
 
     const visiblePosts = await this.filterPostsForViewer(posts, actor);
     const postIds = visiblePosts.map((post) => String(post._id));
-    const [likedIds, appliedIds, onSiteByActivity] = await Promise.all([
+    const [likedIds, onSiteByActivity] = await Promise.all([
       this.postInteraction.findLikedPostIds(actor.resolvedUserId, postIds),
-      this.postInteraction.findAppliedPostIds(actor.resolvedUserId, postIds),
       this.loadOnSiteCertifiedByActivity(visiblePosts),
     ]);
     const buddyUserIds = await this.userBlockService.loadBuddyUserIds(
@@ -188,7 +175,7 @@ export class PostQueryService {
       const certified =
         activityId != null &&
         onSiteByActivity.get(activityId)?.has(post.userId) === true;
-      return mapper(post, likedIds.has(id), appliedIds.has(id), certified);
+      return mapper(post, likedIds.has(id), certified);
     });
 
     return this.applyPrivacyToFeedItems(

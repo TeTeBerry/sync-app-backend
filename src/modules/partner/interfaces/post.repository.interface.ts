@@ -19,8 +19,6 @@ export type PostRecord = Post & {
 export interface IPostRepository {
   findPopular(limit: number): Promise<PostRecord[]>;
   findByActivityLegacyId(activityLegacyId: number): Promise<PostRecord[]>;
-  /** Recruiting team posts for an activity (includes apply-only / unlisted feed posts). */
-  findRecruitingByActivity(activityLegacyId: number): Promise<PostRecord[]>;
   findByActivityLegacyIdPage(
     activityLegacyId: number,
     options: { limit: number; cursor?: PostPageCursor | null },
@@ -40,7 +38,6 @@ export interface IPostRepository {
   ): Promise<PostRecord | null>;
   deleteById(id: string): Promise<boolean>;
   countByOwner(filter: PostQueryFilter): Promise<number>;
-  countCompletedByOwner(filter: PostQueryFilter): Promise<number>;
   sumLikesByOwner(filter: PostQueryFilter): Promise<number>;
   existsDuplicateBody(
     userId: string,
@@ -48,25 +45,25 @@ export interface IPostRepository {
     activityLegacyId?: number,
     excludePostId?: string,
   ): Promise<boolean>;
-  findOwnerSimilarRecruitingPost(
+  findOwnerSimilarActivePost(
     userId: string,
     body: string,
     activityLegacyId?: number,
     excludePostId?: string,
   ): Promise<PostRecord | null>;
-  existsOwnerRecruitingPostForActivity(
+  existsOwnerActivePostForActivity(
     userId: string,
     activityLegacyId: number,
   ): Promise<boolean>;
-  findOwnerRecruitingPostForActivity(
+  findOwnerActivePostForActivity(
     filter: PostQueryFilter,
     activityLegacyId: number,
   ): Promise<PostRecord | null>;
-  findOwnerRecruitingPostsForActivity(
+  findOwnerActivePostsForActivity(
     filter: PostQueryFilter,
     activityLegacyId: number,
   ): Promise<PostRecord[]>;
-  existsOwnerRecruitingPostByContentTypes(
+  existsOwnerActivePostByContentTypes(
     userId: string,
     contentTypes: string[],
   ): Promise<{ exists: boolean; matchedType?: string }>;

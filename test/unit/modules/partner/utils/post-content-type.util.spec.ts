@@ -37,7 +37,7 @@ describe('post-content-type.util (组队发帖标签)', () => {
     expect(types).toContain('accommodation');
   });
 
-  it('allows images on recruiting posts', () => {
+  it('allows images on active posts', () => {
     expect(postAllowsImages(['share'])).toBe(true);
     expect(postAllowsImages(['team'])).toBe(true);
     expect(postAllowsImages(['team', 'accommodation'])).toBe(true);

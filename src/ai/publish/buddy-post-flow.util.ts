@@ -4,7 +4,7 @@ import { ChatMessageDto } from '../../shared/chat';
 /** 助手已请用户填写组队帖正文，等待下一条用户消息 */
 export const SELF_POST_COLLECT_BODY_MARKER = '【填写组队帖】';
 
-/** 用户尚未发布招募帖，需先填写组队信息 */
+/** 用户尚未发布帖子，需先填写模板信息 */
 export const REQUIRE_BUDDY_POST_MARKER = '【先填写组队信息】';
 
 export const REQUIRE_BUDDY_POST_SUGGESTED_REPLIES = ['组队发帖'] as const;

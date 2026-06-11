@@ -22,7 +22,7 @@ describe('post-mutation.contract.json', () => {
       eventTitle: 'Event',
       likes: 3,
       comments: 1,
-      status: 'recruiting',
+      status: 'active',
       tags: [],
       contentTypes: ['team'],
       images: [],

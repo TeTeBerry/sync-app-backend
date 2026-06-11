@@ -23,7 +23,7 @@ function createPost(overrides: Partial<PostRecord> = {}): PostRecord {
     body: 'Looking for team',
     likes: 10,
     comments: 2,
-    status: 'recruiting',
+    status: 'active',
     tags: [],
     contentTypes: [],
     images: [],
@@ -48,7 +48,6 @@ describe('PostQueryService.listPopular', () => {
 
   const postInteraction = {
     findLikedPostIds: jest.fn(),
-    findAppliedPostIds: jest.fn(),
   } as unknown as PostInteractionService;
 
   const onSiteIdentity = {
@@ -73,9 +72,6 @@ describe('PostQueryService.listPopular', () => {
       new Set(),
     );
     (postInteraction.findLikedPostIds as jest.Mock).mockResolvedValue(
-      new Set(),
-    );
-    (postInteraction.findAppliedPostIds as jest.Mock).mockResolvedValue(
       new Set(),
     );
     (userService.findPrivacyLevelsByExternalIds as jest.Mock).mockResolvedValue(

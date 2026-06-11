@@ -127,57 +127,6 @@ export class NoticeAgent {
     });
   }
 
-  async notifyApplication(
-    post: PostRecord,
-    postId: string,
-    actorUserId: string,
-    actorName?: string,
-    applicationMessage?: string,
-  ): Promise<void> {
-    const actorLabel = actorName?.trim() || '有人';
-    const preview = this.summarizeApplicationPreview(applicationMessage);
-    const ownerUserId = post.userId?.trim();
-    if (!ownerUserId || ownerUserId === actorUserId) {
-      return;
-    }
-
-    if (
-      isResourceOwnedByClient(
-        { userId: post.userId, authorName: post.authorName },
-        actorUserId,
-        actorName,
-      )
-    ) {
-      return;
-    }
-
-    await this.dispatch({
-      userId: ownerUserId,
-      category: 'application',
-      templateKey: 'application',
-      templateParams: { actor: actorLabel, preview },
-      meta: {
-        activityLegacyId: post.activityLegacyId,
-        postId,
-        type: 'application',
-        actorUserId,
-        actorUserName: actorLabel,
-      },
-      dedupe: {
-        metaType: 'application',
-        postId,
-        actorUserId,
-        sinceMs: 30 * 60 * 1000,
-      },
-    });
-  }
-
-  private summarizeApplicationPreview(message?: string): string {
-    const trimmed = message?.trim();
-    if (!trimmed) return '想加入你的组队';
-    return trimmed.length > 48 ? `${trimmed.slice(0, 48)}…` : trimmed;
-  }
-
   async notifyPostRejected(
     actor: RequestActor,
     activityLegacyId: number | undefined,
@@ -196,50 +145,6 @@ export class NoticeAgent {
         activityLegacyId,
         type: 'post_rejected',
         rejectionReason: reasonText,
-      },
-    });
-  }
-
-  async notifyApplicationAccepted(
-    applicantUserId: string,
-    postId: string,
-    activityLegacyId: number | undefined,
-    ownerName: string,
-  ): Promise<void> {
-    const uid = applicantUserId?.trim();
-    if (!uid) return;
-
-    await this.dispatch({
-      userId: uid,
-      category: 'application',
-      templateKey: 'teamAccepted',
-      templateParams: { actor: ownerName?.trim() || '发帖人' },
-      meta: {
-        activityLegacyId,
-        postId,
-        type: 'team_accepted',
-      },
-    });
-  }
-
-  async notifyTeamDissolved(
-    recipientUserId: string,
-    postId: string,
-    activityLegacyId: number | undefined,
-    actorName: string,
-  ): Promise<void> {
-    const uid = recipientUserId?.trim();
-    if (!uid) return;
-
-    await this.dispatch({
-      userId: uid,
-      category: 'application',
-      templateKey: 'teamDissolved',
-      templateParams: { actor: actorName?.trim() || '对方' },
-      meta: {
-        activityLegacyId,
-        postId,
-        type: 'team_dissolved',
       },
     });
   }
@@ -394,7 +299,7 @@ export class NoticeAgent {
     const reasonHints: Record<string, string> = {
       '内容疑似重复字符 spam': '内容格式异常，请用自然语言重新描述组队需求。',
       你已在此活动发布过组队帖:
-        '你在此活动已有招募中的组队帖。请打开「我的」→ 我的帖子编辑，或在活动详情页查看。',
+        '你在此活动已有帖子。请打开「我的」→ 我的帖子编辑，或在活动详情页查看。',
       你已发布过相同内容的组队帖:
         '你已经发布过相同内容的帖子，可在个人主页或活动详情页查看。',
       内容疑似黄牛倒票或加价引流:

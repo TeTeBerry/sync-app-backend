@@ -10,7 +10,7 @@ describe('post-body-similarity.util', () => {
     );
   });
 
-  it('treats near-identical recruiting copy as similar', () => {
+  it('treats near-identical post copy as similar', () => {
     expect(
       arePostBodiesSimilar(
         '找组队，6.13-6.14，上海，1人',

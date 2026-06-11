@@ -37,7 +37,7 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
   const repository = {
     create: jest.fn(),
     countByOwnerAndActivity: jest.fn(),
-    findOwnerSimilarRecruitingPost: jest.fn().mockResolvedValue(null),
+    findOwnerSimilarActivePost: jest.fn().mockResolvedValue(null),
   } as unknown as IPostRepository;
 
   const userService = {
@@ -84,7 +84,7 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (repository.findOwnerSimilarRecruitingPost as jest.Mock).mockResolvedValue(
+    (repository.findOwnerSimilarActivePost as jest.Mock).mockResolvedValue(
       null,
     );
     service = new PostWriteService(
@@ -118,7 +118,7 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
     (repository.create as jest.Mock).mockImplementation(async (doc) => ({
       _id: 'post-buddy-1',
       ...doc,
-      status: 'recruiting',
+      status: 'active',
     }));
   });
 
@@ -138,7 +138,7 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
         location: '上海',
         tags: ['#组队', '#拼房'],
         contentTypes: ['team', 'accommodation'],
-        status: 'recruiting',
+        status: 'active',
       }),
     );
     expect(postModeration.assessPost).toHaveBeenCalledWith(

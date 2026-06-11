@@ -60,7 +60,7 @@ export function buildExistingPostGuidanceReply(params: {
 
   if (fromSelfPostIntent) {
     lines.push(
-      `你已在「${activityLabel}」有一条招募中的组队帖 📌`,
+      `你已在「${activityLabel}」有一条帖子 📌`,
       '',
       `当前帖子：${snippet}`,
       '',
@@ -70,7 +70,7 @@ export function buildExistingPostGuidanceReply(params: {
     );
   } else {
     lines.push(
-      `你已在「${activityLabel}」有一条招募中的组队帖 📌`,
+      `你已在「${activityLabel}」有一条帖子 📌`,
       '',
       `当前帖子：${snippet}`,
     );

@@ -5,7 +5,7 @@ Activity-scoped features under `/api/activities/:legacyId/*`.
 | Subdomain | Module | Routes |
 |-----------|--------|--------|
 | Travel plan | `travel-plan/` | `travel-plan/saved`, `save`, `recognize-receipt` |
-| Performance itinerary | `itinerary/` | `itinerary/schedule`, `generate`, `save`, `saved`, `buddy-recruit-hint` |
+| Performance itinerary | `itinerary/` | `itinerary/schedule`, `generate`, `save`, `saved` |
 | Live info | `live-info/` | `live-info`, wristband, updates |
 | Travel guide | `travel-guide/` | `travel-guide` generation |
 

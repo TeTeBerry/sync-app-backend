@@ -18,8 +18,7 @@ test/unit/
   common/
   modules/
     partner/
-      application/       # post-write, buddy-post-write-flow, lifecycle
-    recruitment/
+      application/       # post-write, buddy-post-write-flow
     itinerary/
     live-info/
     travel-plan/
@@ -46,7 +45,7 @@ Imports use the `@src/...` alias (see `package.json` → `jest.moduleNameMapper`
 | `travel-plan-merge-parity.contract.spec.ts` | Merge util parity |
 | `post-mutation.contract.spec.ts` | Like/comment `{ post }` shape |
 
-### 组队发帖相关用例
+### 帖子发帖相关用例
 
 | 文件 | 覆盖流程 |
 |------|----------|

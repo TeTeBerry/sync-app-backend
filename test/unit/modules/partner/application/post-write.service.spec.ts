@@ -22,7 +22,7 @@ describe('PostWriteService', () => {
   const repository = {
     create: jest.fn(),
     countByOwnerAndActivity: jest.fn(),
-    findOwnerSimilarRecruitingPost: jest.fn().mockResolvedValue(null),
+    findOwnerSimilarActivePost: jest.fn().mockResolvedValue(null),
   } as unknown as IPostRepository;
 
   const userService = {
@@ -69,7 +69,7 @@ describe('PostWriteService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (repository.findOwnerSimilarRecruitingPost as jest.Mock).mockResolvedValue(
+    (repository.findOwnerSimilarActivePost as jest.Mock).mockResolvedValue(
       null,
     );
     service = new PostWriteService(
@@ -86,7 +86,7 @@ describe('PostWriteService', () => {
     );
   });
 
-  it('rejects similar recruiting posts in the same activity', async () => {
+  it('rejects similar active posts in the same activity', async () => {
     (userService.resolveProfile as jest.Mock).mockResolvedValue({
       name: 'Zara Chen',
     });
@@ -94,10 +94,10 @@ describe('PostWriteService', () => {
       legacyId: 9,
       name: '风暴电音节',
     });
-    (repository.findOwnerSimilarRecruitingPost as jest.Mock).mockResolvedValue({
+    (repository.findOwnerSimilarActivePost as jest.Mock).mockResolvedValue({
       _id: 'existing',
       body: '找组队，6.13-6.14，上海，1人',
-      status: 'recruiting',
+      status: 'active',
     });
 
     await expect(
@@ -133,7 +133,7 @@ describe('PostWriteService', () => {
     expect(repository.create).not.toHaveBeenCalled();
   });
 
-  it('createPost with listedInFeed false persists unlisted recruiting post', async () => {
+  it('createPost with listedInFeed false persists unlisted active post', async () => {
     (userService.resolveProfile as jest.Mock).mockResolvedValue({
       name: 'Zara Chen',
       handle: '@zara',
@@ -158,7 +158,7 @@ describe('PostWriteService', () => {
       tags: [],
       location: '上海',
       activityLegacyId: 9,
-      status: 'recruiting',
+      status: 'active',
       listedInFeed: false,
     });
 

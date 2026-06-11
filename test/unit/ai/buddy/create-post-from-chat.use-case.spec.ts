@@ -68,7 +68,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
       } as never,
       { notifyPostRejected: jest.fn() } as never,
       {
-        findOwnerRecruitingPostForActivity: jest
+        findOwnerActivePostForActivity: jest
           .fn()
           .mockResolvedValue(overrides?.existingPost ?? null),
         createPost,
@@ -211,7 +211,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
     );
   });
 
-  it('returns existing_post when user chose self-post but already has a recruiting post', async () => {
+  it('returns existing_post when user chose self-post but already has an active post', async () => {
     const useCase = createUseCase({
       existingPost: {
         id: 'existing-1',

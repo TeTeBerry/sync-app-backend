@@ -41,7 +41,6 @@ export interface ProfileSummaryDto {
   avatar: string;
   stats: {
     events: number;
-    matchSuccess: number;
     likes: number;
     posts: number;
   };
@@ -79,16 +78,14 @@ export class ProfileSummaryService {
     const isOwner =
       !viewerId || !ownerExternalId || viewerId === ownerExternalId;
 
-    const [profile, events, ownerPosts, completedPosts, buddyUserIds] =
-      await Promise.all([
-        this.userService.resolveProfile(actor),
-        this.registrationRepository.countByOwner(filter),
-        this.postRead.listByOwner(actor),
-        this.postRead.countCompletedByOwner(actor),
-        viewerId
-          ? this.userBlockService.loadBuddyUserIds(viewerId)
-          : Promise.resolve(new Set<string>()),
-      ]);
+    const [profile, events, ownerPosts, buddyUserIds] = await Promise.all([
+      this.userService.resolveProfile(actor),
+      this.registrationRepository.countByOwner(filter),
+      this.postRead.listByOwner(actor),
+      viewerId
+        ? this.userBlockService.loadBuddyUserIds(viewerId)
+        : Promise.resolve(new Set<string>()),
+    ]);
 
     const privacyLevel =
       (profile as { privacyLevel?: 'public' | 'friends' | 'private' })
@@ -112,7 +109,6 @@ export class ProfileSummaryService {
         'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
       stats: {
         events,
-        matchSuccess: completedPosts,
         likes,
         posts,
       },

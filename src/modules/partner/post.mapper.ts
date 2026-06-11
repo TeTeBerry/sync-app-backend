@@ -2,8 +2,6 @@ import {
   formatDateLabel,
   formatTimeAgo,
 } from '../../common/utils/day-time.util';
-import type { PostApplicationItemDto } from './dto/post-application-item.dto';
-import type { PostBuddyPreviewDto } from './dto/post-buddy-preview.dto';
 import { PostRecord } from './interfaces/post.repository.interface';
 import { postAllowsImages } from './utils/post-content-type.util';
 
@@ -11,40 +9,7 @@ function resolvePostImages(post: PostRecord): string[] {
   return postAllowsImages(post.contentTypes) ? (post.images ?? []) : [];
 }
 
-const CONTENT_TYPE_TAG: Record<string, string> = {
-  team: '#组队',
-  accommodation: '#拼房',
-  carpool: '#同路',
-  ticket: '#票务',
-  social: '#社交',
-  food: '#美食',
-  other: '#其他',
-};
-
-type ApplicationRecord = {
-  _id: { toString(): string } | string;
-  userId: string;
-  authorName?: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  message?: string;
-  createdAt?: Date | string;
-};
-
-const STATUS_LABEL: Record<string, '招募中' | '已组队' | '已隐藏'> = {
-  recruiting: '招募中',
-  completed: '已组队',
-  hidden: '已隐藏',
-};
-
-function formatRelativeTime(value?: Date | string): string {
-  return formatTimeAgo(value, { absoluteAfterDays: 30, compact: true });
-}
-
 export class PostMapper {
-  static toStatusLabel(status?: string): '招募中' | '已组队' | '已隐藏' {
-    return STATUS_LABEL[status ?? 'recruiting'] ?? '招募中';
-  }
-
   static toHomeFeedItem(
     post: PostRecord,
     liked = false,
@@ -64,7 +29,6 @@ export class PostMapper {
       liked,
       comments: post.comments ?? 0,
       avatar: post.authorAvatar ?? '',
-      status: PostMapper.toStatusLabel(post.status),
       contentTypes: post.contentTypes ?? [],
       tags: post.tags ?? [],
       images: resolvePostImages(post),
@@ -75,7 +39,6 @@ export class PostMapper {
   static toEventDetailItem(
     post: PostRecord,
     liked = false,
-    appliedByMe = false,
     authorOnSiteVerified = false,
   ) {
     const createdAt =
@@ -95,10 +58,8 @@ export class PostMapper {
       contentTypes: post.contentTypes ?? [],
       likes: post.likes ?? 0,
       liked,
-      appliedByMe,
       comments: post.comments ?? 0,
       avatar: post.authorAvatar ?? '',
-      status: PostMapper.toStatusLabel(post.status),
       images: resolvePostImages(post),
       ...(authorOnSiteVerified ? { authorOnSiteVerified: true } : {}),
     };
@@ -131,62 +92,21 @@ export class PostMapper {
     };
   }
 
-  static toProfileItem(
-    post: PostRecord,
-    applications: PostApplicationItemDto[] = [],
-  ) {
-    const pendingApplications = applications.filter(
-      (item) => item.status === 'pending',
-    );
+  static toProfileItem(post: PostRecord) {
     return {
       id: String(post._id),
       title: post.eventTitle,
       content: post.body,
-      status: PostMapper.toStatusLabel(post.status),
       likes: post.likes ?? 0,
       comments: post.comments ?? 0,
       date: formatDateLabel(post.createdAt),
       activityLegacyId: post.activityLegacyId,
       contentTypes: post.contentTypes ?? [],
       images: resolvePostImages(post),
-      applications,
-      pendingApplicationCount: pendingApplications.length,
     };
   }
+}
 
-  static toBuddyPreview(post: PostRecord): PostBuddyPreviewDto {
-    const types = post.contentTypes ?? [];
-    const tags =
-      types.length > 0
-        ? types.map((key) => CONTENT_TYPE_TAG[key] ?? `#${key}`)
-        : (post.tags ?? []).map((tag) =>
-            tag.startsWith('#') ? tag : `#${tag}`,
-          );
-    const location = post.departureCity?.trim() || post.location?.trim();
-    return {
-      body: post.body?.trim() || '想一起组队参加活动～',
-      ...(location ? { location } : {}),
-      tags: tags.length ? tags : ['#组队'],
-    };
-  }
-
-  static toApplicationItem(
-    application: ApplicationRecord,
-    profile?: { name?: string; avatar?: string },
-    buddyPreview?: PostBuddyPreviewDto,
-  ): PostApplicationItemDto {
-    return {
-      id: String(application._id),
-      userId: application.userId,
-      name: profile?.name ?? application.authorName?.trim() ?? '用户',
-      avatar: profile?.avatar,
-      message: application.message?.trim() || undefined,
-      status: application.status,
-      appliedAt:
-        application.createdAt != null
-          ? new Date(application.createdAt).toISOString()
-          : new Date().toISOString(),
-      ...(buddyPreview ? { buddyPreview } : {}),
-    };
-  }
+function formatRelativeTime(value?: Date | string): string {
+  return formatTimeAgo(value, { absoluteAfterDays: 30, compact: true });
 }

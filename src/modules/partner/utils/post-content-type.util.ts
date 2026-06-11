@@ -154,7 +154,7 @@ export function postAllowsImages(_contentTypes?: string[] | null): boolean {
   return true;
 }
 
-/** Mongo filter: recruiting / team posts (excludes share-only posts). */
+/** Mongo filter: public team/template posts (excludes share-only posts). */
 export const TEAM_POST_FEED_FILTER = {
   contentTypes: { $ne: 'share' },
 } as const;

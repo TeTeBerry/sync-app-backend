@@ -82,7 +82,7 @@ export function buildActivityGuideReply(activity?: Activity | null): string {
         '你还可以：',
         '· 说「上海2人舒适自驾」或「帮我规划行程」生成交通/住宿/散场攻略长图；点「AI出行攻略」可用表单',
         '· 点「找组队 / 找卡座」等找现有组队帖',
-        '· 点「组队发帖」填写招募信息',
+        '· 点「模板发帖」填写帖子信息',
       ]);
     }
   }

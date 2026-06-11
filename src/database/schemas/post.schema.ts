@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 export type PostDocument = HydratedDocument<Post>;
 
-export type PostStatus = 'recruiting' | 'completed' | 'hidden';
+export type PostStatus = 'active' | 'hidden';
 
 @Schema({ timestamps: true })
 export class Post {
@@ -37,11 +37,8 @@ export class Post {
   @Prop({ type: [String], default: [] })
   tags: string[];
 
-  /**
-   * recruiting=招募中
-   * completed=已完成（组队成功 / 手动标记）
-   */
-  @Prop({ default: 'recruiting' })
+  /** active=可见；hidden=审核/违规隐藏 */
+  @Prop({ default: 'active' })
   status: PostStatus;
 
   /** 内容类型数组（team/accommodation/carpool/other），支持交集 */

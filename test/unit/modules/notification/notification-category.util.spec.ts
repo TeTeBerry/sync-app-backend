@@ -13,8 +13,7 @@ describe('notification-category.util', () => {
   });
 
   it('maps template keys to categories', () => {
-    expect(categoryForTemplateKey('teamAccepted')).toBe('application');
-    expect(categoryForTemplateKey('application')).toBe('application');
+    expect(categoryForTemplateKey('like')).toBe('like');
     expect(categoryForTemplateKey('activityUpdate')).toBe('system');
   });
 });

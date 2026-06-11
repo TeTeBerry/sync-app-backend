@@ -19,20 +19,17 @@ import {
 import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
 import { DjModule } from '../dj/dj.module';
-import { PartnerRepositoryModule } from '../partner/partner-repository.module';
 import { ItineraryController } from './itinerary.controller';
 import { ItineraryService } from './itinerary.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
 import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryCacheService } from './itinerary-cache.service';
-import { ItineraryBuddyRecruitHintService } from './itinerary-buddy-recruit-hint.service';
 
 @Module({
   imports: [
     ActivityModule,
     AuthModule,
     DjModule,
-    PartnerRepositoryModule,
     MongooseModule.forFeature([
       { name: ArtistPerformance.name, schema: ArtistPerformanceSchema },
       { name: FestivalSession.name, schema: FestivalSessionSchema },
@@ -49,7 +46,6 @@ import { ItineraryBuddyRecruitHintService } from './itinerary-buddy-recruit-hint
     ItineraryScheduleService,
     ItineraryGenerationService,
     ItineraryCacheService,
-    ItineraryBuddyRecruitHintService,
   ],
   exports: [ItineraryService, ItineraryScheduleService],
 })

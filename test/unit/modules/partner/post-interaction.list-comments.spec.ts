@@ -4,8 +4,6 @@ import type { IPostRepository } from '@src/modules/partner/interfaces/post.repos
 import type { UserService } from '@src/modules/user/user.service';
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
-import type { PostRecruitmentService } from '@src/modules/recruitment/application/post-recruitment.service';
-import type { ApplicationBuddyPreviewService } from '@src/modules/partner/application/application-buddy-preview.service';
 
 describe('PostInteractionService.listComments pagination', () => {
   const repository = {
@@ -35,19 +33,16 @@ describe('PostInteractionService.listComments pagination', () => {
       {
         assertCanPublish: jest.fn().mockResolvedValue(undefined),
       } as unknown as never,
-      {} as unknown as ApplicationBuddyPreviewService,
       {} as unknown as IPostNotificationPort,
       {} as unknown as IPostModerationPort,
       {
         assertTextSafe: jest.fn().mockResolvedValue(undefined),
         assertTextsSafe: jest.fn().mockResolvedValue(undefined),
       } as unknown as never,
-      {} as unknown as PostRecruitmentService,
-      {} as unknown as never,
     );
     (repository.findById as jest.Mock).mockResolvedValue({
       _id: 'post-1',
-      status: 'recruiting',
+      status: 'active',
     });
   });
 

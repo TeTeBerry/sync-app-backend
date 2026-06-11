@@ -1,5 +1,5 @@
 /**
- * Normalize recruiting post body for duplicate / near-duplicate checks.
+ * Normalize post body for duplicate / near-duplicate checks.
  * Ignores whitespace, common punctuation, and #hashtag markers.
  */
 export function normalizePostBodyForComparison(body: string): string {

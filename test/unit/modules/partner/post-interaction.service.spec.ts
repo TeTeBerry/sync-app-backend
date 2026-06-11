@@ -12,14 +12,8 @@ import type { IPostRepository } from '@src/modules/partner/interfaces/post.repos
 import type { UserService } from '@src/modules/user/user.service';
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
-import type { PostRecruitmentService } from '@src/modules/recruitment/application/post-recruitment.service';
-import type { ApplicationBuddyPreviewService } from '@src/modules/partner/application/application-buddy-preview.service';
 import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
 import type { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
-
-const defaultBuddyPreviewService = {
-  loadBuddyPreviewsForApplicants: jest.fn().mockResolvedValue(new Map()),
-} as unknown as ApplicationBuddyPreviewService;
 
 const defaultAccountRisk = {
   assertCanPublish: jest.fn().mockResolvedValue(undefined),
@@ -70,15 +64,13 @@ describe('PostInteractionService.addComment', () => {
     notifyCommentReply: jest.fn(),
   } as unknown as IPostNotificationPort;
 
-  const postRecruitmentService = {} as unknown as PostRecruitmentService;
-
   let service: PostInteractionService;
 
   const zaraPost = {
     _id: 'post-1',
     userId: 'demo-zara',
     authorName: 'Zara Chen',
-    status: 'recruiting',
+    status: 'active',
     comments: 0,
   };
 
@@ -93,12 +85,9 @@ describe('PostInteractionService.addComment', () => {
       {} as never,
       userService,
       defaultAccountRisk,
-      defaultBuddyPreviewService,
       postNotification,
       postModeration,
       defaultWechatContentSecurity,
-      postRecruitmentService,
-      {} as never,
     );
     (repository.findById as jest.Mock).mockResolvedValue(zaraPost);
     (repository.incrementCounter as jest.Mock).mockResolvedValue({
@@ -193,7 +182,7 @@ describe('PostInteractionService.likePost', () => {
     userId: 'demo-zara',
     authorName: 'Zara Chen',
     likes: 3,
-    status: 'recruiting',
+    status: 'active',
   };
 
   beforeEach(() => {
@@ -207,12 +196,9 @@ describe('PostInteractionService.likePost', () => {
       {} as never,
       {} as UserService,
       defaultAccountRisk,
-      defaultBuddyPreviewService,
       postNotification,
       {} as IPostModerationPort,
       defaultWechatContentSecurity,
-      {} as PostRecruitmentService,
-      {} as never,
     );
     (repository.findById as jest.Mock).mockResolvedValue(post);
   });
@@ -266,103 +252,5 @@ describe('PostInteractionService.likePost', () => {
       -1,
     );
     expect(result.post.liked).toBe(false);
-  });
-});
-
-describe('PostInteractionService.applyToPost', () => {
-  const repository = {
-    findById: jest.fn(),
-  } as unknown as IPostRepository;
-
-  const applicationModel = {
-    findOne: jest.fn(),
-    create: jest.fn(),
-  };
-
-  const postNotification = {
-    notifyApplication: jest.fn(),
-  } as unknown as IPostNotificationPort;
-
-  let service: PostInteractionService;
-
-  const post = {
-    _id: 'post-1',
-    userId: 'demo-zara',
-    authorName: 'Zara Chen',
-    status: 'recruiting',
-  };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    service = new PostInteractionService(
-      repository,
-      {} as never,
-      applicationModel as never,
-      {} as never,
-      { deleteMany: jest.fn() } as never,
-      {} as never,
-      {} as UserService,
-      defaultAccountRisk,
-      defaultBuddyPreviewService,
-      postNotification,
-      {} as IPostModerationPort,
-      defaultWechatContentSecurity,
-      {} as PostRecruitmentService,
-      {} as never,
-    );
-    (repository.findById as jest.Mock).mockResolvedValue(post);
-  });
-
-  it('rejects applying to own post', async () => {
-    await expect(
-      service.applyToPost('post-1', toRequestActor('demo-zara', 'Zara Chen')),
-    ).rejects.toBeInstanceOf(BadRequestException);
-  });
-
-  it('returns alreadyApplied when duplicate application', async () => {
-    (applicationModel.findOne as jest.Mock).mockReturnValue({
-      lean: jest
-        .fn()
-        .mockResolvedValue({ userId: 'demo-kyle', postId: 'post-1' }),
-    });
-
-    const result = await service.applyToPost(
-      'post-1',
-      toRequestActor('demo-kyle', 'Kyle'),
-    );
-
-    expect(result).toMatchObject({ ok: true, alreadyApplied: true });
-    expect(applicationModel.create).not.toHaveBeenCalled();
-  });
-
-  it('creates pending application for another user', async () => {
-    (applicationModel.findOne as jest.Mock).mockReturnValue({
-      lean: jest.fn().mockResolvedValue(null),
-    });
-    (applicationModel.create as jest.Mock).mockResolvedValue({});
-
-    const result = await service.applyToPost(
-      'post-1',
-      toRequestActor('demo-kyle', 'Kyle'),
-    );
-
-    expect(applicationModel.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: 'demo-kyle',
-        postId: 'post-1',
-        status: 'pending',
-      }),
-    );
-    expect(postNotification.notifyApplication).toHaveBeenCalledWith(
-      post,
-      'post-1',
-      'demo-kyle',
-      'Kyle',
-      undefined,
-    );
-    expect(result).toEqual({
-      ok: true,
-      alreadyApplied: false,
-    });
   });
 });

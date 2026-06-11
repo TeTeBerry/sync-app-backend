@@ -27,7 +27,6 @@ import {
 import { UserBlockService } from '../user/user-block.service';
 import { UserService } from '../user/user.service';
 import type { PostStatus } from '../../database/schemas/post.schema';
-import { ApplyToPostDto } from './dto/apply-to-post.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PostMapper } from './post.mapper';
@@ -43,7 +42,6 @@ import { MediaSecurityCheckService } from '../media-security/media-security-chec
 import {
   POST_SEED,
   STORM_ACTIVITY_LEGACY_ID,
-  STORM_COMPLETED_DEMO_POST_SEED,
   STORM_DEMO_POST_SEED,
 } from './post.seed';
 import {
@@ -60,8 +58,6 @@ import {
   normalizeCityName,
   resolveDepartureCity,
 } from './utils/departure-city.util';
-import { PostRecruitmentService } from '../recruitment/application/post-recruitment.service';
-import { PostTeamPairService } from './application/post-team-pair.service';
 
 @Injectable()
 export class PostService implements OnModuleInit {
@@ -81,8 +77,6 @@ export class PostService implements OnModuleInit {
     private readonly postWriteService: PostWriteService,
     private readonly postQuery: PostQueryService,
     private readonly postInteraction: PostInteractionService,
-    private readonly postRecruitmentService: PostRecruitmentService,
-    private readonly postTeamPairService: PostTeamPairService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
@@ -108,10 +102,10 @@ export class PostService implements OnModuleInit {
     }
 
     try {
-      await this.ensureStormCompletedDemoPosts();
+      await this.migrateLegacyPostStatus();
     } catch (error) {
       this.logger.warn(
-        `Storm completed demo posts init failed: ${(error as Error).message}`,
+        `Completed post migration failed: ${(error as Error).message}`,
       );
     }
 
@@ -138,13 +132,13 @@ export class PostService implements OnModuleInit {
     }
   }
 
-  /** 已有库时补全风暴电音节招募帖，便于测 AI 搭子推荐卡片 */
+  /** 已有库时补全风暴电音节示例帖，便于测 AI 模板发帖 */
   private async ensureStormDemoPosts(): Promise<void> {
-    const recruitingCount = await this.postModel.countDocuments({
+    const activeCount = await this.postModel.countDocuments({
       activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
-      status: 'recruiting',
+      status: 'active',
     });
-    if (recruitingCount >= 10) {
+    if (activeCount >= 10) {
       return;
     }
 
@@ -163,16 +157,20 @@ export class PostService implements OnModuleInit {
     }
   }
 
-  /** 已有库时补全风暴电音节「已组队」帖，便于活动详情组队完成态测试 */
-  private async ensureStormCompletedDemoPosts(): Promise<void> {
-    for (const seed of STORM_COMPLETED_DEMO_POST_SEED) {
-      const exists = await this.postModel.exists({
-        activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
-        userId: seed.userId,
-        body: seed.body,
-      });
-      if (exists) continue;
-      await this.postModel.create(seed);
+  /** Legacy completed/recruiting posts are normalized to active. */
+  private async migrateLegacyPostStatus(): Promise<void> {
+    const completed = await this.postModel.updateMany(
+      { status: 'completed' },
+      { $set: { status: 'active' } },
+    );
+    const recruiting = await this.postModel.updateMany(
+      { status: 'recruiting' },
+      { $set: { status: 'active' } },
+    );
+    const migrated =
+      (completed.modifiedCount ?? 0) + (recruiting.modifiedCount ?? 0);
+    if (migrated > 0) {
+      this.logger.log(`Migrated ${migrated} legacy posts to active`);
     }
   }
 
@@ -208,10 +206,6 @@ export class PostService implements OnModuleInit {
     }
   }
 
-  listApplicationsForPost(postId: string, actor: RequestActor) {
-    return this.postInteraction.listApplicationsForPost(postId, actor);
-  }
-
   listPopular(limit = 20, actor: RequestActor) {
     return this.postQuery.listPopular(limit, actor);
   }
@@ -240,28 +234,25 @@ export class PostService implements OnModuleInit {
     return this.postQuery.findPostById(id);
   }
 
-  findOwnerRecruitingPostForActivity(
+  findOwnerActivePostForActivity(
     activityLegacyId: number,
     actor: RequestActor,
   ) {
-    return this.postQuery.findOwnerRecruitingPostForActivity(
+    return this.postQuery.findOwnerActivePostForActivity(
       activityLegacyId,
       actor,
     );
   }
 
-  findOwnerRecruitingPostRecord(activityLegacyId: number, actor: RequestActor) {
-    return this.postQuery.findOwnerRecruitingPostRecord(
-      activityLegacyId,
-      actor,
-    );
+  findOwnerActivePostRecord(activityLegacyId: number, actor: RequestActor) {
+    return this.postQuery.findOwnerActivePostRecord(activityLegacyId, actor);
   }
 
-  findOwnerRecruitingPostRecordsForActivity(
+  findOwnerActivePostRecordsForActivity(
     activityLegacyId: number,
     actor: RequestActor,
   ) {
-    return this.postQuery.findOwnerRecruitingPostRecordsForActivity(
+    return this.postQuery.findOwnerActivePostRecordsForActivity(
       activityLegacyId,
       actor,
     );
@@ -323,8 +314,8 @@ export class PostService implements OnModuleInit {
     const patch: Partial<Post> = {};
     if (dto.body?.trim()) {
       const nextBody = dto.body.trim();
-      if (post.status === 'recruiting') {
-        const similar = await this.repository.findOwnerSimilarRecruitingPost(
+      if (post.status !== 'hidden') {
+        const similar = await this.repository.findOwnerSimilarActivePost(
           post.userId,
           nextBody,
           post.activityLegacyId,
@@ -332,7 +323,7 @@ export class PostService implements OnModuleInit {
         );
         if (similar) {
           throw new ConflictException(
-            '与其他招募帖内容过于相近，请修改后再保存。',
+            '与其他帖子内容过于相近，请修改后再保存。',
           );
         }
       }
@@ -364,24 +355,6 @@ export class PostService implements OnModuleInit {
       });
     }
 
-    if (dto.status === 'recruiting') {
-      const reopened =
-        await this.postTeamPairService.reopenRecruitmentAndDissolve(id, actor);
-      return PostMapper.toProfileItem(reopened);
-    }
-
-    if (dto.status === 'completed') {
-      const closed = await this.postRecruitmentService.completeRecruitment(
-        id,
-        'owner_manual',
-        post,
-      );
-      if (!closed) {
-        throw new NotFoundException('帖子不存在');
-      }
-      return PostMapper.toProfileItem(closed);
-    }
-
     if (Object.keys(patch).length === 0) {
       throw new BadRequestException('没有可更新的字段');
     }
@@ -394,24 +367,8 @@ export class PostService implements OnModuleInit {
     return PostMapper.toProfileItem(updated);
   }
 
-  acceptPostApplication(
-    postId: string,
-    applicantUserId: string,
-    owner?: RequestActor,
-  ) {
-    return this.postInteraction.acceptPostApplication(
-      postId,
-      applicantUserId,
-      owner,
-    );
-  }
-
   likePost(id: string, actor: RequestActor) {
     return this.postInteraction.likePost(id, actor);
-  }
-
-  applyToPost(id: string, actor: RequestActor, body?: ApplyToPostDto) {
-    return this.postInteraction.applyToPost(id, actor, body);
   }
 
   listComments(id: string, options?: { limit?: number; cursor?: string }) {
@@ -454,12 +411,6 @@ export class PostService implements OnModuleInit {
 
   countByOwner(actor: RequestActor) {
     return this.repository.countByOwner(resolveOwnerFilterFromActor(actor));
-  }
-
-  countCompletedByOwner(actor: RequestActor) {
-    return this.repository.countCompletedByOwner(
-      resolveOwnerFilterFromActor(actor),
-    );
   }
 
   async sumLikesByOwner(actor: RequestActor) {

@@ -21,7 +21,7 @@ export class PostApplication {
   @Prop()
   message?: string;
 
-  /** Light apply when applicant has no recruiting post yet. */
+  /** Legacy light-apply fields (retained for historical records). */
   @Prop()
   lightDepartureCity?: string;
 
@@ -31,7 +31,7 @@ export class PostApplication {
   @Prop()
   lightGenderPref?: string;
 
-  /** Set when post owner opens chat from profile post list ("沟通"). */
+  /** Legacy: post owner opened chat from profile (removed feature). */
   @Prop()
   ownerOpenedChatAt?: Date;
 

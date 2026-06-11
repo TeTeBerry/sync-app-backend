@@ -15,8 +15,8 @@ AppModule
 ├── ActivityModule           # 活动 + registration/
 ├── ActivityExperienceModule # 活动域聚合（travel-plan / itinerary / live-info / travel-guide）
 ├── UserModule               # Demo 用户 seed
-├── PartnerModule              # 组队帖（REST 仍为 /posts）
-├── ProfileModule            # 个人页 BFF（摘要 / 活动 / 组队帖）
+├── PartnerModule              # 帖子（REST 仍为 /posts）
+├── ProfileModule            # 个人页 BFF（摘要 / 活动 / 帖子）
 ├── HomeModule               # 首页 BFF
 ├── NotificationModule
 ├── ChatModule               # AI 会话持久化
@@ -101,7 +101,7 @@ AppModule
 | flow | 含义 | 附加字段 |
 |------|------|----------|
 | `idle` | 默认 | — |
-| `collect_post_body` | 等待用户填写组队帖正文 | `publishDraft.activityLegacyId` |
+| `collect_post_body` | 等待用户填写帖子正文 | `publishDraft.activityLegacyId` |
 | `publish_confirm` | 草稿待发，等待「确认发布」 | `publishDraft.activityLegacyId`, `publishDraft.draftBody` |
 | `clarify_buddy` | 缺槽位，等待补充出行信息 | — |
 

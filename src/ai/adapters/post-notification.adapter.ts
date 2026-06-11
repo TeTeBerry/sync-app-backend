@@ -30,22 +30,6 @@ export class PostNotificationAdapter implements IPostNotificationPort {
     void this.noticeAgent.notifyLike(post, postId, actorUserId, authorName);
   }
 
-  notifyApplication(
-    post: PostRecord,
-    postId: string,
-    actorUserId: string,
-    authorName?: string,
-    applicationMessage?: string,
-  ): void {
-    void this.noticeAgent.notifyApplication(
-      post,
-      postId,
-      actorUserId,
-      authorName,
-      applicationMessage,
-    );
-  }
-
   notifyComment(
     post: PostRecord,
     postId: string,
@@ -77,34 +61,6 @@ export class PostNotificationAdapter implements IPostNotificationPort {
       actorUserId,
       actorName,
       preview,
-    );
-  }
-
-  notifyApplicationAccepted(
-    applicantUserId: string,
-    postId: string,
-    activityLegacyId: number | undefined,
-    ownerName: string,
-  ): void {
-    void this.noticeAgent.notifyApplicationAccepted(
-      applicantUserId,
-      postId,
-      activityLegacyId,
-      ownerName,
-    );
-  }
-
-  notifyTeamDissolved(
-    recipientUserId: string,
-    postId: string,
-    activityLegacyId: number | undefined,
-    actorName: string,
-  ): void {
-    void this.noticeAgent.notifyTeamDissolved(
-      recipientUserId,
-      postId,
-      activityLegacyId,
-      actorName,
     );
   }
 }

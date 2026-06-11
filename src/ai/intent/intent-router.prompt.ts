@@ -40,7 +40,7 @@ export const INTENT_ROUTER_FEW_SHOTS: Array<{
   },
   {
     user: '重新发帖',
-    activity: '用户已有招募帖',
+    activity: '用户已有帖子',
     intent: 'create_post',
   },
   {
@@ -101,7 +101,7 @@ export function buildIntentRouterSystemPrompt(): string {
     '你是聊天意图路由器。根据用户最新一条消息（结合简短上下文）判断应执行的操作。',
     '只输出 JSON，字段：',
     '- intent: 必填',
-    '  - create_post: 发帖、组队招募、补充人数城市后发布、确认发布、重新发帖',
+    '  - create_post: 发帖、模板发帖、补充人数城市后发布、确认发布、重新发帖',
     '  - quick_find_buddy: 未绑定活动时点击「帮我组队/dd」类快捷入口',
     '  - near_events: 查最近/热门活动',
     '  - dj_info: 查 DJ/艺人风格、阵容按曲风筛选、介绍某位 DJ、或承接上文找类似风格艺人',

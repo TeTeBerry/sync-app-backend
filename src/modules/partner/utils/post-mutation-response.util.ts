@@ -12,15 +12,9 @@ export type PostMutationResponseDto = {
 export function toPostMutationResponse(
   post: PostRecord,
   liked: boolean,
-  appliedByMe = false,
   authorOnSiteVerified = false,
 ): PostMutationResponseDto {
   return {
-    post: PostMapper.toEventDetailItem(
-      post,
-      liked,
-      appliedByMe,
-      authorOnSiteVerified,
-    ),
+    post: PostMapper.toEventDetailItem(post, liked, authorOnSiteVerified),
   };
 }
