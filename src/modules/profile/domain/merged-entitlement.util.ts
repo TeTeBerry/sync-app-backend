@@ -45,7 +45,6 @@ export function mergeFreeAndPaidQuotas(
 
   if (!paidLimits || !paidUsage || !mapExpiresAt) {
     return {
-      aiMatch: freeSlots.aiMatch,
       contactUnlock: freeSlots.contactUnlock,
       map: INACTIVE_MAP,
       postPin: buildQuotaSlot(0, 0),
@@ -61,7 +60,6 @@ export function mergeFreeAndPaidQuotas(
   );
 
   return {
-    aiMatch: mergeCountableSlots(freeSlots.aiMatch, paidQuotas.aiMatch),
     contactUnlock: mergeCountableSlots(
       freeSlots.contactUnlock,
       paidQuotas.contactUnlock,

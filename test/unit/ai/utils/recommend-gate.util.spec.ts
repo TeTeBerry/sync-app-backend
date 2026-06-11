@@ -1,18 +1,11 @@
 import {
-  RECOMMEND_GATE_MARKER,
-  buildRecommendGateFoundReply,
-  buildRecommendGateEmptyReply,
   buildDeclineRecommendCollectBodyReply,
-  isAwaitingRecommendationsGate,
+  buildRequireBuddyPostFirstReply,
   isAwaitingSelfPostBodyCollection,
   isDeclineRecommendationsIntent,
-  RECOMMEND_GATE_SUGGESTED_REPLIES,
+  REQUIRE_BUDDY_POST_MARKER,
 } from '@src/ai/gate/recommend-gate.util';
-import { ChatMessageDto } from '@src/shared/chat';
-import {
-  enterCollectPostBodyState,
-  enterRecommendGateState,
-} from '@src/ai/conversation';
+import { enterCollectPostBodyState } from '@src/ai/conversation';
 
 describe('recommend-gate.util', () => {
   it('detects decline to self-post intents', () => {
@@ -21,56 +14,19 @@ describe('recommend-gate.util', () => {
     expect(isDeclineRecommendationsIntent('帮我dd')).toBe(false);
   });
 
-  it('does not detect gate from assistant marker without persisted state', () => {
-    const messages: ChatMessageDto[] = [
-      { role: 'user', content: '帮我dd' },
-      {
-        role: 'assistant',
-        content: buildRecommendGateFoundReply('风暴电音节', 2),
-      },
-      { role: 'user', content: '自己发帖' },
-    ];
-    expect(isAwaitingRecommendationsGate(messages)).toBe(false);
-    expect(messages[1].content.includes(RECOMMEND_GATE_MARKER)).toBe(true);
-  });
-
-  it('does not treat gate as active before assistant marker', () => {
-    const messages: ChatMessageDto[] = [{ role: 'user', content: '帮我dd' }];
-    expect(isAwaitingRecommendationsGate(messages)).toBe(false);
-  });
-
-  it('detects awaiting gate from persisted conversation state', () => {
-    const messages: ChatMessageDto[] = [{ role: 'user', content: '自己发帖' }];
-    expect(
-      isAwaitingRecommendationsGate(
-        messages,
-        enterRecommendGateState({ activityLegacyId: 9, shownPostIds: ['p1'] }),
-      ),
-    ).toBe(true);
-  });
-
-  it('builds empty gate reply with marker', () => {
-    const reply = buildRecommendGateEmptyReply('风暴电音节');
-    expect(reply).toContain(RECOMMEND_GATE_MARKER);
-    expect(reply).toContain('暂未在「风暴电音节」找到相近的组队帖');
-  });
-
-  it('does not expose self-post suggested reply chips', () => {
-    expect(RECOMMEND_GATE_SUGGESTED_REPLIES).toEqual([]);
-  });
-
-  it('builds collect-body decline reply', () => {
-    const reply = buildDeclineRecommendCollectBodyReply('风暴电音节');
-    expect(reply).toContain('想发什么直接说');
-  });
-
-  it('detects awaiting self-post body from conversation state', () => {
-    const messages: ChatMessageDto[] = [{ role: 'user', content: '13号A区' }];
+  it('detects collect_post_body from persisted state', () => {
     expect(
       isAwaitingSelfPostBodyCollection(
-        messages,
-        enterCollectPostBodyState({ activityLegacyId: 9 }),
+        [],
+        enterCollectPostBodyState({ activityLegacyId: 4 }),
       ),
     ).toBe(true);
+  });
+
+  it('builds decline and require-buddy copy', () => {
+    expect(buildDeclineRecommendCollectBodyReply('风暴')).toContain('发');
+    expect(buildRequireBuddyPostFirstReply('风暴')).toContain(
+      REQUIRE_BUDDY_POST_MARKER,
+    );
   });
 });

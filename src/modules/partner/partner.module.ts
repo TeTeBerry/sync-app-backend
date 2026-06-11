@@ -21,7 +21,6 @@ import {
   PostLikeSchema,
 } from '../../database/schemas/post-like.schema';
 import { Post, PostSchema } from '../../database/schemas/post.schema';
-import { InfraChromaModule } from '../../infra/chroma/chroma.module';
 import { AuthModule } from '../auth/auth.module';
 import { ActivityModule } from '../activity/activity.module';
 import { NotificationModule } from '../notification/notification.module';
@@ -51,7 +50,6 @@ import { MediaSecurityModule } from '../media-security/media-security.module';
     PartnerWriteModule,
     RecruitmentModule,
     NotificationModule,
-    InfraChromaModule,
     MongooseModule.forFeature([
       { name: Post.name, schema: PostSchema },
       { name: PostLike.name, schema: PostLikeSchema },

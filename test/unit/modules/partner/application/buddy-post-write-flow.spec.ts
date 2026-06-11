@@ -8,7 +8,6 @@ import { PostWriteService } from '@src/modules/partner/application/post-write.se
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { UserService } from '@src/modules/user/user.service';
 import type { ActivityService } from '@src/modules/activity/activity.service';
-import type { ChromaService } from '@src/infra/chroma/chroma.service';
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
 import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
@@ -49,10 +48,6 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
     findByLegacyId: jest.fn(),
   } as unknown as ActivityService;
 
-  const chromaService = {
-    syncPostEmbeddingStatus: jest.fn().mockResolvedValue(undefined),
-  } as unknown as ChromaService;
-
   const postNotification = {
     notifyPostHidden: jest.fn(),
   } as unknown as IPostNotificationPort;
@@ -76,6 +71,7 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
   } as unknown as OnSiteIdentityService;
 
   const wechatContentSecurity = {
+    isEnabled: jest.fn().mockReturnValue(false),
     assertTextSafe: jest.fn().mockResolvedValue(undefined),
     assertTextsSafe: jest.fn().mockResolvedValue(undefined),
   } as unknown as WechatContentSecurityService;
@@ -97,7 +93,6 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
       userProfileSync,
       accountRisk,
       activityService,
-      chromaService,
       postNotification,
       postModeration,
       onSiteIdentity,

@@ -2,8 +2,6 @@ import type { PackageTierId } from './package-tier-id.type';
 
 /** Numeric limits bundled with a tier purchase for one activity/event. */
 export interface PackageTierLimits {
-  /** `null` = unlimited for the event. */
-  aiMatchCount: number | null;
   contactUnlockCount: number | null;
   mapDays: number;
   postPinCount: number;
@@ -11,12 +9,7 @@ export interface PackageTierLimits {
   basicExposure: boolean;
 }
 
-export type PackageFeatureIcon =
-  | 'match'
-  | 'contact'
-  | 'map'
-  | 'exposure'
-  | 'pin';
+export type PackageFeatureIcon = 'contact' | 'map' | 'exposure' | 'pin';
 
 export interface PackageFeatureDefinition {
   icon: PackageFeatureIcon;
@@ -36,7 +29,6 @@ export interface PackageTierDefinition {
 }
 
 const PRO_LIMITS: PackageTierLimits = {
-  aiMatchCount: 8,
   contactUnlockCount: 5,
   mapDays: 7,
   postPinCount: 0,
@@ -44,7 +36,6 @@ const PRO_LIMITS: PackageTierLimits = {
 };
 
 const PRO_PLUS_LIMITS: PackageTierLimits = {
-  aiMatchCount: 15,
   contactUnlockCount: 12,
   mapDays: 15,
   postPinCount: 1,
@@ -52,7 +43,6 @@ const PRO_PLUS_LIMITS: PackageTierLimits = {
 };
 
 const ULTRA_LIMITS: PackageTierLimits = {
-  aiMatchCount: null,
   contactUnlockCount: null,
   mapDays: 30,
   postPinCount: 2,
@@ -68,7 +58,6 @@ export const PROFILE_PACKAGE_TIERS: PackageTierDefinition[] = [
     audience: '普通爱好者 · 偶尔组队散户',
     limits: PRO_LIMITS,
     features: [
-      { icon: 'match', text: 'AI 智能匹配 · 8 次' },
       { icon: 'contact', text: '联系方式解锁 · 5 次' },
       { icon: 'map', text: '点位地图 · 7 天' },
       { icon: 'exposure', text: '组队帖基础曝光' },
@@ -83,7 +72,6 @@ export const PROFILE_PACKAGE_TIERS: PackageTierDefinition[] = [
     badge: '主推爆款',
     limits: PRO_PLUS_LIMITS,
     features: [
-      { icon: 'match', text: 'AI 智能匹配 · 15 次' },
       { icon: 'contact', text: '联系方式解锁 · 12 次' },
       { icon: 'map', text: '点位地图 · 15 天' },
       { icon: 'pin', text: '帖子 24h 置顶 × 1 次' },
@@ -97,7 +85,6 @@ export const PROFILE_PACKAGE_TIERS: PackageTierDefinition[] = [
     audience: '跨城团长 · 电音 KOL · 重度发烧友',
     limits: ULTRA_LIMITS,
     features: [
-      { icon: 'match', text: 'AI 智能匹配 · 不限次', unlimited: true },
       { icon: 'contact', text: '联系方式解锁 · 不限次', unlimited: true },
       { icon: 'map', text: '点位地图 · 30 天（上限）' },
       { icon: 'pin', text: '帖子 24h 置顶 × 2 次' },

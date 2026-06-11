@@ -31,9 +31,6 @@ export function extractAssistantMessageMetadata(
     if (event.type === 'activity_recommendation' && event.activity) {
       recommendedActivity = event.activity;
     }
-    if (event.type === 'post_recommendations' && event.posts.length) {
-      recommendedPosts = event.posts;
-    }
     if (event.type === 'post_created' && event.post) {
       createdPost = event.post;
     }

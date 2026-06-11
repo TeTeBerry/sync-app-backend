@@ -2,7 +2,6 @@ import {
   migrateConversationStateFromHistory,
   enterPublishConfirmState,
 } from '@src/ai/conversation';
-import { RECOMMEND_GATE_MARKER } from '@src/ai/gate/recommend-gate.util';
 import {
   buildPublishConfirmReply,
   PUBLISH_CONFIRM_PROMPT_MARKER,
@@ -11,18 +10,6 @@ import { SELF_POST_COLLECT_BODY_MARKER } from '@src/ai/gate/recommend-gate.util'
 import type { ChatMessageDto } from '@src/shared/chat';
 
 describe('migrateConversationStateFromHistory', () => {
-  it('migrates recommend_gate from assistant marker', () => {
-    const messages: ChatMessageDto[] = [
-      { role: 'user', content: '帮我dd' },
-      {
-        role: 'assistant',
-        content: `${RECOMMEND_GATE_MARKER}\n找到 2 条`,
-      },
-    ];
-    const state = migrateConversationStateFromHistory(messages);
-    expect(state.flow).toBe('recommend_gate');
-  });
-
   it('migrates publish_confirm with draft body from assistant marker', () => {
     const draft = 'cpdd三个男生';
     const messages: ChatMessageDto[] = [

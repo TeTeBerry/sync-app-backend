@@ -10,7 +10,6 @@ describe('PostingTurnOrchestrator', () => {
     }),
   };
   const postIntentService = {
-    tryProactiveRecommendBeforeCreate: jest.fn(),
     tryCreatePostFromChat: jest.fn().mockResolvedValue(null),
   };
   const buddyContext = {
@@ -46,7 +45,7 @@ describe('PostingTurnOrchestrator', () => {
     postIntentService.tryCreatePostFromChat.mockResolvedValue(null);
   });
 
-  it('skips proactive recommend and falls back to deterministic reply', async () => {
+  it('falls back to deterministic reply when create_post does not publish', async () => {
     buddyContext.resolveActivityLegacyIdFromChat.mockResolvedValue(undefined);
 
     const events = await orchestrator.run({
@@ -58,9 +57,6 @@ describe('PostingTurnOrchestrator', () => {
       timings: {},
     });
 
-    expect(
-      postIntentService.tryProactiveRecommendBeforeCreate,
-    ).not.toHaveBeenCalled();
     expect(postIntentService.tryCreatePostFromChat).toHaveBeenCalled();
     expect(events.some((e) => e.type === 'delta')).toBe(true);
   });
@@ -90,9 +86,6 @@ describe('PostingTurnOrchestrator', () => {
       timings: {},
     });
 
-    expect(
-      postIntentService.tryProactiveRecommendBeforeCreate,
-    ).not.toHaveBeenCalled();
     expect(postIntentService.tryCreatePostFromChat).toHaveBeenCalledWith(
       expect.objectContaining({ activityLegacyId: 4 }),
     );

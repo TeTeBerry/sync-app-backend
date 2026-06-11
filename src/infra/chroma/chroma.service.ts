@@ -1,23 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ChromaClient, Collection, IncludeEnum, Where } from 'chromadb';
+import { ChromaClient, Collection } from 'chromadb';
 import { Document } from '@langchain/core/documents';
-import type { PostStatus } from '@src/database/schemas/post.schema';
 import { KNOWLEDGE_DOCUMENTS } from './knowledge.seed';
-
-/** Post vector metadata: kind=post, status filters recruiting-only retrieval */
-export interface PostEmbeddingInput {
-  postId: string;
-  userId: string;
-  body: string;
-  eventTitle: string;
-  tags?: string[];
-  location?: string;
-  departureCity?: string;
-  activityCode?: string;
-  activityLegacyId?: number;
-  status?: PostStatus;
-}
 
 /** User profile vector metadata: kind=user_profile, keyed by userId */
 export interface UserProfileEmbeddingInput {
@@ -30,50 +15,15 @@ export interface UserProfileEmbeddingInput {
   location?: string;
 }
 
-export interface PostMatchQueryOptions {
-  activityCode?: string;
-  activityLegacyId?: number;
-  /** Per-user isolation: self, blocked, already-matched authors */
-  excludeUserIds?: string[];
-  /** When set, runs a secondary profile-vector query for similarity boost */
-  profileUserId?: string;
-  n?: number;
-}
-
-export interface PostMatchResult {
-  postId: string;
-  document: string;
-  distance?: number;
-  /** Distance from user-profile vector query (lower = better profile fit) */
-  profileDistance?: number;
-  userId?: string;
-}
-
-export interface PostMatchQueryResult {
-  matches: PostMatchResult[];
-  degraded?: boolean;
-}
-
 @Injectable()
 export class ChromaService implements OnModuleInit {
   private readonly logger = new Logger(ChromaService.name);
   private client?: ChromaClient;
   private collection?: Collection;
-  private postsCollection?: Collection;
   private profilesCollection?: Collection;
   private enabled = false;
-  private consecutiveFailures = 0;
-  private circuitOpenUntil = 0;
-  private circuitBreakerLogged = false;
-  private readonly circuitFailureThreshold: number;
-  private readonly circuitOpenMs: number;
 
-  constructor(private readonly config: ConfigService) {
-    this.circuitFailureThreshold =
-      config.get<number>('chroma.circuit.failureThreshold') ?? 3;
-    this.circuitOpenMs =
-      config.get<number>('chroma.circuit.cooldownMs') ?? 30_000;
-  }
+  constructor(private readonly config: ConfigService) {}
 
   async onModuleInit() {
     await this.initClient();
@@ -84,58 +34,9 @@ export class ChromaService implements OnModuleInit {
     return this.enabled;
   }
 
+  /** Kept for health checks; post-match circuit breaker removed. */
   isCircuitOpen(): boolean {
-    if (this.circuitOpenUntil > 0 && Date.now() >= this.circuitOpenUntil) {
-      this.consecutiveFailures = 0;
-      this.circuitOpenUntil = 0;
-      this.circuitBreakerLogged = false;
-    }
-    return Date.now() < this.circuitOpenUntil;
-  }
-
-  private recordQuerySuccess(): void {
-    this.consecutiveFailures = 0;
-    this.circuitOpenUntil = 0;
-    this.circuitBreakerLogged = false;
-  }
-
-  private recordQueryFailure(): void {
-    this.consecutiveFailures += 1;
-    if (this.consecutiveFailures < this.circuitFailureThreshold) {
-      return;
-    }
-
-    this.circuitOpenUntil = Date.now() + this.circuitOpenMs;
-    if (!this.circuitBreakerLogged) {
-      this.logger.warn(
-        `Chroma circuit breaker open for ${this.circuitOpenMs / 1000}s after ${this.consecutiveFailures} consecutive failures`,
-      );
-      this.circuitBreakerLogged = true;
-    }
-  }
-
-  private isVectorSearchUnavailable(): boolean {
-    return !this.enabled || !this.postsCollection || this.isCircuitOpen();
-  }
-
-  private async withQueryTimeout<T>(
-    promise: Promise<T>,
-    timeoutMs: number,
-  ): Promise<T> {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    try {
-      return await Promise.race([
-        promise,
-        new Promise<T>((_, reject) => {
-          timer = setTimeout(
-            () => reject(new Error('Chroma query timeout')),
-            timeoutMs,
-          );
-        }),
-      ]);
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
+    return false;
   }
 
   /** Chroma JS 客户端的 path 必须是 HTTP 基址，不能是本地目录 */
@@ -155,8 +56,6 @@ export class ChromaService implements OnModuleInit {
     const baseUrl = this.resolveChromaBaseUrl();
     const collectionName =
       this.config.get<string>('chroma.collection') ?? 'sync_knowledge';
-    const postsCollectionName =
-      this.config.get<string>('chroma.postsCollection') ?? 'sync_posts';
     const profilesCollectionName =
       this.config.get<string>('chroma.profilesCollection') ??
       'sync_user_profiles';
@@ -176,7 +75,6 @@ export class ChromaService implements OnModuleInit {
         this.connectCollections(
           baseUrl,
           collectionName,
-          postsCollectionName,
           profilesCollectionName,
         ),
         new Promise<never>((_, reject) => {
@@ -189,7 +87,7 @@ export class ChromaService implements OnModuleInit {
 
       this.enabled = true;
       this.logger.log(
-        `Chroma connected (${baseUrl}), collections="${collectionName}", "${postsCollectionName}", "${profilesCollectionName}"`,
+        `Chroma connected (${baseUrl}), collections="${collectionName}", "${profilesCollectionName}"`,
       );
     } catch (error) {
       this.enabled = false;
@@ -202,7 +100,6 @@ export class ChromaService implements OnModuleInit {
   private async connectCollections(
     baseUrl: string,
     collectionName: string,
-    postsCollectionName: string,
     profilesCollectionName: string,
   ): Promise<void> {
     this.client = new ChromaClient({ path: baseUrl });
@@ -210,11 +107,6 @@ export class ChromaService implements OnModuleInit {
     this.collection = await this.client.getOrCreateCollection({
       name: collectionName,
       metadata: { source: 'sync-app-backend' },
-    });
-
-    this.postsCollection = await this.client.getOrCreateCollection({
-      name: postsCollectionName,
-      metadata: { source: 'sync-app-backend', kind: 'posts' },
     });
 
     this.profilesCollection = await this.client.getOrCreateCollection({
@@ -227,15 +119,6 @@ export class ChromaService implements OnModuleInit {
     const code = doc.metadata?.code;
     const topic = doc.metadata?.topic ?? 'general';
     return code ? `${topic}:${code}` : `${topic}:${index}`;
-  }
-
-  private buildPostDocument(input: PostEmbeddingInput): string {
-    const tags = input.tags?.length ? input.tags.join(' ') : '';
-    const departure = input.departureCity ? `${input.departureCity}出发` : '';
-    return [input.eventTitle, input.body, departure, input.location, tags]
-      .filter(Boolean)
-      .join(' ')
-      .trim();
   }
 
   private buildUserProfileDocument(input: UserProfileEmbeddingInput): string {
@@ -253,59 +136,6 @@ export class ChromaService implements OnModuleInit {
       .filter(Boolean)
       .join(' ')
       .trim();
-  }
-
-  private buildRecruitingPostWhere(
-    options: Pick<
-      PostMatchQueryOptions,
-      'activityCode' | 'activityLegacyId' | 'excludeUserIds'
-    >,
-  ): Where | undefined {
-    const clauses: Where[] = [{ kind: 'post' }, { status: 'recruiting' }];
-
-    if (options.activityLegacyId != null) {
-      clauses.push({ activityLegacyId: String(options.activityLegacyId) });
-    } else if (options.activityCode?.trim()) {
-      clauses.push({ activityCode: options.activityCode.trim() });
-    }
-
-    const excluded = (options.excludeUserIds ?? [])
-      .map((id) => id.trim())
-      .filter(Boolean);
-    if (excluded.length === 1) {
-      clauses.push({ userId: { $ne: excluded[0] } });
-    } else if (excluded.length > 1) {
-      clauses.push({ userId: { $nin: excluded } });
-    }
-
-    return clauses.length === 1 ? clauses[0] : { $and: clauses };
-  }
-
-  private mapQueryResults(
-    result: Awaited<ReturnType<Collection['query']>>,
-  ): PostMatchResult[] {
-    const documents = result.documents?.[0] ?? [];
-    const metadatas = result.metadatas?.[0] ?? [];
-    const distances = result.distances?.[0] ?? [];
-    const matches: PostMatchResult[] = [];
-
-    for (let index = 0; index < documents.length; index += 1) {
-      const document = documents[index];
-      if (!document) continue;
-
-      const metadata = metadatas[index] ?? {};
-      const postId =
-        String(metadata.postId ?? '') || String(result.ids?.[0]?.[index] ?? '');
-
-      matches.push({
-        postId,
-        document,
-        distance: distances[index],
-        userId: metadata.userId ? String(metadata.userId) : undefined,
-      });
-    }
-
-    return matches;
   }
 
   async seedIfEmpty(): Promise<void> {
@@ -359,39 +189,6 @@ export class ChromaService implements OnModuleInit {
     await this.upsertDocuments([doc]);
   }
 
-  async upsertPostEmbedding(input: PostEmbeddingInput): Promise<void> {
-    if (!this.postsCollection) return;
-
-    const document = this.buildPostDocument(input);
-    if (!document) return;
-
-    try {
-      await this.postsCollection.upsert({
-        ids: [input.postId],
-        documents: [document],
-        metadatas: [
-          {
-            kind: 'post',
-            topic: 'post',
-            postId: input.postId,
-            userId: input.userId,
-            activityCode: input.activityCode ?? '',
-            activityLegacyId:
-              input.activityLegacyId != null
-                ? String(input.activityLegacyId)
-                : '',
-            status: input.status ?? 'recruiting',
-            departureCity: input.departureCity ?? '',
-          },
-        ],
-      });
-    } catch (error) {
-      this.logger.warn(
-        `Chroma post upsert failed (${input.postId}): ${(error as Error).message}`,
-      );
-    }
-  }
-
   async upsertUserProfileEmbedding(
     input: UserProfileEmbeddingInput,
   ): Promise<void> {
@@ -418,132 +215,6 @@ export class ChromaService implements OnModuleInit {
       this.logger.warn(
         `Chroma profile upsert failed (${userId}): ${(error as Error).message}`,
       );
-    }
-  }
-
-  async deletePostEmbedding(postId: string): Promise<void> {
-    if (!this.postsCollection || !postId) return;
-
-    try {
-      await this.postsCollection.delete({ ids: [postId] });
-    } catch (error) {
-      this.logger.warn(
-        `Chroma post delete failed (${postId}): ${(error as Error).message}`,
-      );
-    }
-  }
-
-  /** Remove post vector when no longer eligible for match retrieval */
-  async deprecatePostEmbedding(postId: string): Promise<void> {
-    await this.deletePostEmbedding(postId);
-  }
-
-  async syncPostEmbeddingStatus(input: PostEmbeddingInput): Promise<void> {
-    if (input.status !== 'recruiting') {
-      await this.deprecatePostEmbedding(input.postId);
-      return;
-    }
-
-    await this.upsertPostEmbedding(input);
-  }
-
-  private async getUserProfileQueryText(
-    userId: string,
-  ): Promise<string | undefined> {
-    if (!this.profilesCollection || !userId.trim()) return undefined;
-
-    try {
-      const result = await this.profilesCollection.get({
-        ids: [userId.trim()],
-        include: [IncludeEnum.Documents],
-      });
-      return result.documents?.[0] ?? undefined;
-    } catch {
-      return undefined;
-    }
-  }
-
-  async queryPostsForMatch(
-    text: string,
-    options: PostMatchQueryOptions = {},
-  ): Promise<PostMatchQueryResult> {
-    if (!text.trim()) {
-      return { matches: [] };
-    }
-
-    if (this.isVectorSearchUnavailable()) {
-      return {
-        matches: [],
-        degraded: !this.enabled || this.isCircuitOpen(),
-      };
-    }
-
-    const n = options.n ?? 5;
-    const where = this.buildRecruitingPostWhere(options);
-
-    const queryTimeoutMs =
-      this.config.get<number>('chroma.queryTimeoutMs') ?? 8_000;
-
-    try {
-      const result = await this.withQueryTimeout(
-        this.postsCollection!.query({
-          queryTexts: [text.trim()],
-          nResults: n,
-          ...(where ? { where } : {}),
-        }),
-        queryTimeoutMs,
-      );
-
-      const matches = this.mapQueryResults(result);
-
-      const profileUserId = options.profileUserId?.trim();
-      if (!profileUserId || !matches.length) {
-        this.recordQuerySuccess();
-        return { matches };
-      }
-
-      const profileText = await this.getUserProfileQueryText(profileUserId);
-      if (!profileText) {
-        this.recordQuerySuccess();
-        return { matches };
-      }
-
-      const profileResult = await this.withQueryTimeout(
-        this.postsCollection!.query({
-          queryTexts: [profileText],
-          nResults: n,
-          ...(where ? { where } : {}),
-        }),
-        queryTimeoutMs,
-      );
-
-      const profileDistances = new Map<string, number>();
-      const profileDocs = profileResult.documents?.[0] ?? [];
-      const profileMetas = profileResult.metadatas?.[0] ?? [];
-      const profileDists = profileResult.distances?.[0] ?? [];
-
-      for (let index = 0; index < profileDocs.length; index += 1) {
-        const metadata = profileMetas[index] ?? {};
-        const postId =
-          String(metadata.postId ?? '') ||
-          String(profileResult.ids?.[0]?.[index] ?? '');
-        if (!postId) continue;
-        profileDistances.set(postId, profileDists[index] ?? 0);
-      }
-
-      this.recordQuerySuccess();
-      return {
-        matches: matches.map((match) => ({
-          ...match,
-          profileDistance: profileDistances.get(match.postId),
-        })),
-      };
-    } catch (error) {
-      this.recordQueryFailure();
-      this.logger.warn(
-        `Chroma post match query failed: ${(error as Error).message}`,
-      );
-      return { matches: [], degraded: true };
     }
   }
 

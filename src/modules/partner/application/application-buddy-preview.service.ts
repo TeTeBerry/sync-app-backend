@@ -13,7 +13,6 @@ import {
   POST_REPOSITORY,
   PostRecord,
 } from '../interfaces/post.repository.interface';
-import { pickBestMatchingPostRecord } from '../utils/buddy-post-match.util';
 
 @Injectable()
 export class ApplicationBuddyPreviewService {
@@ -46,7 +45,7 @@ export class ApplicationBuddyPreviewService {
 
     await Promise.all(
       uniqueIds.map(async (userId) => {
-        const recruiting = await this.findBestRecruitingPostForUser(
+        const recruiting = await this.findLatestRecruitingPostForUser(
           userId,
           targetPost,
         );
@@ -65,7 +64,7 @@ export class ApplicationBuddyPreviewService {
     return map;
   }
 
-  private async findBestRecruitingPostForUser(
+  private async findLatestRecruitingPostForUser(
     userId: string,
     targetPost: PostRecord,
   ): Promise<PostRecord | null> {
@@ -76,6 +75,6 @@ export class ApplicationBuddyPreviewService {
         { userId },
         activityLegacyId,
       );
-    return pickBestMatchingPostRecord(targetPost, candidates);
+    return candidates[0] ?? null;
   }
 }

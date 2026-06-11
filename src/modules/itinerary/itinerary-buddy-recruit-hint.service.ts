@@ -1,9 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import {
-  BUDDY_MATCH_HINT_PORT,
-  type IBuddyMatchHintPort,
-} from '../activity-experience/ports/buddy-match-hint.port';
 import { ActivityService } from '../activity/activity.service';
 import {
   IPostRepository,
@@ -43,8 +39,6 @@ export class ItineraryBuddyRecruitHintService {
   constructor(
     private readonly scheduleService: ItineraryScheduleService,
     private readonly activityService: ActivityService,
-    @Inject(BUDDY_MATCH_HINT_PORT)
-    private readonly buddyMatchHintPort: IBuddyMatchHintPort,
     @Inject(POST_REPOSITORY)
     private readonly postRepository: IPostRepository,
   ) {}
@@ -52,7 +46,7 @@ export class ItineraryBuddyRecruitHintService {
   async getHint(
     activityLegacyId: number,
     selectedDjIds: string[],
-    actor: RequestActor,
+    _actor: RequestActor,
   ): Promise<ItineraryBuddyRecruitHintDto> {
     const ids = [
       ...new Set(selectedDjIds.map((id) => id.trim()).filter(Boolean)),
@@ -76,27 +70,13 @@ export class ItineraryBuddyRecruitHintService {
       return { recruitingCount: 0, highlightGenre, genreLabels };
     }
 
-    const activity =
-      await this.activityService.findByLegacyId(activityLegacyId);
-    const { items } = await this.buddyMatchHintPort.searchPosts({
-      criteria: {
+    await this.activityService.findByLegacyId(activityLegacyId);
+    const recruiting =
+      await this.postRepository.findRecruitingByActivityForMatch(
         activityLegacyId,
-        activityName: activity?.name,
-        profileFavorGenres: genreLabels,
-      },
-      actor,
-      limit: 30,
-    });
-
-    if (!items.length) {
-      return { recruitingCount: 0, highlightGenre, genreLabels };
-    }
-
-    const posts = await this.postRepository.findByIds(
-      items.map((item) => item.postId),
-    );
+      );
     const recruitingAuthors = new Set(
-      posts
+      recruiting
         .map((post) => post.userId?.trim())
         .filter((uid): uid is string => Boolean(uid)),
     );

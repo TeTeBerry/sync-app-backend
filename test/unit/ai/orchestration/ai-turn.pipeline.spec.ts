@@ -20,10 +20,7 @@ import { PostingTurnOrchestrator } from '@src/ai/orchestration/posting-turn.orch
 import { AgentFirstTurnHandler } from '@src/ai/orchestration/handlers/agent-first-turn.handler';
 import { DjInfoTurnHandler } from '@src/ai/orchestration/handlers/dj-info-turn.handler';
 import { AiStreamEventBuilder } from '@src/ai/presentation/ai-sse.builder';
-import {
-  RECOMMEND_GATE_MARKER,
-  REQUIRE_BUDDY_POST_MARKER,
-} from '@src/ai/gate/recommend-gate.util';
+import { REQUIRE_BUDDY_POST_MARKER } from '@src/ai/gate/recommend-gate.util';
 
 describe('AiTurnPipeline homepage activity gating', () => {
   const agenticReplyService = {
@@ -33,9 +30,7 @@ describe('AiTurnPipeline homepage activity gating', () => {
     }),
   };
   const postIntentService = {
-    tryProactiveRecommendBeforeCreate: jest.fn(),
     tryCreatePostFromChat: jest.fn().mockResolvedValue(null),
-    tryMatchPostsFromChat: jest.fn(),
   };
   const userProfileAgent = {
     syncProfileFromChat: jest.fn().mockResolvedValue(null),
@@ -107,7 +102,6 @@ describe('AiTurnPipeline homepage activity gating', () => {
     userProfileAgent as never,
     intentRouter as never,
     sseBuilder,
-    buddyContext as never,
     activityService as never,
     agentFirstTurnHandler,
     djInfoTurnHandler,
@@ -126,31 +120,12 @@ describe('AiTurnPipeline homepage activity gating', () => {
       kind: 'create_post',
       source: 'rule',
     });
-    postIntentService.tryMatchPostsFromChat.mockResolvedValue(null);
-    postIntentService.tryProactiveRecommendBeforeCreate.mockResolvedValue(null);
     buddyContext.maybeRequireBuddyPostBeforeTeamSearch.mockResolvedValue({
       required: false,
     });
     chatAgentOrchestrator.getMode.mockReturnValue('off');
     chatAgentOrchestrator.shouldRunAgentFirst.mockReturnValue(false);
     chatAgentOrchestrator.runTurn.mockResolvedValue(null);
-  });
-
-  it('skips proactive recommend on home when no activity is inferred', async () => {
-    buddyContext.resolveActivityLegacyIdFromChat.mockResolvedValue(undefined);
-
-    await pipeline.runTurn(
-      { ...baseDto, messages: [{ role: 'user', content: '你好 想交个朋友' }] },
-      [{ role: 'user', content: '你好 想交个朋友' }],
-      '你好 想交个朋友',
-      { version: 1, flow: 'idle' },
-      'req-home-vague',
-      'home-session',
-    );
-
-    expect(
-      postIntentService.tryProactiveRecommendBeforeCreate,
-    ).not.toHaveBeenCalled();
   });
 
   it('attempts create_post on home when storm activity is inferred', async () => {
@@ -178,109 +153,10 @@ describe('AiTurnPipeline homepage activity gating', () => {
       'home-session',
     );
 
-    expect(
-      postIntentService.tryProactiveRecommendBeforeCreate,
-    ).not.toHaveBeenCalled();
     expect(postIntentService.tryCreatePostFromChat).toHaveBeenCalledWith(
       expect.objectContaining({ activityLegacyId: 4 }),
     );
     expect(result.events.some((e) => e.type === 'post_created')).toBe(true);
-  });
-
-  it('skips proactive recommend for ticket resale even if activity was inferred', async () => {
-    buddyContext.resolveActivityLegacyIdFromChat.mockResolvedValue(4);
-
-    await pipeline.runTurn(
-      {
-        ...baseDto,
-        messages: [
-          {
-            role: 'user',
-            content:
-              '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
-          },
-        ],
-      },
-      [
-        {
-          role: 'user',
-          content:
-            '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
-        },
-      ],
-      '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
-      { version: 1, flow: 'idle' },
-      'req-home-asot-ticket-inferred',
-      'home-session',
-    );
-
-    expect(
-      postIntentService.tryProactiveRecommendBeforeCreate,
-    ).not.toHaveBeenCalled();
-  });
-
-  it('skips proactive recommend on home for ASOT ticket without catalog match', async () => {
-    buddyContext.resolveActivityLegacyIdFromChat.mockResolvedValue(undefined);
-
-    await pipeline.runTurn(
-      {
-        ...baseDto,
-        messages: [
-          {
-            role: 'user',
-            content:
-              '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
-          },
-        ],
-      },
-      [
-        {
-          role: 'user',
-          content:
-            '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
-        },
-      ],
-      '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
-      { version: 1, flow: 'idle' },
-      'req-home-asot-ticket',
-      'home-session',
-    );
-
-    expect(buddyContext.resolveActivityLegacyIdFromChat).toHaveBeenCalled();
-    expect(
-      postIntentService.tryProactiveRecommendBeforeCreate,
-    ).not.toHaveBeenCalled();
-  });
-
-  it('uses deterministic reply for legacy search_posts intent', async () => {
-    intentRouter.resolve.mockResolvedValue({
-      kind: 'search_posts',
-      source: 'rule',
-    });
-    agenticReplyService.resolve.mockResolvedValue({
-      text: '可以去活动详情页的留言板看看',
-      nextState: { version: 1, flow: 'idle' },
-    });
-
-    const result = await pipeline.runTurn(
-      {
-        ...baseDto,
-        activityLegacyId: 9,
-        messages: [{ role: 'user', content: '找拼房' }],
-      },
-      [{ role: 'user', content: '找拼房' }],
-      '找拼房',
-      { version: 1, flow: 'idle' },
-      'req-require-buddy-shortcut',
-      'scoped-session',
-    );
-
-    expect(postIntentService.tryMatchPostsFromChat).not.toHaveBeenCalled();
-    expect(
-      postIntentService.tryProactiveRecommendBeforeCreate,
-    ).not.toHaveBeenCalled();
-    expect(result.assistantReply).toContain('留言板');
-    expect(result.events.some((e) => e.type === 'delta')).toBe(true);
   });
 
   it('emits activity card when user confirms festival enter by name', async () => {
@@ -496,8 +372,5 @@ describe('AiTurnPipeline homepage activity gating', () => {
     expect(postIntentService.tryCreatePostFromChat).toHaveBeenCalledWith(
       expect.objectContaining({ activityLegacyId: 9 }),
     );
-    expect(
-      postIntentService.tryProactiveRecommendBeforeCreate,
-    ).not.toHaveBeenCalled();
   });
 });

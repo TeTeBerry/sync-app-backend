@@ -11,8 +11,7 @@ describe('ItineraryBuddyRecruitHintService', () => {
     const service = new ItineraryBuddyRecruitHintService(
       { getSchedule: jest.fn() } as never,
       { findByLegacyId: jest.fn() } as never,
-      { search: jest.fn() } as never,
-      { findByIds: jest.fn() } as never,
+      { findRecruitingByActivityForMatch: jest.fn() } as never,
     );
 
     const result = await service.getHint(4, [], actor);
@@ -23,7 +22,7 @@ describe('ItineraryBuddyRecruitHintService', () => {
     });
   });
 
-  it('counts distinct recruiting authors from match results', async () => {
+  it('counts distinct recruiting authors for the activity', async () => {
     const scheduleService = {
       getSchedule: jest.fn().mockResolvedValue({
         djs: [
@@ -40,15 +39,11 @@ describe('ItineraryBuddyRecruitHintService', () => {
         ],
       }),
     };
-    const buddyMatchHintPort = {
-      searchPosts: jest.fn().mockResolvedValue({
-        items: [{ postId: 'p1' }, { postId: 'p2' }],
-      }),
-    };
     const postRepository = {
-      findByIds: jest.fn().mockResolvedValue([
+      findRecruitingByActivityForMatch: jest.fn().mockResolvedValue([
         { _id: 'p1', userId: 'u1' },
         { _id: 'p2', userId: 'u2' },
+        { _id: 'p3', userId: 'u1' },
       ]),
     };
 
@@ -57,20 +52,14 @@ describe('ItineraryBuddyRecruitHintService', () => {
       {
         findByLegacyId: jest.fn().mockResolvedValue({ name: '风暴' }),
       } as never,
-      buddyMatchHintPort as never,
       postRepository as never,
     );
 
     const result = await service.getHint(4, ['dj1'], actor);
     expect(result.recruitingCount).toBe(2);
     expect(result.highlightGenre).toBe('Techno');
-    expect(buddyMatchHintPort.searchPosts).toHaveBeenCalledWith(
-      expect.objectContaining({
-        criteria: expect.objectContaining({
-          activityLegacyId: 4,
-          profileFavorGenres: ['Techno'],
-        }),
-      }),
-    );
+    expect(
+      postRepository.findRecruitingByActivityForMatch,
+    ).toHaveBeenCalledWith(4);
   });
 });

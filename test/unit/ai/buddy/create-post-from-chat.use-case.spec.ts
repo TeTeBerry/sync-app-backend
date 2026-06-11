@@ -14,11 +14,7 @@ jest.mock('@langchain/community/chat_models/alibaba_tongyi', () =>
 
 import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { CreatePostFromChatUseCase } from '@src/ai/buddy/create-post-from-chat.use-case';
-import {
-  RECOMMEND_GATE_MARKER,
-  SELF_POST_COLLECT_BODY_MARKER,
-} from '@src/ai/gate/recommend-gate.util';
-import { enterRecommendGateState } from '@src/ai/conversation';
+import { SELF_POST_COLLECT_BODY_MARKER } from '@src/ai/gate/recommend-gate.util';
 
 describe('CreatePostFromChatUseCase self-post custom body', () => {
   const activity = {
@@ -31,21 +27,11 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
   const baseParams = {
     actor: toRequestActor('user-1', 'Test User'),
     activityLegacyId: 9,
-    conversationState: enterRecommendGateState({
-      activityLegacyId: 9,
-      shownPostIds: ['p1'],
-      empty: false,
-    }),
+    conversationState: { version: 1, flow: 'idle' as const },
     onStateChange: jest.fn(),
   };
 
-  const gateMessages = [
-    { role: 'user' as const, content: '组队队友' },
-    {
-      role: 'assistant' as const,
-      content: `${RECOMMEND_GATE_MARKER}\n推荐帖`,
-    },
-  ];
+  const gateMessages = [{ role: 'user' as const, content: '组队队友' }];
 
   function createUseCase(overrides?: {
     existingPost?: { id: string; body: string; eventTitle?: string } | null;

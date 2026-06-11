@@ -10,7 +10,6 @@ import {
   TICKET_PUBLISH_FORBIDDEN_MESSAGE,
 } from '../../../ai/buddy/ticket-publish-policy.util';
 import { ActivityService } from '../../activity/activity.service';
-import { ChromaService } from '../../../infra/chroma/chroma.service';
 import type { PostStatus } from '../../../database/schemas/post.schema';
 import { AccountRiskService } from '../../account-risk/account-risk.service';
 import { UserProfileSyncService } from '../../user/user-profile-sync.service';
@@ -31,7 +30,7 @@ import {
   PostRecord,
 } from '../interfaces/post.repository.interface';
 import type { RequestActor } from '../../../common/auth/request-actor.types';
-import { buildMatchCriteriaPatch } from '../../../ai/match/buddy-match-criteria.util';
+import { resolveDepartureCity } from '../utils/departure-city.util';
 import {
   inferPostContentTypes,
   MAX_POST_IMAGES,
@@ -57,7 +56,6 @@ export class PostWriteService {
     private readonly userProfileSync: UserProfileSyncService,
     private readonly accountRisk: AccountRiskService,
     private readonly activityService: ActivityService,
-    private readonly chromaService: ChromaService,
     @Inject(POST_NOTIFICATION_PORT)
     private readonly postNotification: IPostNotificationPort,
     @Inject(POST_MODERATION_PORT)
@@ -153,12 +151,10 @@ export class PostWriteService {
     const activityLegacyId = dto.activityLegacyId ?? activity?.legacyId;
     const location =
       dto.location?.trim() || profile?.location || activity?.location;
-    const criteriaPatch = buildMatchCriteriaPatch({
-      body: bodyToSave,
-      tags: dto.tags,
-      location,
+    const departureCity = resolveDepartureCity({
       departureCity: dto.departureCity,
-      activityLegacyId,
+      location,
+      body: bodyToSave,
     });
 
     // 推断内容类型（支持交集）
@@ -219,8 +215,7 @@ export class PostWriteService {
       activityLegacyId,
       eventTitle,
       location,
-      departureCity: criteriaPatch.departureCity,
-      matchCriteria: criteriaPatch.matchCriteria,
+      departureCity,
       body: bodyToSave,
       tags: dto.tags ?? [],
       contentTypes,
@@ -236,7 +231,7 @@ export class PostWriteService {
     this.userProfileSync.applyBuddyPostHints(actor, {
       body: bodyToSave,
       location,
-      departureCity: criteriaPatch.departureCity,
+      departureCity,
       tags: dto.tags,
       contentTypes: dto.contentTypes,
     });
@@ -251,78 +246,6 @@ export class PostWriteService {
       return this.toCreatedEventDetailItem(created);
     }
 
-    this.scheduleEmbeddingUpsert({
-      postId,
-      userId: ownerUserId,
-      body: created.body,
-      eventTitle: created.eventTitle,
-      tags: created.tags,
-      location: created.location,
-      departureCity: created.departureCity,
-      activityCode: activity?.code,
-      activityLegacyId: created.activityLegacyId,
-      status,
-    });
-
     return this.toCreatedEventDetailItem(created);
-  }
-
-  scheduleEmbeddingUpsert(input: {
-    postId: string;
-    userId: string;
-    body: string;
-    eventTitle: string;
-    tags?: string[];
-    location?: string;
-    departureCity?: string;
-    activityCode?: string;
-    activityLegacyId?: number;
-    status?: PostStatus;
-  }): void {
-    void this.chromaService.syncPostEmbeddingStatus(input).catch((error) => {
-      this.logger.warn(
-        `Chroma upsert failed for post ${input.postId}: ${(error as Error).message}`,
-      );
-    });
-  }
-
-  scheduleEmbeddingSyncForRecord(
-    post: PostRecord,
-    activity?: { code?: string } | null,
-  ): void {
-    if (post.status !== 'recruiting') return;
-
-    this.scheduleEmbeddingUpsert({
-      postId: String(post._id),
-      userId: post.userId,
-      body: post.body,
-      eventTitle: post.eventTitle,
-      tags: post.tags,
-      location: post.location,
-      departureCity: post.departureCity,
-      activityCode: activity?.code,
-      activityLegacyId: post.activityLegacyId,
-      status: post.status,
-    });
-  }
-
-  /** Re-sync all recruiting post vectors (startup / repair). */
-  async reindexRecruitingEmbeddings(
-    posts: PostRecord[],
-    resolveActivityCode: (legacyId?: number) => Promise<string | undefined>,
-  ): Promise<void> {
-    for (const post of posts) {
-      if (post.status !== 'recruiting') continue;
-      const code = await resolveActivityCode(post.activityLegacyId);
-      this.scheduleEmbeddingSyncForRecord(post, code ? { code } : null);
-    }
-  }
-
-  scheduleEmbeddingDeprecate(postId: string): void {
-    void this.deprecateEmbedding(postId);
-  }
-
-  async deprecateEmbedding(postId: string): Promise<void> {
-    await this.chromaService.deprecatePostEmbedding(postId);
   }
 }

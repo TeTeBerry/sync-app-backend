@@ -8,7 +8,7 @@ import {
 import { isDjInfoIntent } from '../dj/dj-info-query.util';
 import { detectUserIntent } from '../intent/user-intent';
 import type { ResolvedChatIntent } from '../intent/chat-intent.types';
-import { inferBuddySearchHintKind } from '../match/zone-buddy-search.util';
+import { inferBuddySearchHintKind } from '../utils/buddy-search-hint.util';
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
 import { isActivityBriefIntent } from '../utils/activity-brief-intent.util';
 import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';

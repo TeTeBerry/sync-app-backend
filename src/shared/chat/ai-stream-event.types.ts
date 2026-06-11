@@ -29,11 +29,6 @@ export type AiStreamEvent =
       activityLegacyId?: number;
     }
   | {
-      type: 'post_recommendations';
-      posts: RecommendedPostCard[];
-      degraded?: boolean;
-    }
-  | {
       type: 'activity_recommendation';
       activity: RecommendedActivityCard;
     }

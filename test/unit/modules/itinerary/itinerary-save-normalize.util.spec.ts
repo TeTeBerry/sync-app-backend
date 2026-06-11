@@ -1,15 +1,15 @@
 import {
-  normalizeItineraryTimelineTime,
+  formatClockTime,
   normalizeItineraryDaysForSave,
 } from '@src/shared/itinerary';
 
 describe('itinerary-save-normalize.util', () => {
   it('extracts HH:mm from a time range', () => {
-    expect(normalizeItineraryTimelineTime('20:30-22:00')).toBe('20:30');
+    expect(formatClockTime('20:30-22:00')).toBe('20:30');
   });
 
   it('pads single-digit hours', () => {
-    expect(normalizeItineraryTimelineTime('9:05')).toBe('09:05');
+    expect(formatClockTime('9:05')).toBe('09:05');
   });
 
   it('normalizes days for save', () => {

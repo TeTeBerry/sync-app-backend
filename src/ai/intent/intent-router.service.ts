@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ActivityService } from '../../modules/activity/activity.service';
 import { LlmService } from '../../infra/llm/llm.service';
 import { ChatMessageDto } from '../../shared/chat';
-import { formatActivityCatalogDayLabels } from '../match/zone-buddy-search.util';
+import { formatActivityCatalogDayLabels } from '../utils/activity-catalog-days.util';
 import type { ResolvedChatIntent } from './chat-intent.types';
 import { resolveChatIntentFastPath } from './intent-router.rules';
 import { logAiTurn } from '../utils/log-ai-turn.util';

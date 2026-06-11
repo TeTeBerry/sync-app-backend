@@ -9,7 +9,7 @@ describe('intent-router.prompt', () => {
     expect(INTENT_ROUTER_FEW_SHOTS.length).toBeGreaterThanOrEqual(10);
     const system = buildIntentRouterSystemPrompt();
     expect(system).toContain('13号 A区 有人吗');
-    expect(system).toContain('search_posts');
+    expect(system).toContain('chitchat');
     expect(system).toContain('dj_info');
     expect(system).toContain('Marshmello 是什么风格');
     expect(system).toContain('帮我找类似风格的DJ');

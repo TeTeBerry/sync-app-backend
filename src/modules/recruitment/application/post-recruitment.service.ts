@@ -1,5 +1,4 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { ChromaService } from '../../../infra/chroma/chroma.service';
 import type { PostStatus } from '../../../database/schemas/post.schema';
 import {
   IPostRepository,
@@ -22,7 +21,6 @@ export class PostRecruitmentService {
   constructor(
     @Inject(POST_REPOSITORY)
     private readonly repository: IPostRepository,
-    private readonly chromaService: ChromaService,
   ) {}
 
   /**
@@ -51,11 +49,6 @@ export class PostRecruitmentService {
       status: 'completed' as PostStatus,
     }) as PostRecord;
 
-    void this.chromaService.deprecatePostEmbedding(postId).catch((error) => {
-      this.logger.warn(
-        `Chroma deprecate failed for post ${postId}: ${(error as Error).message}`,
-      );
-    });
     this.logger.log(`Post ${postId} recruitment closed: ${reason}`);
 
     return record;

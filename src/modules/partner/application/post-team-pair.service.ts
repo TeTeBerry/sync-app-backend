@@ -198,7 +198,6 @@ export class PostTeamPairService {
     if (!reopened) {
       throw new NotFoundException('帖子不存在');
     }
-    this.postWriteService.scheduleEmbeddingSyncForRecord(reopened);
     return reopened;
   }
 

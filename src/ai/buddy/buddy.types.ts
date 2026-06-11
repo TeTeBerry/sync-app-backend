@@ -31,11 +31,3 @@ export type PostIntentCreateAttempt =
   | PostIntentPendingConfirmationResult
   | PostIntentExistingPostResult
   | null;
-
-export interface PostIntentMatchResult {
-  replyText: string;
-  matches: Array<{ postId: string; snippet: string; matchReason?: string }>;
-  postCards: import('../../shared/chat').RecommendedPostCard[];
-  degraded?: boolean;
-  activityLabel?: string;
-}

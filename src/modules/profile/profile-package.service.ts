@@ -274,7 +274,6 @@ export class ProfilePackageService implements OnModuleInit {
     usage?: EventEntitlementUsage | null,
   ): EventEntitlementUsage {
     return {
-      aiMatchUsed: usage?.aiMatchUsed ?? 0,
       contactUnlockUsed: usage?.contactUnlockUsed ?? 0,
       postPinUsed: usage?.postPinUsed ?? 0,
     };

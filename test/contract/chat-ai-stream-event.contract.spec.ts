@@ -8,7 +8,6 @@ const STREAM_EVENT_TYPES: AiStreamEvent['type'][] = [
   'done',
   'post_created',
   'existing_post',
-  'post_recommendations',
   'activity_recommendation',
   'suggested_replies',
   'conversation_patch',
@@ -35,11 +34,6 @@ describe('chat AiStreamEvent contract', () => {
         post: samplePost,
       },
       { type: 'existing_post', postId: 'p1', activityLegacyId: 4 },
-      {
-        type: 'post_recommendations',
-        posts: [samplePost],
-        degraded: true,
-      },
       {
         type: 'activity_recommendation',
         activity: {

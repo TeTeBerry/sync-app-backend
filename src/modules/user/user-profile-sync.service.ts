@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import type { UserMatchProfile } from '../../ai/match/match-ranking.util';
+import type { UserMatchProfile } from './user-profile-hints.util';
 import { UserService } from './user.service';
 import {
   buildBuddyPostProfileHints,

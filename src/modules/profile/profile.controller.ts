@@ -38,17 +38,6 @@ export class ProfileController {
     return this.profilePackageService.listEntitlements(actor, legacyId);
   }
 
-  @Post('entitlements/consume/ai-match')
-  consumeAiMatch(
-    @Body() body: ConsumeProfileEntitlementDto,
-    @CurrentActor() actor: RequestActor,
-  ) {
-    return this.profileEntitlementConsumeService.consumeAiMatch(
-      actor,
-      body.activityLegacyId,
-    );
-  }
-
   @Post('entitlements/consume/contact-unlock')
   consumeContactUnlock(
     @Body() body: ConsumeProfileEntitlementDto,

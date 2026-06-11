@@ -12,37 +12,21 @@ export const INTENT_ROUTER_FEW_SHOTS: Array<{
   context?: string;
   activity?: string;
   intent: string;
-  searchHint?: string;
 }> = [
   {
     user: '13号 A区 有人吗',
     activity: '风暴电音节 深圳站，日期 06/13-14，场次 6月13日、6月14日',
-    intent: 'search_posts',
-    searchHint: '6月13日、13号A区',
+    intent: 'chitchat',
   },
   {
     user: '13号A',
     activity: '风暴电音节 深圳站，日期 06/13-14',
-    intent: 'search_posts',
-    searchHint: '6月13日、13号A区',
-  },
-  {
-    user: '13号 A',
-    activity: '风暴电音节 深圳站，日期 06/13-14',
-    intent: 'search_posts',
-    searchHint: '6月13日',
+    intent: 'chitchat',
   },
   {
     user: 'A区有没有搭子',
     activity: 'EDC China，日期 03/22-23',
-    intent: 'search_posts',
-    searchHint: 'A区',
-  },
-  {
-    user: '帮我看看有没有类似的组队帖',
-    activity: '已绑定活动',
-    intent: 'search_posts',
-    searchHint: '组队帖',
+    intent: 'chitchat',
   },
   {
     user: '2人 上海出发',
@@ -107,7 +91,7 @@ export function buildIntentRouterSystemPrompt(): string {
       ex.context ? `上下文:\n${ex.context}` : '',
       `用户: ${ex.user}`,
       ex.activity ? `活动: ${ex.activity}` : '',
-      `→ {"intent":"${ex.intent}"${ex.searchHint ? `,"searchHint":"${ex.searchHint}"` : ''}}`,
+      `→ {"intent":"${ex.intent}"}`,
     ]
       .filter(Boolean)
       .join('\n'),
@@ -117,7 +101,6 @@ export function buildIntentRouterSystemPrompt(): string {
     '你是聊天意图路由器。根据用户最新一条消息（结合简短上下文）判断应执行的操作。',
     '只输出 JSON，字段：',
     '- intent: 必填',
-    '  - search_posts: 在活动下找现有组队帖/搭子（含某区、某天、有没有人、13号A 等）',
     '  - create_post: 发帖、组队招募、补充人数城市后发布、确认发布、重新发帖',
     '  - quick_find_buddy: 未绑定活动时点击「帮我组队/dd」类快捷入口',
     '  - near_events: 查最近/热门活动',
@@ -127,12 +110,10 @@ export function buildIntentRouterSystemPrompt(): string {
     '多轮对话：',
     '- 若上文在讨论某位 DJ/曲风，用户说「类似风格」「近期演出」「代表作」等简短跟进 → dj_info',
     '- 不要把用户整句检索指令当成艺人名',
-    '- searchHint: search_posts 时必填，检索用简短中文（如 6月13日、13号A区、A区）',
-    '',
     '歧义说明（绑定活动时必看）：',
     '- 「N号」常与活动 catalog 日期对齐（如 06/13-14 的 13号 多指 6月13日场次，而非日历 13 号）',
     '- 「A区/B区」可能指看台票区；若活动含 06/13，「13号A」优先理解为 6月13日 或 13号A区 票区',
-    '- 问「有人吗」「有没有搭子」→ search_posts，不要 create_post',
+    '- 问「有人吗」「有没有搭子」→ chitchat，引导去活动详情留言板浏览，不要 create_post',
     '',
     fewShotBlock,
   ].join('\n');

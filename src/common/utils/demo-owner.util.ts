@@ -136,3 +136,9 @@ export function isAiShortcutTag(input: string): boolean {
   if ((AI_SHORTCUT_TAGS as readonly string[]).includes(text)) return true;
   return (LEGACY_AI_SHORTCUT_TAGS as readonly string[]).includes(text);
 }
+
+/** Current UI chip labels (not legacy aliases like「组队队友」). */
+export function isCanonicalAiShortcutTag(input: string): boolean {
+  const text = input.trim();
+  return (AI_SHORTCUT_TAGS as readonly string[]).includes(text);
+}

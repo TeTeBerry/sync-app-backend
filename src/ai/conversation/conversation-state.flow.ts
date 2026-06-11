@@ -18,20 +18,15 @@ export function applyFlowSwitch(
 ): ConversationState | null {
   const trimmed = input.trim();
 
-  if (state.flow === 'recommend_gate') {
-    if (isDeclineRecommendationsIntent(trimmed)) {
-      return enterCollectPostBodyState({
-        activityLegacyId: state.gate?.activityLegacyId,
-        fromSelfPost: true,
-      });
-    }
-    if (isPublishConfirmIntent(trimmed)) {
-      return resetToIdle();
-    }
-  }
-
   if (state.flow === 'publish_confirm' && isPublishConfirmIntent(trimmed)) {
     return resetToIdle();
+  }
+
+  if (
+    state.flow === 'collect_post_body' &&
+    isDeclineRecommendationsIntent(trimmed)
+  ) {
+    return state;
   }
 
   if (!isExactQuickReply(trimmed)) {

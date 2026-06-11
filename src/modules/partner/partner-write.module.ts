@@ -1,6 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
-import { InfraChromaModule } from '../../infra/chroma/chroma.module';
 import { PostAgentAdaptersModule } from '../../ai/adapters/post-agent-adapters.module';
 import { ActivityModule } from '../activity/activity.module';
 import { AccountRiskModule } from '../account-risk/account-risk.module';
@@ -19,7 +18,6 @@ import { MediaSecurityModule } from '../media-security/media-security.module';
     AccountRiskModule,
     LiveInfoModule,
     forwardRef(() => ActivityModule),
-    InfraChromaModule,
     PostAgentAdaptersModule,
   ],
   providers: [PostWriteService],

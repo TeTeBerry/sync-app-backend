@@ -1,8 +1,5 @@
 import { ChatMessageDto } from '../../shared/chat';
-import {
-  RECOMMEND_GATE_MARKER,
-  SELF_POST_COLLECT_BODY_MARKER,
-} from '../gate/recommend-gate.util';
+import { SELF_POST_COLLECT_BODY_MARKER } from '../gate/recommend-gate.util';
 import {
   extractDraftBodyFromPublishConfirmContent,
   PUBLISH_CONFIRM_PROMPT_MARKER,
@@ -11,7 +8,6 @@ import {
   createIdleState,
   enterCollectPostBodyState,
   enterPublishConfirmState,
-  enterRecommendGateState,
   type ConversationState,
 } from '../../shared/chat/conversation-state.types';
 
@@ -36,10 +32,6 @@ export function migrateConversationStateFromHistory(
   }
 
   const content = lastAssistant.content;
-
-  if (content.includes(RECOMMEND_GATE_MARKER)) {
-    return enterRecommendGateState({});
-  }
 
   if (content.includes(PUBLISH_CONFIRM_PROMPT_MARKER)) {
     const draftBody =

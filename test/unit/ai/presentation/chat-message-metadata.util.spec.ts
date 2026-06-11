@@ -6,17 +6,6 @@ describe('extractAssistantMessageMetadata', () => {
       extractAssistantMessageMetadata([
         { type: 'delta', content: 'hello' },
         {
-          type: 'post_recommendations',
-          posts: [
-            {
-              postId: 'p1',
-              snippet: 'snippet',
-              authorName: 'Bob',
-              eventTitle: '活动',
-            },
-          ],
-        },
-        {
           type: 'activity_recommendation',
           activity: {
             activityLegacyId: 4,
@@ -44,14 +33,6 @@ describe('extractAssistantMessageMetadata', () => {
         date: '06/13-14',
         venue: '深圳',
       },
-      recommendedPosts: [
-        {
-          postId: 'p1',
-          snippet: 'snippet',
-          authorName: 'Bob',
-          eventTitle: '活动',
-        },
-      ],
       createdPost: {
         postId: 'p2',
         snippet: '已发布',

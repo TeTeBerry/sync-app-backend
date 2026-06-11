@@ -11,27 +11,25 @@
 AppModule
 ├── ConfigModule + MongooseModule
 ├── RedisModule              # 热度缓存（可选）
-├── infra/llm, infra/chroma  # LLM / 向量检索（自 ai/ 剥离）
+├── infra/llm, infra/chroma  # LLM / 活动知识向量检索（自 ai/ 剥离）
 ├── ActivityModule           # 活动 + registration/
 ├── ActivityExperienceModule # 活动域聚合（travel-plan / itinerary / live-info / travel-guide）
 ├── UserModule               # Demo 用户 seed
 ├── PartnerModule              # 组队帖（REST 仍为 /posts）
-├── ProfileModule            # 个人页 BFF
+├── ProfileModule            # 个人页 BFF（套餐 / 联系方式解锁配额）
 ├── HomeModule               # 首页 BFF
 ├── NotificationModule
 ├── ChatModule               # AI 会话持久化
 ├── shared/                  # 前后端契约（chat、travel-plan、itinerary、live-info）
 └── AiModule                 # WebSocket 对话 + Agent 编排（AiChatWsServer）
-    ├── AgentsModule         # 四 Agent
+    ├── AgentsModule         # Text/Image/Risk/Notice Agent
     ├── OrchestrationModule  # 状态机 / Handler 管道
     ├── RagModule / InfraChromaModule
-    └── BuddyModule             # 发帖 / 匹配编排（use cases + PostIntentService 门面）
-        ├── recommend-before-create.use-case.ts
-        ├── match-posts.use-case.ts
+    └── BuddyModule             # 发帖编排（create-post-from-chat use case + PostIntentService 门面）
         └── create-post-from-chat.use-case.ts
     ├── orchestration/          # AiTurnPipeline（单轮编排）+ legacy AgentRuntime（仅 DeterministicReply）
     ├── presentation/           # AiSseBuilder（流式事件组装，经 WS 下发；类名历史遗留）
-    ├── gate/ match/ publish/ risk/ intent/  # 原 ai/utils 按域拆分
+    ├── gate/ publish/ risk/ intent/  # 原 ai/utils 按域拆分
     ├── PostAgentAdaptersModule # PartnerModule ↔ AgentsModule 端口适配
 ```
 
@@ -68,27 +66,25 @@ AppModule
   → AiService：校验、限流、会话合并
   → AiTurnPipeline.runTurn
        → IntentRouterService.resolve（规则快路径优先，未命中再 qwen-max 意图 JSON）
-       → syncProfileOnce（search/create 路径各一次）
-       → search_posts：collectMatchOnly
-       → create_post：collectBuddyIntentFlow（recommend gate → 发帖）
-       → quick_reply：collectDeterministicOnly
-  → AiSseBuilder：post_created / post_recommendations / conversation_patch / suggested_replies 等
+       → syncProfileOnce（发帖路径）
+       → create_post：PostIntentService.tryCreatePostFromChat
+       → quick_reply / chitchat / dj_info / activity_enter：DeterministicReply 或 Agent
+  → AiSseBuilder：post_created / activity_recommendation / conversation_patch / suggested_replies 等
   → AiService：message_complete、ChatService.saveTurn、done
 ```
+
+**已移除**：帖子向量匹配、`search_posts`、`post_recommendations`、推荐门控（`recommend_gate`）、`AiMatchQuota`、Chroma 帖子 embedding 读写。
 
 ### P2 性能与成本（已实现）
 
 | 项 | 实现 |
 |----|------|
-| 并行 | `create-post`：TextParse/ImageParse ∥ resolveActivity；`match-posts`：profile sync ∥ activity lookup；recommend 传 `preResolvedActivity` |
+| 并行 | `create-post`：TextParse/ImageParse ∥ resolveActivity |
 | 风控成本 | 快捷「确认发布」：`RiskAgent.assess(..., { rulesOnly: true })`，规则+重复通过后跳过 Qwen-Max |
-| Chroma 写 | `PostWriteService.scheduleEmbeddingUpsert` 异步 + 失败 warn；删帖仍 deprecate |
 | 限流 | `AiRateLimitService` Redis INCR 或内存 fallback；`config.ai.rateLimit`（默认 30 次 / 5 分钟 / userId∥sessionId） |
 | 意图缓存 | `IntentCacheService` Redis SETEX + 进程内 Map 降级；key 含 `sessionId` / `activityLegacyId` / `hasImage` / input hash；`config.ai.intentCache` |
-| Chroma circuit | `config.chroma.circuit`（failureThreshold、cooldownMs）→ `ChromaService` |
 | 流式帧 | `delta` + `message_complete` + `done`（WebSocket JSON） |
-| AI 匹配配额 | `MatchPostsFromChatUseCase` 经 `AiMatchQuotaService` 预检；`post_recommendations` 有结果时服务端扣次 |
-| 可观测 | `logAiTurn`：`ms_intent` / `ms_match` / `ms_buddy` / `ms_total`；create-post：`ms_parse` / `ms_risk` |
+| 可观测 | `logAiTurn`：`ms_intent` / `ms_buddy` / `ms_total`；create-post：`ms_parse` / `ms_risk` |
 
 ### 会话状态机（ConversationState）
 
@@ -97,11 +93,11 @@ AppModule
 | flow | 含义 | 附加字段 |
 |------|------|----------|
 | `idle` | 默认 | — |
-| `recommend_gate` | 已展示搭子推荐，等待用户决定 | `gate.activityLegacyId`, `gate.shownPostIds`, `gate.empty` |
+| `collect_post_body` | 等待用户填写组队帖正文 | `publishDraft.activityLegacyId` |
 | `publish_confirm` | 草稿待发，等待「确认发布」 | `publishDraft.activityLegacyId`, `publishDraft.draftBody` |
 | `clarify_buddy` | 缺槽位，等待补充出行信息 | — |
 
-`ChatService.getSession`：无 `conversationState.flow` 时从助手文案 marker **一次性迁移**并写回 Mongo。运行时 `isAwaiting*` 仅读 `conversationState.flow`（不再扫历史消息）；marker 仍保留在助手回复文案中供展示/测试。
+`ChatService.getSession`：无 `conversationState.flow` 时从助手文案 marker **一次性迁移**并写回 Mongo；历史 `recommend_gate` 状态会归一为 `idle`。
 
 ### PartnerModule 端口（解耦 AgentsModule）
 
@@ -113,20 +109,10 @@ AppModule
 |-------|------|------|
 | TextParseAgent | Qwen-Max `invokeJson` | 文本 → 结构化发帖字段 |
 | ImageParseAgent | Qwen-VL `invokeVisionJson` | 截图 → 结构化字段 |
-| MatchAgent | Chroma `queryPostsByActivity` | 活动内向量检索 |
 | RiskAgent | 规则 + Qwen-Max + 重复帖检测 | spam / 重复 / 严重违规 |
+| NoticeAgent | — | 发帖拒绝通知 |
 
-发帖 Agent 经 `PostIntentService` 编排；`ALL_AGENT_TOOLS = []`，**未**接入 `AgentRuntimeService` 工具链（DeterministicReply 仍用 Handler 管道 + 空工具列表，非 LLM tool-calling）。详见 `src/ai/orchestration/README.md`。
-
-### P3 工程优化（2025-05）
-
-| 项 | 实现 |
-|----|------|
-| 测试金字塔 | `IntentRouterService` / `AiService` recommend_gate 流 / `PostWriteService` Chroma 降级 |
-| 可观测性 | `X-Request-Id` + `logAiTurn` 结构化日志；`GET /api/health` 报告 mongodb / redis / chroma |
-| 编排澄清 | `orchestration/agent-runtime.service` + `agent-tools.service`（发帖走 Buddy use cases；DeterministicReply 仍用） |
-| Post 互动 | `PostInteractionService`（赞/评/申请）；`PostWriteService`（写帖 + Chroma） |
-| 流式事件 | `message_complete`（完整回复，前端可跳过打字机） |
+发帖经 `PostIntentService` → `CreatePostFromChatUseCase` 编排；`ALL_AGENT_TOOLS = []`，**未**接入 `AgentRuntimeService` 工具链。详见 `src/ai/orchestration/README.md`。
 
 ### 传输与监控
 
@@ -140,13 +126,27 @@ AppModule
 
 ---
 
+## Profile 权益（套餐）
+
+单场套餐（Pro / Pro+ / Ultra）与全局每月免费额度合并展示，**当前计费维度**：
+
+| 配额 | 说明 |
+|------|------|
+| `contactUnlock` | 申请组队时解锁对方联系方式；免费每月 3 次 + 套餐场次额度 |
+| `map` | 点位地图同频雷达天数 |
+| `postPin` | 帖子置顶次数（Pro+ / Ultra） |
+
+**已移除**：`aiMatch` 配额、`POST /profile/entitlements/consume/ai-match`、前端 `TARO_APP_ENABLE_PROFILE_BENEFITS` 开关（权益入口默认开启）。
+
+---
+
 ## 数据与基础设施
 
 | 存储 | 用途 |
 |------|------|
-| **MongoDB** | user, activity, activity-registration, post, post-like, post-comment, post-application, chat, notification |
+| **MongoDB** | user, activity, activity-registration, post, post-like, post-comment, post-application, chat, notification, event-package-entitlement, user-free-quota |
 | **Redis** | `heat:global`、`heat:activity:{legacyId}`（不可用则降级） |
-| **Chroma** | `sync_knowledge`（活动 RAG）、`sync_posts`（帖子向量，发帖 upsert / 删帖删除） |
+| **Chroma** | `sync_knowledge`（活动 RAG）、`sync_user_profiles`（用户画像向量，UserProfileAgent 同步） |
 
 ---
 
@@ -170,8 +170,6 @@ AppModule
 ## 待办（非阻塞 H5 demo）
 
 - P0：生产关闭 demo Query（`AUTH_ALLOW_DEMO=false`）；微信登录 E2E 验收
-- P1（AI 优化，已实现）：Intent 规则快路径 + resolve 日志/缓存；`legacy_cascade` 与 `create_post` 合并；推荐门控空结果 + `suggested_replies` 流式帧；单轮 `syncProfileFromChat`；匹配 `matchReason` + Chroma 降级/circuit breaker；有图仍走 proactive recommend
-- P2（AI 优化，已实现）：关键路径 `Promise.all`（parse∥resolveActivity、profile∥match）；快捷确认发帖 `RiskAgent.rulesOnly` 跳过 LLM；REST/AI 发帖 Chroma upsert 异步 + 失败日志；AI Redis/内存限流 30/5min；WS `message_complete`；结构化 turn 日志（`ms_intent`/`ms_match`/`ms_buddy`/`ms_total`）；`AgentRuntimeService` 工具链仍为空（发帖走 Buddy use cases）
 - ~~P1：Registration 物理迁入 ActivityModule~~ ✅ `modules/activity/registration/`
 - P5：通知 meta 深链、Partner 目录可选 rename
 

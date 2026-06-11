@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ActivityService } from '../../modules/activity/activity.service';
-import type { BuddySearchHintPayload } from '../intent/chat-intent.types';
 import { IntentRouterService } from '../intent/intent-router.service';
 import { DeterministicReplyService } from '../orchestration/deterministic-reply.service';
 import { PostIntentService } from '../post-intent.service';
@@ -24,9 +23,6 @@ import {
 } from '../utils/activity-enter.util';
 import { resolveActivityId } from '../utils/activity-id.util';
 import { resolveHomeFestivalShortcutCode } from '../utils/festival-shortcut.util';
-import { BuddyContextService } from '../buddy/buddy-context.service';
-import type { ConversationState } from '../conversation';
-import { enterCollectPostBodyState } from '../conversation';
 import { logAiTurn } from '../utils/log-ai-turn.util';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
 import { ChatMessageDto } from '../../shared/chat';
@@ -35,6 +31,7 @@ import {
   AiStreamEventBuilder,
   type ReplySink,
 } from '../presentation/ai-sse.builder';
+import type { ConversationState } from '../conversation';
 
 export type { AiTurnTimings } from './handlers/turn-handler.types';
 
@@ -57,7 +54,6 @@ export class AiTurnPipeline {
     private readonly userProfileAgent: UserProfileAgent,
     private readonly intentRouter: IntentRouterService,
     private readonly sseBuilder: AiStreamEventBuilder,
-    private readonly buddyContext: BuddyContextService,
     private readonly activityService: ActivityService,
     private readonly agentFirstTurnHandler: AgentFirstTurnHandler,
     private readonly djInfoTurnHandler: DjInfoTurnHandler,
@@ -158,14 +154,6 @@ export class AiTurnPipeline {
     const buddyStartedAt = Date.now();
 
     switch (routed.kind) {
-      case 'search_posts':
-        events = await this.collectDeterministicOnly(
-          dto,
-          fullMessages,
-          lastInput,
-          sink,
-        );
-        break;
       case 'create_post':
         events = await this.postingTurnOrchestrator.run({
           dto,
@@ -227,11 +215,11 @@ export class AiTurnPipeline {
     input: string,
     actor: ChatRequestDto['actor'],
   ): Promise<UserProfileSyncResult | null> {
-    if (kind !== 'search_posts' && kind !== 'create_post') {
+    if (kind !== 'create_post') {
       return null;
     }
 
-    if (kind === 'search_posts' && isAiShortcutTag(input)) {
+    if (isAiShortcutTag(input)) {
       return null;
     }
 
@@ -240,86 +228,6 @@ export class AiTurnPipeline {
       input,
       actor,
     });
-  }
-
-  private async collectMatchOnly(
-    ctx: TurnHandlerContext,
-  ): Promise<AiStreamEvent[]> {
-    const { dto, messages, input, sink, routed, profileSync, timings } = ctx;
-
-    const requireBuddy =
-      await this.buddyContext.maybeRequireBuddyPostBeforeTeamSearch(
-        input,
-        dto.activityLegacyId,
-        dto.actor,
-      );
-    if (requireBuddy.required) {
-      return this.sseBuilder.buildRequireBuddyPostFirstEvents(
-        sink,
-        dto.activityLegacyId,
-        requireBuddy.activityLabel,
-      );
-    }
-
-    const matchStart = Date.now();
-    const matched = await this.postIntentService.tryMatchPostsFromChat({
-      messages,
-      input,
-      activityLegacyId: dto.activityLegacyId,
-      actor: dto.actor,
-      buddySearchHint: routed.buddySearchHint,
-      fromIntentRouter: true,
-      profileSync,
-    });
-    timings.ms_match = Date.now() - matchStart;
-
-    if (matched) {
-      const activityLabel = matched.activityLabel ?? '本活动';
-      const useRecommendGate =
-        isAiShortcutTag(input) && dto.activityLegacyId != null;
-
-      if (useRecommendGate && matched.postCards.length) {
-        return this.sseBuilder.buildRecommendGateFoundEvents(
-          sink,
-          dto.activityLegacyId,
-          activityLabel,
-          matched.postCards,
-          matched.postCards.length,
-          matched.degraded,
-        );
-      }
-
-      if (useRecommendGate && !matched.postCards.length) {
-        return this.sseBuilder.buildRecommendGateEmptyEvents(
-          sink,
-          dto.activityLegacyId,
-          activityLabel,
-        );
-      }
-
-      sink.setReply(matched.replyText);
-      const events: AiStreamEvent[] = [
-        { type: 'delta', content: matched.replyText },
-      ];
-      if (matched.postCards.length) {
-        events.push({
-          type: 'post_recommendations',
-          posts: matched.postCards,
-          degraded: matched.degraded,
-        });
-      } else if (dto.activityLegacyId != null) {
-        sink.setState(
-          enterCollectPostBodyState({
-            activityLegacyId: dto.activityLegacyId,
-            fromSelfPost: true,
-          }),
-        );
-        events.push(this.sseBuilder.conversationPatchEvent(sink));
-      }
-      return events;
-    }
-
-    return this.collectDeterministicOnly(dto, messages, input, sink);
   }
 
   private async collectActivityEnter(

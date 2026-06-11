@@ -1,14 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { createIdleState, type ConversationState } from '../conversation';
 import {
-  createIdleState,
-  enterRecommendGateState,
-  type ConversationState,
-} from '../conversation';
-import {
-  buildRecommendGateEmptyReply,
-  buildRecommendGateFoundReply,
   buildRequireBuddyPostFirstReply,
-  RECOMMEND_GATE_SUGGESTED_REPLIES,
   REQUIRE_BUDDY_POST_SUGGESTED_REPLIES,
 } from '../gate/recommend-gate.util';
 import { enterCollectPostBodyState } from '../conversation';
@@ -49,16 +42,6 @@ export class AiStreamEventBuilder {
     return { type: 'conversation_patch', state: sink.getState() };
   }
 
-  recommendGateSuggestedRepliesEvent(): AiStreamEvent | null {
-    if (!RECOMMEND_GATE_SUGGESTED_REPLIES.length) {
-      return null;
-    }
-    return {
-      type: 'suggested_replies',
-      replies: [...RECOMMEND_GATE_SUGGESTED_REPLIES],
-    };
-  }
-
   publishConfirmSuggestedRepliesEvent(): AiStreamEvent {
     return {
       type: 'suggested_replies',
@@ -91,36 +74,6 @@ export class AiStreamEventBuilder {
     ];
   }
 
-  buildRecommendGateFoundEvents(
-    sink: ReplySink,
-    activityLegacyId: number | undefined,
-    activityLabel: string,
-    postCards: RecommendedPostCard[],
-    matchCount: number,
-    degraded?: boolean,
-  ): AiStreamEvent[] {
-    const replyText = buildRecommendGateFoundReply(activityLabel, matchCount);
-    sink.setReply(replyText);
-    sink.setState(
-      enterRecommendGateState({
-        activityLegacyId,
-        shownPostIds: postCards.map((card) => card.postId),
-        empty: false,
-      }),
-    );
-    const suggestedReplies = this.recommendGateSuggestedRepliesEvent();
-    return [
-      { type: 'delta', content: replyText },
-      {
-        type: 'post_recommendations',
-        posts: postCards,
-        degraded,
-      },
-      ...(suggestedReplies ? [suggestedReplies] : []),
-      this.conversationPatchEvent(sink),
-    ];
-  }
-
   buildRequireBuddyPostFirstEvents(
     sink: ReplySink,
     activityLegacyId: number | undefined,
@@ -144,28 +97,6 @@ export class AiStreamEventBuilder {
     ];
   }
 
-  buildRecommendGateEmptyEvents(
-    sink: ReplySink,
-    activityLegacyId: number | undefined,
-    activityLabel: string,
-  ): AiStreamEvent[] {
-    const replyText = buildRecommendGateEmptyReply(activityLabel);
-    sink.setReply(replyText);
-    sink.setState(
-      enterRecommendGateState({
-        activityLegacyId,
-        shownPostIds: [],
-        empty: true,
-      }),
-    );
-    const suggestedReplies = this.recommendGateSuggestedRepliesEvent();
-    return [
-      { type: 'delta', content: replyText },
-      ...(suggestedReplies ? [suggestedReplies] : []),
-      this.conversationPatchEvent(sink),
-    ];
-  }
-
   eventsFromPostAttempt(
     postAttempt: PostIntentCreateAttempt,
     sink: ReplySink,
@@ -174,9 +105,7 @@ export class AiStreamEventBuilder {
 
     const patchIfNeeded = (): AiStreamEvent[] => {
       const state = sink.getState();
-      return state.flow !== createIdleState().flow ||
-        state.gate ||
-        state.publishDraft
+      return state.flow !== createIdleState().flow || state.publishDraft
         ? [this.conversationPatchEvent(sink)]
         : [];
     };

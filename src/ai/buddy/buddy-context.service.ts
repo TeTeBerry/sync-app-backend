@@ -6,12 +6,10 @@ import {
 } from '../../common/utils/demo-owner.util';
 import { ActivityService } from '../../modules/activity/activity.service';
 import { PostService } from '../../modules/partner/post.service';
-import { resolveOwnerRecruitingPostForMatch } from '../match/resolve-owner-post-for-match.util';
-import type { PostRecord } from '../../modules/partner/interfaces/post.repository.interface';
-import { isBuddyTeamSearchIntent } from './buddy-team-search-intent.util';
 import type { RecommendedPostCard } from '../../shared/chat';
 import { inferAuthorGenderFromPost } from '../../common/utils/infer-author-gender.util';
-import { BUDDY_RECOMMEND_CARD_SNIPPET_MAX } from '../match/buddy-match.constants';
+
+const POST_CARD_SNIPPET_MAX = 56;
 import {
   buildKnownFactsSummary,
   isFindBuddyThread,
@@ -23,10 +21,8 @@ import {
   detectUserIntent,
   isExactQuickReply,
   isQuickReplyIntent,
-  isSearchExistingPostsIntent,
 } from '../intent/user-intent';
 import {
-  isAwaitingRecommendationsGate,
   isAwaitingSelfPostBodyCollection,
   isDeclineRecommendationsIntent,
 } from '../gate/recommend-gate.util';
@@ -38,8 +34,6 @@ import { ChatMessageDto } from '../../shared/chat';
 import { isTicketResaleIntent } from './activity-scope-guard.util';
 import { inferIntentTagsFromText } from './infer-intent-tags.util';
 import { extractActivityLookupKeywords } from './resolve-activity-from-chat.util';
-import type { MatchedPostItem } from '../agents/agent.types';
-import { postMatchesShortcutTag } from '../match/shortcut-post-match.util';
 
 interface ResolvedActivity {
   legacyId?: number;
@@ -54,54 +48,6 @@ export class BuddyContextService {
     private readonly postService: PostService,
     private readonly activityService: ActivityService,
   ) {}
-
-  /**
-   * 找组队/拼房/同路/拼卡等搜索前，须已有本活动招募帖；否则返回引导文案所需的活动名。
-   */
-  /** Pick the recruiting post whose type/tags best match the shortcut (or newest if only one). */
-  async resolveOwnerPostForMatch(
-    activityLegacyId: number,
-    actor: RequestActor,
-    userInput?: string,
-  ): Promise<PostRecord | null> {
-    if (!actor.clientUserId?.trim()) return null;
-    const posts =
-      await this.postService.findOwnerRecruitingPostRecordsForActivity(
-        activityLegacyId,
-        actor,
-      );
-    return resolveOwnerRecruitingPostForMatch(posts, userInput);
-  }
-
-  async maybeRequireBuddyPostBeforeTeamSearch(
-    input: string,
-    activityLegacyId: number | undefined,
-    actor: RequestActor,
-  ): Promise<{ required: true; activityLabel: string } | { required: false }> {
-    if (activityLegacyId == null || Number.isNaN(activityLegacyId)) {
-      return { required: false };
-    }
-    if (!isBuddyTeamSearchIntent(input)) {
-      return { required: false };
-    }
-
-    const ownerPost = actor.clientUserId
-      ? await this.postService.findOwnerRecruitingPostRecord(
-          activityLegacyId,
-          actor,
-        )
-      : null;
-    if (ownerPost) {
-      return { required: false };
-    }
-
-    const activity =
-      await this.activityService.findByLegacyId(activityLegacyId);
-    return {
-      required: true,
-      activityLabel: activity?.name?.trim() || '本活动',
-    };
-  }
 
   async resolveActivity(
     ctx: ConversationContext,
@@ -234,32 +180,14 @@ export class BuddyContextService {
 
   private truncateRecommendSnippet(text: string): string {
     const normalized = text.replace(/\s+/g, ' ').trim();
-    if (normalized.length <= BUDDY_RECOMMEND_CARD_SNIPPET_MAX) {
+    if (normalized.length <= POST_CARD_SNIPPET_MAX) {
       return normalized;
     }
-    return `${normalized.slice(0, BUDDY_RECOMMEND_CARD_SNIPPET_MAX)}…`;
-  }
-
-  /** 快捷标签检索：只保留对应类型（如拼卡/同路）的他人帖子 */
-  async filterMatchesForShortcutTag(
-    matches: MatchedPostItem[],
-    shortcut: string,
-  ): Promise<MatchedPostItem[]> {
-    if (!isAiShortcutTag(shortcut) || !matches.length) {
-      return matches;
-    }
-
-    const resolved = await Promise.all(
-      matches.map(async (match) => {
-        const post = await this.postService.findPostById(match.postId);
-        return post && postMatchesShortcutTag(post, shortcut) ? match : null;
-      }),
-    );
-    return resolved.filter((match): match is MatchedPostItem => match != null);
+    return `${normalized.slice(0, POST_CARD_SNIPPET_MAX)}…`;
   }
 
   async buildRecommendedPostCards(
-    matches: Array<{ postId: string; snippet: string; matchReason?: string }>,
+    matches: Array<{ postId: string; snippet: string }>,
     activityLegacyId?: number,
   ): Promise<RecommendedPostCard[]> {
     const cards: RecommendedPostCard[] = [];
@@ -273,7 +201,6 @@ export class BuddyContextService {
           authorName: 'Sync 用户',
           eventTitle: '组队帖',
           activityLegacyId,
-          matchReason: match.matchReason,
         });
         continue;
       }
@@ -294,7 +221,6 @@ export class BuddyContextService {
         location: post.location,
         tags: post.tags,
         activityLegacyId: post.activityLegacyId ?? activityLegacyId,
-        matchReason: match.matchReason,
       });
     }
 
@@ -362,16 +288,6 @@ export class BuddyContextService {
       return true;
     }
 
-    if (isAwaitingRecommendationsGate(messages, state)) {
-      if (
-        isPublishConfirmIntent(input) ||
-        isDeclineRecommendationsIntent(input)
-      ) {
-        return true;
-      }
-      return Boolean(input.trim());
-    }
-
     if (isAwaitingSelfPostBodyCollection(messages, state)) {
       if (
         isPublishConfirmIntent(input) ||
@@ -411,9 +327,5 @@ export class BuddyContextService {
     }
 
     return true;
-  }
-
-  isMatchExistingPostsIntent(input: string): boolean {
-    return isSearchExistingPostsIntent(input);
   }
 }

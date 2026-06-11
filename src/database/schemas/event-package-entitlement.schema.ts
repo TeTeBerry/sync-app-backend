@@ -8,9 +8,6 @@ export type EventPackageEntitlementDocument =
 @Schema({ _id: false })
 export class EventEntitlementUsageRecord {
   @Prop({ default: 0 })
-  aiMatchUsed: number;
-
-  @Prop({ default: 0 })
   contactUnlockUsed: number;
 
   @Prop({ default: 0 })

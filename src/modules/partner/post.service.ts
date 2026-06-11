@@ -22,7 +22,6 @@ import {
 } from './ports/post-notification.port';
 import { UserBlockService } from '../user/user-block.service';
 import { UserService } from '../user/user.service';
-import { ChromaService } from '../../infra/chroma/chroma.service';
 import type { PostStatus } from '../../database/schemas/post.schema';
 import { ApplyToPostDto } from './dto/apply-to-post.dto';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -53,10 +52,10 @@ import { PostWriteService } from './application/post-write.service';
 import { PostQueryService } from './application/post-query.service';
 import { PostInteractionService } from './post-interaction.service';
 import {
-  buildMatchCriteriaPatch,
   inferDepartureCityFromText,
   normalizeCityName,
-} from '../../ai/match/buddy-match-criteria.util';
+  resolveDepartureCity,
+} from './utils/departure-city.util';
 import { PostRecruitmentService } from '../recruitment/application/post-recruitment.service';
 import { PostTeamPairService } from './application/post-team-pair.service';
 
@@ -72,7 +71,6 @@ export class PostService implements OnModuleInit {
     private readonly userService: UserService,
     private readonly userBlockService: UserBlockService,
     private readonly activityService: ActivityService,
-    private readonly chromaService: ChromaService,
     @Inject(POST_NOTIFICATION_PORT)
     private readonly postNotification: IPostNotificationPort,
     private readonly postWriteService: PostWriteService,
@@ -88,8 +86,7 @@ export class PostService implements OnModuleInit {
     try {
       const count = await this.postModel.estimatedDocumentCount();
       if (count === 0) {
-        const inserted = await this.postModel.insertMany(POST_SEED);
-        await this.syncPostEmbeddings(inserted as PostDocument[]);
+        await this.postModel.insertMany(POST_SEED);
       }
     } catch (error) {
       this.logger.warn(`Post seed failed: ${(error as Error).message}`);
@@ -128,14 +125,6 @@ export class PostService implements OnModuleInit {
     }
 
     try {
-      await this.reindexRecruitingEmbeddings();
-    } catch (error) {
-      this.logger.warn(
-        `Recruiting reindex failed: ${(error as Error).message}`,
-      );
-    }
-
-    try {
       await this.postInteraction.ensureDemoPostComments();
     } catch (error) {
       this.logger.warn(`Demo comment seed failed: ${(error as Error).message}`);
@@ -165,10 +154,6 @@ export class PostService implements OnModuleInit {
       const doc = await this.postModel.create(seed);
       inserted.push(doc);
     }
-
-    if (inserted.length) {
-      await this.syncPostEmbeddings(inserted);
-    }
   }
 
   /** 已有库时补全风暴电音节「已组队」帖，便于活动详情组队完成态测试 */
@@ -197,48 +182,6 @@ export class PostService implements OnModuleInit {
     }
   }
 
-  private async syncPostEmbeddings(posts: PostDocument[]) {
-    const recruitingPosts = posts.filter((p) => p.status === 'recruiting');
-    if (!recruitingPosts.length) return;
-
-    // 批量并行查询活动，避免 N+1
-    const uniqueLegacyIds = [
-      ...new Set(
-        recruitingPosts
-          .map((p) => p.activityLegacyId)
-          .filter((id): id is number => id != null),
-      ),
-    ];
-    const activityResults = await Promise.all(
-      uniqueLegacyIds.map((id) => this.activityService.findByLegacyId(id)),
-    );
-    const activityMap = new Map(
-      activityResults.filter(Boolean).map((a) => [a!.legacyId, a]),
-    );
-
-    // 并行同步向量
-    await Promise.all(
-      recruitingPosts.map((post) => {
-        const activity =
-          post.activityLegacyId != null
-            ? activityMap.get(post.activityLegacyId)
-            : null;
-        return this.chromaService.syncPostEmbeddingStatus({
-          postId: String(post._id),
-          userId: post.userId,
-          body: post.body,
-          eventTitle: post.eventTitle,
-          tags: post.tags,
-          location: post.location,
-          departureCity: post.departureCity,
-          activityCode: activity?.code,
-          activityLegacyId: post.activityLegacyId,
-          status: post.status,
-        });
-      }),
-    );
-  }
-
   private async patchStormDemoDepartureCities(): Promise<void> {
     for (const seed of STORM_DEMO_POST_SEED) {
       const departureCity =
@@ -253,51 +196,9 @@ export class PostService implements OnModuleInit {
           userId: seed.userId,
           body: seed.body,
         },
-        {
-          $set: {
-            departureCity,
-            matchCriteria: {
-              activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
-              departureCity,
-            },
-          },
-        },
+        { $set: { departureCity } },
       );
     }
-  }
-
-  private async reindexRecruitingEmbeddings(): Promise<void> {
-    const recruiting = await this.postModel
-      .find({ status: 'recruiting' })
-      .lean();
-    await this.postWriteService.reindexRecruitingEmbeddings(
-      recruiting as PostRecord[],
-      async (legacyId) => {
-        if (legacyId == null) return undefined;
-        const activity = await this.activityService.findByLegacyId(legacyId);
-        return activity?.code;
-      },
-    );
-  }
-
-  private async syncPostEmbeddingForRecord(post: PostRecord): Promise<void> {
-    const activity =
-      post.activityLegacyId != null
-        ? await this.activityService.findByLegacyId(post.activityLegacyId)
-        : null;
-
-    await this.chromaService.syncPostEmbeddingStatus({
-      postId: String(post._id),
-      userId: post.userId,
-      body: post.body,
-      eventTitle: post.eventTitle,
-      tags: post.tags,
-      location: post.location,
-      departureCity: post.departureCity,
-      activityCode: activity?.code,
-      activityLegacyId: post.activityLegacyId,
-      status: post.status,
-    });
   }
 
   listApplicationsForPost(postId: string, actor: RequestActor) {
@@ -383,7 +284,6 @@ export class PostService implements OnModuleInit {
       return false;
     }
 
-    void this.chromaService.deprecatePostEmbedding(postId);
     void this.postNotification.notifyPostHidden(
       post.userId,
       postId,
@@ -450,15 +350,11 @@ export class PostService implements OnModuleInit {
     }
 
     if (dto.body?.trim() || dto.departureCity?.trim() || dto.location?.trim()) {
-      const criteriaPatch = buildMatchCriteriaPatch({
-        body: (dto.body ?? post.body).trim(),
-        tags: post.tags,
-        location: dto.location?.trim() ?? post.location,
+      patch.departureCity = resolveDepartureCity({
         departureCity: dto.departureCity?.trim() ?? post.departureCity,
-        activityLegacyId: post.activityLegacyId,
+        location: dto.location?.trim() ?? post.location,
+        body: (dto.body ?? post.body).trim(),
       });
-      patch.departureCity = criteriaPatch.departureCity;
-      patch.matchCriteria = criteriaPatch.matchCriteria;
     }
 
     if (dto.status === 'recruiting') {
@@ -487,8 +383,6 @@ export class PostService implements OnModuleInit {
     if (!updated) {
       throw new NotFoundException('帖子不存在');
     }
-
-    this.postWriteService.scheduleEmbeddingSyncForRecord(updated);
 
     return PostMapper.toProfileItem(updated);
   }
@@ -546,10 +440,7 @@ export class PostService implements OnModuleInit {
       throw new NotFoundException('帖子不存在');
     }
 
-    await Promise.all([
-      this.postInteraction.deleteInteractionsForPost(id),
-      Promise.resolve(this.postWriteService.deprecateEmbedding(id)),
-    ]);
+    await this.postInteraction.deleteInteractionsForPost(id);
 
     return { ok: true as const };
   }

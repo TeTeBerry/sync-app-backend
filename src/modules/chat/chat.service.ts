@@ -217,10 +217,13 @@ export class ChatService {
     if (!state.flow) {
       return createIdleState();
     }
+    const flow =
+      (state as { flow?: string }).flow === 'recommend_gate'
+        ? 'idle'
+        : state.flow;
     return {
       version: state.version ?? CONVERSATION_STATE_VERSION,
-      flow: state.flow,
-      ...(state.gate ? { gate: state.gate } : {}),
+      flow,
       ...(state.publishDraft ? { publishDraft: state.publishDraft } : {}),
     };
   }

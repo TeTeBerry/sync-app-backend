@@ -1,8 +1,14 @@
 import {
   inferDepartureCityFromText,
   normalizeCityName,
-} from '../../ai/match/buddy-match-criteria.util';
-import type { UserMatchProfile } from '../../ai/match/match-ranking.util';
+} from '../partner/utils/departure-city.util';
+
+export interface UserMatchProfile {
+  city?: string;
+  favorGenres?: string[];
+  likeMate?: boolean;
+  budgetLevel?: string;
+}
 
 export type UserMatchProfileHints = Partial<UserMatchProfile>;
 

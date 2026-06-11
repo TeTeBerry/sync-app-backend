@@ -8,6 +8,7 @@ import {
   normalizeProfileBudgetLevel,
   normalizeProfileGenres,
   userMatchProfilesEqual,
+  type UserMatchProfile,
 } from '../../modules/user/user-profile-hints.util';
 import { LlmService } from '../../infra/llm/llm.service';
 import { ChatMessageDto } from '../../shared/chat';
@@ -17,11 +18,6 @@ import {
   isFindBuddyThread,
   parseConversationContext,
 } from '../conversation/conversation-context.parser';
-import {
-  DEFAULT_MATCH_RANKING_WEIGHTS,
-  MatchRankingWeights,
-  UserMatchProfile,
-} from '../match/match-ranking.util';
 import type { UserMatchProfile as AgentUserMatchProfile } from './agent.types';
 
 interface LlmProfileExtract {
@@ -33,7 +29,6 @@ interface LlmProfileExtract {
 
 export interface UserProfileSyncResult {
   profile: UserMatchProfile;
-  weights: MatchRankingWeights;
   updated: boolean;
 }
 
@@ -77,53 +72,6 @@ export class UserProfileAgent {
     private readonly llmService: LlmService,
     private readonly userService: UserService,
   ) {}
-
-  /** Load persisted user profile for match ranking (no LLM). */
-  async getStoredMatchProfile(
-    actor: RequestActor,
-  ): Promise<UserProfileSyncResult | null> {
-    if (!actor.clientUserId.trim()) return null;
-    try {
-      const me = await this.userService.getMe(actor);
-      const profile: UserMatchProfile = {
-        city: me.city,
-        favorGenres: me.favorGenres,
-        likeMate: me.likeMate,
-        budgetLevel: me.budgetLevel,
-      };
-      if (!hasUserMatchProfileSignal(profile)) return null;
-      return {
-        profile,
-        weights: this.getMatchWeights(profile),
-        updated: false,
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  getMatchWeights(profile?: UserMatchProfile): MatchRankingWeights {
-    const weights = { ...DEFAULT_MATCH_RANKING_WEIGHTS };
-
-    if (profile?.city?.trim()) {
-      weights.city = 0.18;
-    }
-
-    if ((profile?.favorGenres?.length ?? 0) >= 1) {
-      weights.genreOverlap = 0.14;
-    }
-    if ((profile?.favorGenres?.length ?? 0) >= 2) {
-      weights.genreOverlap = 0.16;
-    }
-
-    if (profile?.likeMate === true) {
-      weights.likeMateCompatible = 0.1;
-    } else if (profile?.likeMate === false) {
-      weights.likeMateCompatible = 0.04;
-    }
-
-    return weights;
-  }
 
   async buildProfileFromChat(
     messages: ChatMessageDto[],
@@ -193,7 +141,6 @@ export class UserProfileAgent {
 
     if (!hasUserMatchProfileSignal(profile)) return null;
 
-    const weights = this.getMatchWeights(profile);
     const changed = !userMatchProfilesEqual(existing, profile);
     if (changed && actor.clientUserId.trim()) {
       await this.userService.patchMe(
@@ -207,7 +154,7 @@ export class UserProfileAgent {
       );
     }
 
-    return { profile, weights, updated: changed };
+    return { profile, updated: changed };
   }
 
   toAgentProfile(profile: UserMatchProfile): AgentUserMatchProfile {

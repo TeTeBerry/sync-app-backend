@@ -10,10 +10,8 @@ import { PostTeamPairService } from '@src/modules/partner/application/post-team-
 import { PostInteractionService } from '@src/modules/partner/post-interaction.service';
 import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
-import { pickBestMatchingPostRecord } from '@src/modules/partner/utils/buddy-post-match.util';
 import type { UserService } from '@src/modules/user/user.service';
 import type { ActivityService } from '@src/modules/activity/activity.service';
-import type { ChromaService } from '@src/infra/chroma/chroma.service';
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
 import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
@@ -148,10 +146,6 @@ describe('Post lifecycle full business flow', () => {
       }),
     } as unknown as ActivityService;
 
-    const chromaService = {
-      syncPostEmbeddingStatus: jest.fn().mockResolvedValue(undefined),
-    } as unknown as ChromaService;
-
     postNotification = {
       notifyApplication: jest.fn(),
       notifyApplicationAccepted: jest.fn(),
@@ -173,13 +167,13 @@ describe('Post lifecycle full business flow', () => {
         recordPublishRiskViolation: jest.fn(),
       } as unknown as AccountRiskService,
       activityService,
-      chromaService,
       postNotification,
       postModeration,
       {
         isUserOnSiteCertified: jest.fn().mockResolvedValue(false),
       } as never,
       {
+        isEnabled: jest.fn().mockReturnValue(false),
         assertTextSafe: jest.fn().mockResolvedValue(undefined),
         assertTextsSafe: jest.fn().mockResolvedValue(undefined),
       } as never,
@@ -347,9 +341,12 @@ describe('Post lifecycle full business flow', () => {
     );
     expect(applicantPosts.length).toBe(2);
 
-    // 3. 申请卡片应选同路帖
-    const best = pickBestMatchingPostRecord(hostRecord, applicantPosts);
-    expect(String(best?._id)).toBe(String(carpoolCreated.id));
+    // 3. 申请人应有同路招募帖可供预览
+    expect(
+      applicantPosts.some((post) =>
+        (post.contentTypes ?? []).includes('carpool'),
+      ),
+    ).toBe(true);
 
     // 4. 申请组队
     const applyResult = await interactionService.applyToPost(

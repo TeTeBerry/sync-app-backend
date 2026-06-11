@@ -12,10 +12,7 @@ import {
 } from '../../database/schemas/event-package-entitlement.schema';
 import { ActivityService } from '../activity/activity.service';
 import type { EntitlementConsumeBucket } from './domain/entitlement-consume.util';
-import {
-  resolveAiMatchConsumeBucket,
-  resolveContactUnlockConsumeBucket,
-} from './domain/entitlement-consume.util';
+import { resolveContactUnlockConsumeBucket } from './domain/entitlement-consume.util';
 import {
   isPackageEntitlementActive,
   resolveRecordValidUntil,
@@ -46,47 +43,13 @@ export class ProfileEntitlementConsumeService {
     private readonly profilePackageService: ProfilePackageService,
   ) {}
 
-  /** Resolve which bucket would be used without consuming (for AI match pre-check). */
-  async peekAiMatchBucket(
-    actor: RequestActor,
-    activityLegacyId?: number,
-  ): Promise<EntitlementConsumeBucket | null> {
-    if (activityLegacyId == null || Number.isNaN(activityLegacyId)) {
-      throw new BadRequestException('activityLegacyId is required');
-    }
-
-    const ownerId = resolveProfilePackageOwnerFromActor(actor);
-    const freeUsage =
-      await this.profileFreeQuotaService.getFreeMonthlyForUser(ownerId);
-    const paid = await this.loadPaidEntitlement(ownerId, activityLegacyId);
-
-    return resolveAiMatchConsumeBucket(
-      freeUsage,
-      paid?.limits ?? null,
-      paid?.usage ?? null,
-    );
-  }
-
-  async consumeAiMatch(
-    actor: RequestActor,
-    activityLegacyId?: number,
-  ): Promise<ConsumeProfileEntitlementResultDto> {
-    const bucket = await this.consumeQuota(actor, activityLegacyId, 'aiMatch');
-    const entitlement = await this.resolveEntitlementAfterConsume(
-      actor,
-      activityLegacyId,
-    );
-    return { ok: true, bucket, entitlement };
-  }
-
   async consumeContactUnlock(
     actor: RequestActor,
     activityLegacyId?: number,
   ): Promise<ConsumeProfileEntitlementResultDto> {
-    const bucket = await this.consumeQuota(
+    const bucket = await this.consumeContactUnlockQuota(
       actor,
       activityLegacyId,
-      'contactUnlock',
     );
     const entitlement = await this.resolveEntitlementAfterConsume(
       actor,
@@ -95,10 +58,9 @@ export class ProfileEntitlementConsumeService {
     return { ok: true, bucket, entitlement };
   }
 
-  private async consumeQuota(
+  private async consumeContactUnlockQuota(
     actor: RequestActor,
     activityLegacyId: number | undefined,
-    kind: 'aiMatch' | 'contactUnlock',
   ): Promise<EntitlementConsumeBucket> {
     if (activityLegacyId == null || Number.isNaN(activityLegacyId)) {
       throw new BadRequestException('activityLegacyId is required');
@@ -110,55 +72,31 @@ export class ProfileEntitlementConsumeService {
 
     const paid = await this.loadPaidEntitlement(ownerId, activityLegacyId);
 
-    const bucket =
-      kind === 'aiMatch'
-        ? resolveAiMatchConsumeBucket(
-            freeUsage,
-            paid?.limits ?? null,
-            paid?.usage ?? null,
-          )
-        : resolveContactUnlockConsumeBucket(
-            freeUsage,
-            paid?.limits ?? null,
-            paid?.usage ?? null,
-          );
+    const bucket = resolveContactUnlockConsumeBucket(
+      freeUsage,
+      paid?.limits ?? null,
+      paid?.usage ?? null,
+    );
 
     if (!bucket) {
-      throw new ForbiddenException(
-        kind === 'aiMatch'
-          ? 'AI match quota exhausted'
-          : 'Contact unlock quota exhausted',
-      );
+      throw new ForbiddenException('Contact unlock quota exhausted');
     }
 
     if (bucket === 'free') {
-      if (kind === 'aiMatch') {
-        await this.profileFreeQuotaService.incrementAiMatchUsed(ownerId);
-      } else {
-        await this.profileFreeQuotaService.incrementContactUnlockUsed(ownerId);
-      }
+      await this.profileFreeQuotaService.incrementContactUnlockUsed(ownerId);
       return 'free';
     }
 
     if (!paid) {
-      throw new ForbiddenException(
-        kind === 'aiMatch'
-          ? 'AI match quota exhausted'
-          : 'Contact unlock quota exhausted',
-      );
+      throw new ForbiddenException('Contact unlock quota exhausted');
     }
 
     const limits = paid.limits;
-    const field =
-      kind === 'aiMatch' ? 'usage.aiMatchUsed' : 'usage.contactUnlockUsed';
-    const limit =
-      kind === 'aiMatch' ? limits.aiMatchCount : limits.contactUnlockCount;
-
-    if (limit != null) {
+    if (limits.contactUnlockCount != null) {
       await this.entitlementModel
         .findOneAndUpdate(
           { userId: ownerId, activityLegacyId },
-          { $inc: { [field]: 1 } },
+          { $inc: { 'usage.contactUnlockUsed': 1 } },
         )
         .exec();
     }
@@ -197,7 +135,6 @@ export class ProfileEntitlementConsumeService {
     return {
       limits: tier.limits,
       usage: {
-        aiMatchUsed: record.usage?.aiMatchUsed ?? 0,
         contactUnlockUsed: record.usage?.contactUnlockUsed ?? 0,
         postPinUsed: record.usage?.postPinUsed ?? 0,
       },

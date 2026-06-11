@@ -37,19 +37,6 @@ export interface RiskAssessment {
   severity?: RiskSeverity;
 }
 
-/** MatchAgent 单条匹配结果 */
-export interface MatchedPostItem {
-  postId: string;
-  snippet: string;
-  distance?: number;
-  matchReason?: string;
-}
-
-export interface MatchAgentResult {
-  items: MatchedPostItem[];
-  degraded?: boolean;
-}
-
 export interface AgentParseInput {
   messages: ChatMessageDto[];
   input: string;
@@ -62,20 +49,6 @@ export interface UserMatchProfile {
   favorGenres?: string[];
   likeMate?: boolean;
   budgetLevel?: string;
-}
-
-import type { MatchRankingWeights } from '../match/match-ranking.util';
-import type { BuddyMatchCriteria } from '../match/buddy-match.types';
-
-export interface MatchAgentInput {
-  query?: string;
-  criteria?: BuddyMatchCriteria;
-  activityCode?: string;
-  activityLegacyId?: number;
-  limit?: number;
-  actor?: RequestActor;
-  profile?: UserMatchProfile;
-  rankingWeights?: MatchRankingWeights;
 }
 
 export interface RiskAssessOptions {
@@ -97,7 +70,7 @@ export interface RiskCommentInput {
 
 export interface RiskImageInput {
   body: string;
-  image: string;
+  image?: string;
   actor?: RequestActor;
   activityLegacyId?: number;
 }

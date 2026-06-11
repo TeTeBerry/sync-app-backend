@@ -35,7 +35,6 @@ import {
 import {
   buildDeclineRecommendCollectBodyReply,
   buildRequireBuddyPostFirstReply,
-  isAwaitingRecommendationsGate,
   isAwaitingSelfPostBodyCollection,
   isDeclineRecommendationsIntent,
 } from '../gate/recommend-gate.util';

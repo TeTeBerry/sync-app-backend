@@ -13,7 +13,6 @@ describe('package-tier.config', () => {
     ]);
 
     expect(getPackageTierDefinition('pro').limits).toMatchObject({
-      aiMatchCount: 8,
       contactUnlockCount: 5,
       mapDays: 7,
       postPinCount: 0,
@@ -21,7 +20,6 @@ describe('package-tier.config', () => {
     });
 
     expect(getPackageTierDefinition('pro_plus').limits).toMatchObject({
-      aiMatchCount: 15,
       contactUnlockCount: 12,
       mapDays: 15,
       postPinCount: 1,
@@ -29,7 +27,6 @@ describe('package-tier.config', () => {
     });
 
     expect(getPackageTierDefinition('ultra').limits).toMatchObject({
-      aiMatchCount: null,
       contactUnlockCount: null,
       mapDays: 30,
       postPinCount: 2,
@@ -39,7 +36,7 @@ describe('package-tier.config', () => {
 
   it('returns defensive copies from listPackageTierDefinitions', () => {
     const tiers = listPackageTierDefinitions();
-    tiers[0].limits.aiMatchCount = 999;
-    expect(getPackageTierDefinition('pro').limits.aiMatchCount).toBe(8);
+    tiers[0].limits.contactUnlockCount = 999;
+    expect(getPackageTierDefinition('pro').limits.contactUnlockCount).toBe(5);
   });
 });

@@ -6,7 +6,6 @@ import {
 
 const FLOWS: ConversationFlow[] = [
   'idle',
-  'recommend_gate',
   'publish_confirm',
   'clarify_buddy',
   'collect_post_body',
@@ -20,11 +19,6 @@ describe('chat conversation-state contract', () => {
   it('accepts every documented flow shape', () => {
     const samples: ConversationState[] = [
       { version: 1, flow: 'idle' },
-      {
-        version: 1,
-        flow: 'recommend_gate',
-        gate: { activityLegacyId: 4, shownPostIds: ['p1'], empty: false },
-      },
       {
         version: 1,
         flow: 'publish_confirm',

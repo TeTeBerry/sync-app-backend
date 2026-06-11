@@ -14,9 +14,6 @@ export class UserFreeQuota {
   period: string;
 
   @Prop({ default: 0 })
-  aiMatchUsed: number;
-
-  @Prop({ default: 0 })
   contactUnlockUsed: number;
 }
 

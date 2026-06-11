@@ -1,7 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import type { BuddyMatchCriteria } from '../../ai/match/buddy-match.types';
-
 export type PostDocument = HydratedDocument<Post>;
 
 export type PostStatus = 'recruiting' | 'completed' | 'hidden';
@@ -29,12 +27,9 @@ export class Post {
   @Prop()
   location?: string;
 
-  /** 出发城市（匹配主字段，与作者展示 location 区分） */
+  /** 出发城市（与作者展示 location 区分） */
   @Prop({ index: true })
   departureCity?: string;
-
-  @Prop({ type: Object })
-  matchCriteria?: BuddyMatchCriteria;
 
   @Prop({ required: true })
   body: string;

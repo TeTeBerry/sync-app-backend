@@ -11,7 +11,6 @@ export interface RecommendedPostCard {
   location?: string;
   tags?: string[];
   activityLegacyId?: number;
-  matchReason?: string;
 }
 
 export interface RecommendedActivityCard {

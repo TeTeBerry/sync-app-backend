@@ -3,7 +3,6 @@ import { getPackageTierDefinition } from './package-tier.config';
 import type { PackageTierId } from './package-tier-id.type';
 
 export interface EventEntitlementUsage {
-  aiMatchUsed: number;
   contactUnlockUsed: number;
   postPinUsed: number;
 }
@@ -21,7 +20,6 @@ export interface MapEntitlementSlot {
 }
 
 export interface EventEntitlementQuotas {
-  aiMatch: QuotaSlot;
   contactUnlock: QuotaSlot;
   map: MapEntitlementSlot;
   postPin: QuotaSlot;
@@ -33,7 +31,6 @@ export const PACKAGE_ENTITLEMENT_VALIDITY_DAYS = 30;
 
 export function createEmptyUsage(): EventEntitlementUsage {
   return {
-    aiMatchUsed: 0,
     contactUnlockUsed: 0,
     postPinUsed: 0,
   };
@@ -95,7 +92,6 @@ export function buildEventEntitlementQuotas(
 ): EventEntitlementQuotas {
   const mapActive = mapExpiresAt.getTime() > now.getTime();
   return {
-    aiMatch: buildQuotaSlot(limits.aiMatchCount, usage.aiMatchUsed),
     contactUnlock: buildQuotaSlot(
       limits.contactUnlockCount,
       usage.contactUnlockUsed,
@@ -108,14 +104,6 @@ export function buildEventEntitlementQuotas(
     postPin: buildQuotaSlot(limits.postPinCount, usage.postPinUsed),
     basicExposure: limits.basicExposure,
   };
-}
-
-export function canConsumeAiMatch(
-  limits: PackageTierLimits,
-  usage: EventEntitlementUsage,
-): boolean {
-  if (limits.aiMatchCount == null) return true;
-  return usage.aiMatchUsed < limits.aiMatchCount;
 }
 
 export function canConsumeContactUnlock(
