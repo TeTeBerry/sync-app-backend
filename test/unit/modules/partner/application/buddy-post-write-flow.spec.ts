@@ -8,7 +8,7 @@ import { PostWriteService } from '@src/modules/partner/application/post-write.se
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { UserService } from '@src/modules/user/user.service';
 import type { ActivityService } from '@src/modules/activity/activity.service';
-import type { ChromaService } from '@src/ai/rag/chroma.service';
+import type { ChromaService } from '@src/infra/chroma/chroma.service';
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
 import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';

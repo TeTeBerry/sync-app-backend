@@ -2,8 +2,8 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AgentsModule } from '../../ai/agents/agents.module';
-import { ChromaModule } from '../../ai/rag/chroma.module';
-import { ParserModule } from '../../ai/parser/parser.module';
+import { InfraChromaModule } from '../../infra/chroma/chroma.module';
+import { InfraLlmModule } from '../../infra/llm/llm.module';
 import { RedisModule } from '../../redis/redis.module';
 import {
   Activity,
@@ -28,8 +28,8 @@ import { ACTIVITY_REGISTRATION_REPOSITORY } from './registration/interfaces/acti
     UserModule,
     forwardRef(() => AgentsModule),
     NotificationModule,
-    ChromaModule,
-    ParserModule,
+    InfraChromaModule,
+    InfraLlmModule,
     RedisModule,
     MongooseModule.forFeature([
       { name: Activity.name, schema: ActivitySchema },

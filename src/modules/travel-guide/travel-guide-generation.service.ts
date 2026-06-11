@@ -8,7 +8,7 @@ import {
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { ActivityService } from '../activity/activity.service';
 import { UserProfileSyncService } from '../user/user-profile-sync.service';
-import { LlmService } from '../../ai/llm/llm.service';
+import { LlmService } from '../../infra/llm/llm.service';
 import { TencentMapService } from './map/tencent-map.service';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
 import { buildTravelGuidePlan } from './domain/travel-guide-fallback.builder';

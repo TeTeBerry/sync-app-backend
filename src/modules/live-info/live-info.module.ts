@@ -8,7 +8,7 @@ import {
   EventLiveWristband,
   EventLiveWristbandSchema,
 } from '../../database/schemas/event-live-wristband.schema';
-import { ParserModule } from '../../ai/parser/parser.module';
+import { InfraLlmModule } from '../../infra/llm/llm.module';
 import { AuthModule } from '../auth/auth.module';
 import { ActivityModule } from '../activity/activity.module';
 import { UserModule } from '../user/user.module';
@@ -21,7 +21,7 @@ import { WristbandVerifyService } from './wristband-verify.service';
 @Module({
   imports: [
     AuthModule,
-    ParserModule,
+    InfraLlmModule,
     ActivityModule,
     UserModule,
     MediaSecurityModule,

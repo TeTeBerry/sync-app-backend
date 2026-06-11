@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ParserModule } from '../../ai/parser/parser.module';
+import { InfraLlmModule } from '../../infra/llm/llm.module';
 import {
   TravelGuideGenerationCache,
   TravelGuideGenerationCacheSchema,
@@ -31,7 +31,7 @@ import { TravelGuideGenerationService } from './travel-guide-generation.service'
   imports: [
     ActivityModule,
     UserModule,
-    ParserModule,
+    InfraLlmModule,
     MongooseModule.forFeature([
       { name: TravelGuideVenueCache.name, schema: TravelGuideVenueCacheSchema },
       { name: TravelGuideHotel.name, schema: TravelGuideHotelSchema },

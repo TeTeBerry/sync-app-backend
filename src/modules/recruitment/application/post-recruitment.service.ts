@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { ChromaService } from '../../../ai/rag/chroma.service';
+import { ChromaService } from '../../../infra/chroma/chroma.service';
 import type { PostStatus } from '../../../database/schemas/post.schema';
 import {
   IPostRepository,

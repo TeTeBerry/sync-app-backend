@@ -19,10 +19,7 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { PartnerModule } from './modules/partner/partner.module';
 import { ReportModule } from './modules/report/report.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
-import { LiveInfoModule } from './modules/live-info/live-info.module';
-import { ItineraryModule } from './modules/itinerary/itinerary.module';
-import { TravelGuideModule } from './modules/travel-guide/travel-guide.module';
-import { TravelPlanModule } from './modules/travel-plan/travel-plan.module';
+import { ActivityExperienceModule } from './modules/activity-experience/activity-experience.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { CosModule } from './modules/cos/cos.module';
 import { MediaSecurityModule } from './modules/media-security/media-security.module';
@@ -67,10 +64,7 @@ import { RequestActorMiddleware } from './common/middleware/request-actor.middle
     NotificationModule,
     ReportModule,
     FeedbackModule,
-    LiveInfoModule,
-    ItineraryModule,
-    TravelGuideModule,
-    TravelPlanModule,
+    ActivityExperienceModule,
     UploadModule,
     CosModule,
     MediaSecurityModule,

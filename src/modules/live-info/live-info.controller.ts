@@ -10,8 +10,10 @@ import {
 } from '@nestjs/common';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import { LIVE_INFO_CATEGORY_IDS } from './domain/live-info-categories';
-import type { LiveInfoCategoryId } from './domain/live-info-categories';
+import {
+  LIVE_INFO_CATEGORY_IDS,
+  type LiveInfoCategoryId,
+} from '../../shared/live-info';
 import { parseCertifiedOnlyQuery } from './domain/live-info-snapshot-filter.util';
 import { PublishLiveInfoDto } from './dto/publish-live-info.dto';
 import { SubmitLiveInfoWristbandDto } from './dto/submit-wristband.dto';

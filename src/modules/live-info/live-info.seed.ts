@@ -1,4 +1,4 @@
-import type { LiveInfoCategoryId } from './domain/live-info-categories';
+import type { LiveInfoCategoryId } from '../../shared/live-info';
 
 export type LiveInfoSeedUpdate = {
   activityLegacyId: number;

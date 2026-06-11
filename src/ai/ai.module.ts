@@ -4,11 +4,11 @@ import { AuthModule } from '../modules/auth/auth.module';
 import { ActivityModule } from '../modules/activity/activity.module';
 import { ChatModule } from '../modules/chat/chat.module';
 import { PartnerModule } from '../modules/partner/partner.module';
-import { ChromaModule } from './rag/chroma.module';
+import { InfraChromaModule } from '../infra/chroma/chroma.module';
 import { RagModule } from './rag/rag.module';
 import { HandlerModule } from './handlers/handler.module';
 import { OrchestrationModule } from './orchestration/orchestration.module';
-import { ParserModule } from './parser/parser.module';
+import { InfraLlmModule } from '../infra/llm/llm.module';
 import { AgentsModule } from './agents/agents.module';
 import { PostAgentAdaptersModule } from './adapters/post-agent-adapters.module';
 import { BuddyModule } from './buddy/buddy.module';
@@ -30,11 +30,11 @@ import { AiChatWsServer } from './ws/ai-chat-ws.server';
     ActivityModule,
     ChatModule,
     PartnerModule,
-    ChromaModule,
+    InfraChromaModule,
     RagModule,
     HandlerModule,
     OrchestrationModule,
-    ParserModule,
+    InfraLlmModule,
     AgentsModule,
     IntentRouterModule,
     BuddyModule,

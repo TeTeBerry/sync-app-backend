@@ -12,7 +12,7 @@ import {
   Activity,
   ActivityDocument,
 } from '../../database/schemas/activity.schema';
-import { ChromaService } from '../../ai/rag/chroma.service';
+import { ChromaService } from '../../infra/chroma/chroma.service';
 import {
   extractLocationFromEventName,
   resolveFestivalBrand,

@@ -1,4 +1,4 @@
-import type { LiveInfoCategoryId } from './live-info-categories';
+import type { LiveInfoCategoryId } from '../../../shared/live-info';
 import {
   LIVE_INFO_VENUE_ZONE_ID,
   normalizeZoneTag,

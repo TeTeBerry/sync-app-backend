@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
-import { ChromaService } from '../../ai/rag/chroma.service';
+import { ChromaService } from '../../infra/chroma/chroma.service';
 import { RedisService } from '../../redis/redis.service';
 
 export interface InfraHealthSnapshot {

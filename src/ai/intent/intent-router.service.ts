@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ActivityService } from '../../modules/activity/activity.service';
-import { LlmService } from '../llm/llm.service';
+import { LlmService } from '../../infra/llm/llm.service';
 import { ChatMessageDto } from '../../shared/chat';
 import { formatActivityCatalogDayLabels } from '../match/zone-buddy-search.util';
 import type { ResolvedChatIntent } from './chat-intent.types';

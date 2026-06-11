@@ -40,10 +40,9 @@ describe('ItineraryBuddyRecruitHintService', () => {
         ],
       }),
     };
-    const matchService = {
-      search: jest.fn().mockResolvedValue({
+    const buddyMatchHintPort = {
+      searchPosts: jest.fn().mockResolvedValue({
         items: [{ postId: 'p1' }, { postId: 'p2' }],
-        degraded: false,
       }),
     };
     const postRepository = {
@@ -58,14 +57,14 @@ describe('ItineraryBuddyRecruitHintService', () => {
       {
         findByLegacyId: jest.fn().mockResolvedValue({ name: '风暴' }),
       } as never,
-      matchService as never,
+      buddyMatchHintPort as never,
       postRepository as never,
     );
 
     const result = await service.getHint(4, ['dj1'], actor);
     expect(result.recruitingCount).toBe(2);
     expect(result.highlightGenre).toBe('Techno');
-    expect(matchService.search).toHaveBeenCalledWith(
+    expect(buddyMatchHintPort.searchPosts).toHaveBeenCalledWith(
       expect.objectContaining({
         criteria: expect.objectContaining({
           activityLegacyId: 4,

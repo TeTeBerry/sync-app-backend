@@ -6,7 +6,7 @@ import {
 } from '../../modules/partner/interfaces/post.repository.interface';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { isResourceOwnedByActor } from '../../common/auth/actor-query.util';
-import { ChromaService } from '../rag/chroma.service';
+import { ChromaService } from '../../infra/chroma/chroma.service';
 import {
   buildRerankUserNeed,
   criteriaToEmbeddingText,

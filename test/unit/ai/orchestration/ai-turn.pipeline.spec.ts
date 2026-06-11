@@ -10,7 +10,7 @@ jest.mock('@langchain/core/messages', () =>
 jest.mock('@langchain/community/chat_models/alibaba_tongyi', () =>
   require('../../../mocks/alibaba-tongyi'),
 );
-jest.mock('@src/ai/llm/llm.service', () => ({
+jest.mock('@src/infra/llm/llm.service', () => ({
   LlmService: mockLlmService,
 }));
 

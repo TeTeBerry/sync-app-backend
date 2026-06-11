@@ -21,6 +21,7 @@
 | **P2-debt** | **可迭代技术债**（契约 / import / 废弃路径） | ✅ 完成（2025-06） |
 | **P1-contract** | **契约与类型**（Chat 共享类型 + contract tests） | ✅ 完成（2025-06） |
 | **P3-dev** | **开发体验**（check / husky / 工作区脚本 / 文档） | ✅ 完成（2025-06） |
+| **AE** | **Activity Experience**（四域聚合 / infra / shared 契约） | ✅ 完成（2026-06） |
 
 ---
 

@@ -19,9 +19,10 @@ import {
 } from './domain/travel-plan-activity-nodes.builder';
 import {
   filterUserTravelPlanNodes,
+  mergeTravelPlanNodes,
   normalizeHiddenActivityNodeIds,
   sortTravelPlanNodes,
-} from './domain/travel-plan-merge.util';
+} from '../../shared/travel-plan';
 import { normalizeTravelPlanNodesForSave } from './domain/travel-plan-save-normalize.util';
 import type { SaveTravelPlanDto } from './dto/save-travel-plan.dto';
 
@@ -205,13 +206,7 @@ export class TravelPlanService {
     const userNodes = attachTravelPlanTimeLabels(
       filterUserTravelPlanNodes(doc?.nodes ?? []),
     );
-    const nodes = sortTravelPlanNodes([
-      ...activityNodes.map((node) => ({
-        ...node,
-        source: 'activity' as const,
-      })),
-      ...userNodes.map((node) => ({ ...node, source: 'user' as const })),
-    ]);
+    const nodes = mergeTravelPlanNodes(activityNodes, userNodes);
 
     if (!doc) {
       return {

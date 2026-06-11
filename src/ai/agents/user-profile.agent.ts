@@ -9,7 +9,7 @@ import {
   normalizeProfileGenres,
   userMatchProfilesEqual,
 } from '../../modules/user/user-profile-hints.util';
-import { LlmService } from '../llm/llm.service';
+import { LlmService } from '../../infra/llm/llm.service';
 import { ChatMessageDto } from '../../shared/chat';
 import { formatConversationHistory } from '../utils/conversation-format.util';
 import {

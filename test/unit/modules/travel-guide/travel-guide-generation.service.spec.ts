@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { TravelGuideGenerationService } from '@src/modules/travel-guide/travel-guide-generation.service';
 import { ActivityService } from '@src/modules/activity/activity.service';
-import { LlmService } from '@src/ai/llm/llm.service';
+import { LlmService } from '@src/infra/llm/llm.service';
 import { TencentMapService } from '@src/modules/travel-guide/map/tencent-map.service';
 import { TravelGuidePoiCollector } from '@src/modules/travel-guide/map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from '@src/modules/travel-guide/map/travel-guide-poi.ranker';

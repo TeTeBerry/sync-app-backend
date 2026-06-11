@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DashscopeChatClient } from '../llm/dashscope-chat.client';
+import { DashscopeChatClient } from '../../infra/llm/dashscope-chat.client';
 
 interface OpenAiToolCall {
   id?: string;

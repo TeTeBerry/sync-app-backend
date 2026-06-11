@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LlmService } from '../../ai/llm/llm.service';
+import { LlmService } from '../../infra/llm/llm.service';
 import {
   buildWristbandVerifySystemPrompt,
   buildWristbandVerifyUserPrompt,

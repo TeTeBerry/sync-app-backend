@@ -4,7 +4,7 @@ jest.mock('@langchain/core/documents', () =>
   require('../../../mocks/langchain-documents-page-content'),
 );
 
-import { ChromaService } from '@src/ai/rag/chroma.service';
+import { ChromaService } from '@src/infra/chroma/chroma.service';
 
 describe('ChromaService circuit breaker', () => {
   it('marks queries degraded and opens circuit after consecutive failures', async () => {

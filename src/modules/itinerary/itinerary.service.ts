@@ -17,7 +17,7 @@ import { WechatContentSecurityService } from '../auth/wechat-content-security.se
 import type { ItineraryDay } from '../../database/schemas/user-itinerary.schema';
 import type { SaveItineraryDto } from './dto/save-itinerary.dto';
 import type { GenerateItineraryDto } from './dto/generate-itinerary.dto';
-import { normalizeItineraryDaysForSave } from './domain/itinerary-save-normalize.util';
+import { normalizeItineraryDaysForSave } from '../../shared/itinerary';
 
 @Injectable()
 export class ItineraryService {

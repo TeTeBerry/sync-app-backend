@@ -24,7 +24,7 @@ import { WechatContentSecurityService } from '../auth/wechat-content-security.se
 import { MediaSecurityCheckService } from '../media-security/media-security-check.service';
 import { AccountRiskService } from '../account-risk/account-risk.service';
 import type { AccountRiskPublicStatus } from '../account-risk/account-risk.service';
-import { ChromaService } from '../../ai/rag/chroma.service';
+import { ChromaService } from '../../infra/chroma/chroma.service';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { toRequestActor } from '../../common/auth/actor-query.util';
 import type { StoredAuthorRecord } from './stored-author.types';

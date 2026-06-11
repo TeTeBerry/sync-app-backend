@@ -222,6 +222,39 @@ step(`GET /activities/${activityId}/itinerary/saved`, async (ctx) => {
   assert(Array.isArray(data?.days) && data.days.length > 0, 'saved days missing');
 });
 
+step(`GET /activities/${activityId}/travel-plan/saved`, async (ctx) => {
+  const data = await request(
+    'GET',
+    `activities/${ctx.activityId}/travel-plan/saved?${ctx.q}`,
+  );
+  assert(data?.saved === false || data?.saved === true, 'travel-plan saved flag missing');
+  assert(Array.isArray(data?.nodes), 'travel-plan nodes should be an array');
+});
+
+step(`POST /activities/${activityId}/travel-plan/save`, async (ctx) => {
+  const data = await request(
+    'POST',
+    `activities/${ctx.activityId}/travel-plan/save?${ctx.q}`,
+    {
+      body: {
+        eventMeta: 'smoke travel plan',
+        nodes: [
+          {
+            id: 'smoke-hotel-1',
+            category: 'hotel',
+            startDate: '2026-03-14',
+            endDate: '2026-03-16',
+            title: 'Smoke Hotel',
+            subtitle: 'Bangkok',
+            confirmed: true,
+          },
+        ],
+      },
+    },
+  );
+  assert(data?.ok === true, 'travel-plan save should return ok: true');
+});
+
 step(`GET /activities/${activityId}/live-info`, async (ctx) => {
   const data = await request('GET', `activities/${ctx.activityId}/live-info?${ctx.q}`);
   assert(data?.viewer != null, 'live-info viewer missing');

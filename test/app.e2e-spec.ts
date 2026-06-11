@@ -1,7 +1,9 @@
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from './../src/app.module';
+import { HttpExceptionFilter } from '../src/common/filter/http-exception.filter';
+import { TransformInterceptor } from '../src/common/interceptor/transform.interceptor';
 
 describe('AppModule (e2e)', () => {
   let app: INestApplication;
@@ -13,6 +15,14 @@ describe('AppModule (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
+    app.useGlobalPipes(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+      }),
+    );
+    app.useGlobalFilters(new HttpExceptionFilter());
+    app.useGlobalInterceptors(new TransformInterceptor());
     await app.init();
   });
 
@@ -22,5 +32,16 @@ describe('AppModule (e2e)', () => {
 
   it('/api/home (GET)', () => {
     return request(app.getHttpServer()).get('/api/home').expect(200);
+  });
+
+  it('/api/activities/:legacyId/travel-plan/saved (GET) demo query', () => {
+    return request(app.getHttpServer())
+      .get('/api/activities/4/travel-plan/saved')
+      .query({ userId: 'e2e-travel-plan-user' })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.code).toBe(200);
+        expect(Array.isArray(res.body.data?.nodes)).toBe(true);
+      });
   });
 });

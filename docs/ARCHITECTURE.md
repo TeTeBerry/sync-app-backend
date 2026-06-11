@@ -11,17 +11,20 @@
 AppModule
 ├── ConfigModule + MongooseModule
 ├── RedisModule              # 热度缓存（可选）
+├── infra/llm, infra/chroma  # LLM / 向量检索（自 ai/ 剥离）
 ├── ActivityModule           # 活动 + registration/
+├── ActivityExperienceModule # 活动域聚合（travel-plan / itinerary / live-info / travel-guide）
 ├── UserModule               # Demo 用户 seed
 ├── PartnerModule              # 组队帖（REST 仍为 /posts）
 ├── ProfileModule            # 个人页 BFF
 ├── HomeModule               # 首页 BFF
 ├── NotificationModule
 ├── ChatModule               # AI 会话持久化
+├── shared/                  # 前后端契约（chat、travel-plan、itinerary、live-info）
 └── AiModule                 # WebSocket 对话 + Agent 编排（AiChatWsServer）
     ├── AgentsModule         # 四 Agent
     ├── OrchestrationModule  # 状态机 / Handler 管道
-    ├── RagModule / ChromaModule
+    ├── RagModule / InfraChromaModule
     └── BuddyModule             # 发帖 / 匹配编排（use cases + PostIntentService 门面）
         ├── recommend-before-create.use-case.ts
         ├── match-posts.use-case.ts
@@ -39,6 +42,20 @@ AppModule
 | Partner | `modules/partner/` | 帖子 CRUD + `PostInteractionService`（赞/评/申请）✅ |
 | AiAssistant | `ai/` + `modules/chat/` | WebSocket + Agent ✅ |
 | BFF | `home/`、`profile/` | 聚合读 ✅ |
+| ActivityExperience | `modules/activity-experience/` | 四域 API 聚合 ✅ |
+
+### 活动域 API（`activities/:legacyId/*`）
+
+| 子域 | 路径 | 说明 |
+|------|------|------|
+| Travel plan | `travel-plan/` | 行程计划保存、票据识别 |
+| Itinerary | `itinerary/` | 电音时间表生成/保存 |
+| Live info | `live-info/` | 现场认证、UGC 实况 |
+| Travel guide | `travel-guide/` | 腾讯地图攻略生成 |
+
+详见 [`modules/activity-experience/README.md`](../src/modules/activity-experience/README.md)。
+
+> LLM 能力统一由 `infra/llm/InfraLlmModule` 提供（原 `ai/parser` 已移除）。
 
 ---
 

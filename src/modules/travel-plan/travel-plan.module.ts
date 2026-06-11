@@ -8,7 +8,7 @@ import {
   UserTravelPlan,
   UserTravelPlanSchema,
 } from '../../database/schemas/user-travel-plan.schema';
-import { ParserModule } from '../../ai/parser/parser.module';
+import { InfraLlmModule } from '../../infra/llm/llm.module';
 import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
 import { TravelPlanController } from './travel-plan.controller';
@@ -17,7 +17,7 @@ import { TravelPlanService } from './travel-plan.service';
 
 @Module({
   imports: [
-    ParserModule,
+    InfraLlmModule,
     ActivityModule,
     AuthModule,
     MongooseModule.forFeature([

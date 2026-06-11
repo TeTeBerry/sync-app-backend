@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { LlmService } from '../llm/llm.service';
+import { LlmService } from '../../infra/llm/llm.service';
 import { resolveImageInput } from '../utils/image-ref.util';
 import { matchRiskRules } from '../risk/risk-rules.util';
 import {

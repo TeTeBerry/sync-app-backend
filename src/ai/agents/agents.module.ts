@@ -5,8 +5,8 @@ import { User, UserSchema } from '../../database/schemas/user.schema';
 import { UserModule } from '../../modules/user/user.module';
 import { PartnerRepositoryModule } from '../../modules/partner/partner-repository.module';
 import { NotificationModule } from '../../modules/notification/notification.module';
-import { ChromaModule } from '../rag/chroma.module';
-import { ParserModule } from '../parser/parser.module';
+import { InfraChromaModule } from '../../infra/chroma/chroma.module';
+import { InfraLlmModule } from '../../infra/llm/llm.module';
 import { MatchContextService } from '../services/match-context.service';
 import { MatchService } from '../services/match.service';
 import { PostMatchRerankService } from '../services/post-match-rerank.service';
@@ -19,9 +19,9 @@ import { UserProfileAgent } from './user-profile.agent';
 
 @Module({
   imports: [
-    ChromaModule,
+    InfraChromaModule,
     PartnerRepositoryModule,
-    ParserModule,
+    InfraLlmModule,
     UserModule,
     NotificationModule,
     MongooseModule.forFeature([

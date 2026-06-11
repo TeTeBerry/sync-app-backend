@@ -5,7 +5,7 @@ import type { RequestActor } from '../../common/auth/request-actor.types';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
 import { User, UserDocument } from '../../database/schemas/user.schema';
 import { UserBlockService } from '../../modules/user/user-block.service';
-import type { PostMatchResult } from '../rag/chroma.service';
+import type { PostMatchResult } from '../../infra/chroma/chroma.service';
 import {
   MatchFilterContext,
   RankablePostCandidate,

@@ -1,27 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
-export type TravelPlanCategory =
-  | 'flight'
-  | 'transport'
-  | 'hotel'
-  | 'dining'
-  | 'event';
+import type {
+  TravelPlanCategory,
+  TravelPlanNodeRecord,
+} from '../../shared/travel-plan';
 
-export type TravelPlanNodeRecord = {
-  id: string;
-  category: TravelPlanCategory;
-  startDate: string;
-  endDate: string;
-  startTime?: string;
-  endTime?: string;
-  duration?: string;
-  title: string;
-  subtitle: string;
-  detail?: string;
-  price?: number;
-  confirmed: boolean;
-};
+export type { TravelPlanCategory, TravelPlanNodeRecord };
 
 export type UserTravelPlanDocument = HydratedDocument<UserTravelPlan>;
 

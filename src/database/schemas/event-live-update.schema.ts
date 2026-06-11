@@ -1,9 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import type { LiveInfoCategoryId } from '../../modules/live-info/domain/live-info-categories';
+import type { LiveInfoCategoryId } from '../../shared/live-info';
 
-export type { LiveInfoCategoryId } from '../../modules/live-info/domain/live-info-categories';
-export { LIVE_INFO_CATEGORY_IDS } from '../../modules/live-info/domain/live-info-categories';
+export type { LiveInfoCategoryId } from '../../shared/live-info';
+export { LIVE_INFO_CATEGORY_IDS } from '../../shared/live-info';
 
 const LiveInfoRatingSchema = {
   categoryId: { type: String, required: true },

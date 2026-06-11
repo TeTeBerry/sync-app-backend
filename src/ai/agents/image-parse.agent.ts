@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { LlmService } from '../llm/llm.service';
+import { LlmService } from '../../infra/llm/llm.service';
 import { resolveImageInput } from '../utils/image-ref.util';
 import type { AgentParseInput, ParsedPostDraft } from './agent.types';
 

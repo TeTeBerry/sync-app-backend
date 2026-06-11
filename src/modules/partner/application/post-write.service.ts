@@ -10,7 +10,7 @@ import {
   TICKET_PUBLISH_FORBIDDEN_MESSAGE,
 } from '../../../ai/buddy/ticket-publish-policy.util';
 import { ActivityService } from '../../activity/activity.service';
-import { ChromaService } from '../../../ai/rag/chroma.service';
+import { ChromaService } from '../../../infra/chroma/chroma.service';
 import type { PostStatus } from '../../../database/schemas/post.schema';
 import { AccountRiskService } from '../../account-risk/account-risk.service';
 import { UserProfileSyncService } from '../../user/user-profile-sync.service';

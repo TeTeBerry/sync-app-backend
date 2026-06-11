@@ -1,7 +1,7 @@
 import {
   normalizeItineraryTimelineTime,
   normalizeItineraryDaysForSave,
-} from '../../../../src/modules/itinerary/domain/itinerary-save-normalize.util';
+} from '@src/shared/itinerary';
 
 describe('itinerary-save-normalize.util', () => {
   it('extracts HH:mm from a time range', () => {

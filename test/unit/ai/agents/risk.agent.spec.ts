@@ -1,4 +1,4 @@
-jest.mock('@src/ai/llm/llm.service', () => ({
+jest.mock('@src/infra/llm/llm.service', () => ({
   LlmService: jest.fn(),
 }));
 

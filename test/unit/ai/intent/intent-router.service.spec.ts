@@ -4,7 +4,7 @@ jest.mock('@langchain/core/documents', () =>
   require('../../../mocks/langchain-documents'),
 );
 
-jest.mock('@src/ai/llm/llm.service', () => ({
+jest.mock('@src/infra/llm/llm.service', () => ({
   LlmService: class MockLlmService {},
 }));
 
@@ -14,7 +14,7 @@ jest.mock('@src/modules/activity/activity.service', () => ({
 
 import { IntentCacheService } from '@src/ai/intent/intent-cache.service';
 import { IntentRouterService } from '@src/ai/intent/intent-router.service';
-import type { LlmService } from '@src/ai/llm/llm.service';
+import type { LlmService } from '@src/infra/llm/llm.service';
 import type { ActivityService } from '@src/modules/activity/activity.service';
 import { RedisService } from '@src/redis/redis.service';
 import { ConfigService } from '@nestjs/config';

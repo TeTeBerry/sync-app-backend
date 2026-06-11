@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { LlmService } from '../../ai/llm/llm.service';
-import { KNOWLEDGE_DOCUMENTS } from '../../ai/rag/knowledge.seed';
+import { KNOWLEDGE_DOCUMENTS } from '../../infra/chroma/knowledge.seed';
+import { LlmService } from '../../infra/llm/llm.service';
 import { RedisService } from '../../redis/redis.service';
 import { ActivityService } from './activity.service';
 import { UpdateActivityDto } from './dto/update-activity.dto';

@@ -5,4 +5,4 @@ import { ChromaService } from './chroma.service';
   providers: [ChromaService],
   exports: [ChromaService],
 })
-export class ChromaModule {}
+export class InfraChromaModule {}

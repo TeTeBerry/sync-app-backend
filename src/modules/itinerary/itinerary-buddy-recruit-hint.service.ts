@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import { MatchService } from '../../ai/services/match.service';
-import type { BuddyMatchCriteria } from '../../ai/match/buddy-match.types';
+import {
+  BUDDY_MATCH_HINT_PORT,
+  type IBuddyMatchHintPort,
+} from '../activity-experience/ports/buddy-match-hint.port';
 import { ActivityService } from '../activity/activity.service';
 import {
   IPostRepository,
@@ -41,7 +43,8 @@ export class ItineraryBuddyRecruitHintService {
   constructor(
     private readonly scheduleService: ItineraryScheduleService,
     private readonly activityService: ActivityService,
-    private readonly matchService: MatchService,
+    @Inject(BUDDY_MATCH_HINT_PORT)
+    private readonly buddyMatchHintPort: IBuddyMatchHintPort,
     @Inject(POST_REPOSITORY)
     private readonly postRepository: IPostRepository,
   ) {}
@@ -75,14 +78,12 @@ export class ItineraryBuddyRecruitHintService {
 
     const activity =
       await this.activityService.findByLegacyId(activityLegacyId);
-    const criteria: BuddyMatchCriteria = {
-      activityLegacyId,
-      activityName: activity?.name,
-      profileFavorGenres: genreLabels,
-    };
-
-    const { items } = await this.matchService.search({
-      criteria,
+    const { items } = await this.buddyMatchHintPort.searchPosts({
+      criteria: {
+        activityLegacyId,
+        activityName: activity?.name,
+        profileFavorGenres: genreLabels,
+      },
       actor,
       limit: 30,
     });

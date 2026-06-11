@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { LlmService } from '../../ai/llm/llm.service';
+import { LlmService } from '../../infra/llm/llm.service';
 import type { DjCatalogItem } from './dj.types';
 import { hasCjkText, translateCountryToZh } from './dj-country-zh.util';
 

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ActivityService } from '../../modules/activity/activity.service';
-import { ChromaService } from './chroma.service';
-import { KNOWLEDGE_DOCUMENTS } from './knowledge.seed';
+import { ChromaService } from '../../infra/chroma/chroma.service';
+import { KNOWLEDGE_DOCUMENTS } from '../../infra/chroma/knowledge.seed';
 import {
   catalogDateToIso,
   extractIsoDateFromText,

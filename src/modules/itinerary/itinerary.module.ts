@@ -19,7 +19,6 @@ import {
 import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
 import { DjModule } from '../dj/dj.module';
-import { AgentsModule } from '../../ai/agents/agents.module';
 import { PartnerRepositoryModule } from '../partner/partner-repository.module';
 import { ItineraryController } from './itinerary.controller';
 import { ItineraryService } from './itinerary.service';
@@ -33,7 +32,6 @@ import { ItineraryBuddyRecruitHintService } from './itinerary-buddy-recruit-hint
     ActivityModule,
     AuthModule,
     DjModule,
-    AgentsModule,
     PartnerRepositoryModule,
     MongooseModule.forFeature([
       { name: ArtistPerformance.name, schema: ArtistPerformanceSchema },

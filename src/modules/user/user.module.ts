@@ -1,6 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ChromaModule } from '../../ai/rag/chroma.module';
+import { InfraChromaModule } from '../../infra/chroma/chroma.module';
 import {
   PostApplication,
   PostApplicationSchema,
@@ -26,7 +26,7 @@ import { UserService } from './user.service';
     WechatMiniModule,
     forwardRef(() => MediaSecurityModule),
     AccountRiskModule,
-    ChromaModule,
+    InfraChromaModule,
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: UserBlock.name, schema: UserBlockSchema },

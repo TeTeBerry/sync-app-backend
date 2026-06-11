@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ChromaClient, Collection, IncludeEnum, Where } from 'chromadb';
 import { Document } from '@langchain/core/documents';
-import type { PostStatus } from '../../database/schemas/post.schema';
+import type { PostStatus } from '@src/database/schemas/post.schema';
 import { KNOWLEDGE_DOCUMENTS } from './knowledge.seed';
 
 /** Post vector metadata: kind=post, status filters recruiting-only retrieval */

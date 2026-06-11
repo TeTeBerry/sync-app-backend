@@ -1,7 +1,7 @@
 import {
   ChatAlibabaTongyiDashScope,
   isQwenHybridThinkingModel,
-} from '../../../../src/ai/llm/chat-alibaba-tongyi-dashscope';
+} from '@src/infra/llm/chat-alibaba-tongyi-dashscope';
 
 describe('chat-alibaba-tongyi-dashscope', () => {
   describe('isQwenHybridThinkingModel', () => {

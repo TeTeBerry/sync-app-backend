@@ -4,7 +4,7 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { LlmService } from '../../ai/llm/llm.service';
+import { LlmService } from '../../infra/llm/llm.service';
 import {
   decodeBase64Payload,
   toDataUrl,

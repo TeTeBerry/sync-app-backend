@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { LlmService } from '../llm/llm.service';
+import { LlmService } from '../../infra/llm/llm.service';
 import { applyDjConversationAnchor } from './dj-info-query.util';
 import { normalizeStructuredDjQuery } from './dj-info-structured.util';
 import {

@@ -1,14 +1,10 @@
 import { IsIn, IsString, MaxLength } from 'class-validator';
+import {
+  TRAVEL_PLAN_RECEIPT_CATEGORIES,
+  type TravelPlanReceiptCategory,
+} from '../../../shared/travel-plan';
 
-export const TRAVEL_PLAN_RECEIPT_CATEGORIES = [
-  'transport',
-  'hotel',
-  'dining',
-  'event',
-] as const;
-
-export type TravelPlanReceiptCategory =
-  (typeof TRAVEL_PLAN_RECEIPT_CATEGORIES)[number];
+export { TRAVEL_PLAN_RECEIPT_CATEGORIES, type TravelPlanReceiptCategory };
 
 export class RecognizeTravelPlanReceiptDto {
   @IsIn(TRAVEL_PLAN_RECEIPT_CATEGORIES)

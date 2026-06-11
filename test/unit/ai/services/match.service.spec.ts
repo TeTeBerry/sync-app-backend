@@ -4,7 +4,7 @@ jest.mock('@langchain/core/documents', () =>
   require('../../../mocks/langchain-documents-page-content'),
 );
 
-jest.mock('@src/ai/llm/llm.service', () => ({
+jest.mock('@src/infra/llm/llm.service', () => ({
   LlmService: class MockLlmService {},
 }));
 

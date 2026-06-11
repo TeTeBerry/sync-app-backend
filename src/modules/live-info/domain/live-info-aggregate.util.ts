@@ -1,7 +1,7 @@
 import {
   LIVE_INFO_CATEGORY_IDS,
   type LiveInfoCategoryId,
-} from './live-info-categories';
+} from '../../../shared/live-info';
 
 export type LiveInfoSummaryRowDto = {
   categoryId: LiveInfoCategoryId;

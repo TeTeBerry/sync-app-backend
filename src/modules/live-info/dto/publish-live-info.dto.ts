@@ -11,7 +11,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { LIVE_INFO_CATEGORY_IDS } from '../domain/live-info-categories';
+import { LIVE_INFO_CATEGORY_IDS } from '../../../shared/live-info';
 
 export class LiveInfoRatingDto {
   @IsIn(LIVE_INFO_CATEGORY_IDS)
