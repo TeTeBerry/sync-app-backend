@@ -17,6 +17,7 @@ import {
   ItineraryGenerationLogSchema,
 } from '../../database/schemas/itinerary-generation-log.schema';
 import { ActivityModule } from '../activity/activity.module';
+import { AuthModule } from '../auth/auth.module';
 import { DjModule } from '../dj/dj.module';
 import { AgentsModule } from '../../ai/agents/agents.module';
 import { PartnerRepositoryModule } from '../partner/partner-repository.module';
@@ -30,6 +31,7 @@ import { ItineraryBuddyRecruitHintService } from './itinerary-buddy-recruit-hint
 @Module({
   imports: [
     ActivityModule,
+    AuthModule,
     DjModule,
     AgentsModule,
     PartnerRepositoryModule,

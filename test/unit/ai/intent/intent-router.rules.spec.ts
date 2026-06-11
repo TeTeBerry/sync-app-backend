@@ -54,32 +54,32 @@ describe('intent-router.rules', () => {
     expect(hit?.source).toBe('rule');
   });
 
-  it('routes shortcut tag with bound activity to search_posts', () => {
+  it('routes shortcut tag with bound activity to quick_reply', () => {
     const hit = resolveChatIntentFastPath('帮我dd', {
       messages: [],
       input: '帮我dd',
       activityLegacyId: 4,
     });
-    expect(hit?.kind).toBe('search_posts');
+    expect(hit?.kind).toBe('quick_reply');
   });
 
-  it('routes 找卡座 shortcut with bound activity to search_posts', () => {
+  it('routes 找卡座 shortcut with bound activity to quick_reply', () => {
     const hit = resolveChatIntentFastPath('找卡座', {
       messages: [],
       input: '找卡座',
       activityLegacyId: 4,
     });
-    expect(hit?.kind).toBe('search_posts');
+    expect(hit?.kind).toBe('quick_reply');
     expect(hit?.source).toBe('rule');
   });
 
-  it('routes zone+搭子 search with bound activity to search_posts', () => {
+  it('routes zone+搭子 search with bound activity to quick_reply', () => {
     const hit = resolveChatIntentFastPath('13号 A区 有人吗', {
       messages: [],
       input: '13号 A区 有人吗',
       activityLegacyId: 4,
     });
-    expect(hit?.kind).toBe('search_posts');
+    expect(hit?.kind).toBe('quick_reply');
     expect(hit?.source).toBe('rule');
   });
 

@@ -55,7 +55,9 @@ import {
 import { readUploadImageAsDataUrl } from './utils/wristband-upload-url.util';
 import { WristbandVerifyService } from './wristband-verify.service';
 import { assertUserImageRefSync } from '../../common/media/user-image-ref.util';
+import { assertUserUgcImages } from '../../common/media/user-ugc-image.util';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
+import { MediaSecurityCheckService } from '../media-security/media-security-check.service';
 
 const WRISTBAND_DUPLICATE_MESSAGE =
   '该手环照片已使用过，请拍摄本人手腕佩戴的活动腕带';
@@ -74,6 +76,7 @@ export class LiveInfoService implements OnModuleInit {
     private readonly wristbandVerifyService: WristbandVerifyService,
     private readonly onSiteIdentity: OnSiteIdentityService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
+    private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -257,6 +260,12 @@ export class LiveInfoService implements OnModuleInit {
       throw new BadRequestException('请上传手环照片');
     }
     assertUserImageRefSync(imageUrl);
+    await assertUserUgcImages(
+      this.wechatContentSecurity,
+      this.mediaChecks,
+      [imageUrl],
+      uid,
+    );
 
     const eventDate = shanghaiEventDate();
     const validUntil = shanghaiEndOfEventDate(eventDate);

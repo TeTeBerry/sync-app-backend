@@ -83,7 +83,7 @@ export const HOME_FESTIVAL_SHORTCUTS: readonly HomeFestivalShortcutDef[] = [
       'KASKADE',
       'DOM DOLLA',
       'VINTAGE CULTURE',
-      '更多阵容见专属电音行程',
+      '更多阵容见我的电音时间表',
     ],
   },
 ] as const;

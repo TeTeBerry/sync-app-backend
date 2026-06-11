@@ -58,8 +58,8 @@ import {
 } from './interfaces/post.repository.interface';
 import { PostRecruitmentService } from '../recruitment/application/post-recruitment.service';
 import { PostTeamPairService } from './application/post-team-pair.service';
+import { ApplicationBuddyPreviewService } from './application/application-buddy-preview.service';
 import { POST_COMMENT_SEED } from './post-comment.seed';
-import { TeamChatService, buildTeamChatSessionId } from './team-chat.service';
 import { assertUserUgcTexts } from '../../common/media/user-ugc-text.util';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import {
@@ -85,7 +85,7 @@ export class PostInteractionService {
     private readonly postModel: Model<PostDocument>,
     private readonly userService: UserService,
     private readonly accountRisk: AccountRiskService,
-    private readonly teamChatService: TeamChatService,
+    private readonly buddyPreviewService: ApplicationBuddyPreviewService,
     @Inject(POST_NOTIFICATION_PORT)
     private readonly postNotification: IPostNotificationPort,
     @Inject(POST_MODERATION_PORT)
@@ -206,13 +206,11 @@ export class PostInteractionService {
       lightApply?.genderPref,
       initialMessagePreview,
     ]);
-    const teamChat = this.buildApplyTeamChatRef(id, actorUserId);
-
     const existing = await this.applicationModel
       .findOne({ userId: actorUserId, postId: id })
       .lean();
     if (existing) {
-      return { ok: true as const, alreadyApplied: true, teamChat };
+      return { ok: true as const, alreadyApplied: true };
     }
 
     const initialMessage = initialMessagePreview;
@@ -235,7 +233,7 @@ export class PostInteractionService {
       });
     } catch (error) {
       if ((error as { code?: number }).code === 11000) {
-        return { ok: true as const, alreadyApplied: true, teamChat };
+        return { ok: true as const, alreadyApplied: true };
       }
       throw error;
     }
@@ -252,12 +250,6 @@ export class PostInteractionService {
         });
     }
 
-    await this.teamChatService.createInitialMessageOnApply(
-      id,
-      actorUserId,
-      initialMessage,
-    );
-
     void this.postNotification.notifyApplication(
       post,
       id,
@@ -266,15 +258,7 @@ export class PostInteractionService {
       initialMessage,
     );
 
-    return { ok: true as const, alreadyApplied: false, teamChat };
-  }
-
-  private buildApplyTeamChatRef(postId: string, applicantUserId: string) {
-    return {
-      sessionId: buildTeamChatSessionId(postId, applicantUserId),
-      postId,
-      applicantUserId,
-    };
+    return { ok: true as const, alreadyApplied: false };
   }
 
   async listComments(
@@ -647,7 +631,7 @@ export class PostInteractionService {
           .filter((row) => row.postId === postId)
           .map((row) => row.userId);
         const previews =
-          await this.teamChatService.loadBuddyPreviewsForApplicants(
+          await this.buddyPreviewService.loadBuddyPreviewsForApplicants(
             applicantIds,
             post,
           );

@@ -37,9 +37,9 @@ describe('post-content-type.util (组队发帖标签)', () => {
     expect(types).toContain('accommodation');
   });
 
-  it('allows images only for share posts', () => {
+  it('allows images on recruiting posts', () => {
     expect(postAllowsImages(['share'])).toBe(true);
-    expect(postAllowsImages(['team'])).toBe(false);
-    expect(postAllowsImages(['team', 'accommodation'])).toBe(false);
+    expect(postAllowsImages(['team'])).toBe(true);
+    expect(postAllowsImages(['team', 'accommodation'])).toBe(true);
   });
 });

@@ -32,9 +32,13 @@ import {
 } from '../interfaces/post.repository.interface';
 import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { buildMatchCriteriaPatch } from '../../../ai/match/buddy-match-criteria.util';
-import { inferPostContentTypes } from '../utils/post-content-type.util';
+import {
+  inferPostContentTypes,
+  MAX_POST_IMAGES,
+} from '../utils/post-content-type.util';
 import { OnSiteIdentityService } from '../../live-info/on-site-identity.service';
 import { normalizeUserImageUrls } from '../../../common/media/user-image-ref.util';
+import { assertUserUgcImages } from '../../../common/media/user-ugc-image.util';
 import {
   assertUserUgcTexts,
   collectPostWriteUgcTexts,
@@ -195,22 +199,17 @@ export class PostWriteService {
     }
 
     const listedInFeed = dto.listedInFeed !== false;
-    const allowsImages = contentTypes.includes('share');
     const normalizedImages = normalizeUserImageUrls(dto.images);
-    if (!allowsImages && normalizedImages.length > 0) {
-      throw new BadRequestException('组队帖不支持上传图片');
+    if (normalizedImages.length > MAX_POST_IMAGES) {
+      throw new BadRequestException(`最多上传 ${MAX_POST_IMAGES} 张图片`);
     }
-    if (
-      allowsImages &&
-      normalizedImages.length > 0 &&
-      this.wechatContentSecurity.isEnabled()
-    ) {
-      await this.mediaChecks.assertImagesApprovedForUser(
-        normalizedImages,
-        ownerUserId,
-      );
-    }
-    const images = allowsImages ? normalizedImages : [];
+    await assertUserUgcImages(
+      this.wechatContentSecurity,
+      this.mediaChecks,
+      normalizedImages,
+      ownerUserId,
+    );
+    const images = normalizedImages;
 
     const created = await this.repository.create({
       userId: ownerUserId,

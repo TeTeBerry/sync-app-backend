@@ -29,15 +29,17 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PostMapper } from './post.mapper';
 import { normalizeUserImageUrls } from '../../common/media/user-image-ref.util';
+import { MAX_POST_IMAGES } from './utils/post-content-type.util';
 import {
   assertUserUgcTexts,
   collectPostWriteUgcTexts,
 } from '../../common/media/user-ugc-text.util';
+import { assertUserUgcImages } from '../../common/media/user-ugc-image.util';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
+import { MediaSecurityCheckService } from '../media-security/media-security-check.service';
 import {
   POST_SEED,
   STORM_ACTIVITY_LEGACY_ID,
-  SHARE_DEMO_POST_SEED,
   STORM_COMPLETED_DEMO_POST_SEED,
   STORM_DEMO_POST_SEED,
 } from './post.seed';
@@ -79,6 +81,7 @@ export class PostService implements OnModuleInit {
     private readonly postRecruitmentService: PostRecruitmentService,
     private readonly postTeamPairService: PostTeamPairService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
+    private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
 
   async onModuleInit() {
@@ -105,22 +108,6 @@ export class PostService implements OnModuleInit {
     } catch (error) {
       this.logger.warn(
         `Storm completed demo posts init failed: ${(error as Error).message}`,
-      );
-    }
-
-    try {
-      await this.ensureShareDemoPosts();
-    } catch (error) {
-      this.logger.warn(
-        `Share demo posts init failed: ${(error as Error).message}`,
-      );
-    }
-
-    try {
-      await this.stripImagesFromTeamPosts();
-    } catch (error) {
-      this.logger.warn(
-        `Team post image cleanup failed: ${(error as Error).message}`,
       );
     }
 
@@ -197,17 +184,6 @@ export class PostService implements OnModuleInit {
     }
   }
 
-  /** Team / recruiting posts must not retain image attachments. */
-  private async stripImagesFromTeamPosts(): Promise<void> {
-    await this.postModel.updateMany(
-      {
-        contentTypes: { $ne: 'share' },
-        'images.0': { $exists: true },
-      },
-      { $set: { images: [] } },
-    );
-  }
-
   private async purgePostsForRemovedActivities(): Promise<void> {
     const activities = await this.activityService.findAll();
     const validLegacyIds = activities.map((activity) => activity.legacyId);
@@ -218,18 +194,6 @@ export class PostService implements OnModuleInit {
       this.logger.log(
         `Purged ${result.deletedCount} posts tied to removed activities`,
       );
-    }
-  }
-
-  /** 探索页分享帖 demo（带图，仅 share 类型） */
-  private async ensureShareDemoPosts(): Promise<void> {
-    for (const seed of SHARE_DEMO_POST_SEED) {
-      const exists = await this.postModel.exists({
-        userId: seed.userId,
-        body: seed.body,
-      });
-      if (exists) continue;
-      await this.postModel.create(seed);
     }
   }
 
@@ -342,17 +306,6 @@ export class PostService implements OnModuleInit {
 
   listPopular(limit = 20, actor: RequestActor) {
     return this.postQuery.listPopular(limit, actor);
-  }
-
-  listAll(actor: RequestActor) {
-    return this.postQuery.listAll(actor);
-  }
-
-  listShare(
-    options: { limit?: number; sort?: 'new' | 'hot'; cursor?: string },
-    actor: RequestActor,
-  ) {
-    return this.postQuery.listShare(options, actor);
   }
 
   listByActivity(activityLegacyId: number, actor: RequestActor) {
@@ -483,10 +436,17 @@ export class PostService implements OnModuleInit {
     if (dto.departureCity?.trim())
       patch.departureCity = dto.departureCity.trim();
     if (dto.images) {
-      const allowsImages = (post.contentTypes ?? []).includes('share');
-      if (allowsImages) {
-        patch.images = normalizeUserImageUrls(dto.images);
+      const normalized = normalizeUserImageUrls(dto.images);
+      if (normalized.length > MAX_POST_IMAGES) {
+        throw new BadRequestException(`最多上传 ${MAX_POST_IMAGES} 张图片`);
       }
+      await assertUserUgcImages(
+        this.wechatContentSecurity,
+        this.mediaChecks,
+        normalized,
+        actor.resolvedUserId,
+      );
+      patch.images = normalized;
     }
 
     if (dto.body?.trim() || dto.departureCity?.trim() || dto.location?.trim()) {

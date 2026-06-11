@@ -8,7 +8,5 @@ export type PostApplicationItemDto = {
   message?: string;
   status: 'pending' | 'accepted' | 'rejected';
   appliedAt: string;
-  /** ISO time when post owner opened chat from profile posts. */
-  ownerOpenedChatAt?: string;
   buddyPreview?: PostBuddyPreviewDto;
 };

@@ -8,7 +8,7 @@ import {
 import { ACTIVITY_PICKER_PROMPT } from './activity-reply.util';
 import { composeReply } from './reply-text.util';
 
-export const AI_GUIDE_SHORTCUT_TEXT = 'AI攻略';
+export const AI_GUIDE_SHORTCUT_TEXT = 'AI出行攻略';
 
 const TRAVEL_GUIDE_INTENT_PATTERNS: RegExp[] = [
   /^规划$/,
@@ -28,15 +28,15 @@ const TRAVEL_GUIDE_INTENT_PATTERNS: RegExp[] = [
 ];
 
 export function isActivityGuideShortcut(input: string): boolean {
-  return input.trim() === AI_GUIDE_SHORTCUT_TEXT;
+  const compact = input.trim().replace(/\s+/g, '');
+  return compact === 'AI出行攻略' || compact === 'AI攻略';
 }
 
-/** AI 出行攻略：快捷词「AI攻略」或自然语言（如「帮我规划行程」） */
+/** AI 出行攻略：快捷词「AI出行攻略」或自然语言（如「帮我规划行程」） */
 export function isTravelGuideIntent(input: string): boolean {
   const text = input.trim();
   if (!text) return false;
   if (isActivityGuideShortcut(text)) return true;
-  if (text.replace(/\s+/g, '') === 'AI攻略') return true;
   return TRAVEL_GUIDE_INTENT_PATTERNS.some((pattern) => pattern.test(text));
 }
 
@@ -80,7 +80,7 @@ export function buildActivityGuideReply(activity?: Activity | null): string {
         `🎤 艺人阵容：${artistLine}`,
         '',
         '你还可以：',
-        '· 说「上海2人舒适自驾」或「帮我规划行程」生成交通/住宿/散场攻略长图；点「AI攻略」可用表单',
+        '· 说「上海2人舒适自驾」或「帮我规划行程」生成交通/住宿/散场攻略长图；点「AI出行攻略」可用表单',
         '· 点「找组队 / 找卡座」等找现有组队帖',
         '· 点「组队发帖」填写招募信息',
       ]);
@@ -96,7 +96,7 @@ export function buildActivityGuideReply(activity?: Activity | null): string {
   }
   lines.push(
     '',
-    '一句话说出出发地、人数、预算即可生成攻略；点「AI攻略」可用表单。找现有帖请点「找组队」等快捷按钮。',
+    '一句话说出出发地、人数、预算即可生成攻略；点「AI出行攻略」可用表单。找现有帖请点「找组队」等快捷按钮。',
   );
   return composeReply(lines);
 }

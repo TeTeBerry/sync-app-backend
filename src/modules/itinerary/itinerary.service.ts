@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import {
+  assertUserUgcTexts,
+  collectItinerarySaveUgcTexts,
+} from '../../common/media/user-ugc-text.util';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import {
   UserItinerary,
@@ -9,6 +13,7 @@ import {
 import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
 import { ItineraryBuddyRecruitHintService } from './itinerary-buddy-recruit-hint.service';
+import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import type { ItineraryDay } from '../../database/schemas/user-itinerary.schema';
 import type { SaveItineraryDto } from './dto/save-itinerary.dto';
 import type { GenerateItineraryDto } from './dto/generate-itinerary.dto';
@@ -22,6 +27,7 @@ export class ItineraryService {
     private readonly scheduleService: ItineraryScheduleService,
     private readonly generationService: ItineraryGenerationService,
     private readonly buddyRecruitHintService: ItineraryBuddyRecruitHintService,
+    private readonly wechatContentSecurity: WechatContentSecurityService,
   ) {}
 
   getBuddyRecruitHint(
@@ -74,6 +80,11 @@ export class ItineraryService {
     body: SaveItineraryDto,
     actor: RequestActor,
   ) {
+    await assertUserUgcTexts(
+      this.wechatContentSecurity,
+      collectItinerarySaveUgcTexts(body),
+    );
+
     const normalizedDays = normalizeItineraryDaysForSave(
       body.days as ItineraryDay[],
     );

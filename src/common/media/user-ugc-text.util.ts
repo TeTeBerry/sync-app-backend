@@ -33,3 +33,26 @@ export function collectProfilePatchUgcTexts(dto: {
 }): Array<string | undefined> {
   return [dto.name, dto.handle, dto.location, dto.bio, dto.city];
 }
+
+export function collectItinerarySaveUgcTexts(body: {
+  eventMeta?: string;
+  days?: Array<{
+    label?: string;
+    bannerDateLabel?: string;
+    items?: Array<{
+      title?: string;
+      subtitle?: string;
+      timeTag?: string;
+      pill?: { label?: string };
+    }>;
+  }>;
+}): Array<string | undefined> {
+  const texts: Array<string | undefined> = [body.eventMeta];
+  for (const day of body.days ?? []) {
+    texts.push(day.label, day.bannerDateLabel);
+    for (const item of day.items ?? []) {
+      texts.push(item.title, item.subtitle, item.timeTag, item.pill?.label);
+    }
+  }
+  return texts;
+}

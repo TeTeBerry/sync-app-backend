@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
   MediaSecurityCheck,
@@ -13,7 +13,7 @@ import { WechatMessageService } from './wechat-message.service';
 @Module({
   imports: [
     CosModule,
-    UserModule,
+    forwardRef(() => UserModule),
     MongooseModule.forFeature([
       { name: MediaSecurityCheck.name, schema: MediaSecurityCheckSchema },
     ]),

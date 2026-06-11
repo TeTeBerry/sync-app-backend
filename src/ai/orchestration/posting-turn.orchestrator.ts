@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
-import { shouldSkipProactiveRecommend } from '../policy/chat-turn-policy';
 import { BuddyContextService } from '../buddy/buddy-context.service';
 import { PostIntentService } from '../post-intent.service';
 import { DeterministicReplyService } from './deterministic-reply.service';
@@ -32,80 +31,9 @@ export class PostingTurnOrchestrator {
   ) {}
 
   async run(params: PostingTurnParams): Promise<AiStreamEvent[]> {
-    const { dto, messages, input, sink, profileSync, timings } = params;
+    const { dto, messages, input, sink } = params;
     const effectiveActivityLegacyId =
       await this.resolveEffectiveActivityLegacyId(dto, messages, input);
-
-    if (
-      shouldSkipProactiveRecommend({
-        messages,
-        input,
-        effectiveActivityLegacyId,
-        state: sink.getState(),
-      })
-    ) {
-      const postEvents = await this.applyPostAttempt(
-        dto,
-        messages,
-        input,
-        sink,
-        effectiveActivityLegacyId,
-      );
-      if (postEvents.length > 0) {
-        return postEvents;
-      }
-      return this.collectDeterministicFallback(dto, messages, input, sink);
-    }
-
-    const requireBuddy =
-      await this.buddyContext.maybeRequireBuddyPostBeforeTeamSearch(
-        input,
-        effectiveActivityLegacyId,
-        dto.actor,
-      );
-    if (requireBuddy.required) {
-      return this.sseBuilder.buildRequireBuddyPostFirstEvents(
-        sink,
-        effectiveActivityLegacyId,
-        requireBuddy.activityLabel,
-      );
-    }
-
-    const matchStart = Date.now();
-    const recommended =
-      await this.postIntentService.tryProactiveRecommendBeforeCreate({
-        messages,
-        input,
-        activityLegacyId: effectiveActivityLegacyId,
-        actor: dto.actor,
-        conversationState: sink.getState(),
-        profileSync,
-      });
-    timings.ms_match = Date.now() - matchStart;
-
-    if (recommended?.postCards.length) {
-      const activityLabel =
-        recommended.postCards[0]?.eventTitle ??
-        recommended.activityLabel ??
-        '本活动';
-      return this.sseBuilder.buildRecommendGateFoundEvents(
-        sink,
-        effectiveActivityLegacyId,
-        activityLabel,
-        recommended.postCards,
-        recommended.postCards.length,
-        recommended.degraded,
-      );
-    }
-
-    if (recommended && recommended.postCards.length === 0) {
-      const activityLabel = recommended.activityLabel ?? '本活动';
-      return this.sseBuilder.buildRecommendGateEmptyEvents(
-        sink,
-        effectiveActivityLegacyId,
-        activityLabel,
-      );
-    }
 
     const postEvents = await this.applyPostAttempt(
       dto,

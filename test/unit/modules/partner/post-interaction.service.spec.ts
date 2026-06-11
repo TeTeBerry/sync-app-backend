@@ -13,13 +13,13 @@ import type { UserService } from '@src/modules/user/user.service';
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
 import type { PostRecruitmentService } from '@src/modules/recruitment/application/post-recruitment.service';
-import type { TeamChatService } from '@src/modules/partner/team-chat.service';
+import type { ApplicationBuddyPreviewService } from '@src/modules/partner/application/application-buddy-preview.service';
 import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
 import type { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
 
-const defaultTeamChatService = {
-  createInitialMessageOnApply: jest.fn().mockResolvedValue(undefined),
-} as unknown as TeamChatService;
+const defaultBuddyPreviewService = {
+  loadBuddyPreviewsForApplicants: jest.fn().mockResolvedValue(new Map()),
+} as unknown as ApplicationBuddyPreviewService;
 
 const defaultAccountRisk = {
   assertCanPublish: jest.fn().mockResolvedValue(undefined),
@@ -93,7 +93,7 @@ describe('PostInteractionService.addComment', () => {
       {} as never,
       userService,
       defaultAccountRisk,
-      defaultTeamChatService,
+      defaultBuddyPreviewService,
       postNotification,
       postModeration,
       defaultWechatContentSecurity,
@@ -207,7 +207,7 @@ describe('PostInteractionService.likePost', () => {
       {} as never,
       {} as UserService,
       defaultAccountRisk,
-      defaultTeamChatService,
+      defaultBuddyPreviewService,
       postNotification,
       {} as IPostModerationPort,
       defaultWechatContentSecurity,
@@ -303,7 +303,7 @@ describe('PostInteractionService.applyToPost', () => {
       {} as never,
       {} as UserService,
       defaultAccountRisk,
-      defaultTeamChatService,
+      defaultBuddyPreviewService,
       postNotification,
       {} as IPostModerationPort,
       defaultWechatContentSecurity,
@@ -353,9 +353,6 @@ describe('PostInteractionService.applyToPost', () => {
         status: 'pending',
       }),
     );
-    expect(
-      defaultTeamChatService.createInitialMessageOnApply,
-    ).toHaveBeenCalledWith('post-1', 'demo-kyle', undefined);
     expect(postNotification.notifyApplication).toHaveBeenCalledWith(
       post,
       'post-1',
@@ -366,11 +363,6 @@ describe('PostInteractionService.applyToPost', () => {
     expect(result).toEqual({
       ok: true,
       alreadyApplied: false,
-      teamChat: expect.objectContaining({
-        postId: 'post-1',
-        applicantUserId: 'demo-kyle',
-        sessionId: expect.stringContaining('post-1'),
-      }),
     });
   });
 });

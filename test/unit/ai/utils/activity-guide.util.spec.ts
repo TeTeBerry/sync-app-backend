@@ -6,9 +6,11 @@ import {
 } from '@src/ai/utils/activity-guide.util';
 
 describe('activity-guide.util', () => {
-  it('recognizes AI攻略 shortcut', () => {
+  it('recognizes AI出行攻略 shortcut', () => {
+    expect(isActivityGuideShortcut('AI出行攻略')).toBe(true);
+    expect(isActivityGuideShortcut('  AI出行攻略  ')).toBe(true);
     expect(isActivityGuideShortcut('AI攻略')).toBe(true);
-    expect(isActivityGuideShortcut('  AI攻略  ')).toBe(true);
+    expect(AI_GUIDE_SHORTCUT_TEXT).toBe('AI出行攻略');
   });
 
   it('recognizes natural-language travel guide intents', () => {

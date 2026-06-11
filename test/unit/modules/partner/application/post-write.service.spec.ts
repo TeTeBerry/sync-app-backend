@@ -63,6 +63,7 @@ describe('PostWriteService', () => {
   const wechatContentSecurity = {
     assertTextSafe: jest.fn().mockResolvedValue(undefined),
     assertTextsSafe: jest.fn().mockResolvedValue(undefined),
+    isEnabled: jest.fn().mockReturnValue(true),
   } as unknown as WechatContentSecurityService;
 
   const mediaChecks = {

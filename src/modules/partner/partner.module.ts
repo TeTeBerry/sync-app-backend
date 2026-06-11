@@ -35,9 +35,9 @@ import { PostController } from './post.controller';
 import { PartnerRepositoryModule } from './partner-repository.module';
 import { PostService } from './post.service';
 import { PostTeamPairService } from './application/post-team-pair.service';
-import { TeamChatController } from './team-chat.controller';
-import { TeamChatService } from './team-chat.service';
+import { ApplicationBuddyPreviewService } from './application/application-buddy-preview.service';
 import { LiveInfoModule } from '../live-info/live-info.module';
+import { MediaSecurityModule } from '../media-security/media-security.module';
 
 @Module({
   imports: [
@@ -45,6 +45,7 @@ import { LiveInfoModule } from '../live-info/live-info.module';
     UserModule,
     AccountRiskModule,
     LiveInfoModule,
+    MediaSecurityModule,
     forwardRef(() => ActivityModule),
     PartnerRepositoryModule,
     PartnerWriteModule,
@@ -66,12 +67,12 @@ import { LiveInfoModule } from '../live-info/live-info.module';
       { name: PostComment.name, schema: PostCommentSchema },
     ]),
   ],
-  controllers: [PostController, TeamChatController],
+  controllers: [PostController],
   providers: [
     PostInteractionService,
     PostQueryService,
     PostService,
-    TeamChatService,
+    ApplicationBuddyPreviewService,
     PostTeamPairService,
   ],
   exports: [
@@ -81,7 +82,7 @@ import { LiveInfoModule } from '../live-info/live-info.module';
     PostQueryService,
     PartnerRepositoryModule,
     RecruitmentModule,
-    TeamChatService,
+    ApplicationBuddyPreviewService,
   ],
 })
 export class PartnerModule {}

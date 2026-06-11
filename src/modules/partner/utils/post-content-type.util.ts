@@ -147,12 +147,14 @@ export function getContentTypeLabel(type: PostContentType): string {
   return CONTENT_TYPE_LABELS[type] ?? '其他';
 }
 
-/** Only share posts may carry image attachments in feeds. */
-export function postAllowsImages(contentTypes?: string[] | null): boolean {
-  return (contentTypes ?? []).includes('share');
+/** Posts may include image attachments (max enforced at write time). */
+export const MAX_POST_IMAGES = 3;
+
+export function postAllowsImages(_contentTypes?: string[] | null): boolean {
+  return true;
 }
 
-/** Mongo filter: recruiting / team posts (excludes explore share feed). */
+/** Mongo filter: recruiting / team posts (excludes share-only posts). */
 export const TEAM_POST_FEED_FILTER = {
   contentTypes: { $ne: 'share' },
 } as const;

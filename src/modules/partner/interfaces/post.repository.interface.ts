@@ -1,8 +1,5 @@
 import type { Post } from '../../../database/schemas/post.schema';
-import type {
-  HotPostPageCursor,
-  PostPageCursor,
-} from '../domain/post-cursor.util';
+import type { PostPageCursor } from '../domain/post-cursor.util';
 import type { Types } from 'mongoose';
 
 export interface PostQueryFilter {
@@ -21,18 +18,6 @@ export type PostRecord = Post & {
 
 export interface IPostRepository {
   findPopular(limit: number): Promise<PostRecord[]>;
-  findAll(): Promise<PostRecord[]>;
-  findShareFeed(options: {
-    limit: number;
-    sort: 'new' | 'hot';
-  }): Promise<PostRecord[]>;
-  findShareFeedPage(options: {
-    limit: number;
-    sort: 'new' | 'hot';
-    cursor?: PostPageCursor | null;
-    hotCursor?: HotPostPageCursor | null;
-  }): Promise<PostRecord[]>;
-  countShareAuthors(): Promise<number>;
   findByActivityLegacyId(activityLegacyId: number): Promise<PostRecord[]>;
   /** Recruiting posts for match/ranking (includes apply-only / unlisted feed posts). */
   findRecruitingByActivityForMatch(

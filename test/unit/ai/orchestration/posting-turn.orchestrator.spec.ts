@@ -1,7 +1,6 @@
 import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { PostingTurnOrchestrator } from '@src/ai/orchestration/posting-turn.orchestrator';
 import { AiStreamEventBuilder } from '@src/ai/presentation/ai-sse.builder';
-import { RECOMMEND_GATE_MARKER } from '@src/ai/gate/recommend-gate.util';
 
 describe('PostingTurnOrchestrator', () => {
   const agenticReplyService = {
@@ -44,16 +43,13 @@ describe('PostingTurnOrchestrator', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    buddyContext.maybeRequireBuddyPostBeforeTeamSearch.mockResolvedValue({
-      required: false,
-    });
     postIntentService.tryCreatePostFromChat.mockResolvedValue(null);
   });
 
-  it('skips proactive recommend on home when no activity is inferred', async () => {
+  it('skips proactive recommend and falls back to deterministic reply', async () => {
     buddyContext.resolveActivityLegacyIdFromChat.mockResolvedValue(undefined);
 
-    await orchestrator.run({
+    const events = await orchestrator.run({
       dto: { ...baseDto, messages: [{ role: 'user', content: '你好' }] },
       messages: [{ role: 'user', content: '你好' }],
       input: '你好',
@@ -65,23 +61,21 @@ describe('PostingTurnOrchestrator', () => {
     expect(
       postIntentService.tryProactiveRecommendBeforeCreate,
     ).not.toHaveBeenCalled();
+    expect(postIntentService.tryCreatePostFromChat).toHaveBeenCalled();
+    expect(events.some((e) => e.type === 'delta')).toBe(true);
   });
 
-  it('runs proactive recommend when storm activity is inferred on home', async () => {
+  it('attempts create_post directly when storm activity is inferred on home', async () => {
     buddyContext.resolveActivityLegacyIdFromChat.mockResolvedValue(4);
-    postIntentService.tryProactiveRecommendBeforeCreate.mockResolvedValue({
-      postCards: [
-        {
-          postId: 'p1',
-          snippet: '找搭子',
-          authorName: 'A',
-          eventTitle: '风暴',
-        },
-      ],
-      activityLabel: '风暴电音节',
-      replyText: 'found',
-      matches: [],
-      degraded: false,
+    postIntentService.tryCreatePostFromChat.mockResolvedValue({
+      kind: 'created',
+      replyText: '已发布',
+      postCard: {
+        postId: 'p1',
+        snippet: '找搭子',
+        authorName: 'A',
+        eventTitle: '风暴',
+      },
     });
 
     const events = await orchestrator.run({
@@ -98,15 +92,10 @@ describe('PostingTurnOrchestrator', () => {
 
     expect(
       postIntentService.tryProactiveRecommendBeforeCreate,
-    ).toHaveBeenCalledWith(expect.objectContaining({ activityLegacyId: 4 }));
-    expect(events.some((e) => e.type === 'post_recommendations')).toBe(true);
-    expect(
-      events.some(
-        (e) =>
-          e.type === 'delta' &&
-          'content' in e &&
-          e.content.includes(RECOMMEND_GATE_MARKER),
-      ),
-    ).toBe(true);
+    ).not.toHaveBeenCalled();
+    expect(postIntentService.tryCreatePostFromChat).toHaveBeenCalledWith(
+      expect.objectContaining({ activityLegacyId: 4 }),
+    );
+    expect(events.some((e) => e.type === 'post_created')).toBe(true);
   });
 });

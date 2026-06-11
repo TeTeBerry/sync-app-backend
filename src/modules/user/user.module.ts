@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ChromaModule } from '../../ai/rag/chroma.module';
 import {
@@ -17,12 +17,14 @@ import { UserController } from './user.controller';
 import { UserRepository } from './user.repository';
 import { AccountRiskModule } from '../account-risk/account-risk.module';
 import { WechatMiniModule } from '../auth/wechat-mini.module';
+import { MediaSecurityModule } from '../media-security/media-security.module';
 import { UserProfileSyncService } from './user-profile-sync.service';
 import { UserService } from './user.service';
 
 @Module({
   imports: [
     WechatMiniModule,
+    forwardRef(() => MediaSecurityModule),
     AccountRiskModule,
     ChromaModule,
     MongooseModule.forFeature([

@@ -19,7 +19,9 @@ import {
   assertUserUgcTexts,
   collectProfilePatchUgcTexts,
 } from '../../common/media/user-ugc-text.util';
+import { assertUserUgcImageRef } from '../../common/media/user-ugc-image.util';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
+import { MediaSecurityCheckService } from '../media-security/media-security-check.service';
 import { AccountRiskService } from '../account-risk/account-risk.service';
 import type { AccountRiskPublicStatus } from '../account-risk/account-risk.service';
 import { ChromaService } from '../../ai/rag/chroma.service';
@@ -69,6 +71,7 @@ export class UserService implements OnModuleInit {
     private readonly chromaService: ChromaService,
     private readonly accountRisk: AccountRiskService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
+    private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
 
   async onModuleInit() {
@@ -172,6 +175,12 @@ export class UserService implements OnModuleInit {
       collectProfilePatchUgcTexts(body),
     );
     const externalId = this.resolveExternalId(actor);
+    await assertUserUgcImageRef(
+      this.wechatContentSecurity,
+      this.mediaChecks,
+      body.avatar,
+      externalId,
+    );
     const existing = await this.repository.findByExternalId(externalId);
     const updated = existing
       ? await this.repository.updateByExternalId(externalId, body)

@@ -2,10 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ActivityService } from '../../modules/activity/activity.service';
 import { LlmService } from '../llm/llm.service';
 import { ChatMessageDto } from '../../shared/chat';
-import {
-  formatActivityCatalogDayLabels,
-  inferBuddySearchHintKind,
-} from '../match/zone-buddy-search.util';
+import { formatActivityCatalogDayLabels } from '../match/zone-buddy-search.util';
 import type { ResolvedChatIntent } from './chat-intent.types';
 import { resolveChatIntentFastPath } from './intent-router.rules';
 import { logAiTurn } from '../utils/log-ai-turn.util';
@@ -152,13 +149,7 @@ export class IntentRouterService {
     const intent = parsed.intent.trim().toLowerCase();
 
     if (intent === 'search_posts') {
-      const hintLabel = parsed.searchHint?.trim() || trimmed;
-      const kind = inferBuddySearchHintKind(hintLabel);
-      return {
-        kind: 'search_posts',
-        source: 'llm',
-        buddySearchHint: { displayLabel: hintLabel, kind },
-      };
+      return { kind: 'quick_reply', source: 'llm' };
     }
 
     if (intent === 'create_post' || intent === 'legacy_cascade') {

@@ -27,7 +27,6 @@ type ApplicationRecord = {
   authorName?: string;
   status: 'pending' | 'accepted' | 'rejected';
   message?: string;
-  ownerOpenedChatAt?: Date | string;
   createdAt?: Date | string;
 };
 
@@ -187,13 +186,6 @@ export class PostMapper {
         application.createdAt != null
           ? new Date(application.createdAt).toISOString()
           : new Date().toISOString(),
-      ...(application.ownerOpenedChatAt != null
-        ? {
-            ownerOpenedChatAt: new Date(
-              application.ownerOpenedChatAt,
-            ).toISOString(),
-          }
-        : {}),
       ...(buddyPreview ? { buddyPreview } : {}),
     };
   }

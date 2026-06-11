@@ -128,12 +128,11 @@ describe('IntentRouterService', () => {
     });
 
     expect(llmService.invokeJson).not.toHaveBeenCalled();
-    expect(result.kind).toBe('search_posts');
+    expect(result.kind).toBe('quick_reply');
     expect(result.source).toBe('rule');
-    expect(result.buddySearchHint?.displayLabel).toBe('13号 A区 有人吗');
   });
 
-  it('calls mocked LLM when rules miss and maps search_posts', async () => {
+  it('calls mocked LLM when rules miss and maps search_posts to quick_reply', async () => {
     (activityService.findByLegacyId as jest.Mock).mockResolvedValue({
       legacyId: 4,
       name: '风暴电音节',
@@ -153,9 +152,8 @@ describe('IntentRouterService', () => {
     });
 
     expect(llmService.invokeJson).toHaveBeenCalledTimes(1);
-    expect(result.kind).toBe('search_posts');
+    expect(result.kind).toBe('quick_reply');
     expect(result.source).toBe('llm');
-    expect(result.buddySearchHint?.displayLabel).toBe('13号A区');
   });
 
   it('returns cached intent for same session+input within TTL', async () => {

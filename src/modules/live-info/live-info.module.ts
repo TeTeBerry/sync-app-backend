@@ -12,6 +12,7 @@ import { ParserModule } from '../../ai/parser/parser.module';
 import { AuthModule } from '../auth/auth.module';
 import { ActivityModule } from '../activity/activity.module';
 import { UserModule } from '../user/user.module';
+import { MediaSecurityModule } from '../media-security/media-security.module';
 import { LiveInfoController } from './live-info.controller';
 import { LiveInfoService } from './live-info.service';
 import { OnSiteIdentityService } from './on-site-identity.service';
@@ -23,6 +24,7 @@ import { WristbandVerifyService } from './wristband-verify.service';
     ParserModule,
     ActivityModule,
     UserModule,
+    MediaSecurityModule,
     MongooseModule.forFeature([
       { name: EventLiveWristband.name, schema: EventLiveWristbandSchema },
       { name: EventLiveUpdate.name, schema: EventLiveUpdateSchema },

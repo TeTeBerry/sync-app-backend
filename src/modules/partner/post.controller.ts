@@ -32,33 +32,6 @@ export class PostController {
     );
   }
 
-  @Get('all')
-  listAll(@CurrentActor() actor: RequestActor) {
-    return this.postService.listAll(actor);
-  }
-
-  @Get('share')
-  listShare(
-    @CurrentActor() actor: RequestActor,
-    @Query('limit') limit?: string,
-    @Query('sort') sort?: string,
-    @Query('cursor') cursor?: string,
-  ) {
-    const parsedLimit = limit ? Number(limit) : undefined;
-    const normalizedSort = sort === 'hot' ? 'hot' : 'new';
-    return this.postService.listShare(
-      {
-        limit:
-          parsedLimit != null && !Number.isNaN(parsedLimit)
-            ? parsedLimit
-            : undefined,
-        sort: normalizedSort,
-        cursor: cursor?.trim() || undefined,
-      },
-      actor,
-    );
-  }
-
   @Get()
   list(
     @CurrentActor() actor: RequestActor,

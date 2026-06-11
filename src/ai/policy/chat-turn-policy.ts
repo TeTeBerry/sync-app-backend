@@ -99,11 +99,7 @@ export function resolveActivityScopedFastPath(
 
   const buddySearchKind = inferBuddySearchHintKind(trimmed);
   if (buddySearchKind && /(有人吗|有没有人|搭子)/.test(trimmed)) {
-    return {
-      kind: 'search_posts',
-      source: 'rule',
-      buddySearchHint: { displayLabel: trimmed, kind: buddySearchKind },
-    };
+    return { kind: 'quick_reply', source: 'rule' };
   }
 
   if (detectUserIntent(trimmed) === 'find_buddy') {

@@ -24,7 +24,7 @@ export async function buildQuickReplyResponse(
       '🗺️ 好的，我来帮你规划出行攻略。',
       '',
       '直接说出出发地、人数、预算（经济/舒适/豪华）和是否自驾即可，例如：上海2人舒适自驾住2晚。',
-      '也可点下方「AI攻略」用表单填写。',
+      '也可点下方「AI出行攻略」用表单填写。',
       activity?.name ? `当前活动：${activity.name.trim()}` : '',
     ]);
   }

@@ -13,9 +13,7 @@ import {
 } from '../interfaces/post.repository.interface';
 import {
   clampActivityPostsLimit,
-  decodeHotPostCursor,
   decodePostCursor,
-  encodeHotPostCursor,
   encodePostCursor,
 } from '../domain/post-cursor.util';
 import { OnSiteIdentityService } from '../../live-info/on-site-identity.service';
@@ -35,61 +33,6 @@ export class PostQueryService {
   async listPopular(limit = 20, actor: RequestActor) {
     const rows = await this.repository.findPopular(limit);
     return this.mapPostsWithLiked(rows, PostMapper.toHomeFeedItem, actor);
-  }
-
-  async listAll(actor: RequestActor) {
-    const rows = await this.repository.findAll();
-    return this.mapPostsWithLiked(rows, PostMapper.toHomeFeedItem, actor);
-  }
-
-  async listShare(
-    options: { limit?: number; sort?: 'new' | 'hot'; cursor?: string },
-    actor: RequestActor,
-  ) {
-    const limit = clampActivityPostsLimit(options.limit);
-    const sort = options.sort === 'hot' ? 'hot' : 'new';
-    let decodedCursor: ReturnType<typeof decodePostCursor> = null;
-    let decodedHotCursor: ReturnType<typeof decodeHotPostCursor> = null;
-
-    if (options.cursor) {
-      if (sort === 'hot') {
-        decodedHotCursor = decodeHotPostCursor(options.cursor);
-        if (!decodedHotCursor) {
-          throw new BadRequestException('无效的分页游标');
-        }
-      } else {
-        decodedCursor = decodePostCursor(options.cursor);
-        if (!decodedCursor) {
-          throw new BadRequestException('无效的分页游标');
-        }
-      }
-    }
-
-    const rows = await this.repository.findShareFeedPage({
-      limit: limit + 1,
-      sort,
-      cursor: decodedCursor,
-      hotCursor: decodedHotCursor,
-    });
-    const hasMore = rows.length > limit;
-    const pageRows = hasMore ? rows.slice(0, limit) : rows;
-    const items = await this.mapPostsWithLiked(
-      pageRows,
-      PostMapper.toHomeFeedItem,
-      actor,
-    );
-    const lastRow = pageRows[pageRows.length - 1];
-    const nextCursor =
-      hasMore && lastRow
-        ? sort === 'hot'
-          ? encodeHotPostCursor(lastRow)
-          : encodePostCursor(lastRow)
-        : undefined;
-    const sharerCount = options.cursor
-      ? undefined
-      : await this.repository.countShareAuthors();
-
-    return { items, nextCursor, hasMore, sharerCount };
   }
 
   async listByActivity(activityLegacyId: number, actor: RequestActor) {

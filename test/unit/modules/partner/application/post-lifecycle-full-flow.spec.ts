@@ -69,7 +69,9 @@ describe('Post lifecycle full business flow', () => {
     completeRecruitment: jest.Mock;
     reopenRecruitment: jest.Mock;
   };
-  let teamChatService: { createInitialMessageOnApply: jest.Mock };
+  let buddyPreviewService: {
+    loadBuddyPreviewsForApplicants: jest.Mock;
+  };
   let postNotification: IPostNotificationPort;
 
   beforeEach(() => {
@@ -203,8 +205,8 @@ describe('Post lifecycle full business flow', () => {
       }),
     };
 
-    teamChatService = {
-      createInitialMessageOnApply: jest.fn().mockResolvedValue(undefined),
+    buddyPreviewService = {
+      loadBuddyPreviewsForApplicants: jest.fn().mockResolvedValue(new Map()),
     };
 
     teamPairService = new PostTeamPairService(
@@ -288,7 +290,7 @@ describe('Post lifecycle full business flow', () => {
         assertCanPublish: jest.fn().mockResolvedValue(undefined),
         recordPublishRiskViolation: jest.fn(),
       } as never,
-      teamChatService as never,
+      buddyPreviewService as never,
       postNotification,
       postModeration,
       {
@@ -359,16 +361,10 @@ describe('Post lifecycle full business flow', () => {
       expect.objectContaining({
         ok: true,
         alreadyApplied: false,
-        teamChat: expect.any(Object),
       }),
     );
     expect(applications).toHaveLength(1);
     expect(applications[0].status).toBe('pending');
-    expect(teamChatService.createInitialMessageOnApply).toHaveBeenCalledWith(
-      hostId,
-      APPLICANT_ID,
-      '可以一起同路吗',
-    );
     expect(postNotification.notifyApplication).toHaveBeenCalled();
 
     // 5. 不能接受自己的申请

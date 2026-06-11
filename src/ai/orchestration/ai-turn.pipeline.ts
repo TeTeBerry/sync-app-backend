@@ -159,7 +159,12 @@ export class AiTurnPipeline {
 
     switch (routed.kind) {
       case 'search_posts':
-        events = await this.collectMatchOnly(handlerCtx);
+        events = await this.collectDeterministicOnly(
+          dto,
+          fullMessages,
+          lastInput,
+          sink,
+        );
         break;
       case 'create_post':
         events = await this.postingTurnOrchestrator.run({

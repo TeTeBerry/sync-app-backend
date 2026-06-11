@@ -153,21 +153,17 @@ describe('AiTurnPipeline homepage activity gating', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('runs proactive recommend on home when storm activity is inferred', async () => {
+  it('attempts create_post on home when storm activity is inferred', async () => {
     buddyContext.resolveActivityLegacyIdFromChat.mockResolvedValue(4);
-    postIntentService.tryProactiveRecommendBeforeCreate.mockResolvedValue({
-      postCards: [
-        {
-          postId: 'p1',
-          snippet: '找搭子',
-          authorName: 'A',
-          eventTitle: '风暴',
-        },
-      ],
-      activityLabel: '风暴电音节',
-      replyText: 'found',
-      matches: [],
-      degraded: false,
+    postIntentService.tryCreatePostFromChat.mockResolvedValue({
+      kind: 'created',
+      replyText: '已发布',
+      postCard: {
+        postId: 'p1',
+        snippet: '找搭子',
+        authorName: 'A',
+        eventTitle: '风暴',
+      },
     });
 
     const result = await pipeline.runTurn(
@@ -184,18 +180,11 @@ describe('AiTurnPipeline homepage activity gating', () => {
 
     expect(
       postIntentService.tryProactiveRecommendBeforeCreate,
-    ).toHaveBeenCalledWith(expect.objectContaining({ activityLegacyId: 4 }));
-    expect(result.events.some((e) => e.type === 'post_recommendations')).toBe(
-      true,
+    ).not.toHaveBeenCalled();
+    expect(postIntentService.tryCreatePostFromChat).toHaveBeenCalledWith(
+      expect.objectContaining({ activityLegacyId: 4 }),
     );
-    expect(
-      result.events.some(
-        (e) =>
-          e.type === 'delta' &&
-          'content' in e &&
-          e.content.includes(RECOMMEND_GATE_MARKER),
-      ),
-    ).toBe(true);
+    expect(result.events.some((e) => e.type === 'post_created')).toBe(true);
   });
 
   it('skips proactive recommend for ticket resale even if activity was inferred', async () => {
@@ -263,14 +252,14 @@ describe('AiTurnPipeline homepage activity gating', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('requires buddy post before shortcut search_posts when user has no recruiting post', async () => {
+  it('uses deterministic reply for legacy search_posts intent', async () => {
     intentRouter.resolve.mockResolvedValue({
       kind: 'search_posts',
       source: 'rule',
     });
-    buddyContext.maybeRequireBuddyPostBeforeTeamSearch.mockResolvedValue({
-      required: true,
-      activityLabel: '风暴电音节',
+    agenticReplyService.resolve.mockResolvedValue({
+      text: '可以去活动详情页的留言板看看',
+      nextState: { version: 1, flow: 'idle' },
     });
 
     const result = await pipeline.runTurn(
@@ -287,43 +276,11 @@ describe('AiTurnPipeline homepage activity gating', () => {
     );
 
     expect(postIntentService.tryMatchPostsFromChat).not.toHaveBeenCalled();
-    expect(result.conversationState.flow).toBe('collect_post_body');
-    expect(result.assistantReply).toContain(REQUIRE_BUDDY_POST_MARKER);
-  });
-
-  it('enters collect_post_body when search_posts finds no matches on event detail', async () => {
-    intentRouter.resolve.mockResolvedValue({
-      kind: 'search_posts',
-      source: 'rule',
-    });
-    postIntentService.tryMatchPostsFromChat.mockResolvedValue({
-      matches: [],
-      postCards: [],
-      activityLabel: '风暴电音节',
-      degraded: false,
-      replyText:
-        '暂未在「风暴电音节」找到相近的组队帖。\n\n你可以：告诉我内容帮你发布帖子',
-    });
-
-    const result = await pipeline.runTurn(
-      {
-        ...baseDto,
-        activityLegacyId: 9,
-        messages: [{ role: 'user', content: '看看有没有组队帖' }],
-      },
-      [{ role: 'user', content: '看看有没有组队帖' }],
-      '看看有没有组队帖',
-      { version: 1, flow: 'idle' },
-      'req-search-empty',
-      'scoped-session',
-    );
-
-    expect(result.conversationState.flow).toBe('collect_post_body');
-    expect(result.conversationState.publishDraft?.activityLegacyId).toBe(9);
-    expect(result.conversationState.publishDraft?.fromSelfPost).toBe(true);
-    expect(result.events.some((e) => e.type === 'conversation_patch')).toBe(
-      true,
-    );
+    expect(
+      postIntentService.tryProactiveRecommendBeforeCreate,
+    ).not.toHaveBeenCalled();
+    expect(result.assistantReply).toContain('留言板');
+    expect(result.events.some((e) => e.type === 'delta')).toBe(true);
   });
 
   it('emits activity card when user confirms festival enter by name', async () => {
@@ -520,7 +477,7 @@ describe('AiTurnPipeline homepage activity gating', () => {
 
   it('uses bound activityLegacyId on event detail without home inference', async () => {
     buddyContext.resolveActivityLegacyIdFromChat.mockResolvedValue(99);
-    postIntentService.tryProactiveRecommendBeforeCreate.mockResolvedValue(null);
+    postIntentService.tryCreatePostFromChat.mockResolvedValue(null);
 
     await pipeline.runTurn(
       {
@@ -536,8 +493,11 @@ describe('AiTurnPipeline homepage activity gating', () => {
     );
 
     expect(buddyContext.resolveActivityLegacyIdFromChat).not.toHaveBeenCalled();
+    expect(postIntentService.tryCreatePostFromChat).toHaveBeenCalledWith(
+      expect.objectContaining({ activityLegacyId: 9 }),
+    );
     expect(
       postIntentService.tryProactiveRecommendBeforeCreate,
-    ).toHaveBeenCalledWith(expect.objectContaining({ activityLegacyId: 9 }));
+    ).not.toHaveBeenCalled();
   });
 });
