@@ -1,4 +1,5 @@
 import { parseCorsOrigins } from '../common/cors/cors-config.util';
+import { isDemoSeedEnabled } from '../common/utils/seed-policy.util';
 import {
   defaultCosUploadResource,
   resolveCosBucket,
@@ -97,6 +98,10 @@ export default () => ({
 
   redis: {
     url: cleanEnv(process.env.REDIS_URL, ''),
+  },
+
+  seed: {
+    demoDataEnabled: isDemoSeedEnabled(),
   },
 
   wechatPay: {

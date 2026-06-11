@@ -291,6 +291,7 @@
 
 ## 备注
 
+- **2026-06 技术债**：`AiStreamEventBuilder` 文件重命名；`src/ai/{parser,llm,gate,services}` 空目录删除；`UserRepositoryModule` / `ACTIVITY_LOOKUP_PORT` / `POST_READ_PORT` 打破 Nest `forwardRef` 环。
 - 单体 NestJS + 全局 Guard 即可；不必先拆微服务。
 - Chroma / Redis 不可用时不阻断主流程。
 - 保留 `GET /profile` BFF；登录后只改身份来源。

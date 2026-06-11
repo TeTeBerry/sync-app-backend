@@ -16,7 +16,7 @@ AppModule
 ├── ActivityExperienceModule # 活动域聚合（travel-plan / itinerary / live-info / travel-guide）
 ├── UserModule               # Demo 用户 seed
 ├── PartnerModule              # 组队帖（REST 仍为 /posts）
-├── ProfileModule            # 个人页 BFF（套餐 / 联系方式解锁配额）
+├── ProfileModule            # 个人页 BFF（摘要 / 活动 / 组队帖）
 ├── HomeModule               # 首页 BFF
 ├── NotificationModule
 ├── ChatModule               # AI 会话持久化
@@ -28,7 +28,7 @@ AppModule
     └── BuddyModule             # 发帖编排（create-post-from-chat use case + PostIntentService 门面）
         └── create-post-from-chat.use-case.ts
     ├── orchestration/          # AiTurnPipeline（单轮编排）+ legacy AgentRuntime（仅 DeterministicReply）
-    ├── presentation/           # AiSseBuilder（流式事件组装，经 WS 下发；类名历史遗留）
+    ├── presentation/           # AiStreamEventBuilder（流式事件组装，经 WS 下发）
     ├── gate/ publish/ risk/ intent/  # 原 ai/utils 按域拆分
     ├── PostAgentAdaptersModule # PartnerModule ↔ AgentsModule 端口适配
 ```
@@ -53,13 +53,21 @@ AppModule
 
 详见 [`modules/activity-experience/README.md`](../src/modules/activity-experience/README.md)。
 
+### 读端口层（打破 Nest 模块环）
+
+| 模块 / 端口 | 用途 |
+|-------------|------|
+| `UserRepositoryModule` + `USER_REPOSITORY` | 用户持久化；`MediaSecurityModule` 仅依赖此层 |
+| `ActivityLookupModule` + `ACTIVITY_LOOKUP_PORT` | 活动只读查询；报名 / 发帖校验 / BFF |
+| `PartnerReadModule` + `POST_READ_PORT` | 帖子只读；`HomeModule` / `ProfileModule` BFF |
+
 > LLM 能力统一由 `infra/llm/InfraLlmModule` 提供（原 `ai/parser` 已移除）。
 
 ---
 
 ## AI 对话流程
 
-`ws://<host>/api/ai/chat/ws`（`AiChatWsServer`）将每轮 `send` 交给 `AiService.streamChat`；单轮逻辑在 `AiTurnPipeline`，流式事件由 `AiSseBuilder` 组装后经 WebSocket 下发：
+`ws://<host>/api/ai/chat/ws`（`AiChatWsServer`）将每轮 `send` 交给 `AiService.streamChat`；单轮逻辑在 `AiTurnPipeline`，流式事件由 `AiStreamEventBuilder` 组装后经 WebSocket 下发：
 
 ```
 用户消息
@@ -69,7 +77,7 @@ AppModule
        → syncProfileOnce（发帖路径）
        → create_post：PostIntentService.tryCreatePostFromChat
        → quick_reply / chitchat / dj_info / activity_enter：DeterministicReply 或 Agent
-  → AiSseBuilder：post_created / activity_recommendation / conversation_patch / suggested_replies 等
+  → AiStreamEventBuilder：post_created / activity_recommendation / conversation_patch / suggested_replies 等
   → AiService：message_complete、ChatService.saveTurn、done
 ```
 

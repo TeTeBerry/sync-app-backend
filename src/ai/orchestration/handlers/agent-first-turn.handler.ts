@@ -3,7 +3,7 @@ import { ChatAgentOrchestratorService } from '../../agent/chat-agent-orchestrato
 import { buildDjInfoSuggestedReplies } from '../../dj/dj-info-suggested-replies.util';
 import { DjInfoResolverService } from '../../dj/dj-info-resolver.service';
 import { logAiTurn } from '../../utils/log-ai-turn.util';
-import { AiStreamEventBuilder } from '../../presentation/ai-sse.builder';
+import { AiStreamEventBuilder } from '../../presentation/ai-stream-event.builder';
 import type { ChatAgentTurnResult } from '../../agent/agent.types';
 import type { AiStreamEvent } from '../../../shared/chat';
 import type {

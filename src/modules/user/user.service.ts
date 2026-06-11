@@ -14,6 +14,7 @@ import {
   DEMO_OWNER_USER_ID,
   isDemoOwnerClient,
 } from '../../common/utils/demo-owner.util';
+import { isDemoSeedEnabled } from '../../common/utils/seed-policy.util';
 import { UpdateUserMeDto } from './dto/update-user-me.dto';
 import {
   assertUserUgcTexts,
@@ -75,6 +76,7 @@ export class UserService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    if (!isDemoSeedEnabled()) return;
     await this.repository.upsertDefaultProfile(DEMO_PROFILE);
   }
 

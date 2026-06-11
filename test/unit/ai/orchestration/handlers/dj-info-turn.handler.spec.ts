@@ -1,5 +1,5 @@
 import { DjInfoTurnHandler } from '@src/ai/orchestration/handlers/dj-info-turn.handler';
-import { AiStreamEventBuilder } from '@src/ai/presentation/ai-sse.builder';
+import { AiStreamEventBuilder } from '@src/ai/presentation/ai-stream-event.builder';
 import { toRequestActor } from '@src/common/auth/actor-query.util';
 
 describe('DjInfoTurnHandler', () => {

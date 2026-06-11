@@ -1,13 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { ownerFilterFromActor } from '../../common/auth/actor-query.util';
-import { ActivityService } from '../activity/activity.service';
+import {
+  ACTIVITY_LOOKUP_PORT,
+  type IActivityLookupPort,
+} from '../activity/ports/activity-lookup.port';
 import {
   ACTIVITY_REGISTRATION_REPOSITORY,
   ActivityRegistrationQueryFilter,
   IActivityRegistrationRepository,
 } from '../activity/registration/interfaces/activity-registration.repository.interface';
-import { PostService } from '../partner/post.service';
+import {
+  POST_READ_PORT,
+  type IPostReadPort,
+} from '../partner/ports/post-read.port';
 import { canViewPersonalInfo } from '../../common/utils/privacy.util';
 import { UserBlockService } from '../user/user-block.service';
 import { UserService } from '../user/user.service';
@@ -55,8 +61,10 @@ export class ProfileSummaryService {
   constructor(
     @Inject(ACTIVITY_REGISTRATION_REPOSITORY)
     private readonly registrationRepository: IActivityRegistrationRepository,
-    private readonly activityService: ActivityService,
-    private readonly postService: PostService,
+    @Inject(ACTIVITY_LOOKUP_PORT)
+    private readonly activityLookup: IActivityLookupPort,
+    @Inject(POST_READ_PORT)
+    private readonly postRead: IPostReadPort,
     private readonly userService: UserService,
     private readonly userBlockService: UserBlockService,
   ) {}
@@ -75,8 +83,8 @@ export class ProfileSummaryService {
       await Promise.all([
         this.userService.resolveProfile(actor),
         this.registrationRepository.countByOwner(filter),
-        this.postService.listByOwner(actor),
-        this.postService.countCompletedByOwner(actor),
+        this.postRead.listByOwner(actor),
+        this.postRead.countCompletedByOwner(actor),
         viewerId
           ? this.userBlockService.loadBuddyUserIds(viewerId)
           : Promise.resolve(new Set<string>()),
@@ -119,7 +127,7 @@ export class ProfileSummaryService {
 
     const items = await Promise.all(
       registrations.map(async (registration) => {
-        const activity = await this.activityService.findByLegacyId(
+        const activity = await this.activityLookup.findByLegacyId(
           registration.activityLegacyId,
         );
         const title = activity?.name ?? `活动 ${registration.activityLegacyId}`;
@@ -139,6 +147,6 @@ export class ProfileSummaryService {
   }
 
   listPosts(actor: RequestActor) {
-    return this.postService.listByOwner(actor);
+    return this.postRead.listByOwner(actor);
   }
 }

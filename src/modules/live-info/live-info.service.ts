@@ -18,6 +18,7 @@ import {
   EventLiveWristband,
   EventLiveWristbandDocument,
 } from '../../database/schemas/event-live-wristband.schema';
+import { isDemoSeedEnabled } from '../../common/utils/seed-policy.util';
 import { ActivityService } from '../activity/activity.service';
 import { UserService } from '../user/user.service';
 import { PublishLiveInfoDto } from './dto/publish-live-info.dto';
@@ -80,6 +81,7 @@ export class LiveInfoService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
+    if (!isDemoSeedEnabled()) return;
     await this.seedDemoUpdates().catch((err) => {
       this.logger.warn(`live-info seed skipped: ${String(err)}`);
     });

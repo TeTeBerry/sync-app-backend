@@ -6,7 +6,7 @@ import { DeterministicReplyService } from './deterministic-reply.service';
 import {
   AiStreamEventBuilder,
   type ReplySink,
-} from '../presentation/ai-sse.builder';
+} from '../presentation/ai-stream-event.builder';
 import type { UserProfileSyncResult } from '../agents/user-profile.agent';
 import type { ChatRequestDto } from '../presentation/chat-request.dto';
 import type { ChatMessageDto, AiStreamEvent } from '../../shared/chat';

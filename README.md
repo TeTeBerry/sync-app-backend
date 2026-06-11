@@ -46,17 +46,29 @@ npm run start:dev
 
 ```bash
 cd ~/sync-app-backend
-cp .env.production.example .env.production   # 或 scp 本机已填好的文件
-nano .env.production                         # WECHAT_MINI_APP_ID、JWT_SECRET、QWEN_API_KEY 等
+cp .env.example .env.production   # 或 scp 本机已填好的文件
+nano .env.production              # WECHAT_MINI_APP_ID、JWT_SECRET、QWEN_API_KEY 等
 
 sudo docker compose up -d --build
 sudo docker compose exec app printenv WECHAT_MINI_APP_ID   # 应有 wx...
+sudo docker compose exec app printenv REDIS_URL            # redis://redis:6379
 ```
 
-`printenv` 为空 → 服务器上没有 `.env.production` 或文件里未写 `WECHAT_MINI_APP_ID`。  
+`printenv` 为空 → 服务器上没有 `.env.production` 或文件里未写对应变量。  
 无 `docker` 权限时用 `sudo`；长期可把用户加入 `docker` 组后重新登录 SSH。
 
-活动知识库与用户画像向量检索需 Chroma：`npm run infra:chroma`，并在 `.env` 设置 `CHROMA_URL=http://localhost:8000`。
+Compose 已为 `app` 注入 `MONGODB_URI`、`REDIS_URL=redis://redis:6379`、`SEED_DEMO_DATA=false`（生产不写 demo 帖/评论/行程 lineup 等）。活动目录 seed 仍会 upsert。
+
+**Chroma（可选 RAG）**：
+
+```bash
+# .env.production 增加：
+# CHROMA_URL=http://chroma:8000
+
+sudo docker compose --profile chroma up -d --build
+```
+
+本地非 Docker：`npm run infra:chroma`，`CHROMA_URL=http://localhost:8000`。
 
 服务默认：`http://localhost:3000/api`
 

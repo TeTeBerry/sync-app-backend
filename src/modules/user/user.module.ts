@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { InfraChromaModule } from '../../infra/chroma/chroma.module';
 import {
@@ -11,10 +11,9 @@ import {
   UserBlockSchema,
 } from '../../database/schemas/user-block.schema';
 import { User, UserSchema } from '../../database/schemas/user.schema';
-import { USER_REPOSITORY } from './interfaces/user.repository.interface';
 import { UserBlockService } from './user-block.service';
 import { UserController } from './user.controller';
-import { UserRepository } from './user.repository';
+import { UserRepositoryModule } from './user-repository.module';
 import { AccountRiskModule } from '../account-risk/account-risk.module';
 import { WechatMiniModule } from '../auth/wechat-mini.module';
 import { MediaSecurityModule } from '../media-security/media-security.module';
@@ -24,7 +23,8 @@ import { UserService } from './user.service';
 @Module({
   imports: [
     WechatMiniModule,
-    forwardRef(() => MediaSecurityModule),
+    MediaSecurityModule,
+    UserRepositoryModule,
     AccountRiskModule,
     InfraChromaModule,
     MongooseModule.forFeature([
@@ -35,18 +35,12 @@ import { UserService } from './user.service';
     ]),
   ],
   controllers: [UserController],
-  providers: [
-    UserRepository,
-    { provide: USER_REPOSITORY, useExisting: UserRepository },
-    UserService,
-    UserProfileSyncService,
-    UserBlockService,
-  ],
+  providers: [UserService, UserProfileSyncService, UserBlockService],
   exports: [
     UserService,
     UserProfileSyncService,
     UserBlockService,
-    USER_REPOSITORY,
+    UserRepositoryModule,
   ],
 })
 export class UserModule {}

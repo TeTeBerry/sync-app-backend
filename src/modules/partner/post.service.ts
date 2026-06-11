@@ -13,9 +13,13 @@ import { Model } from 'mongoose';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { isResourceOwnedByActor } from '../../common/auth/actor-query.util';
 import { resolveOwnerFilterFromActor } from '../../common/utils/owner-filter.util';
+import { isDemoSeedEnabled } from '../../common/utils/seed-policy.util';
 import { sumProfilePostLikes } from '../../common/utils/profile-likes.util';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
-import { ActivityService } from '../activity/activity.service';
+import {
+  ACTIVITY_LOOKUP_PORT,
+  type IActivityLookupPort,
+} from '../activity/ports/activity-lookup.port';
 import {
   IPostNotificationPort,
   POST_NOTIFICATION_PORT,
@@ -70,7 +74,8 @@ export class PostService implements OnModuleInit {
     private readonly postModel: Model<PostDocument>,
     private readonly userService: UserService,
     private readonly userBlockService: UserBlockService,
-    private readonly activityService: ActivityService,
+    @Inject(ACTIVITY_LOOKUP_PORT)
+    private readonly activityLookup: IActivityLookupPort,
     @Inject(POST_NOTIFICATION_PORT)
     private readonly postNotification: IPostNotificationPort,
     private readonly postWriteService: PostWriteService,
@@ -83,6 +88,8 @@ export class PostService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    if (!isDemoSeedEnabled()) return;
+
     try {
       const count = await this.postModel.estimatedDocumentCount();
       if (count === 0) {
@@ -170,7 +177,7 @@ export class PostService implements OnModuleInit {
   }
 
   private async purgePostsForRemovedActivities(): Promise<void> {
-    const activities = await this.activityService.findAll();
+    const activities = await this.activityLookup.findAll();
     const validLegacyIds = activities.map((activity) => activity.legacyId);
     const result = await this.postModel.deleteMany({
       activityLegacyId: { $exists: true, $nin: validLegacyIds },

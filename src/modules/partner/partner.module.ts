@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
   PostApplication,
@@ -22,7 +22,7 @@ import {
 } from '../../database/schemas/post-like.schema';
 import { Post, PostSchema } from '../../database/schemas/post.schema';
 import { AuthModule } from '../auth/auth.module';
-import { ActivityModule } from '../activity/activity.module';
+import { ActivityLookupModule } from '../activity/activity-lookup.module';
 import { NotificationModule } from '../notification/notification.module';
 import { RecruitmentModule } from '../recruitment/recruitment.module';
 import { AccountRiskModule } from '../account-risk/account-risk.module';
@@ -45,7 +45,7 @@ import { MediaSecurityModule } from '../media-security/media-security.module';
     AccountRiskModule,
     LiveInfoModule,
     MediaSecurityModule,
-    forwardRef(() => ActivityModule),
+    ActivityLookupModule,
     PartnerRepositoryModule,
     PartnerWriteModule,
     RecruitmentModule,

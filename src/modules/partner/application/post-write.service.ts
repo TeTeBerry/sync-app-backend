@@ -9,7 +9,10 @@ import {
   isTicketPublishProhibited,
   TICKET_PUBLISH_FORBIDDEN_MESSAGE,
 } from '../../../ai/buddy/ticket-publish-policy.util';
-import { ActivityService } from '../../activity/activity.service';
+import {
+  ACTIVITY_LOOKUP_PORT,
+  type IActivityLookupPort,
+} from '../../activity/ports/activity-lookup.port';
 import type { PostStatus } from '../../../database/schemas/post.schema';
 import { AccountRiskService } from '../../account-risk/account-risk.service';
 import { UserProfileSyncService } from '../../user/user-profile-sync.service';
@@ -55,7 +58,8 @@ export class PostWriteService {
     private readonly userService: UserService,
     private readonly userProfileSync: UserProfileSyncService,
     private readonly accountRisk: AccountRiskService,
-    private readonly activityService: ActivityService,
+    @Inject(ACTIVITY_LOOKUP_PORT)
+    private readonly activityLookup: IActivityLookupPort,
     @Inject(POST_NOTIFICATION_PORT)
     private readonly postNotification: IPostNotificationPort,
     @Inject(POST_MODERATION_PORT)
@@ -102,7 +106,7 @@ export class PostWriteService {
 
     const activity =
       dto.activityLegacyId != null
-        ? await this.activityService.findByLegacyId(dto.activityLegacyId)
+        ? await this.activityLookup.findByLegacyId(dto.activityLegacyId)
         : null;
 
     const eventTitle = dto.eventTitle?.trim() || activity?.name || '组队帖';

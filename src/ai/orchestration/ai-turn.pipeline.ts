@@ -30,7 +30,7 @@ import type { AiStreamEvent } from '../../shared/chat';
 import {
   AiStreamEventBuilder,
   type ReplySink,
-} from '../presentation/ai-sse.builder';
+} from '../presentation/ai-stream-event.builder';
 import type { ConversationState } from '../conversation';
 
 export type { AiTurnTimings } from './handlers/turn-handler.types';

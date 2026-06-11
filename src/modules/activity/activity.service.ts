@@ -1,5 +1,4 @@
 import {
-  forwardRef,
   Inject,
   Injectable,
   NotFoundException,
@@ -18,7 +17,10 @@ import {
   resolveFestivalBrand,
 } from '../../ai/rag/festival-brand.util';
 import { NoticeAgent } from '../../ai/agents/notice.agent';
-import { ActivityRegistrationService } from './registration/activity-registration.service';
+import {
+  ACTIVITY_REGISTRATION_REPOSITORY,
+  type IActivityRegistrationRepository,
+} from './registration/interfaces/activity-registration.repository.interface';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import {
   extractYearFromText,
@@ -94,8 +96,8 @@ export class ActivityService implements OnModuleInit {
     @Optional() private readonly chromaService?: ChromaService,
     @Optional() private readonly noticeAgent?: NoticeAgent,
     @Optional()
-    @Inject(forwardRef(() => ActivityRegistrationService))
-    private readonly registrationService?: ActivityRegistrationService,
+    @Inject(ACTIVITY_REGISTRATION_REPOSITORY)
+    private readonly registrationRepository?: IActivityRegistrationRepository,
   ) {}
 
   async onModuleInit() {
@@ -462,11 +464,11 @@ export class ActivityService implements OnModuleInit {
     activity: Activity,
     changeSummary: string,
   ): Promise<void> {
-    if (!this.noticeAgent || !this.registrationService) {
+    if (!this.noticeAgent || !this.registrationRepository) {
       return;
     }
 
-    const userIds = await this.registrationService.listRegisteredUserIds(
+    const userIds = await this.registrationRepository.findRegisteredUserIds(
       activity.legacyId,
     );
     if (!userIds.length) return;

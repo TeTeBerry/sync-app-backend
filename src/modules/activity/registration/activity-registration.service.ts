@@ -1,14 +1,12 @@
-import {
-  forwardRef,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { ownerFilterFromActor } from '../../../common/auth/actor-query.util';
 import { isDemoOwnerClient } from '../../../common/utils/demo-owner.util';
 import { UserService } from '../../user/user.service';
-import { ActivityService } from '../activity.service';
+import {
+  ACTIVITY_LOOKUP_PORT,
+  type IActivityLookupPort,
+} from '../ports/activity-lookup.port';
 import {
   ACTIVITY_REGISTRATION_REPOSITORY,
   IActivityRegistrationRepository,
@@ -44,8 +42,8 @@ export class ActivityRegistrationService {
   constructor(
     @Inject(ACTIVITY_REGISTRATION_REPOSITORY)
     private readonly registrationRepository: IActivityRegistrationRepository,
-    @Inject(forwardRef(() => ActivityService))
-    private readonly activityService: ActivityService,
+    @Inject(ACTIVITY_LOOKUP_PORT)
+    private readonly activityLookup: IActivityLookupPort,
     private readonly userService: UserService,
   ) {}
 
@@ -53,7 +51,7 @@ export class ActivityRegistrationService {
     legacyId: number,
     actor: RequestActor,
   ): Promise<ActivityRegistrationResultDto> {
-    const activity = await this.activityService.findByLegacyId(legacyId);
+    const activity = await this.activityLookup.findByLegacyId(legacyId);
     if (!activity) {
       throw new NotFoundException(`Activity ${legacyId} not found`);
     }
@@ -118,7 +116,7 @@ export class ActivityRegistrationService {
     legacyId: number,
     actor: RequestActor,
   ): Promise<ActivityUnregisterResultDto> {
-    const activity = await this.activityService.findByLegacyId(legacyId);
+    const activity = await this.activityLookup.findByLegacyId(legacyId);
     if (!activity) {
       throw new NotFoundException(`Activity ${legacyId} not found`);
     }

@@ -1,9 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { RedisService } from '../../redis/redis.service';
-import { ActivityService } from '../activity/activity.service';
+import {
+  ACTIVITY_LOOKUP_PORT,
+  type IActivityLookupPort,
+} from '../activity/ports/activity-lookup.port';
 import { ActivityRegistrationService } from '../activity/registration/activity-registration.service';
-import { PostService } from '../partner/post.service';
+import {
+  POST_READ_PORT,
+  type IPostReadPort,
+} from '../partner/ports/post-read.port';
 import { getActivityTypeLabel } from '../activity/utils/activity-type.util';
 
 /** Matches frontend `HOME_POPULAR_POSTS_PERSIST_LIMIT`. */
@@ -12,17 +18,19 @@ const HOME_POPULAR_POSTS_LIMIT = 8;
 @Injectable()
 export class HomeService {
   constructor(
-    private readonly activityService: ActivityService,
+    @Inject(ACTIVITY_LOOKUP_PORT)
+    private readonly activityLookup: IActivityLookupPort,
     private readonly registrationService: ActivityRegistrationService,
     private readonly redisService: RedisService,
-    private readonly postService: PostService,
+    @Inject(POST_READ_PORT)
+    private readonly postRead: IPostReadPort,
   ) {}
 
   async getSummary(actor: RequestActor) {
     const [activities, registeredLegacyIds, popularPosts] = await Promise.all([
-      this.activityService.findAll(),
+      this.activityLookup.findAll(),
       this.registrationService.listRegisteredLegacyIds(actor),
-      this.postService.listPopular(HOME_POPULAR_POSTS_LIMIT, actor),
+      this.postRead.listPopular(HOME_POPULAR_POSTS_LIMIT, actor),
     ]);
 
     const signupEvents = activities.map((item) => ({

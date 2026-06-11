@@ -9,6 +9,7 @@ import {
   FestivalSession,
   FestivalSessionDocument,
 } from '../../database/schemas/festival-session.schema';
+import { isDemoSeedEnabled } from '../../common/utils/seed-policy.util';
 import { ActivityService } from '../activity/activity.service';
 import {
   formatDiscogsStyleLabel,
@@ -104,6 +105,7 @@ export class ItineraryScheduleService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    if (!isDemoSeedEnabled()) return;
     await this.seedDemoData();
   }
 

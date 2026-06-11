@@ -1,6 +1,6 @@
 import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { PostingTurnOrchestrator } from '@src/ai/orchestration/posting-turn.orchestrator';
-import { AiStreamEventBuilder } from '@src/ai/presentation/ai-sse.builder';
+import { AiStreamEventBuilder } from '@src/ai/presentation/ai-stream-event.builder';
 
 describe('PostingTurnOrchestrator', () => {
   const agenticReplyService = {

@@ -13,6 +13,7 @@ import {
   isResourceOwnedByActor,
   toRequestActor,
 } from '../../common/auth/actor-query.util';
+import { isDemoSeedEnabled } from '../../common/utils/seed-policy.util';
 import {
   PostApplication,
   PostApplicationDocument,
@@ -476,6 +477,7 @@ export class PostInteractionService {
 
   /** Idempotent demo replies for seeded posts (matched by body substring). */
   async ensureDemoPostComments(): Promise<void> {
+    if (!isDemoSeedEnabled()) return;
     for (const entry of POST_COMMENT_SEED) {
       try {
         const filter: Record<string, unknown> = {

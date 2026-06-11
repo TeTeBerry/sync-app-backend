@@ -27,15 +27,17 @@ services:
       retries: 10
       start_period: 5s
 
-  # 你的 Nest 后端
   app:
-    build: . # 用当前目录的 Dockerfile 构建
+    build: .
     restart: unless-stopped
     depends_on:
       mongo:
-        condition: service_healthy # 等 mongo 健康再启
+        condition: service_healthy
       redis:
         condition: service_healthy
+      chroma:
+        condition: service_healthy
+        required: false
     ports:
       - '3000:3000'
     env_file:
@@ -46,9 +48,10 @@ services:
     environment:
       - NODE_ENV=production
       - MONGODB_URI=mongodb://mongo:27017/sync-app
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      # H5 CORS whitelist — prefer CORS_ORIGINS in .env.production
+      - REDIS_URL=redis://redis:6379
+      - SEED_DEMO_DATA=false
+      # Enable Chroma RAG: docker compose --profile chroma up -d
+      # and set CHROMA_URL=http://chroma:8000 in .env.production
       # - CORS_ORIGINS=https://h5.your-domain.com
 
   chroma:
@@ -62,6 +65,12 @@ services:
     environment:
       - IS_PERSISTENT=TRUE
       - ANONYMIZED_TELEMETRY=FALSE
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8000/api/v1/heartbeat']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
 volumes:
   mongo_data:
