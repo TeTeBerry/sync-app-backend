@@ -154,18 +154,6 @@ step('GET /profile', async (ctx) => {
   );
 });
 
-step('GET /profile/packages', async (ctx) => {
-  const data = await request('GET', `profile/packages?${ctx.q}`);
-  assert(data != null, 'packages catalog missing');
-});
-
-step('GET /profile/entitlements', async (ctx) => {
-  await request(
-    'GET',
-    `profile/entitlements?${ctx.q}&activityLegacyId=${ctx.activityId}`,
-  );
-});
-
 step('GET /users/me', async (ctx) => {
   const data = await request('GET', `users/me?${ctx.q}`);
   assert(data?.id || data?.name, 'users/me should return profile fields');

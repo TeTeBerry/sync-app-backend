@@ -1,0 +1,20 @@
+node_modules
+dist
+coverage
+.git
+.github
+.husky
+.vscode
+.idea
+
+# Local env / secrets — inject at runtime via env_file or orchestrator secrets.
+.env
+.env.*
+!.env.example
+
+# Dev artifacts
+test
+*.md
+npm-debug.log*
+.DS_Store
+uploads

@@ -57,15 +57,13 @@ describe('ItineraryScheduleService discogs styles', () => {
     sessionModel.find.mockReturnValue({
       sort: jest.fn().mockReturnValue({
         lean: jest.fn().mockReturnValue({
-          exec: jest
-            .fn()
-            .mockResolvedValue([
-              {
-                dateKey: 'dec18',
-                label: '12月18日',
-                bannerDateLabel: '12月18日',
-              },
-            ]),
+          exec: jest.fn().mockResolvedValue([
+            {
+              dateKey: 'dec18',
+              label: '12月18日',
+              bannerDateLabel: '12月18日',
+            },
+          ]),
         }),
       }),
     });

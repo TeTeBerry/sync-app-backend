@@ -126,25 +126,11 @@ AppModule
 
 ---
 
-## Profile 权益（套餐）
-
-单场套餐（Pro / Pro+ / Ultra）与全局每月免费额度合并展示，**当前计费维度**：
-
-| 配额 | 说明 |
-|------|------|
-| `contactUnlock` | 申请组队时解锁对方联系方式；免费每月 3 次 + 套餐场次额度 |
-| `map` | 点位地图同频雷达天数 |
-| `postPin` | 帖子置顶次数（Pro+ / Ultra） |
-
-**已移除**：`aiMatch` 配额、`POST /profile/entitlements/consume/ai-match`、前端 `TARO_APP_ENABLE_PROFILE_BENEFITS` 开关（权益入口默认开启）。
-
----
-
 ## 数据与基础设施
 
 | 存储 | 用途 |
 |------|------|
-| **MongoDB** | user, activity, activity-registration, post, post-like, post-comment, post-application, chat, notification, event-package-entitlement, user-free-quota |
+| **MongoDB** | user, activity, activity-registration, post, post-like, post-comment, post-application, chat, notification |
 | **Redis** | `heat:global`、`heat:activity:{legacyId}`（不可用则降级） |
 | **Chroma** | `sync_knowledge`（活动 RAG）、`sync_user_profiles`（用户画像向量，UserProfileAgent 同步） |
 

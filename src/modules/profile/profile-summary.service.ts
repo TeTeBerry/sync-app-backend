@@ -16,8 +16,6 @@ import {
   compareActivityDateDesc,
 } from '../../common/utils/activity-date.util';
 import { sumProfilePostLikes } from '../../common/utils/profile-likes.util';
-import type { EventPackageEntitlementDto } from './profile-package.service';
-import { ProfilePackageService } from './profile-package.service';
 
 function registrationFilterFromActor(
   actor: RequestActor,
@@ -41,10 +39,6 @@ export interface ProfileSummaryDto {
     likes: number;
     posts: number;
   };
-  /** Present when `activityLegacyId` query is passed to GET /profile. */
-  packageEntitlement?: EventPackageEntitlementDto | null;
-  /** All per-event entitlements for the user (omitted when scoped to one activity). */
-  packageEntitlements?: EventPackageEntitlementDto[];
 }
 
 export interface ProfileActivityItemDto {
@@ -65,13 +59,11 @@ export class ProfileSummaryService {
     private readonly postService: PostService,
     private readonly userService: UserService,
     private readonly userBlockService: UserBlockService,
-    private readonly profilePackageService: ProfilePackageService,
   ) {}
 
   async getSummary(
     actor: RequestActor,
     viewer?: RequestActor,
-    activityLegacyId?: number,
   ): Promise<ProfileSummaryDto> {
     const filter = registrationFilterFromActor(actor);
     const ownerExternalId = filter.userId ?? actor.clientUserId?.trim();
@@ -79,33 +71,16 @@ export class ProfileSummaryService {
     const isOwner =
       !viewerId || !ownerExternalId || viewerId === ownerExternalId;
 
-    const scopedActivity =
-      activityLegacyId != null && !Number.isNaN(activityLegacyId)
-        ? activityLegacyId
-        : undefined;
-
-    const [
-      profile,
-      events,
-      ownerPosts,
-      completedPosts,
-      buddyUserIds,
-      packageData,
-    ] = await Promise.all([
-      this.userService.resolveProfile(actor),
-      this.registrationRepository.countByOwner(filter),
-      this.postService.listByOwner(actor),
-      this.postService.countCompletedByOwner(actor),
-      viewerId
-        ? this.userBlockService.loadBuddyUserIds(viewerId)
-        : Promise.resolve(new Set<string>()),
-      scopedActivity != null
-        ? this.profilePackageService.getEntitlementForActivity(
-            actor,
-            scopedActivity,
-          )
-        : this.profilePackageService.listEntitlements(actor),
-    ]);
+    const [profile, events, ownerPosts, completedPosts, buddyUserIds] =
+      await Promise.all([
+        this.userService.resolveProfile(actor),
+        this.registrationRepository.countByOwner(filter),
+        this.postService.listByOwner(actor),
+        this.postService.countCompletedByOwner(actor),
+        viewerId
+          ? this.userBlockService.loadBuddyUserIds(viewerId)
+          : Promise.resolve(new Set<string>()),
+      ]);
 
     const privacyLevel =
       (profile as { privacyLevel?: 'public' | 'friends' | 'private' })
@@ -119,7 +94,7 @@ export class ProfileSummaryService {
     const posts = ownerPosts.length;
     const likes = sumProfilePostLikes(ownerPosts);
 
-    const summary: ProfileSummaryDto = {
+    return {
       name: profile?.name ?? 'Zara Chen',
       handle: profile?.handle ?? '@zara',
       location: canView ? (profile?.location ?? '上海') : '',
@@ -134,15 +109,6 @@ export class ProfileSummaryService {
         posts,
       },
     };
-
-    if (scopedActivity != null) {
-      summary.packageEntitlement =
-        (packageData as EventPackageEntitlementDto | null) ?? null;
-    } else {
-      summary.packageEntitlements = packageData as EventPackageEntitlementDto[];
-    }
-
-    return summary;
   }
 
   async listActivities(actor: RequestActor): Promise<ProfileActivityItemDto[]> {
