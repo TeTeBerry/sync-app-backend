@@ -3,7 +3,7 @@ import { createIdleState, type ConversationState } from '../conversation';
 import {
   buildRequireBuddyPostFirstReply,
   REQUIRE_BUDDY_POST_SUGGESTED_REPLIES,
-} from '../gate/recommend-gate.util';
+} from '../publish/buddy-post-flow.util';
 import { enterCollectPostBodyState } from '../conversation';
 import { PUBLISH_CONFIRM_SUGGESTED_REPLIES } from '../publish/publish-confirm.util';
 import type { PostIntentCreateAttempt } from '../post-intent.service';

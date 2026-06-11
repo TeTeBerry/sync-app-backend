@@ -20,9 +20,3 @@ export function isPostRecruiting(status?: PostStatus | string): boolean {
 export function isRecruitmentClosed(status?: PostStatus | string): boolean {
   return status === 'completed' || status === 'hidden';
 }
-
-export function shouldIndexPostForMatching(
-  status?: PostStatus | string,
-): boolean {
-  return isPostRecruiting(status);
-}

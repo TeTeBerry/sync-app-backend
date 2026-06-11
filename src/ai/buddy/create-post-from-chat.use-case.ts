@@ -33,11 +33,11 @@ import {
   resolvePublishDraftBody,
 } from '../publish/publish-confirm.util';
 import {
-  buildDeclineRecommendCollectBodyReply,
+  buildCollectPostBodyPromptReply,
   buildRequireBuddyPostFirstReply,
   isAwaitingSelfPostBodyCollection,
-  isDeclineRecommendationsIntent,
-} from '../gate/recommend-gate.util';
+  isBuddyPostEntryIntent,
+} from '../publish/buddy-post-flow.util';
 import { AccountRiskService } from '../../modules/account-risk/account-risk.service';
 import { BuddyContextService } from './buddy-context.service';
 import {
@@ -163,7 +163,7 @@ export class CreatePostFromChatUseCase {
           actor,
         );
       if (existing) {
-        const fromSelfPostIntent = isDeclineRecommendationsIntent(trimmedInput);
+        const fromBuddyPostEntryIntent = isBuddyPostEntryIntent(trimmedInput);
         return {
           kind: 'existing_post',
           postId: existing.id,
@@ -172,7 +172,7 @@ export class CreatePostFromChatUseCase {
             activityLabel:
               resolvedActivity.name ?? existing.eventTitle ?? '活动',
             postBody: existing.body,
-            fromSelfPostIntent,
+            fromSelfPostIntent: fromBuddyPostEntryIntent,
           }),
         };
       }
@@ -191,7 +191,7 @@ export class CreatePostFromChatUseCase {
       );
       return {
         kind: 'rejected',
-        replyText: buildDeclineRecommendCollectBodyReply(
+        replyText: buildCollectPostBodyPromptReply(
           resolvedActivity?.name ?? '活动',
         ),
       };
@@ -200,7 +200,7 @@ export class CreatePostFromChatUseCase {
     // 缺失字段不再阻断发帖，仅作为建议信息融入帖子内容
 
     if (
-      isDeclineRecommendationsIntent(trimmedInput) &&
+      isBuddyPostEntryIntent(trimmedInput) &&
       hasActivity &&
       !publishConfirmReady
     ) {
@@ -212,7 +212,7 @@ export class CreatePostFromChatUseCase {
       );
       return {
         kind: 'rejected',
-        replyText: buildDeclineRecommendCollectBodyReply(
+        replyText: buildCollectPostBodyPromptReply(
           resolvedActivity?.name ?? '活动',
         ),
       };
@@ -247,7 +247,7 @@ export class CreatePostFromChatUseCase {
       inSelfPostCollectFlow &&
       hasActivity &&
       Boolean(trimmedInput) &&
-      !isDeclineRecommendationsIntent(trimmedInput) &&
+      !isBuddyPostEntryIntent(trimmedInput) &&
       !publishConfirmReady;
 
     if (
@@ -274,7 +274,7 @@ export class CreatePostFromChatUseCase {
     const canCreate =
       publishConfirmReady ||
       readyForDirectSelfPost ||
-      (!isDeclineRecommendationsIntent(trimmedInput) &&
+      (!isBuddyPostEntryIntent(trimmedInput) &&
         !inSelfPostCollectFlow &&
         (llmReady || (isFindBuddyThread(messages) && hasActivity)));
 

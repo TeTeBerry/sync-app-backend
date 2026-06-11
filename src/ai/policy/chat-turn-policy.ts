@@ -1,6 +1,6 @@
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import { isTicketResaleIntent } from '../buddy/activity-scope-guard.util';
-import { isDeclineRecommendationsIntent } from '../gate/recommend-gate.util';
+import { isBuddyPostEntryIntent } from '../publish/buddy-post-flow.util';
 import {
   isInformalPostBodyInput,
   isExplicitReplacePostIntent,
@@ -14,7 +14,7 @@ import { isActivityBriefIntent } from '../utils/activity-brief-intent.util';
 import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
 import { isTravelGuideIntent } from '../utils/activity-guide.util';
 import { shouldSkipActivityScopedBuddyRecommend } from '../buddy/activity-scope-guard.util';
-import { isAwaitingSelfPostBodyCollection } from '../gate/recommend-gate.util';
+import { isAwaitingSelfPostBodyCollection } from '../publish/buddy-post-flow.util';
 import type { ConversationState } from '../conversation';
 import type { ChatMessageDto } from '../../shared/chat';
 import type { ChatRequestDto } from '../presentation/chat-request.dto';
@@ -31,7 +31,7 @@ export function mustForceCreatePostIntent(
   return (
     state.flow === 'collect_post_body' ||
     isAwaitingSelfPostBodyCollection(messages, state) ||
-    isDeclineRecommendationsIntent(input.trim())
+    isBuddyPostEntryIntent(input.trim())
   );
 }
 
@@ -183,7 +183,7 @@ export function shouldSkipProactiveRecommend(params: {
   if (isExplicitReplacePostIntent(trimmed)) {
     return true;
   }
-  if (isDeclineRecommendationsIntent(trimmed)) {
+  if (isBuddyPostEntryIntent(trimmed)) {
     return true;
   }
   if (isPostingFlowState(params.state.flow)) {

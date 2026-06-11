@@ -20,7 +20,7 @@ import { PostingTurnOrchestrator } from '@src/ai/orchestration/posting-turn.orch
 import { AgentFirstTurnHandler } from '@src/ai/orchestration/handlers/agent-first-turn.handler';
 import { DjInfoTurnHandler } from '@src/ai/orchestration/handlers/dj-info-turn.handler';
 import { AiStreamEventBuilder } from '@src/ai/presentation/ai-sse.builder';
-import { REQUIRE_BUDDY_POST_MARKER } from '@src/ai/gate/recommend-gate.util';
+import { REQUIRE_BUDDY_POST_MARKER } from '@src/ai/publish/buddy-post-flow.util';
 
 describe('AiTurnPipeline homepage activity gating', () => {
   const agenticReplyService = {

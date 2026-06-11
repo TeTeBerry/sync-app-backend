@@ -9,11 +9,11 @@ export const REQUIRE_BUDDY_POST_MARKER = '【先填写组队信息】';
 
 export const REQUIRE_BUDDY_POST_SUGGESTED_REPLIES = ['组队发帖'] as const;
 
-const DECLINE_RECOMMEND_RE =
+const BUDDY_POST_ENTRY_RE =
   /^(发一条|发组队帖|没有合适的|没有合适|都不合适|不合适|不想用推荐|不想匹配|继续发帖)/;
 
-export function isDeclineRecommendationsIntent(input: string): boolean {
-  return DECLINE_RECOMMEND_RE.test(input.trim());
+export function isBuddyPostEntryIntent(input: string): boolean {
+  return BUDDY_POST_ENTRY_RE.test(input.trim());
 }
 
 export function isAwaitingSelfPostBodyCollection(
@@ -23,7 +23,7 @@ export function isAwaitingSelfPostBodyCollection(
   return state?.flow === 'collect_post_body';
 }
 
-export function buildDeclineRecommendCollectBodyReply(
+export function buildCollectPostBodyPromptReply(
   _activityLabel: string,
 ): string {
   return '想发什么直接说，我帮你发～';

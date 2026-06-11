@@ -14,7 +14,7 @@ jest.mock('@langchain/community/chat_models/alibaba_tongyi', () =>
 
 import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { CreatePostFromChatUseCase } from '@src/ai/buddy/create-post-from-chat.use-case';
-import { SELF_POST_COLLECT_BODY_MARKER } from '@src/ai/gate/recommend-gate.util';
+import { SELF_POST_COLLECT_BODY_MARKER } from '@src/ai/publish/buddy-post-flow.util';
 
 describe('CreatePostFromChatUseCase self-post custom body', () => {
   const activity = {

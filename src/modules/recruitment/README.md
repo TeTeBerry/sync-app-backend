@@ -1,6 +1,6 @@
 # RecruitmentModule
 
-招募生命周期：将帖子从 `recruiting` 关闭为 `completed`，并异步 deprecate Chroma 向量。
+招募生命周期：将帖子从 `recruiting` 关闭为 `completed`。
 
 ## 使用方
 

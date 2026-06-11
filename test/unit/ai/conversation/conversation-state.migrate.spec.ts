@@ -6,7 +6,7 @@ import {
   buildPublishConfirmReply,
   PUBLISH_CONFIRM_PROMPT_MARKER,
 } from '@src/ai/publish/publish-confirm.util';
-import { SELF_POST_COLLECT_BODY_MARKER } from '@src/ai/gate/recommend-gate.util';
+import { SELF_POST_COLLECT_BODY_MARKER } from '@src/ai/publish/buddy-post-flow.util';
 import type { ChatMessageDto } from '@src/shared/chat';
 
 describe('migrateConversationStateFromHistory', () => {

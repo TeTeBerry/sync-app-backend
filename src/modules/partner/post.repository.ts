@@ -55,7 +55,7 @@ export class PostRepository implements IPostRepository {
       .lean();
   }
 
-  async findRecruitingByActivityForMatch(
+  async findRecruitingByActivity(
     activityLegacyId: number,
   ): Promise<PostRecord[]> {
     return this.model

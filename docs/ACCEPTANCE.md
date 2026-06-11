@@ -1,6 +1,6 @@
 # P0–P3 全栈验收报告
 
-> 验收日期：2026-05-27（复验）  
+> 验收日期：2026-05-27（复验）；**2026-06 更新**：帖子向量匹配 / Recommend Gate / `post_recommendations` / `aiMatch` 配额已移除  
 > 范围：后端 P0–P3 + 前端 AI/活动页/性能优化 + 契约对齐
 
 ---
@@ -10,12 +10,12 @@
 | 区域 | 状态 | 说明 |
 |------|------|------|
 | AI 聊天 WebSocket | ✅ | `ws://…/api/ai/chat/ws`；前后端事件类型一致；delta / message_complete / done 正常 |
-| Recommend Gate | ✅ | 后端发 `post_recommendations` + `suggested_replies`；前端 chip 可点 |
+| Recommend Gate | — 已移除 | 原 `post_recommendations` + 匹配配额；见 `ARCHITECTURE.md` |
 | Intent Router | ✅ | 22 套件含 `intent-router.service.spec.ts` 等，规则/LLM/缓存覆盖 |
 | Post Create 闭环 | ✅ | `post_created` / `existing_post` / `conversation_patch` 契约对齐 |
 | Events UI | ✅ | 活动列表 Tab/卡片；价格与组队热度已移除；按钮「加入」 |
 | Search Bar | ✅ | 活动页搜索条为静态占位（无输入框/filter），仅展示样式 |
-| 后端测试 | ✅ | **22 suites / 85 tests** 全部通过 |
+| 后端测试 | ✅ | 全量 unit + contract 通过（套件数随迭代增长） |
 | 后端构建 | ✅ | `npm run build` |
 | 前端类型检查 | ✅ | `npx tsc --noEmit` |
 | 前端 H5 构建 | ✅ | `npm run build:h5`（仅有 bundle 体积 warning） |
@@ -58,7 +58,7 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
 | `done` | ✅ | ✅ | ✅ | 结束流、持久化 sessionId |
 | `post_created` | ✅ | ✅ | ✅ | onPostCreated 回调 |
 | `existing_post` | ✅ | ✅ | ✅ | onExistingPost 回调 |
-| `post_recommendations` | ✅ (+ `degraded?`) | ✅ (+ `degraded?`) | ✅ | 渲染推荐帖卡片 |
+| `activity_recommendation` | ✅ | ✅ | ✅ | 活动推荐卡片 |
 | `suggested_replies` | ✅ | ✅ | ✅ | 渲染快捷 chip |
 | `conversation_patch` | ✅ | ✅ | ✅ | `aiChatStore.applyConversationPatch` |
 | `error` | ✅ | ✅ | ✅ | 展示错误文案 |
@@ -81,10 +81,10 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
   → POST body.activityLegacyId + Header X-Activity-Id
 ```
 
-### Recommend Gate 流程
+### 发帖流程（当前）
 
-- 后端：`recommend-gate.util.ts` + `ai.service.buddy-flow.spec.ts`（5 场景：有帖/空帖/拒绝推荐发帖/待确认/确认发布）
-- 前端：`AiAssistantPage` 渲染 `recommendedPosts` 卡片 + `suggestedReplies` chip，点击 chip 复用 `send()`
+- 后端：`buddy-post-flow.util.ts` + `create-post-from-chat.use-case` + `ai.service.buddy-flow.spec.ts`
+- 前端：`AiAssistantPage` 渲染 `suggestedReplies` chip；`post_created` / `existing_post` 刷新帖列表
 
 ---
 
@@ -100,7 +100,7 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
 
 | 项 | 说明 |
 |----|------|
-| Chroma | 未设置 `CHROMA_URL` 时 RAG 禁用；向量匹配降级为 Mongo/规则，`post_recommendations.degraded` 可能为 true |
+| Chroma | 未设置 `CHROMA_URL` 时活动知识库 RAG 与用户画像向量禁用；不影响发帖主流程 |
 | Redis | 不可用时自动 Mongo fallback；`/api/health` 报告 `redis: disabled` |
 | Demo 身份 | 仍使用 query `userId` / demo-owner，无 JWT（P0-H5 后置） |
 | LLM | 需配置通义等 API Key；未配置时 intent router 走 rules/default |
@@ -116,8 +116,7 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
 3. **启动前端 H5**：`cd sync-app && npm run dev:h5`，浏览器打开本地地址
 4. **活动页**：进入「活动」Tab，卡片无价格/热度条，CTA 为「加入」；搜索条为静态占位
 5. **活动详情 → AI**：打开任一活动，点击快捷标签（如「找搭子」），应跳转 AI 助手并自动发送首条消息
-6. **Recommend Gate**：在活动上下文下发「组队队友」，应看到推荐帖卡片 + 「自己发帖」等 chip；点 chip 应继续对话
-7. **发帖闭环**：选择「自己发帖」或描述需求，确认后出现 `post_created` toast，活动帖列表刷新
+6. **发帖闭环**：在活动上下文下发组队需求或点「组队发帖」chip，确认后出现 `post_created` toast，活动帖列表刷新
 8. **健康检查**：`curl http://localhost:3000/api/health`，确认 `ai.transport` 为 `websocket`、`mongodb: up` 及 chroma/redis 状态符合预期
 
 ---

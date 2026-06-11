@@ -14,7 +14,7 @@
 | P1 | 四模块读 API + 活动 | ✅ 完成 |
 | P2 | Partner 写操作与互动 | ✅ 完成 |
 | P3 | 四 Agent + AI 发帖闭环 | ✅ 完成 |
-| P4 | Redis + Chroma 帖子向量 | ✅ 完成 |
+| P4 | Redis + Chroma 帖子向量 | ✅ 完成（**2026-06 已移除**帖子向量匹配；Chroma 仅活动知识库 + 用户画像） |
 | P5 | 文档 + BFF 清理 | ✅ 完成 |
 | P0-H5 | Dev JWT + Guard | ✅ JwtAuthGuard + RequestActor；生产设 `AUTH_ALLOW_DEMO=false` |
 | P0-Wx | 微信登录 | ⬜ 更晚 |
@@ -43,8 +43,8 @@
 - **PartnerModule**（`modules/partner/`）：`POST/PATCH/DELETE /posts`；`POST .../like|comments|applications`
 - **Schema**：`post-like`、`post-comment`、`post-application`
 - **AiModule**：WebSocket（`/api/ai/chat/ws`）；`PostIntentService` 编排四 Agent
-- **Agents**：`text-parse` / `image-parse` / `match` / `risk`（`src/ai/agents/`）
-- **Chroma**：`sync_knowledge` + `sync_posts`（按活动 metadata 过滤）
+- **Agents**：`text-parse` / `image-parse` / `risk`（`src/ai/agents/`）
+- **Chroma**：`sync_knowledge` + `sync_user_profiles`（**已移除** `sync_posts` 帖子向量）
 - **Redis**：`HomeService` 热度缓存（graceful degrade）
 - **WS 流式帧**：`post_created`；审核拒绝 → `delta` 文案（非 `error`）
 - **WS JWT actor**：upgrade `Authorization: Bearer` → `verifyBearerActor` + `resolveWsChatActor`（`connected.auth`：`jwt` | `demo`）
@@ -77,7 +77,7 @@
 ### PartnerModule ✅ 核心
 
 - [x] 帖子 CRUD + 互动 API
-- [x] 创建时 Chroma upsert；删帖删向量
+- [x] 创建时 Chroma upsert；删帖删向量（**已移除** — 帖子不再写 Chroma）
 - [x] 目录 `modules/partner/`（`PartnerModule` / `PartnerRepositoryModule` / `PartnerWriteModule`）
 
 ### AiAssistantModule ✅ 核心
@@ -103,9 +103,9 @@
 
 - [x] `TextParseAgent` — Qwen-Max
 - [x] `ImageParseAgent` — Qwen-VL
-- [x] `MatchAgent` — Chroma 活动内检索
+- [x] `MatchAgent` — Chroma 活动内检索（**已移除**）
 - [x] `RiskAgent` — spam / 重复帖 / LLM 违规；拒绝文案经 `PostIntentService`
-- [x] `AiService` 优先发帖 → 匹配 → DeterministicReply
+- [x] `AiService` 优先发帖 → DeterministicReply（**已移除**向量匹配 / recommend gate）
 - [ ] `agent-tools.ts` 注册（与 Handler 管道合并，可选）
 
 ---
@@ -113,8 +113,8 @@
 ## P4 — Redis + Chroma ✅
 
 - [x] `RedisModule`、`heat:*` keys
-- [x] `sync_posts` collection + activity filter
-- [x] `configuration.ts`：`redis.url`、`chroma.postsCollection`
+- [x] `sync_posts` collection + activity filter（**已移除** — 见 `ARCHITECTURE.md`）
+- [x] `configuration.ts`：`redis.url`、`chroma` 知识库 / 画像 collection
 
 ---
 
@@ -274,13 +274,13 @@
 
 - [x] AI：Parse → Risk → createPost
 - [x] 带图走 ImageParseAgent
-- [x] 匹配意图走 MatchAgent
+- [x] 匹配意图走 MatchAgent（**已移除**）
 - [x] 拒绝时 WS `delta` 帧提示用户
 
 ### P4 ✅
 
 - [x] Redis 热度（可降级）
-- [x] 同活动 Chroma 帖子检索
+- [x] 同活动 Chroma 帖子检索（**已移除**）
 
 ### P0（登录期）
 
@@ -302,16 +302,16 @@
 | 阶段 | 主题 | 状态 |
 |------|------|------|
 | P0 | 会话状态机 + BuddyModule use cases + Post 端口 | ✅ |
-| P1 | Intent 规则快路径 / Redis+内存意图缓存 / recommend gate / profile dedupe / Chroma breaker | ✅ |
-| P2 | 并行路径 / async Chroma upsert / rate limit / message_complete WS 帧 / 集成测试 / timing logs | ✅ |
+| P1 | Intent 规则快路径 / Redis+内存意图缓存 / recommend gate（**已移除**）/ profile dedupe / Chroma breaker | ✅ |
+| P2 | 并行路径 / async Chroma upsert（帖子，**已移除**）/ rate limit / message_complete WS 帧 / 集成测试 / timing logs | ✅ |
 | P3 | 测试金字塔 / requestId 日志 / health / PostWriteService / orchestration README | ✅ |
 | P4 | JWT / 微信登录 / ActivityRegistration 物理迁入 / PartnerModule rename | ⬜ 延后 |
 
 ### P3 验收 ✅
 
 - [x] `IntentRouterService` 集成测试（规则 + mock LLM + 缓存）
-- [x] `AiService` recommend_gate → decline → pending_confirmation 测试
-- [x] `PostWriteService`：Chroma upsert 失败不阻断 create
+- [x] `AiService` recommend_gate → decline → pending_confirmation 测试（**已移除** recommend gate；保留发帖 / 确认发布测试）
+- [x] `PostWriteService`：Chroma upsert 失败不阻断 create（**已移除** 帖子 Chroma 写入）
 - [x] `GET /api/health` → `{ ai: { transport, path }, mongodb, redis, chroma }`
 - [x] `logAiTurn` + `X-Request-Id` 贯穿 AI 日志
 - [x] `PostWriteService` 应用层；`PostService` 薄门面

@@ -19,10 +19,8 @@ export type PostRecord = Post & {
 export interface IPostRepository {
   findPopular(limit: number): Promise<PostRecord[]>;
   findByActivityLegacyId(activityLegacyId: number): Promise<PostRecord[]>;
-  /** Recruiting posts for match/ranking (includes apply-only / unlisted feed posts). */
-  findRecruitingByActivityForMatch(
-    activityLegacyId: number,
-  ): Promise<PostRecord[]>;
+  /** Recruiting team posts for an activity (includes apply-only / unlisted feed posts). */
+  findRecruitingByActivity(activityLegacyId: number): Promise<PostRecord[]>;
   findByActivityLegacyIdPage(
     activityLegacyId: number,
     options: { limit: number; cursor?: PostPageCursor | null },

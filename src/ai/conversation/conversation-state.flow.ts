@@ -1,5 +1,5 @@
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
-import { isDeclineRecommendationsIntent } from '../gate/recommend-gate.util';
+import { isBuddyPostEntryIntent } from '../publish/buddy-post-flow.util';
 import { detectUserIntent, isExactQuickReply } from '../intent/user-intent';
 import {
   createIdleState,
@@ -22,10 +22,7 @@ export function applyFlowSwitch(
     return resetToIdle();
   }
 
-  if (
-    state.flow === 'collect_post_body' &&
-    isDeclineRecommendationsIntent(trimmed)
-  ) {
+  if (state.flow === 'collect_post_body' && isBuddyPostEntryIntent(trimmed)) {
     return state;
   }
 

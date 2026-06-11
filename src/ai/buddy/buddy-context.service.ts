@@ -24,8 +24,8 @@ import {
 } from '../intent/user-intent';
 import {
   isAwaitingSelfPostBodyCollection,
-  isDeclineRecommendationsIntent,
-} from '../gate/recommend-gate.util';
+  isBuddyPostEntryIntent,
+} from '../publish/buddy-post-flow.util';
 import {
   isAwaitingPublishConfirmation,
   isPublishConfirmIntent,
@@ -284,15 +284,12 @@ export class BuddyContextService {
     activityLegacyId?: number,
     state?: import('../conversation').ConversationState | null,
   ): boolean {
-    if (isDeclineRecommendationsIntent(input) && activityLegacyId != null) {
+    if (isBuddyPostEntryIntent(input) && activityLegacyId != null) {
       return true;
     }
 
     if (isAwaitingSelfPostBodyCollection(messages, state)) {
-      if (
-        isPublishConfirmIntent(input) ||
-        isDeclineRecommendationsIntent(input)
-      ) {
+      if (isPublishConfirmIntent(input) || isBuddyPostEntryIntent(input)) {
         return true;
       }
       return Boolean(input.trim());

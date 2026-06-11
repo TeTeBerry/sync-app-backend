@@ -1,5 +1,5 @@
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
-import { isDeclineRecommendationsIntent } from '../gate/recommend-gate.util';
+import { isBuddyPostEntryIntent } from '../publish/buddy-post-flow.util';
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
 import {
   isActivityEnterNameInput,
@@ -51,10 +51,7 @@ export function resolveChatIntentFastPath(
     return { kind: 'create_post', source: 'rule' };
   }
 
-  if (
-    isDeclineRecommendationsIntent(trimmed) &&
-    params.activityLegacyId != null
-  ) {
+  if (isBuddyPostEntryIntent(trimmed) && params.activityLegacyId != null) {
     return { kind: 'create_post', source: 'rule' };
   }
 

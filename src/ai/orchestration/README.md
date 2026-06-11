@@ -4,12 +4,11 @@
 
 | Flow | Entry | Notes |
 |------|-------|-------|
-| WS chat turn | `AiChatWsHandler` → `AiService.streamChat` → `AiTurnPipeline` | Intent resolve, buddy flow, match-only, deterministic; `AiStreamEventBuilder` builds `AiStreamEvent` frames sent over WebSocket |
+| WS chat turn | `AiChatWsHandler` → `AiService.streamChat` → `AiTurnPipeline` | Intent resolve, buddy flow, deterministic; `AiStreamEventBuilder` builds `AiStreamEvent` frames sent over WebSocket |
 | Posting from chat | `PostIntentService` → `BuddyModule` use cases | Parse → Risk → `PostWriteService.createPost` |
-| Match / recommend | `MatchPostsFromChatUseCase` | Chroma + ranking |
 | Deterministic replies | `DeterministicReplyService` → `AgentRuntimeService` | Rule handlers only; **no LLM tool runtime for posting** |
 
-Posting **does not** go through `AgentToolsService` or registered posting tools. `AgentToolsService` exists for the deterministic reply handler pipeline (quick replies, slot filling); the registry is empty for create/match flows.
+Posting **does not** go through `AgentToolsService` or registered posting tools. `AgentToolsService` exists for the deterministic reply handler pipeline (quick replies, slot filling); the registry is empty for create flows.
 
 ## Deterministic reply runtime
 
@@ -25,7 +24,7 @@ When adding new posting behavior, extend `BuddyModule` use cases or `PostIntentS
 | `AiTurnPipeline` | Intent resolve, profile sync, dispatch by `routed.kind` |
 | `AgentFirstTurnHandler` | `AI_AGENT_MODE=on` tool-calling loop + DJ suggested replies |
 | `DjInfoTurnHandler` | Legacy `dj_info` when agent returns empty (pipeline dispatches directly) |
-| `PostingTurnOrchestrator` | Recommend gate + `CreatePostFromChatUseCase` |
+| `PostingTurnOrchestrator` | Post intent + `CreatePostFromChatUseCase` |
 | `ChatTurnPolicy` | Shared gates for router, agent-first, and posting skip rules |
 
 ## Shared chat contracts

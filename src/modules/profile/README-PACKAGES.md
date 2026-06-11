@@ -6,13 +6,12 @@ Every user receives a **global monthly** quota (UTC calendar month, stored in `u
 
 | Benefit | Limit |
 |---------|-------|
-| AI 智能匹配 | 3 / month |
 | 联系方式解锁 | 3 / month |
 | 基础组队、发帖、沟通 | **永久免费** (not metered; no package gate) |
 
 Paid per-event tiers are **optional** — free tier is always available.
 
-Fields: `userId`, `period` (`YYYY-MM`), `aiMatchUsed`, `contactUnlockUsed`. Usage resets automatically when `period` ≠ current month.
+Fields: `userId`, `period` (`YYYY-MM`), `contactUnlockUsed`. Usage resets automatically when `period` ≠ current month.
 
 ## Paid tiers (per activity)
 
@@ -20,7 +19,7 @@ Per-activity purchases: **pro**, **pro_plus**, **ultra**. Entitlements are store
 
 **Validity:** each paid package is valid for **30 calendar days (UTC)** from purchase (`validFrom` / `purchasedAt` → `validUntil`). Tier map days (7 / 15 / 30) apply within that window; `mapExpiresAt` is the earlier of tier map end and `validUntil`. After `validUntil`, paid quotas are inactive (free monthly still applies).
 
-API responses **merge** free monthly remaining + paid per-event remaining for AI match and contact unlock. Map / pin / exposure come from the paid tier only (free users see map as inactive / 0 days).
+API responses **merge** free monthly remaining + paid per-event remaining for contact unlock. Map / pin / exposure come from the paid tier only (free users see map as inactive / 0 days).
 
 ## Domain
 
@@ -51,8 +50,7 @@ Unique indexes: `userId` (free), `(userId, activityLegacyId)` (paid). Re-purchas
 | GET | `/profile/entitlements` | Merged entitlements; optional `activityLegacyId` |
 | POST | `/profile/packages/purchase` | Stub grant (no WeChat Pay); body `{ tierId, activityLegacyId }` |
 | GET | `/profile` | Adds `packageEntitlements[]` or `packageEntitlement` when `activityLegacyId` set |
-| POST | `/profile/entitlements/consume/ai-match` | Body `{ activityLegacyId? }` — consumes 1 AI match (free monthly first, then paid per-event) |
-| POST | `/profile/entitlements/consume/contact-unlock` | Body `{ activityLegacyId? }` — consumes 1 contact unlock (same bucket order) |
+| POST | `/profile/entitlements/consume/contact-unlock` | Body `{ activityLegacyId? }` — consumes 1 contact unlock (free monthly first, then paid per-event) |
 
 Query identity (demo): `userId`, `authorName` — same as other profile routes.
 
@@ -76,10 +74,14 @@ Consumption returns `{ ok: true, bucket: "free" | "paid", entitlement }` with me
   "purchasedAt": "2026-05-01T00:00:00.000Z",
   "validFrom": "2026-05-01T00:00:00.000Z",
   "validUntil": "2026-05-31T00:00:00.000Z",
-  "quotas": { "aiMatch": { "limit": 11, "used": 0, "remaining": 11 }, "...": "..." },
+  "quotas": {
+    "contactUnlock": { "limit": 8, "used": 0, "remaining": 8 },
+    "map": { "days": 7, "expiresAt": "...", "active": true },
+    "postPin": { "limit": 0, "used": 0, "remaining": 0 },
+    "basicExposure": true
+  },
   "freeMonthly": {
     "period": "2026-05",
-    "aiMatch": { "limit": 3, "used": 0, "remaining": 3 },
     "contactUnlock": { "limit": 3, "used": 0, "remaining": 3 }
   },
   "paidTierId": "pro"

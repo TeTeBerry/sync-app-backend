@@ -72,9 +72,7 @@ export class ItineraryBuddyRecruitHintService {
 
     await this.activityService.findByLegacyId(activityLegacyId);
     const recruiting =
-      await this.postRepository.findRecruitingByActivityForMatch(
-        activityLegacyId,
-      );
+      await this.postRepository.findRecruitingByActivity(activityLegacyId);
     const recruitingAuthors = new Set(
       recruiting
         .map((post) => post.userId?.trim())

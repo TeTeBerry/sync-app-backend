@@ -1,5 +1,5 @@
 import { ChatMessageDto } from '../../shared/chat';
-import { SELF_POST_COLLECT_BODY_MARKER } from '../gate/recommend-gate.util';
+import { SELF_POST_COLLECT_BODY_MARKER } from '../publish/buddy-post-flow.util';
 import {
   extractDraftBodyFromPublishConfirmContent,
   PUBLISH_CONFIRM_PROMPT_MARKER,

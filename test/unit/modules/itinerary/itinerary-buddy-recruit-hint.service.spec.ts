@@ -11,7 +11,7 @@ describe('ItineraryBuddyRecruitHintService', () => {
     const service = new ItineraryBuddyRecruitHintService(
       { getSchedule: jest.fn() } as never,
       { findByLegacyId: jest.fn() } as never,
-      { findRecruitingByActivityForMatch: jest.fn() } as never,
+      { findRecruitingByActivity: jest.fn() } as never,
     );
 
     const result = await service.getHint(4, [], actor);
@@ -40,7 +40,7 @@ describe('ItineraryBuddyRecruitHintService', () => {
       }),
     };
     const postRepository = {
-      findRecruitingByActivityForMatch: jest.fn().mockResolvedValue([
+      findRecruitingByActivity: jest.fn().mockResolvedValue([
         { _id: 'p1', userId: 'u1' },
         { _id: 'p2', userId: 'u2' },
         { _id: 'p3', userId: 'u1' },
@@ -58,8 +58,6 @@ describe('ItineraryBuddyRecruitHintService', () => {
     const result = await service.getHint(4, ['dj1'], actor);
     expect(result.recruitingCount).toBe(2);
     expect(result.highlightGenre).toBe('Techno');
-    expect(
-      postRepository.findRecruitingByActivityForMatch,
-    ).toHaveBeenCalledWith(4);
+    expect(postRepository.findRecruitingByActivity).toHaveBeenCalledWith(4);
   });
 });
