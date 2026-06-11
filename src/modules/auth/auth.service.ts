@@ -240,8 +240,6 @@ export class AuthService {
       wechatRiskCheckedAt: new Date(),
     });
 
-    void this.userService.syncUserProfileVector(record, record.externalId);
-
     return this.buildLoginResult(record.externalId!, record.name);
   }
 

@@ -14,7 +14,7 @@
 | P1 | 四模块读 API + 活动 | ✅ 完成 |
 | P2 | Partner 写操作与互动 | ✅ 完成 |
 | P3 | 四 Agent + AI 发帖闭环 | ✅ 完成 |
-| P4 | Redis + Chroma 帖子向量 | ✅ 完成（**2026-06 已移除**帖子向量匹配；Chroma 仅活动知识库 + 用户画像） |
+| P4 | Redis + Chroma 活动知识库 | ✅ 完成（**2026-06 已移除**帖子向量与用户画像向量；Chroma 仅活动知识库） |
 | P5 | 文档 + BFF 清理 | ✅ 完成 |
 | P0-H5 | Dev JWT + Guard | ✅ JwtAuthGuard + RequestActor；生产设 `AUTH_ALLOW_DEMO=false` |
 | P0-Wx | 微信登录 | ⬜ 更晚 |
@@ -65,7 +65,7 @@
 
 ### ActivityModule ✅ 读
 
-- [x] `GET /activities`、`/match`、`/:legacyId`
+- [x] `GET /activities`、`/resolve`、`/:legacyId`
 - [x] `POST/DELETE /activities/:legacyId/register`
 - [x] Registration 从 `profile/` 迁入 `activity/registration/`
 
@@ -105,7 +105,7 @@
 - [x] `ImageParseAgent` — Qwen-VL
 - [x] `MatchAgent` — Chroma 活动内检索（**已移除**）
 - [x] `RiskAgent` — spam / 重复帖 / LLM 违规；拒绝文案经 `PostIntentService`
-- [x] `AiService` 优先发帖 → DeterministicReply（**已移除**向量匹配 / recommend gate）
+- [x] `AiService` 优先发帖 → DeterministicReply（**已移除**向量检索 / recommend gate）
 - [ ] `agent-tools.ts` 注册（与 Handler 管道合并，可选）
 
 ---
@@ -274,7 +274,7 @@
 
 - [x] AI：Parse → Risk → createPost
 - [x] 带图走 ImageParseAgent
-- [x] 匹配意图走 MatchAgent（**已移除**）
+- [x] MatchAgent（**已移除**）
 - [x] 拒绝时 WS `delta` 帧提示用户
 
 ### P4 ✅

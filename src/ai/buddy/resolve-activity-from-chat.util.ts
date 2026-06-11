@@ -27,7 +27,7 @@ function collectUserHaystack(
 }
 
 /**
- * Keywords to pass to ActivityService.matchActivity when the chat has no bound
+ * Keywords to pass to ActivityService.resolveActivityByKeyword when the chat has no bound
  * activity (homepage / global AI). Order: most specific context first.
  */
 export function extractActivityLookupKeywords(

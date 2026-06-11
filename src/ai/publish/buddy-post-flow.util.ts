@@ -10,7 +10,7 @@ export const REQUIRE_BUDDY_POST_MARKER = '【先填写组队信息】';
 export const REQUIRE_BUDDY_POST_SUGGESTED_REPLIES = ['组队发帖'] as const;
 
 const BUDDY_POST_ENTRY_RE =
-  /^(发一条|发组队帖|没有合适的|没有合适|都不合适|不合适|不想用推荐|不想匹配|继续发帖)/;
+  /^(发一条|发组队帖|没有合适的|没有合适|都不合适|不合适|不想用推荐|继续发帖)/;
 
 export function isBuddyPostEntryIntent(input: string): boolean {
   return BUDDY_POST_ENTRY_RE.test(input.trim());

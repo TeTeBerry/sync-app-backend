@@ -79,7 +79,7 @@ async function main() {
   const stillMissing = await findMissingFestivalArtists(db, config);
   console.log(
     `\n🏁 补爬完成：upsert ${upserted} 条` +
-      (missed ? `，未匹配/失败 ${missed} 位` : ''),
+      (missed ? `，未识别/失败 ${missed} 位` : ''),
   );
   if (stillMissing.length) {
     console.log(`⚠️  仍缺 ${stillMissing.length} 位:`, stillMissing.join(', '));

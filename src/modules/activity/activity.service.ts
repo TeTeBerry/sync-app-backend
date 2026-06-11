@@ -205,7 +205,7 @@ export class ActivityService implements OnModuleInit {
     return { activityId: String(activityRef).toLowerCase() };
   }
 
-  async matchActivity(keyword: string) {
+  async resolveActivityByKeyword(keyword: string) {
     const kw = keyword.toLowerCase().trim();
     if (!kw) return null;
 
@@ -358,7 +358,7 @@ export class ActivityService implements OnModuleInit {
     if (!ref) return null;
 
     const activity =
-      (await this.matchActivity(ref)) ??
+      (await this.resolveActivityByKeyword(ref)) ??
       (input.activityId ? await this.findByCode(input.activityId) : null);
 
     if (activity?.code) return activity;

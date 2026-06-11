@@ -40,10 +40,6 @@ function mapAiErrorToUserMessage(error: unknown): string {
     return '当前请求较多，请稍后再试。';
   }
 
-  if (/quota exhausted|匹配次数已用完/i.test(raw)) {
-    return raw.includes('匹配') ? raw : 'AI 匹配次数已用完，请升级套餐';
-  }
-
   return 'AI 对话失败，请稍后重试';
 }
 

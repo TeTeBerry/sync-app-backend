@@ -114,7 +114,7 @@ export const POST_SEED = [
   },
 ];
 
-/** 风暴电音节（legacyId=4）额外 demo 帖，用于 AI 搭子推荐卡片 / Chroma 匹配测试 */
+/** 风暴电音节（legacyId=4）额外 demo 帖，用于 AI 发帖卡片展示测试 */
 export const STORM_ACTIVITY_LEGACY_ID = 4;
 
 export const STORM_DEMO_POST_SEED = [

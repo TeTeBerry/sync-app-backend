@@ -8,7 +8,7 @@ export interface HotHubRoute {
   hubKey: string;
   hubLabel: string;
   hub: GeocodedPlace;
-  /** 出发地别名，用于匹配用户输入「宝安机场」「广州南站」等 */
+  /** 出发地别名，用于识别用户输入「宝安机场」「广州南站」等 */
   departureAliases: string[];
   driving: DrivingRouteSummary;
   transitHint?: string;

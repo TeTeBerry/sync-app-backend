@@ -50,7 +50,7 @@ describe('AiTurnPipeline homepage activity gating', () => {
     findByCode: jest
       .fn()
       .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
-    matchActivity: jest.fn().mockResolvedValue(null),
+    resolveActivityByKeyword: jest.fn().mockResolvedValue(null),
   };
   const djInfoService = {
     answerFromChat: jest.fn().mockResolvedValue({

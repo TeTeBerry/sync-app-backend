@@ -45,7 +45,7 @@ async function main() {
 
   console.log(
     `\n🏁 完成：upsert ${upserted} 条` +
-      (missed ? `，未匹配/失败 ${missed} 位` : ''),
+      (missed ? `，未识别/失败 ${missed} 位` : ''),
   );
   await mongoose.disconnect();
 }

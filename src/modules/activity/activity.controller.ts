@@ -36,9 +36,9 @@ export class ActivityController {
   }
 
   @Public()
-  @Get('match')
-  match(@Query('keyword') keyword: string) {
-    return this.activityService.matchActivity(keyword ?? '');
+  @Get('resolve')
+  resolve(@Query('keyword') keyword: string) {
+    return this.activityService.resolveActivityByKeyword(keyword ?? '');
   }
 
   @Public()

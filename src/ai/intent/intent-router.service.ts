@@ -148,10 +148,6 @@ export class IntentRouterService {
 
     const intent = parsed.intent.trim().toLowerCase();
 
-    if (intent === 'search_posts') {
-      return { kind: 'quick_reply', source: 'llm' };
-    }
-
     if (intent === 'create_post' || intent === 'legacy_cascade') {
       return { kind: 'create_post', source: 'llm' };
     }

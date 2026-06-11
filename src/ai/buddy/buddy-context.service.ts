@@ -83,7 +83,7 @@ export class BuddyContextService {
     const keyword = llmKeyword ?? ctx.activityKeyword ?? ctx.activityId;
     if (keyword) {
       const matched =
-        (await this.activityService.matchActivity(keyword)) ??
+        (await this.activityService.resolveActivityByKeyword(keyword)) ??
         (ctx.activityId
           ? await this.activityService.findByCode(ctx.activityId)
           : null);

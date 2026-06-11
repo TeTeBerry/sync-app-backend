@@ -25,7 +25,6 @@ import { WechatContentSecurityService } from '../auth/wechat-content-security.se
 import { MediaSecurityCheckService } from '../media-security/media-security-check.service';
 import { AccountRiskService } from '../account-risk/account-risk.service';
 import type { AccountRiskPublicStatus } from '../account-risk/account-risk.service';
-import { ChromaService } from '../../infra/chroma/chroma.service';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { toRequestActor } from '../../common/auth/actor-query.util';
 import type { StoredAuthorRecord } from './stored-author.types';
@@ -69,7 +68,6 @@ export class UserService implements OnModuleInit {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly repository: IUserRepository,
-    private readonly chromaService: ChromaService,
     private readonly accountRisk: AccountRiskService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly mediaChecks: MediaSecurityCheckService,
@@ -204,55 +202,6 @@ export class UserService implements OnModuleInit {
       throw new NotFoundException('User profile not found');
     }
 
-    void this.syncUserProfileVector(record, externalId);
-
     return this.toMeDto(record, externalId);
-  }
-
-  /** Merge city from light apply when profile has no city yet. */
-  async mergeProfileCityIfEmpty(
-    externalId: string,
-    city: string,
-  ): Promise<void> {
-    const trimmed = city?.trim();
-    if (!trimmed || !externalId?.trim()) return;
-
-    const existing = await this.repository.findByExternalId(externalId.trim());
-    if (existing?.city?.trim()) return;
-
-    const record = existing
-      ? await this.repository.updateByExternalId(externalId.trim(), {
-          city: trimmed,
-        })
-      : await this.repository.upsertByExternalId(externalId.trim(), {
-          city: trimmed,
-          name: DEMO_PROFILE.name,
-          handle: DEMO_PROFILE.handle,
-          location: DEMO_PROFILE.location,
-          bio: DEMO_PROFILE.bio,
-          avatar: DEMO_PROFILE.avatar,
-          notificationsEnabled: DEMO_PROFILE.notificationsEnabled,
-          privacyLevel: DEMO_PROFILE.privacyLevel,
-        });
-
-    if (record) {
-      void this.syncUserProfileVector(record, externalId.trim());
-    }
-  }
-
-  /** Sync user profile vector to Chroma (also callable after UserProfileAgent extraction) */
-  syncUserProfileVector(record: UserRecord, externalId?: string): void {
-    const userId = record.externalId ?? externalId;
-    if (!userId?.trim()) return;
-
-    void this.chromaService.upsertUserProfileEmbedding({
-      userId: userId.trim(),
-      city: record.city,
-      favorGenres: record.favorGenres,
-      likeMate: record.likeMate,
-      bio: record.bio,
-      budgetLevel: record.budgetLevel,
-      location: record.location,
-    });
   }
 }

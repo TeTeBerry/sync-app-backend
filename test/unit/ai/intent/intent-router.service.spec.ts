@@ -132,15 +132,14 @@ describe('IntentRouterService', () => {
     expect(result.source).toBe('rule');
   });
 
-  it('calls mocked LLM when rules miss and maps search_posts to quick_reply', async () => {
+  it('calls mocked LLM when rules miss and maps chitchat to quick_reply', async () => {
     (activityService.findByLegacyId as jest.Mock).mockResolvedValue({
       legacyId: 4,
       name: '风暴电音节',
       date: '06/13-14',
     });
     (llmService.invokeJson as jest.Mock).mockResolvedValue({
-      intent: 'search_posts',
-      searchHint: '13号A区',
+      intent: 'chitchat',
     });
 
     const result = await router.resolve({

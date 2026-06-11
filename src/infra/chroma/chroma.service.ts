@@ -4,23 +4,11 @@ import { ChromaClient, Collection } from 'chromadb';
 import { Document } from '@langchain/core/documents';
 import { KNOWLEDGE_DOCUMENTS } from './knowledge.seed';
 
-/** User profile vector metadata: kind=user_profile, keyed by userId */
-export interface UserProfileEmbeddingInput {
-  userId: string;
-  city?: string;
-  favorGenres?: string[];
-  likeMate?: boolean;
-  bio?: string;
-  budgetLevel?: string;
-  location?: string;
-}
-
 @Injectable()
 export class ChromaService implements OnModuleInit {
   private readonly logger = new Logger(ChromaService.name);
   private client?: ChromaClient;
   private collection?: Collection;
-  private profilesCollection?: Collection;
   private enabled = false;
 
   constructor(private readonly config: ConfigService) {}
@@ -34,7 +22,7 @@ export class ChromaService implements OnModuleInit {
     return this.enabled;
   }
 
-  /** Kept for health checks; post-match circuit breaker removed. */
+  /** Kept for health checks. */
   isCircuitOpen(): boolean {
     return false;
   }
@@ -56,9 +44,6 @@ export class ChromaService implements OnModuleInit {
     const baseUrl = this.resolveChromaBaseUrl();
     const collectionName =
       this.config.get<string>('chroma.collection') ?? 'sync_knowledge';
-    const profilesCollectionName =
-      this.config.get<string>('chroma.profilesCollection') ??
-      'sync_user_profiles';
 
     if (!baseUrl) {
       this.enabled = false;
@@ -72,11 +57,7 @@ export class ChromaService implements OnModuleInit {
 
     try {
       await Promise.race([
-        this.connectCollections(
-          baseUrl,
-          collectionName,
-          profilesCollectionName,
-        ),
+        this.connectCollection(baseUrl, collectionName),
         new Promise<never>((_, reject) => {
           setTimeout(
             () => reject(new Error(`连接超时（${connectTimeoutMs}ms）`)),
@@ -87,7 +68,7 @@ export class ChromaService implements OnModuleInit {
 
       this.enabled = true;
       this.logger.log(
-        `Chroma connected (${baseUrl}), collections="${collectionName}", "${profilesCollectionName}"`,
+        `Chroma connected (${baseUrl}), collection="${collectionName}"`,
       );
     } catch (error) {
       this.enabled = false;
@@ -97,10 +78,9 @@ export class ChromaService implements OnModuleInit {
     }
   }
 
-  private async connectCollections(
+  private async connectCollection(
     baseUrl: string,
     collectionName: string,
-    profilesCollectionName: string,
   ): Promise<void> {
     this.client = new ChromaClient({ path: baseUrl });
 
@@ -108,34 +88,12 @@ export class ChromaService implements OnModuleInit {
       name: collectionName,
       metadata: { source: 'sync-app-backend' },
     });
-
-    this.profilesCollection = await this.client.getOrCreateCollection({
-      name: profilesCollectionName,
-      metadata: { source: 'sync-app-backend', kind: 'user_profiles' },
-    });
   }
 
   private docId(doc: Document, index: number): string {
     const code = doc.metadata?.code;
     const topic = doc.metadata?.topic ?? 'general';
     return code ? `${topic}:${code}` : `${topic}:${index}`;
-  }
-
-  private buildUserProfileDocument(input: UserProfileEmbeddingInput): string {
-    const genres = input.favorGenres?.length ? input.favorGenres.join(' ') : '';
-    const matePref =
-      input.likeMate == null
-        ? ''
-        : input.likeMate
-          ? '希望找搭子一起'
-          : '独自前往也可';
-    const budget = input.budgetLevel?.trim() ? `预算${input.budgetLevel}` : '';
-    const bioSnippet = input.bio?.trim() ? input.bio.trim().slice(0, 200) : '';
-
-    return [input.city, input.location, genres, matePref, budget, bioSnippet]
-      .filter(Boolean)
-      .join(' ')
-      .trim();
   }
 
   async seedIfEmpty(): Promise<void> {
@@ -187,35 +145,6 @@ export class ChromaService implements OnModuleInit {
     });
 
     await this.upsertDocuments([doc]);
-  }
-
-  async upsertUserProfileEmbedding(
-    input: UserProfileEmbeddingInput,
-  ): Promise<void> {
-    if (!this.profilesCollection || !input.userId.trim()) return;
-
-    const document = this.buildUserProfileDocument(input);
-    if (!document) return;
-
-    const userId = input.userId.trim();
-
-    try {
-      await this.profilesCollection.upsert({
-        ids: [userId],
-        documents: [document],
-        metadatas: [
-          {
-            kind: 'user_profile',
-            userId,
-            city: input.city ?? '',
-          },
-        ],
-      });
-    } catch (error) {
-      this.logger.warn(
-        `Chroma profile upsert failed (${userId}): ${(error as Error).message}`,
-      );
-    }
   }
 
   async query(text: string, n = 3): Promise<Document[]> {

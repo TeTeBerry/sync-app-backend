@@ -10,13 +10,6 @@ const QUICK_REPLIES: Record<UserIntent, string> = {
   general: '',
 };
 
-/** 用户想搜现有组队帖（非新发帖） */
-export function isSearchExistingPostsIntent(input: string): boolean {
-  return /有没有|匹配|看看|推荐|找一下|现有|已有|结伴帖|组队帖|类似的|相似的|搜一下|查一下|帮我找/.test(
-    input.trim(),
-  );
-}
-
 export function detectUserIntent(input: string): UserIntent {
   const text = input.trim();
 
@@ -24,9 +17,7 @@ export function detectUserIntent(input: string): UserIntent {
     isAiShortcutTag(text) ||
     text === QUICK_REPLIES.find_buddy ||
     text === '帮我找搭子' ||
-    /找.*搭子|找伙伴|匹配搭子|组局|帮我结伴|帮我组队|找同行|结伴|组队/.test(
-      text,
-    )
+    /找.*搭子|找伙伴|组局|帮我结伴|帮我组队|找同行|结伴|组队/.test(text)
   ) {
     return 'find_buddy';
   }
@@ -59,7 +50,7 @@ export function buildIntentGuidance(intent: UserIntent): string {
     case 'find_buddy':
       return [
         '【当前意图：组队/找同行】',
-        '帮用户匹配同行伙伴或推荐活动，不是票务交易。',
+        '帮用户找同行或了解活动，不是票务交易。',
         '只追问：活动名称、出行时间、人数、性别偏好。',
       ].join('\n');
     case 'near_events':

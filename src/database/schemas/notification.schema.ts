@@ -1,14 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
-export type NotificationType = 'general' | 'interaction' | 'system' | 'match';
+export type NotificationType = 'general' | 'interaction' | 'system';
 
 /** High-level push category for NoticeAgent routing and client grouping. */
 export type NotificationCategory =
   | 'comment'
   | 'like'
   | 'application'
-  | 'buddy_recommend'
   | 'system'
   | 'general';
 
@@ -40,8 +39,6 @@ export interface NotificationMeta {
   templateKey?: string;
   /** Interpolation params for client-side i18n rendering. */
   templateParams?: Record<string, string>;
-  /** AI match recommendation post IDs. */
-  matchPostIds?: string[];
   /** Post rejection reason summary. */
   rejectionReason?: string;
   /** Parent comment ID for reply notifications. */

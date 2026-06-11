@@ -13,7 +13,6 @@ import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
 import { isActivityBriefIntent } from '../utils/activity-brief-intent.util';
 import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
 import { isTravelGuideIntent } from '../utils/activity-guide.util';
-import { shouldSkipActivityScopedBuddyRecommend } from '../buddy/activity-scope-guard.util';
 import { isAwaitingSelfPostBodyCollection } from '../publish/buddy-post-flow.util';
 import type { ConversationState } from '../conversation';
 import type { ChatMessageDto } from '../../shared/chat';
@@ -154,43 +153,4 @@ export function shouldRunAgentFirst(params: {
   }
 
   return true;
-}
-
-export function shouldSkipProactiveRecommend(params: {
-  messages: ChatMessageDto[];
-  input: string;
-  effectiveActivityLegacyId: number | undefined;
-  state: ConversationState;
-}): boolean {
-  const trimmed = params.input.trim();
-  if (params.effectiveActivityLegacyId == null) {
-    return true;
-  }
-  if (isTravelGuideIntent(trimmed)) {
-    return true;
-  }
-  if (
-    shouldSkipActivityScopedBuddyRecommend(
-      trimmed,
-      params.effectiveActivityLegacyId,
-    )
-  ) {
-    return true;
-  }
-  if (isPublishConfirmIntent(trimmed)) {
-    return true;
-  }
-  if (isExplicitReplacePostIntent(trimmed)) {
-    return true;
-  }
-  if (isBuddyPostEntryIntent(trimmed)) {
-    return true;
-  }
-  if (isPostingFlowState(params.state.flow)) {
-    return true;
-  }
-  if (isAwaitingSelfPostBodyCollection(params.messages, params.state)) {
-    return true;
-  }
-  return false;
 }

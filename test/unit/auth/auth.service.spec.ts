@@ -21,7 +21,6 @@ describe('AuthService', () => {
 
   const userService = {
     getMe: jest.fn(),
-    syncUserProfileVector: jest.fn(),
   };
 
   const wechatUserRisk = {

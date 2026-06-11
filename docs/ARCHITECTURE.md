@@ -36,7 +36,7 @@ AppModule
 | 目标模块 | 代码路径 | 状态 |
 |----------|----------|------|
 | User | `modules/user/` | `GET/PATCH /users/me`（Query 身份）✅ |
-| Activity | `modules/activity/` | 列表 / 匹配 / 详情 / 报名（`registration/`）✅ |
+| Activity | `modules/activity/` | 列表 / 关键词解析 / 详情 / 报名（`registration/`）✅ |
 | Partner | `modules/partner/` | 帖子 CRUD + `PostInteractionService`（赞/评/申请）✅ |
 | AiAssistant | `ai/` + `modules/chat/` | WebSocket + Agent ✅ |
 | BFF | `home/`、`profile/` | 聚合读 ✅ |
@@ -81,7 +81,7 @@ AppModule
   → AiService：message_complete、ChatService.saveTurn、done
 ```
 
-**已移除**：帖子向量匹配、`search_posts`、`post_recommendations`、推荐门控（`recommend_gate`）、`AiMatchQuota`、Chroma 帖子 embedding 读写。
+**已移除**：帖子向量检索、`search_posts`、`post_recommendations`、推荐门控（`recommend_gate`）、`AiMatchQuota`、Chroma 用户画像向量。
 
 ### P2 性能与成本（已实现）
 

@@ -52,7 +52,7 @@ const BUDDY_TYPE_TO_TYPE: Record<string, PostContentType> = {
   组队: 'team',
 };
 
-/** 正文关键词 → 内容类型映射（支持交集，全部匹配） */
+/** 正文关键词 → 内容类型映射（支持交集，全部命中） */
 const BODY_PATTERNS: Array<{ pattern: RegExp; type: PostContentType }> = [
   {
     pattern:
@@ -69,7 +69,7 @@ const BODY_PATTERNS: Array<{ pattern: RegExp; type: PostContentType }> = [
 ];
 
 /**
- * 从标签推断所有匹配的内容类型（支持交集）
+ * 从标签推断所有命中的内容类型（支持交集）
  */
 export function inferContentTypesFromTags(tags: string[]): PostContentType[] {
   const types = new Set<PostContentType>();
@@ -92,12 +92,12 @@ export function inferContentTypeFromBuddyType(
 }
 
 /**
- * 从正文推断所有匹配的内容类型（支持交集）
+ * 从正文推断所有命中的内容类型（支持交集）
  */
 export function inferContentTypesFromBody(body: string): PostContentType[] {
   const text = body.trim();
   if (!text) return [];
-  // 去掉【安全提醒】等系统备注，避免误匹配
+  // 去掉【安全提醒】等系统备注，避免误识别
   const userText = text.replace(/【[^】]*】/g, '');
   const types = new Set<PostContentType>();
   for (const { pattern, type } of BODY_PATTERNS) {
@@ -108,7 +108,7 @@ export function inferContentTypesFromBody(body: string): PostContentType[] {
 
 /**
  * 综合推断帖子的所有内容类型（支持交集）
- * 返回所有匹配的类型，不局限于单一类型
+ * 返回所有命中的类型，不局限于单一类型
  */
 export function inferPostContentTypes(params: {
   tags?: string[];

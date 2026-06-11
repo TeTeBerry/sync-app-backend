@@ -262,7 +262,7 @@ export class AiTurnPipeline {
       return this.activityService.findByCode(activityCode).exec();
     }
 
-    return this.activityService.matchActivity(input);
+    return this.activityService.resolveActivityByKeyword(input);
   }
 
   private async collectDeterministicOnly(

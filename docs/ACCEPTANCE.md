@@ -1,6 +1,6 @@
 # P0–P3 全栈验收报告
 
-> 验收日期：2026-05-27（复验）；**2026-06 更新**：帖子向量匹配 / Recommend Gate / `post_recommendations` / `aiMatch` 配额已移除  
+> 验收日期：2026-05-27（复验）；**2026-06 更新**：帖子向量检索 / Recommend Gate / `post_recommendations` / `aiMatch` 配额已移除  
 > 范围：后端 P0–P3 + 前端 AI/活动页/性能优化 + 契约对齐
 
 ---
@@ -10,7 +10,7 @@
 | 区域 | 状态 | 说明 |
 |------|------|------|
 | AI 聊天 WebSocket | ✅ | `ws://…/api/ai/chat/ws`；前后端事件类型一致；delta / message_complete / done 正常 |
-| Recommend Gate | — 已移除 | 原 `post_recommendations` + 匹配配额；见 `ARCHITECTURE.md` |
+| Recommend Gate | — 已移除 | 原 `post_recommendations` + AI 配额；见 `ARCHITECTURE.md` |
 | Intent Router | ✅ | 22 套件含 `intent-router.service.spec.ts` 等，规则/LLM/缓存覆盖 |
 | Post Create 闭环 | ✅ | `post_created` / `existing_post` / `conversation_patch` 契约对齐 |
 | Events UI | ✅ | 活动列表 Tab/卡片；价格与组队热度已移除；按钮「加入」 |

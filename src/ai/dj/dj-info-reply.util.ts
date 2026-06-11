@@ -28,7 +28,7 @@ export function formatDjListReply(params: {
   truncated: boolean;
 }): string {
   if (!params.items.length) {
-    return `${params.title}\n暂未找到匹配的 DJ，可以换个风格或艺名试试。`;
+    return `${params.title}\n暂未找到相关 DJ，可以换个风格或艺名试试。`;
   }
 
   const lines = params.items.map(

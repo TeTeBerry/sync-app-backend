@@ -26,7 +26,7 @@ function isVacActivityContext(text: string): boolean {
   );
 }
 
-/** 将活动关键词映射到平台 activity code；无明确匹配时返回 undefined */
+/** 将活动关键词映射到平台 activity code；无明确命中时返回 undefined */
 export function resolveActivityId(text: string): string | undefined {
   const lower = text.toLowerCase().trim();
   const compact = compactText(text);

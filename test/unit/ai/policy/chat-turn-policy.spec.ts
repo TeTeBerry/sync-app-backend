@@ -3,7 +3,6 @@ import {
   mustForceCreatePostIntent,
   shouldBlockAgentForActivityInput,
   shouldRunAgentFirst,
-  shouldSkipProactiveRecommend,
 } from '@src/ai/policy/chat-turn-policy';
 import { toRequestActor } from '@src/common/auth/actor-query.util';
 
@@ -79,25 +78,5 @@ describe('chat-turn-policy', () => {
     expect(shouldBlockAgentForActivityInput('Marshmello 是什么风格', 5)).toBe(
       false,
     );
-  });
-
-  it('skips proactive recommend during publish confirm and travel guide', () => {
-    expect(
-      shouldSkipProactiveRecommend({
-        messages: [],
-        input: '确认发布',
-        effectiveActivityLegacyId: 4,
-        state: { version: 1, flow: 'publish_confirm' },
-      }),
-    ).toBe(true);
-
-    expect(
-      shouldSkipProactiveRecommend({
-        messages: [],
-        input: '帮我规划行程',
-        effectiveActivityLegacyId: 4,
-        state: { version: 1, flow: 'idle' },
-      }),
-    ).toBe(true);
   });
 });

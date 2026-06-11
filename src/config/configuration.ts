@@ -56,9 +56,6 @@ export default () => ({
       process.env.CHROMA_PATH ?? process.env.CHROMA_DB_PATH ?? './chroma_data',
     url: process.env.CHROMA_URL ?? '',
     collection: process.env.CHROMA_COLLECTION ?? 'sync_knowledge',
-    postsCollection: process.env.CHROMA_POSTS_COLLECTION ?? 'sync_posts',
-    profilesCollection:
-      process.env.CHROMA_PROFILES_COLLECTION ?? 'sync_user_profiles',
     circuit: {
       failureThreshold: parseInt(
         cleanEnv(process.env.CHROMA_CIRCUIT_FAILURE_THRESHOLD, '3'),

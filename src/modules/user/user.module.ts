@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { InfraChromaModule } from '../../infra/chroma/chroma.module';
 import {
   PostApplication,
   PostApplicationSchema,
@@ -26,7 +25,6 @@ import { UserService } from './user.service';
     MediaSecurityModule,
     UserRepositoryModule,
     AccountRiskModule,
-    InfraChromaModule,
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: UserBlock.name, schema: UserBlockSchema },

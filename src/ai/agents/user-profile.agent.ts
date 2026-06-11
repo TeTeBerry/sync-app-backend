@@ -33,7 +33,7 @@ export interface UserProfileSyncResult {
 }
 
 const PROFILE_EXTRACT_SYSTEM = [
-  '你是 UserProfileAgent，从多轮对话中提取用户组队偏好画像。',
+  '你是 UserProfileAgent，从多轮对话中提取用户偏好画像。',
   '只输出 JSON，字段：',
   '- city: 用户所在或出发城市（中文，如「上海」）',
   '- favorGenres: 常玩电音风格字符串数组，如 ["EDM","Techno"]',
