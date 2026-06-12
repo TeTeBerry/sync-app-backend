@@ -1,6 +1,7 @@
 import {
   assertUserUgcImageDataUrl,
   assertUserUgcImages,
+  assertUserUgcRemoteImageUrl,
 } from '@src/common/media/user-ugc-image.util';
 import type { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
 import type { MediaSecurityCheckService } from '@src/modules/media-security/media-security-check.service';
@@ -19,7 +20,7 @@ describe('user-ugc-image.util', () => {
     jest.clearAllMocks();
   });
 
-  it('skips COS image approval when security is disabled', async () => {
+  it('skips legacy upload approval when security is disabled', async () => {
     (security.isEnabled as jest.Mock).mockReturnValue(false);
 
     await assertUserUgcImages(
@@ -32,7 +33,7 @@ describe('user-ugc-image.util', () => {
     expect(mediaChecks.assertImagesApprovedForUser).not.toHaveBeenCalled();
   });
 
-  it('requires approved COS images when security is enabled', async () => {
+  it('requires approved legacy upload URLs when security is enabled', async () => {
     (security.isEnabled as jest.Mock).mockReturnValue(true);
 
     await assertUserUgcImages(
@@ -46,6 +47,55 @@ describe('user-ugc-image.util', () => {
       ['https://cdn.example.com/uploads/posts/u1/a.jpg'],
       'u1',
     );
+  });
+
+  it('skips cloud fileIDs (no server-side media_check record)', async () => {
+    (security.isEnabled as jest.Mock).mockReturnValue(true);
+
+    await assertUserUgcImages(
+      security,
+      mediaChecks,
+      ['cloud://env.x/ugc/posts/u1/a.jpg'],
+      'u1',
+    );
+
+    expect(mediaChecks.assertImagesApprovedForUser).not.toHaveBeenCalled();
+  });
+
+  it('skips remote image check when security is disabled', async () => {
+    (security.isEnabled as jest.Mock).mockReturnValue(false);
+    const fetchSpy = jest.spyOn(global, 'fetch');
+
+    await assertUserUgcRemoteImageUrl(
+      security,
+      'https://wx.qlogo.cn/mmopen/avatar.png',
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
+  it('runs sync img_sec_check for remote HTTPS images when enabled', async () => {
+    (security.isEnabled as jest.Mock).mockReturnValue(true);
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      headers: { get: () => 'image/png' },
+      arrayBuffer: async () => Uint8Array.from([1, 2, 3]).buffer,
+    } as unknown as Response);
+
+    await assertUserUgcRemoteImageUrl(
+      security,
+      'https://wx.qlogo.cn/mmopen/avatar.png',
+    );
+
+    expect(security.assertImageSafe).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mime: 'image/png',
+        size: 3,
+        buffer: expect.any(Buffer),
+      }),
+    );
+    fetchSpy.mockRestore();
   });
 
   it('runs sync img_sec_check for inline data URLs when enabled', async () => {

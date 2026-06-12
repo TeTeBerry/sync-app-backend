@@ -19,7 +19,9 @@ import {
   extractBearerToken,
   type ClassifyBearerAuthResult,
 } from '../../common/auth/jwt-bearer.util';
+import { assertUserUgcRemoteImageUrl } from '../../common/media/user-ugc-image.util';
 import { WechatMiniService } from './wechat-mini.service';
+import { WechatContentSecurityService } from './wechat-content-security.service';
 import { WechatUserRiskService } from './wechat-user-risk.service';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 
@@ -50,6 +52,7 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly wechatMini: WechatMiniService,
     private readonly wechatUserRisk: WechatUserRiskService,
+    private readonly wechatContentSecurity: WechatContentSecurityService,
     @Inject(USER_REPOSITORY)
     private readonly users: IUserRepository,
   ) {}
@@ -211,6 +214,30 @@ export class AuthService {
     return `@${externalId.replace(/^wx_/, '').slice(0, 10)}`;
   }
 
+  private async resolveModeratedWechatProfile(
+    profile: WechatProfileInput | undefined,
+    existing?: { name?: string; avatar?: string },
+  ): Promise<{ name: string; avatar: string }> {
+    let name = this.resolveWechatName(profile, existing?.name);
+    let avatar = this.resolveWechatAvatar(profile, existing?.avatar);
+
+    try {
+      await this.wechatContentSecurity.assertTextSafe(name);
+    } catch {
+      name = existing?.name?.trim() || DEFAULT_WECHAT_NAME;
+    }
+
+    if (avatar && /^https?:\/\//i.test(avatar)) {
+      try {
+        await assertUserUgcRemoteImageUrl(this.wechatContentSecurity, avatar);
+      } catch {
+        avatar = existing?.avatar?.trim() ?? '';
+      }
+    }
+
+    return { name, avatar };
+  }
+
   async loginWithWechatCode(
     code: string,
     profile?: WechatProfileInput,
@@ -223,8 +250,10 @@ export class AuthService {
       clientIp: ip,
     });
     const existing = await this.users.findByOpenid(session.openid);
-    const name = this.resolveWechatName(profile, existing?.name);
-    const avatar = this.resolveWechatAvatar(profile, existing?.avatar);
+    const { name, avatar } = await this.resolveModeratedWechatProfile(
+      profile,
+      existing ?? undefined,
+    );
     const externalId = existing?.externalId ?? `wx_${session.openid}`;
 
     const record = await this.users.upsertWechatUser(session.openid, {
@@ -249,6 +278,7 @@ export class AuthService {
     }
 
     const name = displayName?.trim() || '开发用户';
+    await this.wechatContentSecurity.assertTextSafe(name);
     const externalId = `dev_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
     const record = await this.users.upsertByExternalId(externalId, {
       name,

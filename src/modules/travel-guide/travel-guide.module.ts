@@ -14,6 +14,7 @@ import {
   TravelGuideVenueCacheSchema,
 } from '../../database/schemas/travel-guide-venue-cache.schema';
 import { ActivityModule } from '../activity/activity.module';
+import { WechatMiniModule } from '../auth/wechat-mini.module';
 import { UserModule } from '../user/user.module';
 import { TencentMapService } from './map/tencent-map.service';
 import { TravelGuideGeoCacheService } from './map/travel-guide-geo-cache.service';
@@ -30,6 +31,7 @@ import { TravelGuideGenerationService } from './travel-guide-generation.service'
 @Module({
   imports: [
     ActivityModule,
+    WechatMiniModule,
     UserModule,
     InfraLlmModule,
     MongooseModule.forFeature([

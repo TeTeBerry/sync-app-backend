@@ -8,6 +8,7 @@ import { TravelGuidePoiRanker } from '@src/modules/travel-guide/map/travel-guide
 import { TravelGuideHotelService } from '@src/modules/travel-guide/map/travel-guide-hotel.service';
 import { TravelGuideGenerationCacheService } from '@src/modules/travel-guide/travel-guide-generation-cache.service';
 import { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
+import { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
 import type { TravelGuidePlan } from '@src/modules/travel-guide/domain/travel-guide.types';
 
 const testActor = {
@@ -80,6 +81,10 @@ describe('TravelGuideGenerationService cache', () => {
         {
           provide: UserProfileSyncService,
           useValue: { applyTravelGuideHints: jest.fn() },
+        },
+        {
+          provide: WechatContentSecurityService,
+          useValue: { assertTextsSafe: jest.fn().mockResolvedValue(undefined) },
         },
       ],
     }).compile();

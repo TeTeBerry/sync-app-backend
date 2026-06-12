@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ForbiddenException } from '@nestjs/common';
 import { AuthService } from '../../../src/modules/auth/auth.service';
 import { WechatMiniService } from '../../../src/modules/auth/wechat-mini.service';
+import { WechatContentSecurityService } from '../../../src/modules/auth/wechat-content-security.service';
 import { WechatUserRiskService } from '../../../src/modules/auth/wechat-user-risk.service';
 import { UserService } from '../../../src/modules/user/user.service';
 import { USER_REPOSITORY } from '../../../src/modules/user/interfaces/user.repository.interface';
@@ -28,6 +29,12 @@ describe('AuthService', () => {
     fetchAndAssertRiskRank: jest.fn().mockResolvedValue(0),
     shouldRefreshStoredRank: jest.fn(() => false),
     assertRankAllowed: jest.fn(),
+  };
+
+  const wechatContentSecurity = {
+    isEnabled: jest.fn(() => false),
+    assertTextSafe: jest.fn().mockResolvedValue(undefined),
+    assertTextsSafe: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -57,6 +64,10 @@ describe('AuthService', () => {
         { provide: USER_REPOSITORY, useValue: users },
         { provide: UserService, useValue: userService },
         { provide: WechatUserRiskService, useValue: wechatUserRisk },
+        {
+          provide: WechatContentSecurityService,
+          useValue: wechatContentSecurity,
+        },
       ],
     }).compile();
 
@@ -115,6 +126,10 @@ describe('AuthService', () => {
           useValue: {
             fetchAndAssertRiskRank: jest.fn().mockResolvedValue(0),
           },
+        },
+        {
+          provide: WechatContentSecurityService,
+          useValue: wechatContentSecurity,
         },
       ],
     }).compile();
@@ -178,6 +193,10 @@ describe('AuthService', () => {
         },
         { provide: UserService, useValue: userService },
         { provide: WechatUserRiskService, useValue: wechatUserRisk },
+        {
+          provide: WechatContentSecurityService,
+          useValue: wechatContentSecurity,
+        },
         { provide: USER_REPOSITORY, useValue: users },
       ],
     }).compile();

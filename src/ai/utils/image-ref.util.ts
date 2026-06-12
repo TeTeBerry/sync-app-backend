@@ -36,8 +36,8 @@ async function fetchUploadAsDataUrl(url: string): Promise<string> {
 }
 
 /**
- * Validates upload API URL and returns a data URL for VL APIs.
- * User images must be uploaded via POST /uploads/images (WeChat img_sec_check).
+ * Fetches a legacy backend `/uploads/` HTTPS URL as a data URL for VL APIs.
+ * cloud:// fileIDs are validated elsewhere but cannot be read server-side here.
  */
 export async function resolveImageInput(ref: string): Promise<string> {
   const trimmed = ref.trim();

@@ -4,28 +4,20 @@ import { HydratedDocument } from 'mongoose';
 export type NotificationType = 'general' | 'interaction' | 'system';
 
 /** High-level push category for NoticeAgent routing and client grouping. */
-export type NotificationCategory =
-  | 'comment'
-  | 'like'
-  | 'application'
-  | 'system'
-  | 'general';
+export type NotificationCategory = 'comment' | 'like' | 'system' | 'general';
 
-/** Deep-link hint for partner interactions (like / comment / application). */
+/** Deep-link hint for partner interactions (like / comment). */
 export type NotificationInteractionType =
   | 'like'
   | 'comment'
   | 'comment_reply'
-  | 'application'
   | 'activity'
   | 'activity_update'
   | 'post_rejected'
-  | 'post_hidden'
-  | 'team_dissolved'
-  | 'team_accepted';
+  | 'post_hidden';
 
 export interface NotificationMeta {
-  /** UI grouping (comment / like / application / system / general). */
+  /** UI grouping (comment / like / system / general). */
   category?: NotificationCategory;
   /** Target activity for event-detail navigation. */
   activityLegacyId?: number;

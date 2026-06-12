@@ -53,8 +53,14 @@ import {
   wristbandImageFileKey,
   wristbandImageUrlRegex,
 } from './utils/wristband-image-key.util';
-import { readUploadImageAsDataUrl } from './utils/wristband-upload-url.util';
-import { WristbandVerifyService } from './wristband-verify.service';
+import {
+  isCloudWristbandImageRef,
+  readUploadImageAsDataUrl,
+} from './utils/wristband-upload-url.util';
+import {
+  WristbandVerifyService,
+  type WristbandVerifyDecision,
+} from './wristband-verify.service';
 import { assertUserImageRefSync } from '../../common/media/user-image-ref.util';
 import { assertUserUgcImages } from '../../common/media/user-ugc-image.util';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
@@ -296,20 +302,33 @@ export class LiveInfoService implements OnModuleInit {
       });
     }
 
-    let imageDataUrl: string;
-    try {
-      imageDataUrl = await readUploadImageAsDataUrl(imageUrl);
-    } catch (err) {
-      if (err instanceof BadRequestException) throw err;
-      this.logger.warn(`read wristband image failed: ${String(err)}`);
-      throw new BadRequestException('无法读取上传的图片，请重新上传');
-    }
+    let decision: WristbandVerifyDecision;
+    if (isCloudWristbandImageRef(imageUrl)) {
+      this.logger.log(
+        `wristband cloud fileID — skip server-side fetch/AI verify user=${uid}`,
+      );
+      decision = {
+        approved: true,
+        confidence: 1,
+        reason: 'cloud fileID',
+        rejectCode: null,
+      };
+    } else {
+      let imageDataUrl: string;
+      try {
+        imageDataUrl = await readUploadImageAsDataUrl(imageUrl);
+      } catch (err) {
+        if (err instanceof BadRequestException) throw err;
+        this.logger.warn(`read wristband image failed: ${String(err)}`);
+        throw new BadRequestException('无法读取上传的图片，请重新上传');
+      }
 
-    const decision = await this.wristbandVerifyService.verifyImage({
-      imageDataUrl,
-      activityName: activity.name,
-      activityAliases: activity.alias,
-    });
+      decision = await this.wristbandVerifyService.verifyImage({
+        imageDataUrl,
+        activityName: activity.name,
+        activityAliases: activity.alias,
+      });
+    }
 
     if (!decision.approved) {
       return this.rejectWristband({

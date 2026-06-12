@@ -1,11 +1,5 @@
 import { parseCorsOrigins } from '../common/cors/cors-config.util';
 import { isDemoSeedEnabled } from '../common/utils/seed-policy.util';
-import {
-  defaultCosUploadResource,
-  resolveCosBucket,
-  resolveCosPublicBaseUrl,
-  resolveCosRegion,
-} from '../common/cos/cos-config.util';
 
 /**
  * 环境变量集中配置
@@ -170,29 +164,8 @@ export default () => ({
     qps: parseInt(cleanEnv(process.env.TENCENT_MAP_QPS, '5'), 10),
   },
 
-  cos: {
-    /** STS 签发（客户端直传 PutObject / 分片上传） */
-    stsSecretId: cleanEnv(process.env.TENCENT_STS_SECRET_ID),
-    stsSecretKey: cleanEnv(process.env.TENCENT_STS_SECRET_KEY),
-    /** 服务端 SDK（deleteObject 必需；getObject / putObject 视桶策略与上传方式） */
-    serverSecretId: cleanEnv(process.env.COS_SECRET_ID),
-    serverSecretKey: cleanEnv(process.env.COS_SECRET_KEY),
-    bucket: resolveCosBucket(),
-    region: resolveCosRegion(),
-    publicBaseUrl: resolveCosPublicBaseUrl(),
-    /** STS policy resource ARN; `{userId}` is replaced per authenticated user. */
-    uploadResource: cleanEnv(
-      process.env.COS_UPLOAD_RESOURCE,
-      defaultCosUploadResource(),
-    ),
-    stsDurationSeconds: parseInt(
-      cleanEnv(process.env.COS_STS_DURATION_SECONDS, '1800'),
-      10,
-    ),
-    signedUrlExpiresSeconds: parseInt(
-      cleanEnv(process.env.COS_SIGNED_URL_EXPIRES_SECONDS, '3600'),
-      10,
-    ),
+  cloudbase: {
+    envId: cleanEnv(process.env.CLOUDBASE_ENV_ID),
   },
 
   itinerary: {

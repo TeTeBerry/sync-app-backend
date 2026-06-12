@@ -7,15 +7,9 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
-  assertCosPostImageUrlForUser,
-  normalizeCosPostImageUrl,
-  parseCosObjectKeyFromUrl,
-} from '../../common/cos/cos-upload-url.util';
-import {
   MediaSecurityCheck,
   MediaSecurityCheckStatus,
 } from '../../database/schemas/media-security-check.schema';
-import { CosStorageService } from '../cos/cos-storage.service';
 import {
   USER_REPOSITORY,
   type IUserRepository,
@@ -28,6 +22,10 @@ export type MediaSecurityCheckView = {
   displayUrl?: string;
 };
 
+/**
+ * Legacy WeChat async media_check callbacks (Mongo records from pre-cloud HTTPS uploads).
+ * New UGC uses cloud:// fileIDs — no server-side fetch or pending checks.
+ */
 @Injectable()
 export class MediaSecurityCheckService {
   private readonly logger = new Logger(MediaSecurityCheckService.name);
@@ -37,7 +35,6 @@ export class MediaSecurityCheckService {
     private readonly model: Model<MediaSecurityCheck>,
     @Inject(USER_REPOSITORY)
     private readonly users: IUserRepository,
-    private readonly cosStorage: CosStorageService,
   ) {}
 
   async resolveOpenid(userId: string): Promise<string> {
@@ -57,36 +54,13 @@ export class MediaSecurityCheckService {
     imageUrl: string,
     userId: string,
   ): Promise<MediaSecurityCheck | null> {
-    const normalized = normalizeCosPostImageUrl(imageUrl.trim());
     return this.model
-      .findOne({ imageUrl: normalized, userId: userId.trim() })
+      .findOne({ imageUrl: imageUrl.trim(), userId: userId.trim() })
       .lean();
   }
 
   async findByTraceId(traceId: string): Promise<MediaSecurityCheck | null> {
     return this.model.findOne({ traceId: traceId.trim() }).lean();
-  }
-
-  async createPending(params: {
-    traceId: string;
-    userId: string;
-    openid: string;
-    imageUrl: string;
-    scene: number;
-    expiresAt: Date;
-  }): Promise<MediaSecurityCheck> {
-    const imageUrl = normalizeCosPostImageUrl(params.imageUrl.trim());
-    const cosKey = parseCosObjectKeyFromUrl(imageUrl);
-    return this.model.create({
-      traceId: params.traceId,
-      userId: params.userId.trim(),
-      openid: params.openid.trim(),
-      imageUrl,
-      cosKey,
-      scene: params.scene,
-      status: 'pending',
-      expiresAt: params.expiresAt,
-    });
   }
 
   async markApproved(
@@ -106,42 +80,13 @@ export class MediaSecurityCheckService {
     traceId: string,
     wechatResult?: Record<string, unknown>,
   ): Promise<MediaSecurityCheck | null> {
-    const record = await this.model
+    return this.model
       .findOneAndUpdate(
         { traceId: traceId.trim() },
         { status: 'rejected', wechatResult },
         { new: true },
       )
       .lean();
-    if (record) {
-      await this.cosStorage.deleteObjectByKey(record.cosKey);
-    }
-    return record;
-  }
-
-  async markSubmitFailed(
-    imageUrl: string,
-    userId: string,
-    openid: string,
-    scene: number,
-    expiresAt: Date,
-    wechatResult?: Record<string, unknown>,
-  ): Promise<void> {
-    const normalized = normalizeCosPostImageUrl(imageUrl.trim());
-    const cosKey = parseCosObjectKeyFromUrl(normalized);
-    const traceId = `failed_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-    await this.model.create({
-      traceId,
-      userId: userId.trim(),
-      openid: openid.trim(),
-      imageUrl: normalized,
-      cosKey,
-      scene,
-      status: 'submit_failed',
-      wechatResult,
-      expiresAt,
-    });
-    await this.cosStorage.deleteObjectByKey(cosKey);
   }
 
   async expireIfNeeded(
@@ -160,118 +105,26 @@ export class MediaSecurityCheckService {
         { new: true },
       )
       .lean();
-    if (updated) {
-      await this.cosStorage.deleteObjectByKey(updated.cosKey);
-      return updated;
-    }
-    return { ...record, status: 'expired' };
+    return updated ?? { ...record, status: 'expired' };
   }
 
+  /** Cloud fileID uploads skip server media-check records. */
   async assertImagesApprovedForUser(
-    imageUrls: string[],
-    userId: string,
+    _imageUrls: string[],
+    _userId: string,
   ): Promise<void> {
-    if (!imageUrls.length) {
-      return;
-    }
-    for (const raw of imageUrls) {
-      const url = normalizeCosPostImageUrl(raw.trim());
-      assertCosPostImageUrlForUser(url, userId);
-      let record = await this.findByImageUrl(url, userId);
-      if (!record) {
-        throw new BadRequestException('图片尚未通过安全检测，请重新上传');
-      }
-      record = await this.expireIfNeeded(record);
-      if (record.status !== 'approved') {
-        throw new BadRequestException(
-          record.status === 'pending'
-            ? '图片安全检测中，请稍后再发布'
-            : '图片未通过安全检测，请更换后重试',
-        );
-      }
-    }
-  }
-
-  canRequestSignedUrl(
-    record: MediaSecurityCheck,
-    requesterUserId: string,
-  ): boolean {
-    if (record.status === 'approved') {
-      return true;
-    }
-    return (
-      record.userId === requesterUserId.trim() && record.status === 'pending'
-    );
-  }
-
-  async recordApproved(params: {
-    userId: string;
-    openid: string;
-    imageUrl: string;
-    scene: number;
-  }): Promise<MediaSecurityCheck> {
-    const imageUrl = normalizeCosPostImageUrl(params.imageUrl.trim());
-    const existing = await this.findByImageUrl(imageUrl, params.userId);
-    if (existing?.status === 'approved') {
-      return existing;
-    }
-    const cosKey = parseCosObjectKeyFromUrl(imageUrl);
-    const traceId = `sync_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-    return this.model.create({
-      traceId,
-      userId: params.userId.trim(),
-      openid: params.openid.trim(),
-      imageUrl,
-      cosKey,
-      scene: params.scene,
-      status: 'approved',
-      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-    });
+    return;
   }
 
   async toView(
     record: MediaSecurityCheck,
-    requesterUserId: string,
+    _requesterUserId: string,
   ): Promise<MediaSecurityCheckView> {
     const refreshed = await this.expireIfNeeded(record);
-    const view: MediaSecurityCheckView = {
+    return {
       url: refreshed.imageUrl,
       status: refreshed.status,
       traceId: refreshed.status === 'pending' ? refreshed.traceId : undefined,
     };
-    if (this.canRequestSignedUrl(refreshed, requesterUserId)) {
-      view.displayUrl = await this.cosStorage.getSignedObjectUrl(
-        refreshed.cosKey,
-      );
-    }
-    return view;
-  }
-
-  async resolveSignedDisplayUrls(
-    urls: string[],
-    _requesterUserId: string,
-  ): Promise<Array<{ inputUrl: string; url: string; displayUrl?: string }>> {
-    const results: Array<{
-      inputUrl: string;
-      url: string;
-      displayUrl?: string;
-    }> = [];
-    for (const raw of urls) {
-      const trimmed = raw.trim();
-      if (!trimmed) continue;
-      try {
-        const key = parseCosObjectKeyFromUrl(trimmed);
-        if (!key.startsWith('uploads/posts/')) {
-          results.push({ inputUrl: trimmed, url: trimmed });
-          continue;
-        }
-        const normalized = normalizeCosPostImageUrl(trimmed);
-        const displayUrl = await this.cosStorage.getSignedObjectUrl(key);
-        results.push({ inputUrl: trimmed, url: normalized, displayUrl });
-      } catch {
-        results.push({ inputUrl: trimmed, url: trimmed });
-      }
-    }
-    return results;
   }
 }

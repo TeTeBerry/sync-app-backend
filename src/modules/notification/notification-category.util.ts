@@ -15,10 +15,6 @@ export function categoryForInteractionType(
     case 'comment':
     case 'comment_reply':
       return 'comment';
-    case 'application':
-    case 'team_dissolved':
-    case 'team_accepted':
-      return 'application';
     case 'activity_update':
     case 'post_rejected':
     case 'post_hidden':

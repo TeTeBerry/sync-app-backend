@@ -70,6 +70,11 @@ export class PostController {
     return this.postService.likePost(id, actor);
   }
 
+  @Get(':id/navigation-target')
+  getNavigationTarget(@Param('id') id: string) {
+    return this.postService.getPostNavigationTarget(id);
+  }
+
   @Get(':id/comments')
   listComments(
     @Param('id') id: string,

@@ -20,8 +20,6 @@ import { PartnerModule } from './modules/partner/partner.module';
 import { ReportModule } from './modules/report/report.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { ActivityExperienceModule } from './modules/activity-experience/activity-experience.module';
-import { UploadModule } from './modules/upload/upload.module';
-import { CosModule } from './modules/cos/cos.module';
 import { MediaSecurityModule } from './modules/media-security/media-security.module';
 import { HealthModule } from './common/health/health.module';
 import { AuthCoreModule } from './common/auth/auth-core.module';
@@ -65,8 +63,6 @@ import { RequestActorMiddleware } from './common/middleware/request-actor.middle
     ReportModule,
     FeedbackModule,
     ActivityExperienceModule,
-    UploadModule,
-    CosModule,
     MediaSecurityModule,
     HealthModule,
   ],

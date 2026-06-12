@@ -41,12 +41,12 @@ describe('user-image-ref.util', () => {
     ).not.toThrow();
   });
 
-  it('accepts COS post upload URLs', () => {
+  it('rejects external HTTPS upload URLs', () => {
     expect(() =>
       assertUserImageRefSync(
         'https://syncapp-1304288643.cos.ap-shanghai.myqcloud.com/uploads/posts/user-1/1710000000000_abc.jpg',
       ),
-    ).not.toThrow();
+    ).toThrow(BadRequestException);
   });
 
   it('normalizes allowed URL list', () => {
@@ -59,5 +59,18 @@ describe('user-image-ref.util', () => {
       'http://127.0.0.1:3000/uploads/a.jpg',
       'http://127.0.0.1:3000/uploads/b.png',
     ]);
+  });
+
+  it('accepts CloudBase fileID under ugc/', () => {
+    const fileId =
+      'cloud://sync-prd-d7gquj4qk86da9bb2.7373-sync-prd/ugc/posts/user-1/1710000000000_abc.jpg';
+    expect(() => assertUserImageRefSync(fileId)).not.toThrow();
+    expect(normalizeUserImageUrls([fileId])).toEqual([fileId]);
+  });
+
+  it('rejects cloud fileID outside ugc/', () => {
+    expect(() =>
+      assertUserImageRefSync('cloud://env-id.bucket/other/secret.jpg'),
+    ).toThrow(BadRequestException);
   });
 });

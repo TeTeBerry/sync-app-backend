@@ -30,8 +30,40 @@ export function collectProfilePatchUgcTexts(dto: {
   location?: string;
   bio?: string;
   city?: string;
+  favorGenres?: string[];
+  budgetLevel?: string;
 }): Array<string | undefined> {
-  return [dto.name, dto.handle, dto.location, dto.bio, dto.city];
+  return [
+    dto.name,
+    dto.handle,
+    dto.location,
+    dto.bio,
+    dto.city,
+    dto.budgetLevel,
+    ...(dto.favorGenres ?? []),
+  ];
+}
+
+export function collectTravelGuideUgcTexts(dto: {
+  departure?: string;
+  departureCity?: string;
+}): Array<string | undefined> {
+  return [dto.departure, dto.departureCity];
+}
+
+export function collectChatMessageUgcTexts(
+  messages: Array<{
+    role?: string;
+    content?: string;
+    imageContext?: { ocrText?: string };
+  }>,
+): Array<string | undefined> {
+  const texts: Array<string | undefined> = [];
+  for (const message of messages) {
+    if (message.role !== 'user') continue;
+    texts.push(message.content, message.imageContext?.ocrText);
+  }
+  return texts;
 }
 
 export function collectItinerarySaveUgcTexts(body: {

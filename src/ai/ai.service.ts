@@ -10,7 +10,10 @@ import {
 import { AiRateLimitService } from './ai-rate-limit.service';
 import { logAiTurn } from './utils/log-ai-turn.util';
 import { AiTurnPipeline } from './orchestration/ai-turn.pipeline';
+import { assertUserUgcImages } from '../common/media/user-ugc-image.util';
+import { collectChatMessageUgcTexts } from '../common/media/user-ugc-text.util';
 import { WechatContentSecurityService } from '../modules/auth/wechat-content-security.service';
+import { MediaSecurityCheckService } from '../modules/media-security/media-security-check.service';
 import { extractAssistantMessageMetadata } from './presentation/chat-message-metadata.util';
 
 export interface AiChatTurnContext {
@@ -53,6 +56,7 @@ export class AiService {
     private readonly turnPipeline: AiTurnPipeline,
     private readonly rateLimit: AiRateLimitService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
+    private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
 
   async *streamChat(
@@ -108,19 +112,34 @@ export class AiService {
       }
     }
 
-    for (const message of contextMessages) {
-      if (message.role !== 'user') continue;
-      const text = message.content?.trim();
-      if (!text) continue;
+    if (imagesToValidate.length > 0) {
+      const userId = dto.actor.clientUserId.trim();
       try {
-        await this.wechatContentSecurity.assertTextSafe(text);
+        await assertUserUgcImages(
+          this.wechatContentSecurity,
+          this.mediaChecks,
+          imagesToValidate,
+          userId,
+        );
       } catch (error) {
         yield {
           type: 'error',
-          message: error instanceof Error ? error.message : '文本安全检测失败',
+          message: error instanceof Error ? error.message : '图片安全检测失败',
         };
         return;
       }
+    }
+
+    try {
+      await this.wechatContentSecurity.assertTextsSafe(
+        collectChatMessageUgcTexts(contextMessages),
+      );
+    } catch (error) {
+      yield {
+        type: 'error',
+        message: error instanceof Error ? error.message : '文本安全检测失败',
+      };
+      return;
     }
 
     const rateKey = dto.actor.clientUserId.trim() || sessionId;

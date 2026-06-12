@@ -6,7 +6,12 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
+import {
+  assertUserUgcTexts,
+  collectTravelGuideUgcTexts,
+} from '../../common/media/user-ugc-text.util';
 import { ActivityService } from '../activity/activity.service';
+import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import { UserProfileSyncService } from '../user/user-profile-sync.service';
 import { LlmService } from '../../infra/llm/llm.service';
 import { TencentMapService } from './map/tencent-map.service';
@@ -65,6 +70,7 @@ export class TravelGuideGenerationService {
     private readonly hotelService: TravelGuideHotelService,
     private readonly generationCache: TravelGuideGenerationCacheService,
     private readonly userProfileSync: UserProfileSyncService,
+    private readonly wechatContentSecurity: WechatContentSecurityService,
   ) {}
 
   async generate(
@@ -83,6 +89,11 @@ export class TravelGuideGenerationService {
     if (!activity) {
       throw new NotFoundException(`Activity ${activityLegacyId} not found`);
     }
+
+    await assertUserUgcTexts(
+      this.wechatContentSecurity,
+      collectTravelGuideUgcTexts(dto),
+    );
 
     const accommodationNights =
       dto.accommodationNights ?? parseActivityDayCount(activity.date);

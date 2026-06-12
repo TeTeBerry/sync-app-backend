@@ -230,6 +230,27 @@ export class PostService implements OnModuleInit {
     return this.postQuery.listByOwner(actor);
   }
 
+  async getPostNavigationTarget(id: string) {
+    const post = await this.postQuery.findPostById(id);
+    if (!post || post.status === 'hidden') {
+      throw new NotFoundException('帖子不存在');
+    }
+
+    const rawLegacyId = post.activityLegacyId;
+    const activityLegacyId =
+      rawLegacyId != null && !Number.isNaN(Number(rawLegacyId))
+        ? Number(rawLegacyId)
+        : null;
+    if (activityLegacyId == null || activityLegacyId <= 0) {
+      throw new NotFoundException('帖子未关联活动');
+    }
+
+    return {
+      postId: String(post._id),
+      activityLegacyId,
+    };
+  }
+
   findPostById(id: string): Promise<PostRecord | null> {
     return this.postQuery.findPostById(id);
   }

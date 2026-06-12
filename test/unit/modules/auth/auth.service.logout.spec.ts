@@ -4,6 +4,7 @@ import { AuthService } from '@src/modules/auth/auth.service';
 import type { IUserRepository } from '@src/modules/user/interfaces/user.repository.interface';
 import type { UserService } from '@src/modules/user/user.service';
 import type { WechatMiniService } from '@src/modules/auth/wechat-mini.service';
+import type { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
 import type { WechatUserRiskService } from '@src/modules/auth/wechat-user-risk.service';
 import { toRequestActor } from '@src/common/auth/actor-query.util';
 
@@ -21,6 +22,7 @@ describe('AuthService.logout and resolveBearerAuth', () => {
   const userService = {} as unknown as UserService;
   const wechatMini = {} as unknown as WechatMiniService;
   const wechatUserRisk = {} as unknown as WechatUserRiskService;
+  const wechatContentSecurity = {} as unknown as WechatContentSecurityService;
 
   const config = {
     get: jest.fn((key: string, fallback?: string) => {
@@ -39,6 +41,7 @@ describe('AuthService.logout and resolveBearerAuth', () => {
       userService,
       wechatMini,
       wechatUserRisk,
+      wechatContentSecurity,
       users,
     );
   });

@@ -24,6 +24,7 @@ export class MediaSecurityCheck {
   @Prop({ required: true, index: true })
   imageUrl!: string;
 
+  /** Legacy object key from pre-CloudBase async media_check (field name retained for Mongo). */
   @Prop({ required: true })
   cosKey!: string;
 

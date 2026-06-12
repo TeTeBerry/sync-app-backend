@@ -1,12 +1,53 @@
 import { BadRequestException } from '@nestjs/common';
 import { URL } from 'url';
-import { resolveCosPublicHost } from '../cos/cos-config.util';
 
-/** Shown when clients send base64 / data URLs instead of COS upload URLs. */
+/** Shown when clients send base64 / data URLs instead of a prior upload ref. */
 export const USER_IMAGE_MUST_UPLOAD_MESSAGE =
-  '请先上传图片（上传至 COS 时会进行微信内容安全检测）';
+  '请先上传图片（小程序云存储上传后再提交）';
 
 export const USER_IMAGE_URL_INVALID_MESSAGE = '图片地址无效，请重新上传';
+
+const CLOUD_FILE_ID_RE = /^cloud:\/\/[^/]+\/.+/;
+const CLOUD_UGC_PATH_PREFIX = 'ugc/';
+
+/** CloudBase storage fileID from `wx.cloud.uploadFile` (client resolves temp URL). */
+export function isCloudStorageFileId(raw: string | undefined): boolean {
+  const trimmed = raw?.trim();
+  if (!trimmed || !CLOUD_FILE_ID_RE.test(trimmed)) {
+    return false;
+  }
+  try {
+    const withoutScheme = trimmed.slice('cloud://'.length);
+    const slash = withoutScheme.indexOf('/');
+    if (slash <= 0) return false;
+    const objectPath = withoutScheme.slice(slash + 1);
+    if (!objectPath.startsWith(CLOUD_UGC_PATH_PREFIX)) return false;
+    if (objectPath.includes('..')) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function resolveCloudbaseEnvId(): string {
+  return process.env.CLOUDBASE_ENV_ID?.trim() ?? '';
+}
+
+/** When `CLOUDBASE_ENV_ID` is set, fileID must belong to that env. */
+export function assertCloudStorageFileIdForEnv(fileId: string): void {
+  const trimmed = fileId.trim();
+  if (!isCloudStorageFileId(trimmed)) {
+    throw new BadRequestException(USER_IMAGE_URL_INVALID_MESSAGE);
+  }
+  const expectedEnv = resolveCloudbaseEnvId();
+  if (!expectedEnv) {
+    return;
+  }
+  const envSegment = trimmed.slice('cloud://'.length).split('/')[0] ?? '';
+  if (!envSegment.startsWith(expectedEnv)) {
+    throw new BadRequestException(USER_IMAGE_URL_INVALID_MESSAGE);
+  }
+}
 
 export function resolveUploadPublicBase(): string {
   const configured = process.env.UPLOAD_PUBLIC_BASE_URL?.trim();
@@ -17,31 +58,7 @@ export function resolveUploadPublicBase(): string {
   return `http://127.0.0.1:${port}`;
 }
 
-function isCosPostUploadImageUrl(parsed: URL): boolean {
-  if (parsed.hostname !== resolveCosPublicHost()) {
-    return false;
-  }
-  const pathname = parsed.pathname.replace(/\/+$/, '') || '/';
-  return pathname.startsWith('/uploads/');
-}
-
-/** User UGC images: COS `uploads/posts/...` (wx img_sec_check) or legacy backend /uploads/. */
-export function isAllowedUserUploadImageUrl(raw: string): boolean {
-  let parsed: URL;
-  try {
-    parsed = new URL(raw.trim());
-  } catch {
-    return false;
-  }
-
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    return false;
-  }
-
-  if (isCosPostUploadImageUrl(parsed)) {
-    return true;
-  }
-
+function isBackendLocalUploadUrl(parsed: URL): boolean {
   const pathname = parsed.pathname.replace(/\/+$/, '') || '/';
   if (!pathname.includes('/uploads/')) {
     return false;
@@ -57,11 +74,31 @@ export function isAllowedUserUploadImageUrl(raw: string): boolean {
     // ignore
   }
 
-  if (parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost') {
+  return parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost';
+}
+
+/** User UGC images: CloudBase fileID or legacy backend `/uploads/` static files. */
+export function isAllowedUserUploadImageRef(raw: string): boolean {
+  if (isCloudStorageFileId(raw)) {
     return true;
   }
+  return isAllowedUserUploadImageUrl(raw);
+}
 
-  return false;
+/** Legacy dev: backend-served `/uploads/` URLs only. */
+export function isAllowedUserUploadImageUrl(raw: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw.trim());
+  } catch {
+    return false;
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return false;
+  }
+
+  return isBackendLocalUploadUrl(parsed);
 }
 
 export function assertUserImageRefSync(ref: string): void {
@@ -72,6 +109,11 @@ export function assertUserImageRefSync(ref: string): void {
 
   if (/^data:/i.test(trimmed)) {
     throw new BadRequestException(USER_IMAGE_MUST_UPLOAD_MESSAGE);
+  }
+
+  if (isCloudStorageFileId(trimmed)) {
+    assertCloudStorageFileIdForEnv(trimmed);
+    return;
   }
 
   if (/^https?:\/\//i.test(trimmed)) {
