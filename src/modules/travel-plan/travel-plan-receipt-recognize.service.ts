@@ -9,7 +9,12 @@ import {
   decodeBase64Payload,
   toDataUrl,
 } from '../../ai/utils/image-base64.util';
-import { assertUserUgcImageDataUrl } from '../../common/media/user-ugc-image.util';
+import { resolveImageInput } from '../../ai/utils/image-ref.util';
+import {
+  assertUserUgcImageDataUrl,
+  assertUserUgcRemoteImageUrl,
+} from '../../common/media/user-ugc-image.util';
+import { isCloudBaseTempImageUrl } from '../../common/media/user-image-ref.util';
 import { ActivityService } from '../activity/activity.service';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import type { RecognizeTravelPlanReceiptDto } from './dto/recognize-travel-plan-receipt.dto';
@@ -32,18 +37,33 @@ export class TravelPlanReceiptRecognizeService {
     private readonly wechatContentSecurity: WechatContentSecurityService,
   ) {}
 
-  private resolveReceiptImage(ref: string): string {
+  private async resolveReceiptImage(ref: string): Promise<string> {
     const trimmed = ref.trim();
     if (!trimmed) {
       throw new BadRequestException('请上传截图');
     }
 
-    if (!/^data:image\//i.test(trimmed)) {
-      throw new BadRequestException('请提交本地截图进行识别');
+    if (/^data:image\//i.test(trimmed)) {
+      const { mimeType, base64 } = decodeBase64Payload(trimmed);
+      return toDataUrl(mimeType, base64);
     }
 
-    const { mimeType, base64 } = decodeBase64Payload(trimmed);
-    return toDataUrl(mimeType, base64);
+    if (/^https?:\/\//i.test(trimmed)) {
+      return resolveImageInput(trimmed);
+    }
+
+    throw new BadRequestException('请提交本地截图进行识别');
+  }
+
+  private async assertReceiptImageSafe(imageRef: string): Promise<void> {
+    const trimmed = imageRef.trim();
+    if (/^data:image\//i.test(trimmed)) {
+      await assertUserUgcImageDataUrl(this.wechatContentSecurity, trimmed);
+      return;
+    }
+    if (isCloudBaseTempImageUrl(trimmed)) {
+      await assertUserUgcRemoteImageUrl(this.wechatContentSecurity, trimmed);
+    }
   }
 
   async recognize(
@@ -56,8 +76,8 @@ export class TravelPlanReceiptRecognizeService {
 
     const activity =
       await this.activityService.findByLegacyId(activityLegacyId);
-    const imageDataUrl = this.resolveReceiptImage(dto.image);
-    await assertUserUgcImageDataUrl(this.wechatContentSecurity, dto.image);
+    const imageDataUrl = await this.resolveReceiptImage(dto.image);
+    await this.assertReceiptImageSafe(dto.image);
 
     const parsed =
       await this.llmService.invokeVisionJson<LlmTravelPlanReceiptResult>(

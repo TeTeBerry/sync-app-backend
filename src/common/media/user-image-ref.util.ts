@@ -10,6 +10,40 @@ export const USER_IMAGE_URL_INVALID_MESSAGE = '图片地址无效，请重新上
 
 const CLOUD_FILE_ID_RE = /^cloud:\/\/[^/]+\/.+/;
 const CLOUD_UGC_PATH_PREFIX = 'ugc/';
+const CLOUD_TEMP_IMAGE_HOST_SUFFIXES = [
+  '.tcb.qcloud.la',
+  '.myqcloud.com',
+  '.file.myqcloud.com',
+] as const;
+
+/** HTTPS temp URL from `wx.cloud.getTempFileURL` (one-time vision fetch; not for persistence). */
+export function isCloudBaseTempImageUrl(raw: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw.trim());
+  } catch {
+    return false;
+  }
+
+  if (parsed.protocol !== 'https:') {
+    return false;
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  const hostAllowed = CLOUD_TEMP_IMAGE_HOST_SUFFIXES.some((suffix) =>
+    host.endsWith(suffix),
+  );
+  if (!hostAllowed) {
+    return false;
+  }
+
+  const path = decodeURIComponent(parsed.pathname);
+  if (!path.includes(`/${CLOUD_UGC_PATH_PREFIX}`) || path.includes('..')) {
+    return false;
+  }
+
+  return true;
+}
 
 /** CloudBase storage fileID from `wx.cloud.uploadFile` (client resolves temp URL). */
 export function isCloudStorageFileId(raw: string | undefined): boolean {

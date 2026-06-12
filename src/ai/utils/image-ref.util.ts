@@ -2,6 +2,7 @@ import { BadRequestException, Logger } from '@nestjs/common';
 import {
   assertUserImageRefSync,
   isAllowedUserUploadImageUrl,
+  isCloudBaseTempImageUrl,
   USER_IMAGE_URL_INVALID_MESSAGE,
 } from '../../common/media/user-image-ref.util';
 import { decodeBase64Payload, ImageTooLargeError } from './image-base64.util';
@@ -36,11 +37,15 @@ async function fetchUploadAsDataUrl(url: string): Promise<string> {
 }
 
 /**
- * Fetches a legacy backend `/uploads/` HTTPS URL as a data URL for VL APIs.
+ * Fetches a legacy backend `/uploads/` HTTPS URL or CloudBase temp URL as a data URL for VL APIs.
  * cloud:// fileIDs are validated elsewhere but cannot be read server-side here.
  */
 export async function resolveImageInput(ref: string): Promise<string> {
   const trimmed = ref.trim();
+  if (isCloudBaseTempImageUrl(trimmed)) {
+    return fetchUploadAsDataUrl(trimmed);
+  }
+
   assertUserImageRefSync(trimmed);
   if (!/^https?:\/\//i.test(trimmed)) {
     throw new BadRequestException(USER_IMAGE_URL_INVALID_MESSAGE);

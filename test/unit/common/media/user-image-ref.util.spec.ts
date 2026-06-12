@@ -1,15 +1,23 @@
 import { BadRequestException } from '@nestjs/common';
 import {
   assertUserImageRefSync,
+  isCloudBaseTempImageUrl,
   normalizeUserImageUrls,
   USER_IMAGE_MUST_UPLOAD_MESSAGE,
 } from '@src/common/media/user-image-ref.util';
 
 describe('user-image-ref.util', () => {
   const originalBase = process.env.UPLOAD_PUBLIC_BASE_URL;
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalEnableLocalUploads = process.env.ENABLE_LOCAL_UPLOADS;
 
   beforeAll(() => {
     process.env.UPLOAD_PUBLIC_BASE_URL = 'http://127.0.0.1:3000';
+  });
+
+  beforeEach(() => {
+    process.env.NODE_ENV = 'test';
+    delete process.env.ENABLE_LOCAL_UPLOADS;
   });
 
   afterAll(() => {
@@ -17,6 +25,16 @@ describe('user-image-ref.util', () => {
       delete process.env.UPLOAD_PUBLIC_BASE_URL;
     } else {
       process.env.UPLOAD_PUBLIC_BASE_URL = originalBase;
+    }
+    if (originalNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+    if (originalEnableLocalUploads === undefined) {
+      delete process.env.ENABLE_LOCAL_UPLOADS;
+    } else {
+      process.env.ENABLE_LOCAL_UPLOADS = originalEnableLocalUploads;
     }
   });
 
@@ -47,6 +65,22 @@ describe('user-image-ref.util', () => {
         'https://syncapp-1304288643.cos.ap-shanghai.myqcloud.com/uploads/posts/user-1/1710000000000_abc.jpg',
       ),
     ).toThrow(BadRequestException);
+  });
+
+  it('accepts CloudBase temp image URLs under ugc/', () => {
+    expect(
+      isCloudBaseTempImageUrl(
+        'https://636c-sync-prd.tcb.qcloud.la/ugc/posts/user-1/abc.jpg',
+      ),
+    ).toBe(true);
+    expect(
+      isCloudBaseTempImageUrl(
+        'https://syncapp-1304288643.cos.ap-shanghai.myqcloud.com/ugc/posts/user-1/abc.jpg',
+      ),
+    ).toBe(true);
+    expect(
+      isCloudBaseTempImageUrl('https://evil.example.com/ugc/posts/x.jpg'),
+    ).toBe(false);
   });
 
   it('normalizes allowed URL list', () => {
