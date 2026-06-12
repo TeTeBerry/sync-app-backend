@@ -31,3 +31,22 @@ export function isResourceOwnedByActor(
 ): boolean {
   return isResourceOwnedByClient(record, actor.clientUserId, actor.displayName);
 }
+
+/** Post ownership: JWT actor, with optional DB profile name when display name drifted. */
+export function isPostOwnedByActor(
+  post: { userId?: string; authorName?: string },
+  actor: RequestActor,
+  profileName?: string | null,
+): boolean {
+  if (isResourceOwnedByActor(post, actor)) {
+    return true;
+  }
+  const name = profileName?.trim();
+  if (!name) {
+    return false;
+  }
+  return isResourceOwnedByActor(
+    post,
+    toRequestActor(actor.resolvedUserId, name),
+  );
+}

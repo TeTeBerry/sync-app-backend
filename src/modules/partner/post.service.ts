@@ -10,7 +10,8 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import { isResourceOwnedByActor } from '../../common/auth/actor-query.util';
+import { isPostOwnedByActor } from '../../common/auth/actor-query.util';
+import { UserService } from '../user/user.service';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
 import {
   ACTIVITY_LOOKUP_PORT,
@@ -51,6 +52,7 @@ export class PostService implements OnModuleInit {
     private readonly postWrite: PostWriteService,
     private readonly postQuery: PostQueryService,
     private readonly postInteraction: PostInteractionService,
+    private readonly userService: UserService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
@@ -159,12 +161,7 @@ export class PostService implements OnModuleInit {
       throw new NotFoundException('帖子不存在');
     }
 
-    if (
-      !isResourceOwnedByActor(
-        { userId: post.userId, authorName: post.authorName },
-        actor,
-      )
-    ) {
+    if (!(await this.isOwnedPost(post, actor))) {
       throw new ForbiddenException('无权编辑该帖子');
     }
 
@@ -211,21 +208,33 @@ export class PostService implements OnModuleInit {
       throw new NotFoundException('帖子不存在');
     }
 
-    if (
-      !isResourceOwnedByActor(
-        { userId: post.userId, authorName: post.authorName },
-        actor,
-      )
-    ) {
+    if (!(await this.isOwnedPost(post, actor))) {
       throw new ForbiddenException('无权删除该帖子');
     }
 
-    await this.postInteraction.deleteInteractionsForPost(id);
+    try {
+      await this.postInteraction.deleteInteractionsForPost(id);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to delete interactions for post ${id}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
     const deleted = await this.repository.deleteById(id);
     if (!deleted) {
       throw new NotFoundException('帖子不存在');
     }
     return { ok: true as const };
+  }
+
+  private async isOwnedPost(
+    post: { userId?: string; authorName?: string },
+    actor: RequestActor,
+  ): Promise<boolean> {
+    const profile = await this.userService.resolveProfile(actor);
+    return isPostOwnedByActor(post, actor, profile?.name);
   }
 
   /** Legacy completed/recruiting posts are normalized to active. */
