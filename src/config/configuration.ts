@@ -141,18 +141,6 @@ export default () => ({
         10,
       ),
       messageToken: cleanEnv(process.env.WECHAT_MESSAGE_TOKEN, ''),
-      /** When true, WeChat login + JWT users must pass `wxa/getuserriskrank` (scene 2 UGC). */
-      userRiskEnabled:
-        cleanEnv(process.env.WECHAT_USER_RISK_ENABLED, 'true') === 'true',
-      /** Allow risk_rank 0..N inclusive; block when rank > N (default 2 → allow 0–2). */
-      userRiskMaxRank: parseInt(
-        cleanEnv(process.env.WECHAT_USER_RISK_MAX_RANK, '2'),
-        10,
-      ),
-      userRiskRecheckHours: parseInt(
-        cleanEnv(process.env.WECHAT_USER_RISK_RECHECK_HOURS, '24'),
-        10,
-      ),
     },
   },
 

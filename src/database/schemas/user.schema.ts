@@ -55,13 +55,6 @@ export class User {
 
   @Prop({ type: Date })
   postRestrictedUntil?: Date;
-
-  /** Last WeChat `getuserriskrank` result (0–4, higher = riskier). */
-  @Prop({ type: Number })
-  wechatRiskRank?: number;
-
-  @Prop({ type: Date })
-  wechatRiskCheckedAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

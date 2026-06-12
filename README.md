@@ -179,7 +179,6 @@ UGC 图片：小程序 `wx.cloud.uploadFile` → 客户端提交 **`cloud://` fi
 
 UGC 文本（帖/评/现场资讯/AI 用户消息/资料/举报说明等）落库前走微信 `msg_sec_check`（同 `WECHAT_CONTENT_SECURITY_ENABLED` 开关）。
 
-微信用户安全等级：登录与 JWT 请求调用 [`getuserriskrank`](https://developers.weixin.qq.com/miniprogram/dev/server/API/sec-center/safety-control-capability/api_getuserriskrank.html)（`scene=2`）。环境变量：`WECHAT_USER_RISK_ENABLED`（默认 true）、`WECHAT_USER_RISK_MAX_RANK`（默认 2）、`WECHAT_USER_RISK_RECHECK_HOURS`（默认 24）。
 | POST | `.../live-info/wristband` | 提交 `{ imageUrl }`（`cloud://` fileID 或本地 dev `/uploads/` URL）；`cloud://` 跳过服务端拉图与 VL 审核；本地 URL 先查重复再 **Qwen-VL**；通过则当日认证 |
 | DELETE | `.../live-info/wristband` | 清除当日认证 |
 | POST | `.../live-info/updates` | 发布 `{ zoneTag, ratings: [{ categoryId, score }], remark? }`（`zoneTag` 须为活动 `liveInfoZones` 中的 id；5 分钟冷却、每小时 8 条上限、24h 内同用户同内容指纹不可重复） |

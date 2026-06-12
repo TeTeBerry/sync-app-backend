@@ -1,6 +1,4 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
-import type { Request } from 'express';
-import { resolveClientIpFromRequest } from '../../common/http/resolve-client-ip.util';
+import { Body, Controller, Post } from '@nestjs/common';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import { Public } from '../../common/auth/public.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
@@ -14,15 +12,11 @@ export class AuthController {
 
   @Public()
   @Post('wechat')
-  wechatLogin(@Body() body: WechatLoginDto, @Req() req: Request) {
-    return this.authService.loginWithWechatCode(
-      body.code,
-      {
-        nickName: body.nickName,
-        avatarUrl: body.avatarUrl,
-      },
-      resolveClientIpFromRequest(req),
-    );
+  wechatLogin(@Body() body: WechatLoginDto) {
+    return this.authService.loginWithWechatCode(body.code, {
+      nickName: body.nickName,
+      avatarUrl: body.avatarUrl,
+    });
   }
 
   @Public()

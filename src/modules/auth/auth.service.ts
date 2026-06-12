@@ -22,8 +22,6 @@ import {
 import { assertUserUgcRemoteImageUrl } from '../../common/media/user-ugc-image.util';
 import { WechatMiniService } from './wechat-mini.service';
 import { WechatContentSecurityService } from './wechat-content-security.service';
-import { WechatUserRiskService } from './wechat-user-risk.service';
-import type { RequestActor } from '../../common/auth/request-actor.types';
 
 export interface AuthTokenPayload {
   sub: string;
@@ -51,55 +49,10 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly userService: UserService,
     private readonly wechatMini: WechatMiniService,
-    private readonly wechatUserRisk: WechatUserRiskService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
     @Inject(USER_REPOSITORY)
     private readonly users: IUserRepository,
   ) {}
-
-  /**
-   * Ensures WeChat users pass `getuserriskrank` before using the app (login + periodic recheck).
-   */
-  async assertActorAllowedToUseApp(
-    actor: RequestActor,
-    clientIp: string,
-  ): Promise<void> {
-    if (actor.source !== 'jwt') {
-      return;
-    }
-
-    const user = await this.users.findByExternalId(actor.resolvedUserId);
-    if (!user) {
-      return;
-    }
-
-    const openid = user.openid?.trim();
-    if (!openid) {
-      return;
-    }
-
-    if (!this.wechatUserRisk.isEnabled()) {
-      return;
-    }
-
-    let rank = user.wechatRiskRank;
-    if (
-      rank == null ||
-      this.wechatUserRisk.shouldRefreshStoredRank(user.wechatRiskCheckedAt)
-    ) {
-      rank = await this.wechatUserRisk.fetchAndAssertRiskRank({
-        openid,
-        clientIp,
-      });
-      await this.users.updateByExternalId(actor.resolvedUserId, {
-        wechatRiskRank: rank,
-        wechatRiskCheckedAt: new Date(),
-      });
-      return;
-    }
-
-    this.wechatUserRisk.assertRankAllowed(rank);
-  }
 
   isDevLoginEnabled(): boolean {
     const mode = this.config.get<string>('auth.mode', 'wechat');
@@ -241,14 +194,8 @@ export class AuthService {
   async loginWithWechatCode(
     code: string,
     profile?: WechatProfileInput,
-    clientIp?: string,
   ): Promise<AuthLoginResult> {
     const session = await this.wechatMini.exchangeCode(code);
-    const ip = clientIp?.trim() || '127.0.0.1';
-    const riskRank = await this.wechatUserRisk.fetchAndAssertRiskRank({
-      openid: session.openid,
-      clientIp: ip,
-    });
     const existing = await this.users.findByOpenid(session.openid);
     const { name, avatar } = await this.resolveModeratedWechatProfile(
       profile,
@@ -265,8 +212,6 @@ export class AuthService {
       avatar,
       notificationsEnabled: existing?.notificationsEnabled ?? true,
       privacyLevel: existing?.privacyLevel ?? 'public',
-      wechatRiskRank: riskRank,
-      wechatRiskCheckedAt: new Date(),
     });
 
     return this.buildLoginResult(record.externalId!, record.name);
