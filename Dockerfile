@@ -9,7 +9,7 @@ COPY package.json package-lock.json ./
 
 # husky prepare is dev-only; skip lifecycle scripts in the image build.
 ENV HUSKY=0
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY nest-cli.json tsconfig.json tsconfig.build.json ./
 COPY src ./src
@@ -29,7 +29,7 @@ RUN apk add --no-cache tini
 COPY package.json package-lock.json ./
 
 ENV HUSKY=0
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev --legacy-peer-deps --ignore-scripts && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
 
