@@ -121,7 +121,7 @@
 ## P5 — 文档与清理 ✅
 
 - [x] `docs/ARCHITECTURE.md`
-- [x] `README.md`、`.env.example` 与实现一致
+- [x] `README.md` 环境变量说明与实现一致
 - [x] 与 `sync-app/docs/API.md` 对齐
 - [x] Profile BFF 委托清晰（`ProfileSummaryService` → Activity / Post / User）
 - [x] `db:reset` / seed 文档化（见 `README.md`）
