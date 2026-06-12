@@ -1,4 +1,7 @@
-FROM node:20-alpine AS build
+# Default: DaoCloud mirror (CN). Override: docker build --build-arg NODE_IMAGE=node:20-alpine .
+ARG NODE_IMAGE=docker.m.daocloud.io/library/node:20-alpine
+
+FROM ${NODE_IMAGE} AS build
 
 WORKDIR /app
 
@@ -13,7 +16,7 @@ COPY src ./src
 
 RUN npm run build
 
-FROM node:20-alpine AS production
+FROM ${NODE_IMAGE} AS production
 
 WORKDIR /app
 
