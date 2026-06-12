@@ -24,12 +24,16 @@ export interface ActivityRegistrationResultDto {
   activityLegacyId: number;
   status: 'registered';
   alreadyRegistered?: boolean;
+  /** Total registrations for this activity after this request. */
+  attendees: number;
 }
 
 export interface ActivityUnregisterResultDto {
   ok: true;
   activityLegacyId: number;
   wasRegistered?: boolean;
+  /** Total registrations for this activity after this request. */
+  attendees: number;
 }
 
 @Injectable()
@@ -63,6 +67,7 @@ export class ActivityRegistrationService {
         activityLegacyId: legacyId,
         status: 'registered',
         alreadyRegistered: true,
+        attendees: activity.attendees ?? 0,
       };
     }
 
@@ -79,22 +84,26 @@ export class ActivityRegistrationService {
     } catch (error) {
       const code = (error as { code?: number })?.code;
       if (code === 11000) {
+        const refreshed = await this.activityLookup.findByLegacyId(legacyId);
         return {
           ok: true,
           activityLegacyId: legacyId,
           status: 'registered',
           alreadyRegistered: true,
+          attendees: refreshed?.attendees ?? activity.attendees ?? 0,
         };
       }
       throw error;
     }
 
     await this.activityService.syncAttendeeCounts([legacyId]);
+    const refreshed = await this.activityLookup.findByLegacyId(legacyId);
 
     return {
       ok: true,
       activityLegacyId: legacyId,
       status: 'registered',
+      attendees: refreshed?.attendees ?? (activity.attendees ?? 0) + 1,
     };
   }
 
@@ -129,10 +138,13 @@ export class ActivityRegistrationService {
       await this.activityService.syncAttendeeCounts([legacyId]);
     }
 
+    const refreshed = await this.activityLookup.findByLegacyId(legacyId);
+
     return {
       ok: true,
       activityLegacyId: legacyId,
       wasRegistered: removed,
+      attendees: refreshed?.attendees ?? activity.attendees ?? 0,
     };
   }
 }
