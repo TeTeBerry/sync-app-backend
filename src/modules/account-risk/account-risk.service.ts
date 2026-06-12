@@ -2,7 +2,6 @@ import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import { isDemoOwnerClient } from '../../common/utils/demo-owner.util';
 import type { RiskAssessment } from '../../ai/agents/agent.types';
 import {
   AccountRiskEvent,
@@ -82,8 +81,8 @@ export class AccountRiskService {
     );
   }
 
-  isExempt(actor: RequestActor): boolean {
-    return isDemoOwnerClient(this.resolveUserId(actor), actor.displayName);
+  isExempt(_actor: RequestActor): boolean {
+    return false;
   }
 
   async getPublicStatus(actor: RequestActor): Promise<AccountRiskPublicStatus> {
@@ -155,7 +154,7 @@ export class AccountRiskService {
 
   async recordScalperReportAgainstUser(targetUserId: string): Promise<void> {
     const userId = targetUserId.trim();
-    if (!userId || isDemoOwnerClient(userId)) return;
+    if (!userId) return;
 
     await this.recordViolationForUserId(userId, {
       violationType: 'scalper',
@@ -168,7 +167,7 @@ export class AccountRiskService {
   /** Whether the user currently cannot post/comment (used for report status). */
   async isUserPostRestricted(userId: string): Promise<boolean> {
     const id = userId?.trim();
-    if (!id || isDemoOwnerClient(id)) return false;
+    if (!id) return false;
 
     await this.maybeClearExpiredRestriction(id);
     const user = await this.userModel
@@ -230,7 +229,7 @@ export class AccountRiskService {
       refId?: string;
     },
   ): Promise<void> {
-    if (isDemoOwnerClient(userId)) return;
+    if (!userId) return;
     if (!shouldEscalateAccountRisk(input.violationType)) return;
 
     await this.eventModel.create({

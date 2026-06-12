@@ -20,7 +20,6 @@ import { ActivityCatalogRefreshService } from './activity-catalog-refresh.servic
 import { ActivityController } from './activity.controller';
 import { ActivityService } from './activity.service';
 import { ActivityRegistrationRepository } from './registration/activity-registration.repository';
-import { ActivityRegistrationSeedService } from './registration/activity-registration.seed.service';
 import { ActivityRegistrationService } from './registration/activity-registration.service';
 import { ACTIVITY_REGISTRATION_REPOSITORY } from './registration/interfaces/activity-registration.repository.interface';
 
@@ -51,7 +50,6 @@ import { ACTIVITY_REGISTRATION_REPOSITORY } from './registration/interfaces/acti
       useExisting: ActivityRegistrationRepository,
     },
     ActivityRegistrationService,
-    ActivityRegistrationSeedService,
   ],
   exports: [
     ActivityService,

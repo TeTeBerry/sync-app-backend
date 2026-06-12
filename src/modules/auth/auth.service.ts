@@ -1,12 +1,6 @@
-import {
-  ForbiddenException,
-  Inject,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { randomUUID } from 'crypto';
 import { toRequestActor } from '../../common/auth/actor-query.util';
 import { UserService, UserMeDto } from '../user/user.service';
 import {
@@ -53,12 +47,6 @@ export class AuthService {
     @Inject(USER_REPOSITORY)
     private readonly users: IUserRepository,
   ) {}
-
-  isDevLoginEnabled(): boolean {
-    const mode = this.config.get<string>('auth.mode', 'wechat');
-    if (mode === 'dev' || mode.includes('dev')) return true;
-    return process.env.NODE_ENV !== 'production';
-  }
 
   signToken(externalId: string, name: string, tokenVersion = 0): string {
     const payload: AuthTokenPayload = {
@@ -215,26 +203,5 @@ export class AuthService {
     });
 
     return this.buildLoginResult(record.externalId!, record.name);
-  }
-
-  async loginWithDev(displayName?: string): Promise<AuthLoginResult> {
-    if (!this.isDevLoginEnabled()) {
-      throw new ForbiddenException('开发登录未启用');
-    }
-
-    const name = displayName?.trim() || '开发用户';
-    await this.wechatContentSecurity.assertTextSafe(name);
-    const externalId = `dev_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
-    const record = await this.users.upsertByExternalId(externalId, {
-      name,
-      handle: `@${externalId.slice(0, 10)}`,
-      location: '',
-      bio: '',
-      avatar: '',
-      notificationsEnabled: true,
-      privacyLevel: 'public',
-    });
-
-    return this.buildLoginResult(externalId, name);
   }
 }

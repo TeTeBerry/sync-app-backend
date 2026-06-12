@@ -15,7 +15,7 @@ export type ResolveWsChatActorResult =
 /**
  * REST uses RequestActorMiddleware on `req.actor`; WS uses upgrade Authorization + body.
  * - Valid Bearer: actor from JWT; body `userId` must match `sub` when present.
- * - No Bearer: demo — require body `userId`.
+ * - No Bearer: anonymous session — require body `userId`.
  */
 export function resolveWsChatActor(
   jwtActor: JwtBearerActor | null,
@@ -48,12 +48,12 @@ export function resolveWsChatActor(
   }
 
   const userName = body.userName?.trim() || '用户';
-  const resolvedUserId = resolveActorUserId(userId, userName);
+  const resolvedUserId = resolveActorUserId(userId);
 
   return {
     ok: true,
     actor: {
-      source: 'demo',
+      source: 'anonymous',
       clientUserId: userId,
       displayName: userName,
       resolvedUserId,

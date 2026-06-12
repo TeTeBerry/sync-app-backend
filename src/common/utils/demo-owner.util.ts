@@ -1,9 +1,4 @@
-import { DEFAULT_PROFILE_EXTERNAL_ID } from '../../modules/user/user.repository';
-
-export const DEMO_OWNER_USER_ID = DEFAULT_PROFILE_EXTERNAL_ID;
-export const DEMO_OWNER_DISPLAY_NAME = 'Zara Chen';
-
-/** AI 快捷标签（当前无展示项） */
+/** AI shortcut tags (reserved; currently unused). */
 export const AI_SHORTCUT_TAGS = [] as const;
 
 export const AI_SHORTCUT_TAG_ALIASES: Record<string, string> = {};
@@ -30,32 +25,11 @@ function authorNameMatches(stored: string, client?: string): boolean {
   );
 }
 
-/** 当前客户端是否对应演示账号：仅通过 userId 确认，不通过 authorName 推断 */
-export function isDemoOwnerClient(
-  userId?: string,
-  _authorName?: string,
-): boolean {
-  const uid = userId?.trim();
-  return uid === DEMO_OWNER_USER_ID;
-}
-
-/** Mongo 查询：演示账号或真实 userId / 昵称 */
+/** Mongo owner filter from JWT actor fields. */
 export function buildOwnerMongoFilter(
   userId?: string,
   authorName?: string,
 ): Record<string, unknown> {
-  if (isDemoOwnerClient(userId, authorName)) {
-    const firstName = DEMO_OWNER_DISPLAY_NAME.split(/\s+/)[0] ?? 'Zara';
-    return {
-      $or: [
-        { userId: DEMO_OWNER_USER_ID },
-        { authorName: DEMO_OWNER_DISPLAY_NAME },
-        { authorName: 'Zara' },
-        { authorName: { $regex: `^${escapeRegex(firstName)}`, $options: 'i' } },
-      ],
-    };
-  }
-
   const clauses: Record<string, unknown>[] = [];
   const uid = userId?.trim();
   const name = authorName?.trim();
@@ -79,7 +53,7 @@ export function buildOwnerMongoFilter(
   return { $or: clauses };
 }
 
-/** 帖子 / 拼单等资源是否属于当前请求用户 */
+/** Whether a resource belongs to the request actor. */
 export function isResourceOwnedByClient(
   record: { userId?: string; authorName?: string },
   userId?: string,
@@ -90,9 +64,6 @@ export function isResourceOwnedByClient(
 
   if (uid && record.userId === uid) return true;
   if (name && record.authorName && authorNameMatches(record.authorName, name)) {
-    return true;
-  }
-  if (isDemoOwnerClient(uid, name) && record.userId === DEMO_OWNER_USER_ID) {
     return true;
   }
   return false;

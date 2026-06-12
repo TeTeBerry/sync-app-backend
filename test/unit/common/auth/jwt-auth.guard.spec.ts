@@ -1,16 +1,12 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { JwtAuthGuard } from '@src/common/auth/jwt-auth.guard';
 import { IS_PUBLIC_KEY } from '@src/common/auth/auth.constants';
 import { AUTH_SESSION_EXPIRED_MESSAGE } from '@src/common/auth/jwt-bearer.util';
 import type { AuthService } from '@src/modules/auth/auth.service';
 
-function createContext(
-  headers: Record<string, string> = {},
-  query: Record<string, string> = {},
-): ExecutionContext {
-  const request = { headers, query, actor: undefined } as {
+function createContext(headers: Record<string, string> = {}): ExecutionContext {
+  const request = { headers, query: {}, actor: undefined } as {
     headers: Record<string, string>;
     query: Record<string, string>;
     actor?: unknown;
@@ -34,17 +30,12 @@ describe('JwtAuthGuard', () => {
     getAllAndOverride: jest.fn(),
   } as unknown as Reflector;
 
-  const configService = {
-    get: jest.fn(),
-  } as unknown as ConfigService;
-
   let guard: JwtAuthGuard;
 
   beforeEach(() => {
     jest.clearAllMocks();
     (reflector.getAllAndOverride as jest.Mock).mockReturnValue(false);
-    (configService.get as jest.Mock).mockReturnValue(false);
-    guard = new JwtAuthGuard(reflector, authService, configService);
+    guard = new JwtAuthGuard(reflector, authService);
   });
 
   it('allows @Public routes without Authorization', async () => {
@@ -82,7 +73,7 @@ describe('JwtAuthGuard', () => {
     ).rejects.toThrow(new UnauthorizedException(AUTH_SESSION_EXPIRED_MESSAGE));
   });
 
-  it('rejects missing Bearer when demo query disabled', async () => {
+  it('rejects missing Bearer on protected routes', async () => {
     (authService.resolveBearerAuth as jest.Mock).mockResolvedValue({
       kind: 'absent',
     });
@@ -90,16 +81,5 @@ describe('JwtAuthGuard', () => {
     await expect(guard.canActivate(createContext())).rejects.toThrow(
       new UnauthorizedException('请先登录'),
     );
-  });
-
-  it('allows demo query when AUTH_ALLOW_DEMO is enabled', async () => {
-    (authService.resolveBearerAuth as jest.Mock).mockResolvedValue({
-      kind: 'absent',
-    });
-    (configService.get as jest.Mock).mockReturnValue(true);
-
-    const ctx = createContext({}, { userId: 'demo-client' });
-    await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    expect(ctx.switchToHttp().getRequest().actor?.source).toBe('demo');
   });
 });

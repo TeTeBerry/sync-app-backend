@@ -7,19 +7,11 @@ import {
   UserRecord,
 } from './interfaces/user.repository.interface';
 
-const DEFAULT_PROFILE_EXTERNAL_ID = 'demo-zara';
-
 @Injectable()
 export class UserRepository implements IUserRepository {
   constructor(
     @InjectModel(User.name) private readonly model: Model<UserDocument>,
   ) {}
-
-  async findDefaultProfile(): Promise<UserRecord | null> {
-    return this.model
-      .findOne({ externalId: DEFAULT_PROFILE_EXTERNAL_ID })
-      .lean();
-  }
 
   async findByExternalId(externalId: string): Promise<UserRecord | null> {
     return this.model.findOne({ externalId }).lean();
@@ -54,16 +46,6 @@ export class UserRepository implements IUserRepository {
     return doc;
   }
 
-  async upsertDefaultProfile(data: Partial<UserDocument>): Promise<UserRecord> {
-    return this.model
-      .findOneAndUpdate(
-        { externalId: DEFAULT_PROFILE_EXTERNAL_ID },
-        { ...data, externalId: DEFAULT_PROFILE_EXTERNAL_ID },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
-      )
-      .lean();
-  }
-
   async updateByExternalId(
     externalId: string,
     data: Partial<UserDocument>,
@@ -85,17 +67,14 @@ export class UserRepository implements IUserRepository {
       )
       .lean();
     if (!doc) {
-      throw new Error(`Failed to upsert user profile: ${externalId}`);
+      throw new Error(`Failed to upsert user: ${externalId}`);
     }
     return doc;
   }
 
   async findByExternalIds(externalIds: string[]): Promise<UserRecord[]> {
     if (!externalIds.length) return [];
-    return this.model
-      .find({ externalId: { $in: externalIds } })
-      .select('externalId privacyLevel')
-      .lean();
+    return this.model.find({ externalId: { $in: externalIds } }).lean();
   }
 
   async findSummariesByExternalIds(
@@ -104,7 +83,7 @@ export class UserRepository implements IUserRepository {
     if (!externalIds.length) return [];
     return this.model
       .find({ externalId: { $in: externalIds } })
-      .select('externalId name avatar handle')
+      .select('externalId name handle avatar')
       .lean();
   }
 
@@ -128,5 +107,3 @@ export class UserRepository implements IUserRepository {
     return doc?.tokenVersion ?? 1;
   }
 }
-
-export { DEFAULT_PROFILE_EXTERNAL_ID };

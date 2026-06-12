@@ -5,7 +5,6 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  OnModuleInit,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -18,7 +17,6 @@ import {
   EventLiveWristband,
   EventLiveWristbandDocument,
 } from '../../database/schemas/event-live-wristband.schema';
-import { isDemoSeedEnabled } from '../../common/utils/seed-policy.util';
 import { ActivityService } from '../activity/activity.service';
 import { UserService } from '../user/user.service';
 import { PublishLiveInfoDto } from './dto/publish-live-info.dto';
@@ -47,7 +45,6 @@ import {
   normalizeZoneTag,
   resolveLiveInfoZones,
 } from './domain/live-info-zones.util';
-import { LIVE_INFO_SEED_UPDATES } from './live-info.seed';
 import { OnSiteIdentityService } from './on-site-identity.service';
 import {
   wristbandImageFileKey,
@@ -70,7 +67,7 @@ const WRISTBAND_DUPLICATE_MESSAGE =
   '该手环照片已使用过，请拍摄本人手腕佩戴的活动腕带';
 
 @Injectable()
-export class LiveInfoService implements OnModuleInit {
+export class LiveInfoService {
   private readonly logger = new Logger(LiveInfoService.name);
 
   constructor(
@@ -85,13 +82,6 @@ export class LiveInfoService implements OnModuleInit {
     private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
-
-  async onModuleInit(): Promise<void> {
-    if (!isDemoSeedEnabled()) return;
-    await this.seedDemoUpdates().catch((err) => {
-      this.logger.warn(`live-info seed skipped: ${String(err)}`);
-    });
-  }
 
   private async ensureActivity(legacyId: number) {
     const activity = await this.activityService.findByLegacyId(legacyId);
@@ -530,33 +520,5 @@ export class LiveInfoService implements OnModuleInit {
         authorOnSiteVerified: onSite,
       }),
     };
-  }
-
-  private async seedDemoUpdates(): Promise<void> {
-    for (const seed of LIVE_INFO_SEED_UPDATES) {
-      const exists = await this.updateModel.exists({
-        activityLegacyId: seed.activityLegacyId,
-        userId: seed.userId,
-        remark: seed.remark,
-      });
-      if (exists) continue;
-
-      const expiresAt = new Date(Date.now() + LIVE_INFO_UPDATE_TTL_MS);
-      const minutesAgo = seed.minutesAgo ?? 0;
-      const createdAt = new Date(Date.now() - minutesAgo * 60_000);
-      await this.updateModel.create({
-        activityLegacyId: seed.activityLegacyId,
-        userId: seed.userId,
-        authorName: seed.authorName,
-        avatar: seed.avatar,
-        zoneTag: seed.zoneTag ?? 'venue',
-        ratings: seed.ratings,
-        remark: seed.remark,
-        expiresAt,
-        likedByUserIds: seed.likedByUserIds ?? [],
-        createdAt,
-        updatedAt: createdAt,
-      });
-    }
   }
 }

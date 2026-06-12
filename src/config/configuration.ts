@@ -1,5 +1,4 @@
 import { parseCorsOrigins } from '../common/cors/cors-config.util';
-import { isDemoSeedEnabled } from '../common/utils/seed-policy.util';
 
 /**
  * 环境变量集中配置
@@ -98,10 +97,6 @@ export default () => ({
     url: cleanEnv(process.env.REDIS_URL, ''),
   },
 
-  seed: {
-    demoDataEnabled: isDemoSeedEnabled(),
-  },
-
   wechatPay: {
     mchId: cleanEnv(process.env.WECHAT_PAY_MCH_ID, ''),
     apiKey: cleanEnv(process.env.WECHAT_PAY_API_KEY, ''),
@@ -113,10 +108,8 @@ export default () => ({
       'sync-dev-jwt-secret-change-me',
     ),
     jwtExpiresIn: cleanEnv(process.env.JWT_EXPIRES_IN, '30d'),
-    /** `dev` enables POST /auth/dev; `wechat` is production default. */
+    /** `wechat` is the only supported production auth mode. */
     mode: cleanEnv(process.env.AUTH_MODE, 'wechat'),
-    /** When false (default), REST requires Bearer JWT except `@Public()` routes. */
-    allowDemoQuery: cleanEnv(process.env.AUTH_ALLOW_DEMO, 'false') === 'true',
     wechatMini: {
       appId: cleanEnv(
         process.env.WECHAT_MINI_APP_ID ?? process.env.WX_APP_ID,

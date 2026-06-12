@@ -8,6 +8,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
+import { Public } from '../../common/auth/public.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { GenerateItineraryDto } from './dto/generate-itinerary.dto';
 import { SaveItineraryDto } from './dto/save-itinerary.dto';
@@ -17,6 +18,7 @@ import { ItineraryService } from './itinerary.service';
 export class ItineraryController {
   constructor(private readonly itineraryService: ItineraryService) {}
 
+  @Public()
   @Get('schedule')
   getSchedule(
     @Param('legacyId', ParseIntPipe) legacyId: number,

@@ -1,23 +1,4 @@
-import { DEMO_OWNER_USER_ID } from './demo-owner.util';
-
 export type AuthorGender = 'female' | 'male';
-
-const FEMALE_DEMO_USER_IDS = new Set([
-  DEMO_OWNER_USER_ID,
-  'demo-luna',
-  'demo-mia',
-  'demo-jade',
-  'demo-nova-storm',
-]);
-
-const MALE_DEMO_USER_IDS = new Set([
-  'demo-ryan',
-  'demo-sam',
-  'demo-sean',
-  'demo-leo',
-  'demo-kai',
-  'demo-alex',
-]);
 
 const FEMALE_NAME_HINTS = [
   'luna',
@@ -48,10 +29,6 @@ export function inferAuthorGenderFromPost(post: {
   body?: string;
   tags?: string[];
 }): AuthorGender | undefined {
-  const userId = post.userId?.trim();
-  if (userId && FEMALE_DEMO_USER_IDS.has(userId)) return 'female';
-  if (userId && MALE_DEMO_USER_IDS.has(userId)) return 'male';
-
   const haystack = [...(post.tags ?? []), post.body ?? ''].join(' ');
 
   if (

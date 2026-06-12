@@ -53,8 +53,11 @@ describe('AuthService.logout and resolveBearerAuth', () => {
     expect(users.incrementTokenVersion).toHaveBeenCalledWith('user-1');
   });
 
-  it('does not increment tokenVersion for demo logout', async () => {
-    await service.logout(toRequestActor('demo-zara', 'Zara'));
+  it('does not increment tokenVersion for anonymous logout', async () => {
+    const actor = toRequestActor('session-1', 'Guest');
+    actor.source = 'anonymous';
+
+    await service.logout(actor);
 
     expect(users.incrementTokenVersion).not.toHaveBeenCalled();
   });

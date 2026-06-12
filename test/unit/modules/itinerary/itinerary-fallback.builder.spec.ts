@@ -113,4 +113,17 @@ describe('buildFallbackItinerary', () => {
     expect(days).toHaveLength(1);
     expect(days[0].items[0].title).toBe('行程生成中');
   });
+
+  it('builds days from performances when sessions are empty', () => {
+    const { days } = buildFallbackItinerary({
+      eventMeta: '风暴',
+      sessions: [],
+      performances,
+      selectedDjIds: ['marshmello', 'illenium'],
+      primaryDateKey: 'jun13',
+    });
+
+    expect(days).toHaveLength(2);
+    expect(days.map((day) => day.id)).toEqual(['jun13', 'jun14']);
+  });
 });

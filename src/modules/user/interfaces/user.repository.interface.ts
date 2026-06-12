@@ -14,14 +14,12 @@ export type UserRecord = Partial<UserDocument> & {
 };
 
 export interface IUserRepository {
-  findDefaultProfile(): Promise<UserRecord | null>;
   findByOpenid(openid: string): Promise<UserRecord | null>;
   findByExternalId(externalId: string): Promise<UserRecord | null>;
   upsertWechatUser(
     openid: string,
     data: Partial<UserDocument> & { unionid?: string },
   ): Promise<UserRecord>;
-  upsertDefaultProfile(data: Partial<UserDocument>): Promise<UserRecord>;
   updateByExternalId(
     externalId: string,
     data: Partial<UserDocument>,

@@ -1,20 +1,9 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   IUserRepository,
   UserRecord,
   USER_REPOSITORY,
 } from './interfaces/user.repository.interface';
-import { DEFAULT_PROFILE_EXTERNAL_ID } from './user.repository';
-import {
-  DEMO_OWNER_USER_ID,
-  isDemoOwnerClient,
-} from '../../common/utils/demo-owner.util';
-import { isDemoSeedEnabled } from '../../common/utils/seed-policy.util';
 import { UpdateUserMeDto } from './dto/update-user-me.dto';
 import {
   assertUserUgcTexts,
@@ -46,23 +35,21 @@ export interface UserMeDto {
   accountRisk?: AccountRiskPublicStatus;
 }
 
-const DEMO_PROFILE = {
-  externalId: DEFAULT_PROFILE_EXTERNAL_ID,
-  name: 'Zara Chen',
-  handle: '@zara',
-  location: '上海',
-  bio: '电音爱好者',
-  avatar:
-    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
-  city: '上海',
-  favorGenres: ['EDM', 'Techno'],
-  budgetLevel: 'medium',
+const EMPTY_PROFILE_DEFAULTS = {
+  name: '用户',
+  handle: '@user',
+  location: '',
+  bio: '',
+  avatar: '',
+  city: '',
+  favorGenres: [] as string[],
+  budgetLevel: '',
   notificationsEnabled: true,
   privacyLevel: 'public' as const,
 };
 
 @Injectable()
-export class UserService implements OnModuleInit {
+export class UserService {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly repository: IUserRepository,
@@ -71,31 +58,14 @@ export class UserService implements OnModuleInit {
     private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
 
-  async onModuleInit() {
-    if (!isDemoSeedEnabled()) return;
-    await this.repository.upsertDefaultProfile(DEMO_PROFILE);
-  }
-
   ping() {
     return { ok: true, scope: 'user' };
   }
 
-  getDefaultProfile() {
-    return this.repository.findDefaultProfile();
-  }
-
-  async resolveProfile(actor: RequestActor) {
-    if (isDemoOwnerClient(actor.clientUserId, actor.displayName)) {
-      return this.repository.findDefaultProfile();
-    }
-
+  async resolveProfile(actor: RequestActor): Promise<UserRecord | null> {
     const uid = actor.clientUserId?.trim();
-    if (uid && uid !== DEFAULT_PROFILE_EXTERNAL_ID) {
-      const found = await this.repository.findByExternalId(uid);
-      if (found) return found;
-    }
-
-    return this.repository.findDefaultProfile();
+    if (!uid) return null;
+    return this.repository.findByExternalId(uid);
   }
 
   /** Resolve profile for stored post/comment author fields. */
@@ -112,17 +82,18 @@ export class UserService implements OnModuleInit {
   private toMeDto(record: UserRecord, externalId: string): UserMeDto {
     return {
       id: record.externalId ?? externalId,
-      name: record.name ?? DEMO_PROFILE.name,
-      handle: record.handle ?? DEMO_PROFILE.handle,
-      location: record.location ?? DEMO_PROFILE.location,
-      bio: record.bio ?? DEMO_PROFILE.bio,
-      avatar: record.avatar ?? DEMO_PROFILE.avatar,
-      city: record.city ?? DEMO_PROFILE.city,
-      favorGenres: record.favorGenres ?? DEMO_PROFILE.favorGenres,
-      budgetLevel: record.budgetLevel ?? DEMO_PROFILE.budgetLevel,
+      name: record.name ?? EMPTY_PROFILE_DEFAULTS.name,
+      handle: record.handle ?? EMPTY_PROFILE_DEFAULTS.handle,
+      location: record.location ?? EMPTY_PROFILE_DEFAULTS.location,
+      bio: record.bio ?? EMPTY_PROFILE_DEFAULTS.bio,
+      avatar: record.avatar ?? EMPTY_PROFILE_DEFAULTS.avatar,
+      city: record.city ?? EMPTY_PROFILE_DEFAULTS.city,
+      favorGenres: record.favorGenres ?? EMPTY_PROFILE_DEFAULTS.favorGenres,
+      budgetLevel: record.budgetLevel ?? EMPTY_PROFILE_DEFAULTS.budgetLevel,
       notificationsEnabled:
-        record.notificationsEnabled ?? DEMO_PROFILE.notificationsEnabled,
-      privacyLevel: record.privacyLevel ?? DEMO_PROFILE.privacyLevel,
+        record.notificationsEnabled ??
+        EMPTY_PROFILE_DEFAULTS.notificationsEnabled,
+      privacyLevel: record.privacyLevel ?? EMPTY_PROFILE_DEFAULTS.privacyLevel,
     };
   }
 
@@ -136,7 +107,10 @@ export class UserService implements OnModuleInit {
     const map = new Map<string, 'public' | 'friends' | 'private'>();
     for (const row of rows) {
       if (!row.externalId) continue;
-      map.set(row.externalId, row.privacyLevel ?? DEMO_PROFILE.privacyLevel);
+      map.set(
+        row.externalId,
+        row.privacyLevel ?? EMPTY_PROFILE_DEFAULTS.privacyLevel,
+      );
     }
     return map;
   }
@@ -185,13 +159,13 @@ export class UserService implements OnModuleInit {
     const record =
       updated ??
       (await this.repository.upsertByExternalId(externalId, {
-        name: actor.displayName?.trim() || DEMO_PROFILE.name,
-        handle: DEMO_PROFILE.handle,
-        location: DEMO_PROFILE.location,
-        bio: DEMO_PROFILE.bio,
-        avatar: DEMO_PROFILE.avatar,
-        notificationsEnabled: DEMO_PROFILE.notificationsEnabled,
-        privacyLevel: DEMO_PROFILE.privacyLevel,
+        name: actor.displayName?.trim() || EMPTY_PROFILE_DEFAULTS.name,
+        handle: EMPTY_PROFILE_DEFAULTS.handle,
+        location: EMPTY_PROFILE_DEFAULTS.location,
+        bio: EMPTY_PROFILE_DEFAULTS.bio,
+        avatar: EMPTY_PROFILE_DEFAULTS.avatar,
+        notificationsEnabled: EMPTY_PROFILE_DEFAULTS.notificationsEnabled,
+        privacyLevel: EMPTY_PROFILE_DEFAULTS.privacyLevel,
         ...body,
       }));
 

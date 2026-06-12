@@ -13,7 +13,6 @@ import {
   isResourceOwnedByActor,
   toRequestActor,
 } from '../../common/auth/actor-query.util';
-import { isDemoSeedEnabled } from '../../common/utils/seed-policy.util';
 import {
   PostApplication,
   PostApplicationDocument,
@@ -22,7 +21,6 @@ import {
   PostComment,
   PostCommentDocument,
 } from '../../database/schemas/post-comment.schema';
-import { Post, PostDocument } from '../../database/schemas/post.schema';
 import {
   PostLike,
   PostLikeDocument,
@@ -49,7 +47,6 @@ import {
   IPostRepository,
   POST_REPOSITORY,
 } from './interfaces/post.repository.interface';
-import { POST_COMMENT_SEED } from './post-comment.seed';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import {
   PostApplicationMessage,
@@ -70,8 +67,6 @@ export class PostInteractionService {
     private readonly commentModel: Model<PostCommentDocument>,
     @InjectModel(PostApplicationMessage.name)
     private readonly applicationMessageModel: Model<PostApplicationMessageDocument>,
-    @InjectModel(Post.name)
-    private readonly postModel: Model<PostDocument>,
     private readonly userService: UserService,
     private readonly accountRisk: AccountRiskService,
     @Inject(POST_NOTIFICATION_PORT)
@@ -327,87 +322,6 @@ export class PostInteractionService {
       await this.likeModel.exists({ userId: actorUserId, postId: id }),
     );
     return toPostMutationResponse(updated, liked);
-  }
-
-  /** Idempotent demo replies for seeded posts (matched by body substring). */
-  async ensureDemoPostComments(): Promise<void> {
-    if (!isDemoSeedEnabled()) return;
-    for (const entry of POST_COMMENT_SEED) {
-      try {
-        const filter: Record<string, unknown> = {
-          body: { $regex: entry.postBodyContains },
-        };
-        if (entry.activityLegacyId != null) {
-          filter.activityLegacyId = entry.activityLegacyId;
-        }
-
-        const post = await this.postModel.findOne(filter).lean();
-        if (!post?._id) continue;
-
-        const postId = String(post._id);
-        let inserted = 0;
-
-        for (const seed of entry.comments) {
-          let parentId: string | undefined;
-          const parentExists = await this.commentModel.exists({
-            postId,
-            userId: seed.userId,
-            body: seed.body,
-          });
-
-          if (parentExists) {
-            const existingParent = await this.commentModel
-              .findOne({ postId, userId: seed.userId, body: seed.body })
-              .select('_id')
-              .lean();
-            parentId = existingParent?._id
-              ? String(existingParent._id)
-              : undefined;
-          } else {
-            const created = await this.commentModel.create({
-              postId,
-              userId: seed.userId,
-              authorName: seed.authorName,
-              body: seed.body,
-              createdAt: new Date(Date.now() - seed.ageMs),
-            });
-            parentId = String(created._id);
-            inserted += 1;
-          }
-
-          if (!parentId || !seed.replies?.length) continue;
-
-          for (const reply of seed.replies) {
-            const replyExists = await this.commentModel.exists({
-              postId,
-              userId: reply.userId,
-              body: reply.body,
-              parentCommentId: parentId,
-            });
-            if (replyExists) continue;
-
-            await this.commentModel.create({
-              postId,
-              userId: reply.userId,
-              authorName: reply.authorName,
-              body: reply.body,
-              parentCommentId: parentId,
-              createdAt: new Date(Date.now() - reply.ageMs),
-            });
-            inserted += 1;
-          }
-        }
-
-        if (inserted > 0) {
-          const count = await this.commentModel.countDocuments({ postId });
-          await this.repository.updateById(postId, { comments: count });
-        }
-      } catch (error) {
-        this.logger.warn(
-          `Demo comment seed skipped for "${entry.postBodyContains}": ${(error as Error).message}`,
-        );
-      }
-    }
   }
 
   async deleteInteractionsForPost(postId: string): Promise<void> {

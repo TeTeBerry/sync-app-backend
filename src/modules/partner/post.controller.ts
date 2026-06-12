@@ -9,6 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
+import { Public } from '../../common/auth/public.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { CreatePostCommentDto } from './dto/create-post-comment.dto';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -19,6 +20,7 @@ import { PostService } from './post.service';
 export class PostController {
   constructor(private readonly postService: PostService) {}
 
+  @Public()
   @Get('popular')
   listPopular(
     @CurrentActor() actor: RequestActor,

@@ -28,7 +28,6 @@ describe('PostInteractionService.listComments pagination', () => {
       {} as never,
       commentModel as never,
       { deleteMany: jest.fn() } as never,
-      {} as never,
       userService,
       {
         assertCanPublish: jest.fn().mockResolvedValue(undefined),

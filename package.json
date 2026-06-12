@@ -26,6 +26,7 @@
     "wait:mongo": "node scripts/wait-for-port.mjs localhost 27017 90000 MongoDB",
     "db:reset": "node scripts/reset-test-data.mjs",
     "db:sync-catalog": "node scripts/sync-activity-catalog.mjs",
+    "db:seed-itinerary": "node scripts/seed-itinerary-catalog.mjs",
     "db:crawl-discogs-djs": "node scripts/crawl-discogs-djs.mjs",
     "db:crawl-discogs-djs-gap": "node scripts/crawl-discogs-djs-gap.mjs",
     "db:translate-dj-locale": "node scripts/translate-dj-locale.mjs",

@@ -5,7 +5,10 @@ import {
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
 } from './edc-thailand-itinerary.seed';
 
-export const ITINERARY_DEMO_ACTIVITY_LEGACY_ID = 4;
+export const STORM_ACTIVITY_LEGACY_ID = 4;
+
+/** @deprecated Use STORM_ACTIVITY_LEGACY_ID */
+export const ITINERARY_DEMO_ACTIVITY_LEGACY_ID = STORM_ACTIVITY_LEGACY_ID;
 
 export { ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID };
 
@@ -35,7 +38,7 @@ function perf(input: SeedPerformance) {
     endMinutes += 24 * 60;
   }
   return {
-    activityLegacyId: ITINERARY_DEMO_ACTIVITY_LEGACY_ID,
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
     ...input,
     startMinutes,
     endMinutes,
@@ -44,14 +47,14 @@ function perf(input: SeedPerformance) {
 
 export const ALL_FESTIVAL_SESSION_SEED = [
   {
-    activityLegacyId: ITINERARY_DEMO_ACTIVITY_LEGACY_ID,
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
     dateKey: 'jun13',
     label: '6月13日',
     bannerDateLabel: '6月13日',
     sortOrder: 0,
   },
   {
-    activityLegacyId: ITINERARY_DEMO_ACTIVITY_LEGACY_ID,
+    activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
     dateKey: 'jun14',
     label: '6月14日',
     bannerDateLabel: '6月14日',

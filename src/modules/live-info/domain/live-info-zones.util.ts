@@ -9,13 +9,6 @@ export const DEFAULT_LIVE_INFO_ZONES: LiveInfoZoneConfig[] = [
   { id: LIVE_INFO_VENUE_ZONE_ID, label: '全场' },
 ];
 
-export const STORM_DEMO_LIVE_INFO_ZONES: LiveInfoZoneConfig[] = [
-  { id: 'stage_a', label: 'A区' },
-  { id: 'stage_b', label: 'B区' },
-  { id: 'vip_booth', label: '卡座' },
-  { id: LIVE_INFO_VENUE_ZONE_ID, label: '全场' },
-];
-
 export function resolveLiveInfoZones(
   activity?: { liveInfoZones?: LiveInfoZoneConfig[] } | null,
 ): LiveInfoZoneConfig[] {

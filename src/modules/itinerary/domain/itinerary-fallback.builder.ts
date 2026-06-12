@@ -9,6 +9,25 @@ import { parseTimeToMinutes } from './time-minutes.util';
 
 const DOT_ROTATION = ['pink', 'cyan', 'purple'] as const;
 
+function sessionsFromPerformances(
+  performances: ArtistPerformance[],
+): FestivalSession[] {
+  const byDateKey = new Map<string, FestivalSession>();
+  for (const perf of performances) {
+    if (byDateKey.has(perf.dateKey)) continue;
+    byDateKey.set(perf.dateKey, {
+      activityLegacyId: perf.activityLegacyId,
+      dateKey: perf.dateKey,
+      label: perf.dateLabel || perf.dateKey,
+      bannerDateLabel: perf.dateLabel || perf.dateKey,
+      sortOrder: byDateKey.size,
+    } as FestivalSession);
+  }
+  return [...byDateKey.values()].sort((a, b) =>
+    a.dateKey.localeCompare(b.dateKey),
+  );
+}
+
 function buildPerformanceItem(
   perf: ArtistPerformance,
   index: number,
@@ -41,22 +60,35 @@ export function buildFallbackItinerary(input: {
   primaryDateKey?: string;
 }): { eventMeta: string; days: ItineraryDay[] } {
   const selected = new Set(input.selectedDjIds);
+  const sessions =
+    input.sessions.length > 0
+      ? input.sessions
+      : sessionsFromPerformances(input.performances);
+
+  const sessionDateKeys = sessions.map((session) => session.dateKey);
+  const selectedPerfDateKeys = [
+    ...new Set(
+      input.performances
+        .filter((perf) => selected.has(perf.artistId))
+        .map((perf) => perf.dateKey),
+    ),
+  ];
+
   const dateKeys =
     input.primaryDateKey != null
       ? [
           input.primaryDateKey,
-          ...input.sessions
-            .map((s) => s.dateKey)
-            .filter((k) => k !== input.primaryDateKey),
+          ...sessionDateKeys.filter((key) => key !== input.primaryDateKey),
+          ...selectedPerfDateKeys.filter((key) => key !== input.primaryDateKey),
         ]
-      : input.sessions.map((s) => s.dateKey).sort();
+      : [...sessionDateKeys, ...selectedPerfDateKeys].sort();
 
   const uniqueDateKeys = [...new Set(dateKeys)];
 
   const days: ItineraryDay[] = [];
 
   for (const dateKey of uniqueDateKeys) {
-    const session = input.sessions.find((s) => s.dateKey === dateKey);
+    const session = sessions.find((s) => s.dateKey === dateKey);
     const dayPerfs = input.performances
       .filter((p) => p.dateKey === dateKey && selected.has(p.artistId))
       .sort((a, b) => a.startMinutes - b.startMinutes);
@@ -91,8 +123,8 @@ export function buildFallbackItinerary(input: {
     });
   }
 
-  if (days.length === 0 && input.sessions.length > 0) {
-    const session = input.sessions[0];
+  if (days.length === 0 && sessions.length > 0) {
+    const session = sessions[0];
     days.push({
       id: session.dateKey,
       label: session.label,

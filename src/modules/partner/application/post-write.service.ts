@@ -203,7 +203,7 @@ export class PostWriteService {
 
     const created = await this.repository.create({
       userId: ownerUserId,
-      authorName: profile?.name ?? actor.displayName?.trim() ?? 'Zara Chen',
+      authorName: profile?.name ?? actor.displayName?.trim() ?? '用户',
       authorHandle: profile?.handle,
       authorAvatar: profile?.avatar,
       activityLegacyId,

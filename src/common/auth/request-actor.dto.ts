@@ -3,7 +3,7 @@ import type { ActorSource, RequestActor } from './request-actor.types';
 
 /** Validated `RequestActor` for nested DTOs (set server-side, not from untrusted client JSON). */
 export class RequestActorDto implements RequestActor {
-  @IsIn(['jwt', 'demo'])
+  @IsIn(['jwt', 'anonymous'])
   source!: ActorSource;
 
   @IsString()

@@ -57,7 +57,7 @@ sudo docker compose exec app printenv REDIS_URL            # redis://redis:6379
 `printenv` 为空 → 服务器上没有 `.env.production` 或文件里未写对应变量。  
 无 `docker` 权限时用 `sudo`；长期可把用户加入 `docker` 组后重新登录 SSH。
 
-Compose 已为 `app` 注入 `MONGODB_URI`、`REDIS_URL=redis://redis:6379`、`SEED_DEMO_DATA=false`（生产不写 demo 帖/评论/行程 lineup 等）。活动目录 seed 仍会 upsert。
+Compose 已为 `app` 注入 `MONGODB_URI`、`REDIS_URL=redis://redis:6379`、`SEED_DEMO_DATA=false`（生产不写 demo 帖/评论等）。活动目录与 **电音节阵容**（`festival_sessions` / `artist_performances`）会在服务启动时 upsert；也可手动执行 `npm run db:seed-itinerary`。
 
 **Chroma（可选 RAG）**：
 

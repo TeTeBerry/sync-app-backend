@@ -37,7 +37,7 @@ export class ItineraryCacheService {
   }
 
   scheduleKey(activityLegacyId: number, dateKey?: string): string {
-    return `itinerary:schedule:v4:${activityLegacyId}:${dateKey ?? 'all'}`;
+    return `itinerary:schedule:v6:${activityLegacyId}:${dateKey ?? 'all'}`;
   }
 
   generationKey(
@@ -50,7 +50,7 @@ export class ItineraryCacheService {
       .update(`${activityLegacyId}:${dateKey}:${sorted}`)
       .digest('hex')
       .slice(0, 24);
-    return `itinerary:gen:${hash}`;
+    return `itinerary:gen:v2:${hash}`;
   }
 
   generateLockKey(userId: string, activityLegacyId: number): string {

@@ -46,7 +46,7 @@ export type AiChatWsServerMessage =
       sessionId?: string;
       activityLegacyId?: number;
       /** Present when upgrade carried a valid Bearer JWT. */
-      auth?: 'jwt' | 'demo';
+      auth?: 'jwt' | 'anonymous';
     }
   | { type: 'error'; message: string };
 

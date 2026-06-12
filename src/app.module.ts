@@ -74,7 +74,6 @@ export class AppModule implements NestModule {
       .apply(RequestActorMiddleware, ActivityContextMiddleware)
       .exclude(
         { path: 'auth/wechat', method: RequestMethod.POST },
-        { path: 'auth/dev', method: RequestMethod.POST },
         { path: 'health', method: RequestMethod.GET },
         { path: 'wechat/message', method: RequestMethod.GET },
         { path: 'wechat/message', method: RequestMethod.POST },

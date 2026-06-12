@@ -57,6 +57,35 @@ function formatMmDd(isoDate: string) {
   return `${month}/${day}`;
 }
 
+function formatLocalIsoDate(date: Date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function enumerateLocalIsoDates(start: Date, end: Date) {
+  const dates: string[] = [];
+  const cursor = new Date(
+    start.getFullYear(),
+    start.getMonth(),
+    start.getDate(),
+  );
+  const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+
+  while (cursor <= endDay) {
+    dates.push(formatLocalIsoDate(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return dates;
+}
+
+function isoToFestivalDateKey(isoDate: string) {
+  const [, month, day] = isoDate.split('-').map(Number);
+  const monthKey = Object.entries(MONTH_MAP).find(
+    ([, value]) => value === month,
+  )?.[0];
+  return monthKey && Number.isFinite(day) ? `${monthKey}${day}` : isoDate;
+}
+
 function resolveActivitySubtitle(
   location: string | undefined,
   dayIndex: number,
@@ -131,21 +160,30 @@ export function buildActivityTravelPlanNodes(input: {
     return [];
   }
 
-  const startIso = parsedRange.start.toISOString().slice(0, 10);
-  const endIso = parsedRange.end.toISOString().slice(0, 10);
-  const nodeId = `activity-event-${input.activityLegacyId}`;
+  const dayIsos = enumerateLocalIsoDates(parsedRange.start, parsedRange.end);
+  if (!dayIsos.length) {
+    return [];
+  }
 
-  return [
-    {
+  return dayIsos.map((isoDate, index) => {
+    const nodeId = `activity-event-${isoToFestivalDateKey(isoDate)}`;
+    const dayNumber = index + 1;
+
+    return {
       id: nodeId,
-      category: 'event',
-      startDate: startIso,
-      endDate: endIso,
-      title: input.activityName,
-      subtitle: input.location?.trim() || '活动现场',
+      category: 'event' as const,
+      startDate: isoDate,
+      endDate: isoDate,
+      title: `${input.activityName} · Day ${dayNumber}`,
+      subtitle: resolveActivitySubtitle(input.location, index, dayIsos.length),
+      detail:
+        dayNumber === 1
+          ? '建议提前 1 小时入场，预留安检时间'
+          : '压轴阵容日 · 建议全程在场',
+      ...(index === 0 ? { price: 880 } : {}),
       confirmed: input.activityConfirmations?.[nodeId] ?? true,
-    },
-  ];
+    };
+  });
 }
 
 function formatDateToken(dateLabel: string, time?: string) {

@@ -1,7 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { ownerFilterFromActor } from '../../../common/auth/actor-query.util';
-import { isDemoOwnerClient } from '../../../common/utils/demo-owner.util';
 import { UserService } from '../../user/user.service';
 import {
   ACTIVITY_LOOKUP_PORT,
@@ -16,12 +15,7 @@ function resolveActorAuthorName(
   actor: RequestActor,
   fallbackName?: string,
 ): string | undefined {
-  const name = actor.displayName?.trim() || fallbackName?.trim();
-  if (name) return name;
-  if (isDemoOwnerClient(actor.clientUserId, actor.displayName)) {
-    return 'Zara Chen';
-  }
-  return undefined;
+  return actor.displayName?.trim() || fallbackName?.trim() || undefined;
 }
 
 export interface ActivityRegistrationResultDto {

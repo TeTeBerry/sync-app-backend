@@ -4,15 +4,11 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from './auth.constants';
 import { AUTH_SESSION_EXPIRED_MESSAGE } from './jwt-bearer.util';
-import {
-  jwtBearerToRequestActor,
-  resolveDemoActorFromQuery,
-} from './resolve-request-actor';
+import { jwtBearerToRequestActor } from './resolve-request-actor';
 import { AuthService } from '../../modules/auth/auth.service';
 
 const LOGIN_REQUIRED_MESSAGE = '请先登录';
@@ -22,7 +18,6 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly authService: AuthService,
-    private readonly configService: ConfigService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -48,15 +43,6 @@ export class JwtAuthGuard implements CanActivate {
       return true;
     }
 
-    if (this.isDemoQueryAllowed()) {
-      request.actor = resolveDemoActorFromQuery(request.query);
-      return true;
-    }
-
     throw new UnauthorizedException(LOGIN_REQUIRED_MESSAGE);
-  }
-
-  private isDemoQueryAllowed(): boolean {
-    return this.configService.get<boolean>('auth.allowDemoQuery') === true;
   }
 }

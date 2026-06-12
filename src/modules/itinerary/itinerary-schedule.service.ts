@@ -9,7 +9,6 @@ import {
   FestivalSession,
   FestivalSessionDocument,
 } from '../../database/schemas/festival-session.schema';
-import { isDemoSeedEnabled } from '../../common/utils/seed-policy.util';
 import { ActivityService } from '../activity/activity.service';
 import {
   formatDiscogsStyleLabel,
@@ -26,9 +25,10 @@ import {
   ALL_ARTIST_PERFORMANCE_SEED,
   ALL_FESTIVAL_SESSION_SEED_COMBINED,
   ARTIST_PERFORMANCE_SEED,
-  ITINERARY_DEMO_ACTIVITY_LEGACY_ID,
+  STORM_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
 } from './itinerary.seed';
+import { hasItineraryCatalogSeed } from './domain/itinerary-catalog.util';
 import { ItineraryCacheService } from './itinerary-cache.service';
 import {
   detectPerformanceConflicts,
@@ -88,7 +88,7 @@ export interface ItineraryScheduleDto {
 }
 
 const DISCOGS_STYLE_ACTIVITY_LEGACY_IDS = new Set([
-  ITINERARY_DEMO_ACTIVITY_LEGACY_ID,
+  STORM_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
 ]);
 
@@ -105,11 +105,10 @@ export class ItineraryScheduleService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    if (!isDemoSeedEnabled()) return;
-    await this.seedDemoData();
+    await this.seedItineraryCatalogData();
   }
 
-  async seedDemoData() {
+  async seedItineraryCatalogData() {
     for (const session of ALL_FESTIVAL_SESSION_SEED_COMBINED) {
       await this.sessionModel.findOneAndUpdate(
         {
@@ -134,7 +133,7 @@ export class ItineraryScheduleService implements OnModuleInit {
     }
 
     await this.pruneStalePerformances(
-      ITINERARY_DEMO_ACTIVITY_LEGACY_ID,
+      STORM_ACTIVITY_LEGACY_ID,
       ARTIST_PERFORMANCE_SEED,
     );
     await this.pruneStalePerformances(
@@ -186,7 +185,7 @@ export class ItineraryScheduleService implements OnModuleInit {
       perfFilter.dateKey = options.dateKey;
     }
 
-    const [sessions, performances] = await Promise.all([
+    let [sessions, performances] = await Promise.all([
       this.sessionModel
         .find(sessionFilter)
         .sort({ sortOrder: 1 })
@@ -194,6 +193,22 @@ export class ItineraryScheduleService implements OnModuleInit {
         .exec(),
       this.performanceModel.find(perfFilter).lean().exec(),
     ]);
+
+    if (
+      performances.length === 0 &&
+      sessions.length === 0 &&
+      hasItineraryCatalogSeed(activityLegacyId)
+    ) {
+      await this.seedItineraryCatalogData();
+      [sessions, performances] = await Promise.all([
+        this.sessionModel
+          .find(sessionFilter)
+          .sort({ sortOrder: 1 })
+          .lean()
+          .exec(),
+        this.performanceModel.find(perfFilter).lean().exec(),
+      ]);
+    }
 
     const eventMeta = activity.name;
     const styledPerformances = await this.applyDiscogsStylesToPerformances(
@@ -256,7 +271,7 @@ export class ItineraryScheduleService implements OnModuleInit {
     const perfFilter: Record<string, unknown> = { activityLegacyId };
     if (dateKey) perfFilter.dateKey = dateKey;
 
-    const [sessions, performances] = await Promise.all([
+    let [sessions, performances] = await Promise.all([
       this.sessionModel
         .find({ activityLegacyId })
         .sort({ sortOrder: 1 })
@@ -264,6 +279,22 @@ export class ItineraryScheduleService implements OnModuleInit {
         .exec(),
       this.performanceModel.find(perfFilter).lean().exec(),
     ]);
+
+    if (
+      performances.length === 0 &&
+      sessions.length === 0 &&
+      hasItineraryCatalogSeed(activityLegacyId)
+    ) {
+      await this.seedItineraryCatalogData();
+      [sessions, performances] = await Promise.all([
+        this.sessionModel
+          .find({ activityLegacyId })
+          .sort({ sortOrder: 1 })
+          .lean()
+          .exec(),
+        this.performanceModel.find(perfFilter).lean().exec(),
+      ]);
+    }
 
     return {
       sessions: sessions as FestivalSession[],

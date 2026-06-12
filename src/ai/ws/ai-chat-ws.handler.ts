@@ -132,7 +132,7 @@ export class AiChatWsHandler {
             ? 'jwt'
             : auth.kind === 'invalid'
               ? 'invalid'
-              : 'demo',
+              : 'anonymous',
       });
     });
 
@@ -206,7 +206,7 @@ export class AiChatWsHandler {
           type: 'connected',
           sessionId,
           activityLegacyId,
-          auth: bearerAuth.kind === 'valid' ? 'jwt' : 'demo',
+          auth: bearerAuth.kind === 'valid' ? 'jwt' : 'anonymous',
         });
         return;
       }

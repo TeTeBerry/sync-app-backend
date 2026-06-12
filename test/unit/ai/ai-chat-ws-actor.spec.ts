@@ -44,18 +44,18 @@ describe('resolveWsChatActor', () => {
     });
   });
 
-  it('uses demo body identity when no JWT', () => {
+  it('uses anonymous body identity when no JWT', () => {
     const result = resolveWsChatActor(null, {
-      userId: 'demo-client',
-      userName: 'Zara',
+      userId: 'session-client',
+      userName: 'Guest',
     });
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.actor).toEqual({
-        source: 'demo',
-        clientUserId: 'demo-client',
-        displayName: 'Zara',
-        resolvedUserId: expect.any(String),
+        source: 'anonymous',
+        clientUserId: 'session-client',
+        displayName: 'Guest',
+        resolvedUserId: 'session-client',
       });
       expect(result.userPhone).toBeUndefined();
     }

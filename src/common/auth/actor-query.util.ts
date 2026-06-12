@@ -1,8 +1,5 @@
 import type { OwnerFilter } from '../utils/owner-filter.util';
-import {
-  isDemoOwnerClient,
-  isResourceOwnedByClient,
-} from '../utils/demo-owner.util';
+import { isResourceOwnedByClient } from '../utils/demo-owner.util';
 import { resolveActorUserId } from './actor-user.util';
 import type { RequestActor } from './request-actor.types';
 
@@ -11,10 +8,11 @@ export function toRequestActor(
   userId?: string,
   authorName?: string,
 ): RequestActor {
-  const resolvedUserId = resolveActorUserId(userId, authorName);
+  const resolvedUserId = resolveActorUserId(userId);
+  const hasIdentity = Boolean(resolvedUserId);
   return {
-    source: isDemoOwnerClient(userId, authorName) ? 'demo' : 'jwt',
-    clientUserId: userId?.trim() || resolvedUserId,
+    source: hasIdentity ? 'jwt' : 'anonymous',
+    clientUserId: resolvedUserId,
     displayName: authorName?.trim() || '用户',
     resolvedUserId,
   };

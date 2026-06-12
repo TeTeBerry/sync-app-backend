@@ -1,0 +1,41 @@
+import type { ArtistPerformance } from '../../../database/schemas/artist-performance.schema';
+import type { FestivalSession } from '../../../database/schemas/festival-session.schema';
+import {
+  ALL_ARTIST_PERFORMANCE_SEED,
+  ALL_FESTIVAL_SESSION_SEED_COMBINED,
+  STORM_ACTIVITY_LEGACY_ID,
+  ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
+} from '../itinerary.seed';
+
+export const ITINERARY_CATALOG_ACTIVITY_LEGACY_IDS = new Set([
+  STORM_ACTIVITY_LEGACY_ID,
+  ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
+]);
+
+export function hasItineraryCatalogSeed(activityLegacyId: number): boolean {
+  return ITINERARY_CATALOG_ACTIVITY_LEGACY_IDS.has(activityLegacyId);
+}
+
+/** Seed catalog snapshot for tests/scripts — runtime schedule reads MongoDB only. */
+export function resolveItineraryCatalogSeed(
+  activityLegacyId: number,
+  dateKey?: string,
+): { sessions: FestivalSession[]; performances: ArtistPerformance[] } {
+  const sessions = ALL_FESTIVAL_SESSION_SEED_COMBINED.filter(
+    (session) => session.activityLegacyId === activityLegacyId,
+  ) as FestivalSession[];
+
+  let performances = ALL_ARTIST_PERFORMANCE_SEED.filter(
+    (perf) => perf.activityLegacyId === activityLegacyId,
+  ) as ArtistPerformance[];
+
+  if (dateKey) {
+    performances = performances.filter((perf) => perf.dateKey === dateKey);
+    return {
+      sessions: sessions.filter((session) => session.dateKey === dateKey),
+      performances,
+    };
+  }
+
+  return { sessions, performances };
+}
