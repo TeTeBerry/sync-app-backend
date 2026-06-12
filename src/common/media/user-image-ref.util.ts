@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { URL } from 'url';
+import { isLegacyLocalUploadEnabled } from './local-upload.util';
 
 /** Shown when clients send base64 / data URLs instead of a prior upload ref. */
 export const USER_IMAGE_MUST_UPLOAD_MESSAGE =
@@ -85,8 +86,12 @@ export function isAllowedUserUploadImageRef(raw: string): boolean {
   return isAllowedUserUploadImageUrl(raw);
 }
 
-/** Legacy dev: backend-served `/uploads/` URLs only. */
+/** Local dev only: backend-served `/uploads/` URLs (disabled on CloudBase Run production). */
 export function isAllowedUserUploadImageUrl(raw: string): boolean {
+  if (!isLegacyLocalUploadEnabled()) {
+    return false;
+  }
+
   let parsed: URL;
   try {
     parsed = new URL(raw.trim());

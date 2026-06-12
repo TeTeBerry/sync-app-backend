@@ -30,7 +30,6 @@ export class TravelGuidePoiRanker {
     ctx: TravelGuideMapContext,
     dto: GenerateTravelGuideDto,
     options?: {
-      curatedHotels?: RankedMapPoi[];
       minHotelRating?: number;
     },
   ): TravelGuideRankedCandidates {
@@ -38,14 +37,12 @@ export class TravelGuidePoiRanker {
     const ranges = budgetTierHotelNightRanges(budgetTier);
     const minHotelRating = options?.minHotelRating ?? DEFAULT_MIN_HOTEL_RATING;
 
-    const hotels = options?.curatedHotels?.length
-      ? options.curatedHotels.slice(0, 6)
-      : this.pickHotelsForBudget(
-          ctx.pois.filter((p) => p.kind === 'hotel'),
-          budgetTier,
-          minHotelRating,
-          ctx.eventEndHour,
-        );
+    const hotels = this.pickHotelsForBudget(
+      ctx.pois.filter((p) => p.kind === 'hotel'),
+      budgetTier,
+      minHotelRating,
+      ctx.eventEndHour,
+    );
 
     const parking = this.rankList(
       ctx.pois.filter((p) => p.kind === 'parking'),

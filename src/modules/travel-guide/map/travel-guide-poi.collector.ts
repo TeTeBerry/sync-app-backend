@@ -15,9 +15,10 @@ import type {
 } from './travel-guide-map.types';
 
 const PARKING_KEYWORDS = ['停车场', '停车'];
+const HOTEL_KEYWORDS = ['酒店', '宾馆'];
 
 const DEFAULT_EVENT_END_HOUR = 23.5;
-/** Align with default `TENCENT_MAP_QPS` / `TENCENT_MAP_MAX_CONCURRENT`. */
+/** Align with default `AMAP_QPS` / `AMAP_MAX_CONCURRENT`. */
 const POI_SEARCH_BATCH_SIZE = 5;
 
 @Injectable()
@@ -113,7 +114,10 @@ export class TravelGuidePoiCollector {
 type PoiSearchTask = { keyword: string; kind: MapPoiKind };
 
 function buildPoiSearchTasks(selfDrive: boolean): PoiSearchTask[] {
-  const tasks: PoiSearchTask[] = [];
+  const tasks: PoiSearchTask[] = HOTEL_KEYWORDS.map((keyword) => ({
+    keyword,
+    kind: 'hotel' as const,
+  }));
   if (selfDrive) {
     tasks.push(
       ...PARKING_KEYWORDS.map((keyword) => ({

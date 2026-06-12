@@ -124,15 +124,16 @@ export class LiveInfoService implements OnModuleInit {
     imageUrl: string;
     excludeUserId: string;
   }): Promise<EventLiveWristbandDocument | null> {
-    const fileKey = wristbandImageFileKey(input.imageUrl);
-    const imageUrlPattern = wristbandImageUrlRegex(fileKey);
+    const imageUrlQuery = isCloudWristbandImageRef(input.imageUrl)
+      ? input.imageUrl.trim()
+      : wristbandImageUrlRegex(wristbandImageFileKey(input.imageUrl));
     const doc = await this.wristbandModel
       .findOne({
         activityLegacyId: input.activityLegacyId,
         eventDate: input.eventDate,
         userId: { $ne: input.excludeUserId },
         status: { $in: ['approved', 'pending'] },
-        imageUrl: imageUrlPattern,
+        imageUrl: imageUrlQuery,
       })
       .lean();
     return doc as EventLiveWristbandDocument | null;

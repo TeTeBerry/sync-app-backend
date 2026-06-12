@@ -36,7 +36,7 @@ export interface HotActivityMapProfile {
 
 /**
  * 热门活动场馆坐标与枢纽路线（风暴 / EDC 等）。
- * 坐标为 WGS84，与腾讯地图 WebService 一致。
+ * 坐标为 WGS84（与高德 Web 服务 GCJ-02 混用时以 hot path 预置值为准）。
  * 路线距离/时长为预估值，用户请求时直接返回，不调用 direction API。
  */
 export const TRAVEL_GUIDE_HOT_ACTIVITIES: HotActivityMapProfile[] = [

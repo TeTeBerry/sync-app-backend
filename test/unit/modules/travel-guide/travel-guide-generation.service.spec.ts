@@ -2,10 +2,9 @@ import { Test } from '@nestjs/testing';
 import { TravelGuideGenerationService } from '@src/modules/travel-guide/travel-guide-generation.service';
 import { ActivityService } from '@src/modules/activity/activity.service';
 import { LlmService } from '@src/infra/llm/llm.service';
-import { TencentMapService } from '@src/modules/travel-guide/map/tencent-map.service';
+import { AmapMapService } from '@src/modules/travel-guide/map/amap.service';
 import { TravelGuidePoiCollector } from '@src/modules/travel-guide/map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from '@src/modules/travel-guide/map/travel-guide-poi.ranker';
-import { TravelGuideHotelService } from '@src/modules/travel-guide/map/travel-guide-hotel.service';
 import { TravelGuideGenerationCacheService } from '@src/modules/travel-guide/travel-guide-generation-cache.service';
 import { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
@@ -67,13 +66,9 @@ describe('TravelGuideGenerationService cache', () => {
           },
         },
         { provide: LlmService, useValue: { enabled: false } },
-        { provide: TencentMapService, useValue: { enabled: true } },
+        { provide: AmapMapService, useValue: { enabled: true } },
         { provide: TravelGuidePoiCollector, useValue: { collect } },
         { provide: TravelGuidePoiRanker, useValue: { rank: jest.fn() } },
-        {
-          provide: TravelGuideHotelService,
-          useValue: { findRankedForActivity: jest.fn() },
-        },
         {
           provide: TravelGuideGenerationCacheService,
           useValue: { findPlan, savePlan },

@@ -2,7 +2,7 @@ import type { MapPoiKind, RawMapPoi } from './travel-guide-map.types';
 import { findHotActivityProfile } from './travel-guide-hot-path.data';
 
 /**
- * Hot Path 兜底 POI：腾讯地图 API 失败或配额用尽（status 121）时仍可生成攻略。
+ * Hot Path 兜底 POI：高德周边检索失败或配额用尽时，停车/夜宵仍可生成攻略（酒店须来自高德）。
  * 店名与坐标基于场馆周边真实 POI，距离为相对会场的估算值。
  */
 const STORM_FALLBACK_POIS: RawMapPoi[] = [

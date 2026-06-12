@@ -34,12 +34,6 @@ module.exports = {
         '@typescript-eslint/no-non-null-assertion': 'off',
       },
     },
-    {
-      files: ['src/modules/cos/**/*.ts'],
-      rules: {
-        '@typescript-eslint/no-var-requires': 'off',
-      },
-    },
   ],
   rules: {
     // 由 @typescript-eslint 接管；若在 .ts 里再打开核心 no-unused-vars 会与 TS AST / 导出语义打架

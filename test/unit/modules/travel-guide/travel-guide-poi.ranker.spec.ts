@@ -102,35 +102,24 @@ describe('TravelGuidePoiRanker', () => {
     expect(ranked.hotels[0]?.name).toBe('近');
   });
 
-  it('uses curated hotels when provided', () => {
-    const curated = [
-      {
-        id: 'c1',
-        name: '库内酒店A',
-        address: '',
-        lat: 0,
-        lng: 0,
-        category: '酒店',
-        distanceM: 1300,
-        distanceLabel: '步行1.3公里',
-        avgPrice: 319,
-        rating: 4.4,
-        kind: 'hotel' as const,
-        keyword: 'curated',
-        lateNightFriendly: false,
-        score: 1,
-        scoreBreakdown: { distance: 1, rating: 1, budget: 1, lateNight: 0 },
-      },
-    ];
+  it('ranks hotels from map POIs only', () => {
     const ranked = ranker.rank(
       {
         ...baseCtx,
-        pois: [hotel({ name: '地图酒店', distanceM: 100, rating: 5 })],
+        pois: [
+          hotel({
+            name: '远酒店',
+            distanceM: 2500,
+            rating: 4.8,
+            avgPrice: 800,
+          }),
+          hotel({ name: '近酒店', distanceM: 400, rating: 4.5, avgPrice: 420 }),
+        ],
       },
       { departure: '上海', headcount: 2, budgetTier: 'standard' },
-      { curatedHotels: curated },
     );
-    expect(ranked.hotels.map((h) => h.name)).toEqual(['库内酒店A']);
+    expect(ranked.hotels[0]?.name).toBe('近酒店');
+    expect(ranked.hotels.every((h) => h.keyword !== 'curated')).toBe(true);
   });
 
   it('boosts late-night 夜宵 venues and ignores non-夜宵 nightlife', () => {

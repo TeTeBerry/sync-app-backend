@@ -13,20 +13,25 @@ import {
   parseCorsOrigins,
   resolveCorsOptions,
 } from './common/cors/cors-config.util';
+import { isLegacyLocalUploadEnabled } from './common/media/local-upload.util';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   // AI 聊天上传门票截图（Base64）需放宽 JSON 体积限制
   app.use(json({ limit: '12mb' }));
   app.use(urlencoded({ extended: true, limit: '12mb' }));
 
-  const uploadDir = process.env.UPLOAD_DIR?.trim() || './uploads';
-  if (!existsSync(uploadDir)) {
-    mkdirSync(uploadDir, { recursive: true });
+  if (isLegacyLocalUploadEnabled()) {
+    const uploadDir = process.env.UPLOAD_DIR?.trim() || './uploads';
+    if (!existsSync(uploadDir)) {
+      mkdirSync(uploadDir, { recursive: true });
+    }
+    app.use('/uploads', expressStatic(join(process.cwd(), uploadDir)));
+    logger.log(`📁 Local uploads: /uploads → ${uploadDir}`);
   }
-  app.use('/uploads', expressStatic(join(process.cwd(), uploadDir)));
 
   app.enableShutdownHooks();
 
@@ -51,7 +56,6 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   const mongoUri =
     process.env.MONGODB_URI ?? process.env.MONGO_URI ?? '(default)';
-  const logger = new Logger('Bootstrap');
 
   try {
     await app.listen(port);

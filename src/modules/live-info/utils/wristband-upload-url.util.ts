@@ -15,7 +15,7 @@ function resolveUploadDir(): string {
 export function assertAllowedUploadImageUrl(imageUrl: string): void {
   const trimmed = imageUrl.trim();
   if (!isAllowedUserUploadImageRef(trimmed)) {
-    throw new BadRequestException('请使用本站上传接口返回的图片地址');
+    throw new BadRequestException('请使用云存储 fileID 或本地开发上传地址');
   }
 }
 

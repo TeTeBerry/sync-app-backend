@@ -26,7 +26,7 @@ import {
   findDepartureCityAnchor,
   resolveDepartureGeocodeTargets,
 } from './travel-guide-departure-suggestions.util';
-import { TencentMapService } from './tencent-map.service';
+import { AmapMapService } from './amap.service';
 
 const GEO_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const POI_TTL_MS = 6 * 60 * 60 * 1000;
@@ -41,7 +41,7 @@ export class TravelGuideGeoCacheService {
   private readonly poiMem = new Map<string, CacheEntry<RawMapPoi[]>>();
 
   constructor(
-    private readonly map: TencentMapService,
+    private readonly map: AmapMapService,
     @InjectModel(TravelGuideVenueCache.name)
     private readonly venueCacheModel: Model<TravelGuideVenueCacheDocument>,
   ) {}
@@ -204,7 +204,7 @@ export class TravelGuideGeoCacheService {
     }
 
     const [transit, driving] = await Promise.all([
-      this.map.transitRoute(from, to),
+      this.map.transitRoute(from, to, input.destinationCity),
       this.map.drivingRoute(from, to),
     ]);
 
@@ -230,7 +230,7 @@ export class TravelGuideGeoCacheService {
       lng: input.venue.lng,
       keyword: input.keyword,
       kind: input.kind,
-      radiusM: 1000,
+      radiusM: input.kind === 'hotel' ? 3000 : 1000,
       pageSize: 15,
     });
     if (!pois.length) {

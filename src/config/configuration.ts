@@ -155,13 +155,25 @@ export default () => ({
     ),
   },
 
-  tencentMap: {
-    key: cleanEnv(process.env.TENCENT_MAP_KEY ?? process.env.QQ_MAP_KEY),
+  /** AI 出行攻略 — 高德地图 Web 服务 */
+  amap: {
+    key: cleanEnv(
+      process.env.AMAP_KEY ??
+        process.env.AMAP_WEB_KEY ??
+        process.env.TENCENT_MAP_KEY,
+    ),
     maxConcurrent: parseInt(
-      cleanEnv(process.env.TENCENT_MAP_MAX_CONCURRENT, '5'),
+      cleanEnv(
+        process.env.AMAP_MAX_CONCURRENT ??
+          process.env.TENCENT_MAP_MAX_CONCURRENT,
+        '5',
+      ),
       10,
     ),
-    qps: parseInt(cleanEnv(process.env.TENCENT_MAP_QPS, '5'), 10),
+    qps: parseInt(
+      cleanEnv(process.env.AMAP_QPS ?? process.env.TENCENT_MAP_QPS, '5'),
+      10,
+    ),
   },
 
   cloudbase: {

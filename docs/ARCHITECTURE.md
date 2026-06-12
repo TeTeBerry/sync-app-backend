@@ -49,7 +49,7 @@ AppModule
 | Travel plan | `travel-plan/` | 行程计划保存、票据识别 |
 | Itinerary | `itinerary/` | 电音时间表生成/保存 |
 | Live info | `live-info/` | 现场认证、UGC 实况 |
-| Travel guide | `travel-guide/` | 腾讯地图攻略生成 |
+| Travel guide | `travel-guide/` | 高德地图 POI + 路线攻略生成（`AMAP_KEY`） |
 
 详见 [`modules/activity-experience/README.md`](../src/modules/activity-experience/README.md)。
 

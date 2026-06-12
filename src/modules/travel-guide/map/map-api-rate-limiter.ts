@@ -1,8 +1,8 @@
-/** Limits Tencent Map WebService concurrency and starts per second (QPS). */
+/** Limits map WebService concurrency and requests per second (QPS). */
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-export class TencentMapRateLimiter {
+export class MapApiRateLimiter {
   private active = 0;
   private readonly queue: Array<() => Promise<void>> = [];
   private readonly windowStarts: number[] = [];

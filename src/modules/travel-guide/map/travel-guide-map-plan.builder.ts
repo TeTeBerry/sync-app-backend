@@ -45,11 +45,11 @@ export function buildTransportLinesFromMap(
 
   if (selfDrive && route) {
     lines.push(
-      `自驾：腾讯地图驾车约 ${route.distanceKm} km / ${route.durationMin} 分钟（以出发日路况为准）。`,
+      `自驾：高德驾车约 ${route.distanceKm} km / ${route.durationMin} 分钟（以出发日路况为准）。`,
       '散场后场馆周边易拥堵，请提前确认停车场与离场路线。',
     );
   } else if (selfDrive) {
-    lines.push(`自驾导航「${venueTitle}」，出发前在腾讯地图查看实时路况。`);
+    lines.push(`自驾导航「${venueTitle}」，出发前在高德地图查看实时路况。`);
   } else if (route) {
     lines.push(
       `公共交通+打车：参考行程约 ${route.distanceKm} km / ${route.durationMin} 分钟，高峰请多预留时间。`,
@@ -74,13 +74,13 @@ export function buildParkingLinesFromMap(
   const top = ranked.slice(0, 2);
   if (!top.length) {
     return [
-      `导航「${venueTitle}」并在腾讯地图搜索「停车场」，活动日建议提前 1–2 小时抵达。`,
+      `导航「${venueTitle}」并在高德地图搜索「停车场」，活动日建议提前 1–2 小时抵达。`,
     ];
   }
 
   return top.map(
     (p) =>
-      `「${p.name}」距会场约 ${formatKm(p.distanceM)} · ${p.address || '详见腾讯地图'}`,
+      `「${p.name}」距会场约 ${formatKm(p.distanceM)} · ${p.address || '详见高德地图'}`,
   );
 }
 
@@ -172,7 +172,7 @@ export function mapCandidatesToLlmFallback(
       : undefined,
     nightlifeSpots: nightlifeFromRanked(ranked.nightlife),
     tipItems: [
-      '以上交通、住宿与散场点位来自腾讯地图实时检索，并结合预算与距离智能排序。',
+      '以上交通、住宿与散场点位来自高德地图周边检索，并结合预算与距离智能排序。',
       '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
       '酒店与餐厅评分以地图平台展示为准，下单前建议在 OTA 再确认价格与房态。',
     ],

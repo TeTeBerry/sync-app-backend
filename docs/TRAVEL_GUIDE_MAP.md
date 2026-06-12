@@ -1,42 +1,37 @@
-# AI 出行攻略 · 腾讯地图接入说明
+# AI 出行攻略 — 高德地图数据链路
+
+出行攻略 **必须** 基于高德地图 Web 服务返回的真实 POI / 路线数据；酒店、停车、夜宵均来自 **周边检索**，不再使用运营维护的酒店清单。
 
 ## 能力对照
 
-| 功能 | 腾讯 API | 代码入口 | 用途 |
+| 功能 | 高德 API | 代码入口 | 用途 |
 |------|----------|----------|------|
-| 地理编码 | `GET /ws/geocoder/v1/?address=` | `TencentMapService.geocode` | 用户输入「福田」→ 坐标 |
-| 逆地理编码 | `GET /ws/geocoder/v1/?location=lat,lng` | `TencentMapService.reverseGeocode` | 场馆坐标 → 攻略可读地址 |
-| 地点搜索 POI | `GET /ws/place/v1/search` | `TencentMapService.searchNearbyPois` | 酒店 / 停车场 / 夜宵 / 酒吧 |
-| 输入提示 | `GET /ws/place/v1/suggestion` | `TencentMapService.getSuggestion` | 出发地自动补全 |
+| 地理编码 | `GET /v3/geocode/geo` | `AmapMapService.geocode` | 用户输入「福田」→ 坐标 |
+| 逆地理编码 | `GET /v3/geocode/regeo` | `AmapMapService.reverseGeocode` | 场馆坐标 → 攻略可读地址 |
+| 周边 POI | `GET /v3/place/around` | `AmapMapService.searchNearbyPois` | 酒店 / 停车场 / 夜宵 |
+| 输入提示 | `GET /v3/assistant/inputtips` | `AmapMapService.getSuggestion` | 出发地自动补全 |
+| 驾车路线 | `GET /v3/direction/driving` | `AmapMapService.drivingRoute` | 自驾路线 |
+| 公交路线 | `GET /v3/direction/transit/integrated` | `AmapMapService.transitRoute` | 公共交通 |
+| 步行路线 | `GET /v3/direction/walking` | `AmapMapService.walkingRoute` | 步行 |
+| 距离测量 | `GET /v3/distance` | `AmapMapService.calculateDistanceToMany` | 多点距离/时长 |
 
-**出发地补全单源**：`GET /api/travel-guide/place-suggestions?keyword=&region=`（`TravelGuideMapController`）。城市库、锚点、本地+远程合并均在 `travel-guide-departure-suggestions.util.ts`；前端只消费 API，勿维护 `travelGuideCities`。
+**禁止** 在无地图 POI/路线数据时直接调用大模型生成攻略（已移除 legacy LLM 路径与静态模板兜底）。
 
-**出发地 geocode**：`place/suggestion` 与 `geocoder` 不同。提交后 `resolveDeparture` 用 `resolveDepartureGeocodeTargets`（`region` 为城市锚点或活动举办城市，**不会**把公司名当 region）。前端点选 POI 时优先提交 `city`（如「拼多多公司」→「上海」）。
-| 路线规划 | `GET /ws/direction/v1/{driving\|transit\|walking}/` | `drivingRoute` / `transitRoute` / `walkingRoute` | 出发地 → 场馆 |
-| 距离计算 | `GET /ws/distance/v1/` | `TencentMapService.calculateDistanceToMany` | 多点距离/时长 |
+所有 Web 服务请求经 `MapApiRateLimiter`（`map-api-rate-limiter.ts`，`AmapMapService.getJson`）限流：
 
-详见 `src/modules/travel-guide/map/tencent-map.capabilities.ts`。
+- 默认 **每秒最多 5 次**（`AMAP_QPS`）
+- 默认 **最多 5 个并发**（`AMAP_MAX_CONCURRENT`）
 
-## 限流（Key QPS / 并发）
-
-所有 WebService 请求经 `TencentMapRateLimiter`（`TencentMapService.getJson`）：
-
-- 默认 **每秒最多 5 次** 发起（`TENCENT_MAP_QPS`）
-- 默认 **最多 5 个并发** in-flight（`TENCENT_MAP_MAX_CONCURRENT`）
-- 攻略 POI 关键词按批（每批 5 个）调用 `place/search`，避免一次 `Promise.all` 打满配额
-
-## 调用策略（避免每次全量打 API）
-
-**禁止**在无腾讯地图 POI/路线数据时直接调用大模型生成攻略（已移除 legacy LLM 路径与静态模板兜底）。
+## 数据流
 
 ```
 用户请求 generate
     │
-    ├─ 场馆坐标 ──► Hot Path 内存 ──► Mongo travel_guide_venue_cache ──► geocoder + reverseGeocoder (缓存 7 天)
+    ├─ 场馆坐标 ──► Hot Path 内存 ──► Mongo travel_guide_venue_cache ──► geocode + regeo (缓存 7 天)
     │
     ├─ 枢纽路线 ──► Hot Path 预计算（机场/高铁站 → 场馆）──► 否则 direction API
     │
-    └─ 周边 POI ──► place/search（按活动+关键词内存缓存 6 小时）
+    └─ 周边 POI ──► place/around（酒店 3km / 其他 1km，内存缓存 6 小时）
             │
             ▼
         Ranker 筛选排序
@@ -59,7 +54,7 @@
 
 ### POI 兜底（配额用尽时）
 
-腾讯地图 `place/search` 返回空或 **status 121（日配额用尽）** 时，热门活动使用 `travel-guide-hot-path-pois.data.ts` 内预置酒店/停车/夜宵 POI，保证攻略仍可生成（文案会标注地图检索降级）。
+高德 `place/around` 返回空或日配额用尽时，热门活动使用 `travel-guide-hot-path-pois.data.ts` 内预置停车/夜宵 POI（**不含酒店**，酒店必须来自高德检索或报错）。
 
 ### 内存缓存
 
@@ -79,7 +74,13 @@
 ## 配置
 
 ```bash
-TENCENT_MAP_KEY=你的Key
+# 高德开放平台 — Web 服务 Key（需开通：地理/逆地理、周边搜索、输入提示、路线规划）
+AMAP_KEY=你的Key
+# 可选限流
+# AMAP_QPS=5
+# AMAP_MAX_CONCURRENT=5
 ```
 
-未配置 Key 时：`generate` 返回 503；出发地补全接口仍可用本地城市库兜底。
+兼容：未配置 `AMAP_KEY` 时回退读取 `TENCENT_MAP_KEY`（仅过渡期，建议尽快迁移）。
+
+控制台：https://console.amap.com/dev/key/app

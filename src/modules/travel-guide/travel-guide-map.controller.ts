@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { Public } from '../../common/auth/public.decorator';
-import { TencentMapService } from './map/tencent-map.service';
+import { AmapMapService } from './map/amap.service';
 import {
   findDepartureCityAnchor,
   mergePlaceSuggestions,
@@ -9,10 +9,10 @@ import {
 
 @Controller('travel-guide')
 export class TravelGuideMapController {
-  constructor(private readonly map: TencentMapService) {}
+  constructor(private readonly map: AmapMapService) {}
 
   /**
-   * 出发地输入提示：腾讯 place/v1/suggestion + 本地城市库兜底
+   * 出发地输入提示：高德 inputtips + 本地城市库兜底
    */
   @Public()
   @Get('place-suggestions')

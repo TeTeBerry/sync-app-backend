@@ -166,7 +166,7 @@ export function buildTravelGuidePlan(input: {
 
   if (mapSourcedOnly && !input.llm) {
     throw new Error(
-      'mapSourcedOnly requires llm payload from Tencent Map pipeline',
+      'mapSourcedOnly requires llm payload from Amap Map pipeline',
     );
   }
 

@@ -73,4 +73,21 @@ describe('user-image-ref.util', () => {
       assertUserImageRefSync('cloud://env-id.bucket/other/secret.jpg'),
     ).toThrow(BadRequestException);
   });
+
+  it('rejects legacy /uploads/ URLs when local uploads disabled', () => {
+    const prevEnv = process.env.NODE_ENV;
+    const prevFlag = process.env.ENABLE_LOCAL_UPLOADS;
+    process.env.NODE_ENV = 'production';
+    delete process.env.ENABLE_LOCAL_UPLOADS;
+    try {
+      expect(() =>
+        assertUserImageRefSync('http://127.0.0.1:3000/uploads/test.jpg'),
+      ).toThrow(BadRequestException);
+    } finally {
+      if (prevEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = prevEnv;
+      if (prevFlag === undefined) delete process.env.ENABLE_LOCAL_UPLOADS;
+      else process.env.ENABLE_LOCAL_UPLOADS = prevFlag;
+    }
+  });
 });

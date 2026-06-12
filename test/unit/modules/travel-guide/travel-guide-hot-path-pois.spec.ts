@@ -4,7 +4,7 @@ import {
 } from '@src/modules/travel-guide/map/travel-guide-hot-path-pois.data';
 
 describe('travel-guide-hot-path-pois', () => {
-  it('provides storm activity fallback nightlife (hotels are DB-curated)', () => {
+  it('provides storm activity fallback nightlife (hotels come from Amap only)', () => {
     const hotels = getHotPathFallbackPois(4, 'hotel', '酒店');
     const nightlife = getHotPathFallbackPois(4, 'nightlife_food', '夜宵');
     expect(hotels).toHaveLength(0);

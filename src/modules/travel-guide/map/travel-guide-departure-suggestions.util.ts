@@ -49,7 +49,7 @@ export function normalizeDepartureCityLabel(city: string): string {
 
 /**
  * Geocoder address + region for submitted departure text.
- * Never use company/POI name as `region` (Tencent returns 参数错误).
+ * Never use company/POI name as `region` (Amap geocode returns 参数错误).
  */
 export function resolveDepartureGeocodeTargets(
   departureText: string,

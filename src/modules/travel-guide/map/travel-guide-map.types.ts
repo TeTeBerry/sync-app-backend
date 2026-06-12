@@ -14,7 +14,7 @@ export interface RawMapPoi {
   lng: number;
   category: string;
   distanceM: number;
-  /** 运营维护酒店等场景下的可读距离文案 */
+  /** 可读距离文案（如 hot path 兜底 POI） */
   distanceLabel?: string;
   tel?: string;
   rating?: number;
