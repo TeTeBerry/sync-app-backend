@@ -12,7 +12,7 @@ describe('inferIntentTagsFromText', () => {
   });
 
   it('extracts spaced day-zone labels', () => {
-    expect(inferIntentTagsFromText('13 号 A区 cpdd一个搭子')).toEqual(
+    expect(inferIntentTagsFromText('13 号 A区 缺1人组队')).toEqual(
       expect.arrayContaining(['#13号A区', '#A区', '#组队']),
     );
   });

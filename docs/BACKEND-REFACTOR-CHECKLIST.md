@@ -101,8 +101,8 @@
 
 ## P3 — AI Agent ✅
 
-- [x] `TextParseAgent` — Qwen-Max
-- [x] `ImageParseAgent` — Qwen-VL
+- [x] `TextParseAgent` — `LlmService.invokeJson`（混元）
+- [x] `ImageParseAgent` — DashScope VL `invokeVisionJson`
 - [x] `MatchAgent` — Chroma 活动内检索（**已移除**）
 - [x] `RiskAgent` — spam / 重复帖 / LLM 违规；拒绝文案经 `PostIntentService`
 - [x] `AiService` 优先发帖 → DeterministicReply（**已移除**向量检索 / recommend gate）

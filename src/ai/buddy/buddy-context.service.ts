@@ -12,16 +12,11 @@ import { inferAuthorGenderFromPost } from '../../common/utils/infer-author-gende
 const POST_CARD_SNIPPET_MAX = 56;
 import {
   buildKnownFactsSummary,
-  isFindBuddyThread,
   isShortContextReply,
   parseConversationContext,
   type ConversationContext,
 } from '../conversation/conversation-context.parser';
-import {
-  detectUserIntent,
-  isExactQuickReply,
-  isQuickReplyIntent,
-} from '../intent/user-intent';
+import { isExactQuickReply } from '../intent/user-intent';
 import {
   isAwaitingSelfPostBodyCollection,
   isBuddyPostEntryIntent,
@@ -162,7 +157,7 @@ export class BuddyContextService {
     }
 
     if (detailParts.length && activityName) {
-      return `找 ${activityName} 同行，${detailParts.join('，')}`;
+      return `一起参加 ${activityName}，${detailParts.join('，')}`;
     }
 
     const summary = buildKnownFactsSummary(ctx, activityName);
@@ -173,9 +168,7 @@ export class BuddyContextService {
         .replace(/\n· /g, '，');
     }
 
-    return activityName
-      ? `找 ${activityName} 同行，欢迎一起组队 🎵`
-      : '找同行伙伴，欢迎一起组队 🎵';
+    return activityName ? `一起参加 ${activityName} 🎵` : '欢迎一起参加活动 🎵';
   }
 
   private truncateRecommendSnippet(text: string): string {
@@ -283,7 +276,12 @@ export class BuddyContextService {
     input: string,
     activityLegacyId?: number,
     state?: import('../conversation').ConversationState | null,
+    image?: string,
   ): boolean {
+    if (image?.trim()) {
+      return true;
+    }
+
     if (isBuddyPostEntryIntent(input) && activityLegacyId != null) {
       return true;
     }
@@ -295,7 +293,7 @@ export class BuddyContextService {
       return Boolean(input.trim());
     }
 
-    if (isAiShortcutTag(input) && activityLegacyId != null) {
+    if (state?.flow === 'publish_confirm' && isPublishConfirmIntent(input)) {
       return true;
     }
 
@@ -303,26 +301,6 @@ export class BuddyContextService {
       return true;
     }
 
-    if (!isFindBuddyThread(messages)) {
-      return false;
-    }
-
-    if (isExactQuickReply(input)) {
-      return false;
-    }
-
-    const userTurns = messages.filter(
-      (message) => message.role === 'user',
-    ).length;
-    if (
-      activityLegacyId == null &&
-      isQuickReplyIntent(input) &&
-      detectUserIntent(input) === 'find_buddy' &&
-      userTurns <= 1
-    ) {
-      return false;
-    }
-
-    return true;
+    return false;
   }
 }

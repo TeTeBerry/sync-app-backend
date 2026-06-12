@@ -10,8 +10,8 @@ export const DEFAULT_LIVE_INFO_ZONES: LiveInfoZoneConfig[] = [
 ];
 
 export const STORM_DEMO_LIVE_INFO_ZONES: LiveInfoZoneConfig[] = [
-  { id: 'stage_a', label: 'A 舞台' },
-  { id: 'stage_b', label: 'B 舞台' },
+  { id: 'stage_a', label: 'A区' },
+  { id: 'stage_b', label: 'B区' },
   { id: 'vip_booth', label: '卡座' },
   { id: LIVE_INFO_VENUE_ZONE_ID, label: '全场' },
 ];

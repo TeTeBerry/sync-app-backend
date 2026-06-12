@@ -32,7 +32,7 @@ export function buildCollectPostBodyPromptReply(
 export function buildRequireBuddyPostFirstReply(activityLabel: string): string {
   return [
     REQUIRE_BUDDY_POST_MARKER,
-    `在「${activityLabel}」找同行前，请先填写你的组队信息，方便他人了解你的需求。`,
+    `在「${activityLabel}」发帖前，请先填写你的组队信息，方便他人了解你的需求。`,
     '',
     '可点下方「组队发帖」用表单填写，或直接发：时间、地点、人数（如 6.13-6.14 上海 2人 拼房）。',
   ].join('\n');

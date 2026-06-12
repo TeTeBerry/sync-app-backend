@@ -38,8 +38,8 @@ export const ACTIVITY_SEED = [
     hot: true,
     attendees: 420,
     liveInfoZones: [
-      { id: 'stage_a', label: 'A 舞台' },
-      { id: 'stage_b', label: 'B 舞台' },
+      { id: 'stage_a', label: 'A区' },
+      { id: 'stage_b', label: 'B区' },
       { id: 'vip_booth', label: '卡座' },
       { id: 'venue', label: '全场' },
     ],

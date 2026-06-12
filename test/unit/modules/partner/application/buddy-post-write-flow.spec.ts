@@ -22,7 +22,7 @@ jest.mock('@langchain/core/documents', () =>
 );
 
 function buddySheetPayload() {
-  const body = '找组队、找拼房，6.13-6.14，上海，2人，希望女生优先';
+  const body = '组队、拼房，6.13-6.14，上海，2人，希望女生优先';
   return {
     body: `${body}\n\n#组队 #拼房`,
     activityLegacyId: 9,

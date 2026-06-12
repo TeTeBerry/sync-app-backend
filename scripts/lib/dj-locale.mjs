@@ -48,21 +48,23 @@ function normalizeCountryKey(value) {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-function isQwenHybridThinkingModel(model) {
-  return /qwen3/i.test(String(model ?? ''));
-}
-
-function buildDashScopeChatPayload(model, messages) {
-  const payload = {
-    model,
-    temperature: 0.1,
-    stream: false,
-    messages,
-  };
-  if (isQwenHybridThinkingModel(model)) {
-    payload.enable_thinking = false;
+function resolveHunyuanConfig(options = {}) {
+  const apiKey = options.apiKey ?? process.env.HUNYUAN_API_KEY ?? '';
+  if (!apiKey) {
+    return null;
   }
-  return payload;
+  return {
+    apiKey,
+    baseUrl:
+      options.baseUrl ??
+      process.env.HUNYUAN_BASE_URL ??
+      'https://tokenhub.tencentmaas.com/v1',
+    model: options.model ?? process.env.HUNYUAN_TEXT_MODEL ?? 'hy3-preview',
+    reasoningEffort:
+      options.reasoningEffort ??
+      process.env.HUNYUAN_REASONING_EFFORT ??
+      'no_think',
+  };
 }
 
 export function translateCountryToZh(country) {
@@ -83,37 +85,34 @@ export async function translateProfileToZh(profile, options = {}) {
     return trimmed;
   }
 
-  const apiKey =
-    options.apiKey ??
-    process.env.QWEN_API_KEY ??
-    process.env.ALIBABA_API_KEY ??
-    process.env.DASHSCOPE_API_KEY ??
-    '';
-  if (!apiKey) {
+  const hunyuan = resolveHunyuanConfig(options);
+  if (!hunyuan) {
     return trimmed;
   }
 
-  const model = options.model ?? process.env.QWEN_JSON_MODEL ?? 'qwen-plus';
-  const response = await fetch(
-    'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(
-        buildDashScopeChatPayload(model, [
-          { role: 'system', content: PROFILE_TRANSLATE_SYSTEM },
-          { role: 'user', content: trimmed },
-        ]),
-      ),
+  const response = await fetch(`${hunyuan.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${hunyuan.apiKey}`,
+      'Content-Type': 'application/json',
     },
-  );
+    body: JSON.stringify({
+      model: hunyuan.model,
+      temperature: 0.1,
+      stream: false,
+      messages: [
+        { role: 'system', content: PROFILE_TRANSLATE_SYSTEM },
+        { role: 'user', content: trimmed },
+      ],
+      extra_body: {
+        chat_template_kwargs: { reasoning_effort: hunyuan.reasoningEffort },
+      },
+    }),
+  });
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data?.error?.message ?? `DashScope ${response.status}`);
+    throw new Error(data?.error?.message ?? `Hunyuan ${response.status}`);
   }
 
   const text = data?.choices?.[0]?.message?.content?.trim() ?? '';

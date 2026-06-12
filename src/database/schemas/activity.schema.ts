@@ -57,7 +57,7 @@ export class Activity {
   @Prop()
   externalUrl?: string;
 
-  /** On-site live-info zone chips (e.g. A 舞台 / B 舞台 / 卡座). */
+  /** On-site live-info zone chips (e.g. 风暴 A区 / B区 / 卡座). */
   @Prop({
     type: [
       {

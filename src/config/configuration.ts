@@ -25,24 +25,30 @@ export default () => ({
     ),
   },
 
+  /** 千问 VL only（手环/ImageParse）；文本走 hunyuan.*。见 docs/LLM.md */
   llm: {
-    apiKey: cleanEnv(
+    vlApiKey: cleanEnv(
       process.env.QWEN_API_KEY ??
         process.env.ALIBABA_API_KEY ??
         process.env.DASHSCOPE_API_KEY,
     ),
-    model: cleanEnv(process.env.QWEN_MODEL, 'qwen-max'),
-    /** 意图/解析/画像等短 JSON 任务；未设时与 rerank 相同 */
-    jsonModel: cleanEnv(
-      process.env.QWEN_JSON_MODEL,
-      cleanEnv(process.env.QWEN_RERANK_MODEL, 'qwen-plus'),
-    ),
-    rerankModel: cleanEnv(process.env.QWEN_RERANK_MODEL, 'qwen-plus'),
-    rerankTimeoutMs: parseInt(
-      cleanEnv(process.env.QWEN_RERANK_TIMEOUT_MS, '6000'),
-      10,
-    ),
     vlModel: cleanEnv(process.env.QWEN_VL_MODEL, 'qwen-vl-plus'),
+  },
+
+  /** 混元文本（JSON / Agent）；必填 HUNYUAN_API_KEY */
+  hunyuan: {
+    apiKey: cleanEnv(process.env.HUNYUAN_API_KEY),
+    baseUrl: cleanEnv(
+      process.env.HUNYUAN_BASE_URL,
+      'https://tokenhub.tencentmaas.com/v1',
+    ),
+    textModel: cleanEnv(process.env.HUNYUAN_TEXT_MODEL, 'hy3-preview'),
+    reasoningEffort: cleanEnv(process.env.HUNYUAN_REASONING_EFFORT, 'no_think'),
+    /** AI 出行攻略润色专用；默认 high（深度思考），不影响意图/解析等快路径 */
+    travelGuideReasoningEffort: cleanEnv(
+      process.env.HUNYUAN_TRAVEL_GUIDE_REASONING_EFFORT,
+      'high',
+    ),
   },
 
   chroma: {
@@ -83,6 +89,7 @@ export default () => ({
     agent: {
       /** off | shadow (log compare) | on (agent-first for chat/DJ/festival) */
       mode: cleanEnv(process.env.AI_AGENT_MODE, 'off'),
+      /** 空 → hunyuan.textModel（见 AgentLlmService） */
       model: cleanEnv(process.env.AI_AGENT_MODEL, ''),
     },
   },

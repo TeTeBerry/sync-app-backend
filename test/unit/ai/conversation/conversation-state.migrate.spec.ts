@@ -11,7 +11,7 @@ import type { ChatMessageDto } from '@src/shared/chat';
 
 describe('migrateConversationStateFromHistory', () => {
   it('migrates publish_confirm with draft body from assistant marker', () => {
-    const draft = 'cpdd三个男生';
+    const draft = '6.13 上海 3个男生';
     const messages: ChatMessageDto[] = [
       { role: 'user', content: '组队' },
       {
@@ -19,7 +19,7 @@ describe('migrateConversationStateFromHistory', () => {
         content: buildPublishConfirmReply({
           activityLabel: '风暴',
           draftBody: draft,
-          shortcutTag: '组队队友',
+          shortcutTag: '组队',
         }),
       },
     ];
@@ -50,10 +50,10 @@ describe('migrateConversationStateFromHistory', () => {
     const fromMigrate = migrateConversationStateFromHistory([
       {
         role: 'assistant',
-        content: `${PUBLISH_CONFIRM_PROMPT_MARKER}\n活动：风暴\n找搭子`,
+        content: `${PUBLISH_CONFIRM_PROMPT_MARKER}\n活动：风暴\n组队`,
       },
     ]);
-    const explicit = enterPublishConfirmState({ draftBody: '找搭子' });
+    const explicit = enterPublishConfirmState({ draftBody: '组队' });
     expect(fromMigrate.flow).toBe(explicit.flow);
   });
 });

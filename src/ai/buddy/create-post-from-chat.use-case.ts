@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { CreatePostDto } from '../../modules/partner/dto/create-post.dto';
 import { PostService } from '../../modules/partner/post.service';
@@ -15,16 +14,10 @@ import {
   enterPublishConfirmState,
 } from '../conversation';
 import { ChatMessageDto } from '../../shared/chat';
-import {
-  getMissingBuddyFields,
-  isFindBuddyThread,
-  isShortContextReply,
-  parseConversationContext,
-} from '../conversation/conversation-context.parser';
+import { parseConversationContext } from '../conversation/conversation-context.parser';
 import {
   buildExistingPostGuidanceReply,
   isExplicitReplacePostIntent,
-  isInformalPostBodyInput,
 } from '../conversation/existing-post-guidance.util';
 import {
   buildPublishConfirmReply,
@@ -34,7 +27,6 @@ import {
 } from '../publish/publish-confirm.util';
 import {
   buildCollectPostBodyPromptReply,
-  buildRequireBuddyPostFirstReply,
   isAwaitingSelfPostBodyCollection,
   isBuddyPostEntryIntent,
 } from '../publish/buddy-post-flow.util';
@@ -94,6 +86,7 @@ export class CreatePostFromChatUseCase {
         trimmedInput,
         activityLegacyId,
         conversationState,
+        image,
       )
     ) {
       return null;
@@ -131,8 +124,6 @@ export class CreatePostFromChatUseCase {
       );
     }
 
-    const isShortcutWithActivity =
-      isAiShortcutTag(trimmedInput) && activityLegacyId != null;
     const publishConfirmReady =
       isAwaitingPublishConfirmation(messages, conversationState) &&
       isPublishConfirmIntent(trimmedInput);
@@ -147,7 +138,6 @@ export class CreatePostFromChatUseCase {
       inSelfPostCollectFlow ||
       conversationState?.publishDraft?.fromSelfPost === true;
 
-    const missing = getMissingBuddyFields(ctx, activityLegacyId);
     const hasActivity = Boolean(resolvedActivity?.legacyId);
     const llmReady = parsed?.ready === true && Boolean(parsed.body?.trim());
 
@@ -249,33 +239,14 @@ export class CreatePostFromChatUseCase {
       !isBuddyPostEntryIntent(trimmedInput) &&
       !publishConfirmReady;
 
-    if (
-      isShortcutWithActivity &&
-      hasActivity &&
-      !publishConfirmReady &&
-      !inSelfPostCollectFlow
-    ) {
-      onStateChange?.(
-        enterCollectPostBodyState({
-          activityLegacyId: resolvedActivity?.legacyId,
-          fromSelfPost: true,
-        }),
-      );
-      return {
-        kind: 'rejected',
-        replyText: buildRequireBuddyPostFirstReply(
-          resolvedActivity?.name ?? '活动',
-        ),
-      };
-    }
-
-    // 不再校验字段完整性，只要用户在找搭子且活动已知即可创建
     const canCreate =
       publishConfirmReady ||
       readyForDirectSelfPost ||
+      Boolean(image?.trim() && parsed?.body?.trim()) ||
       (!isBuddyPostEntryIntent(trimmedInput) &&
         !inSelfPostCollectFlow &&
-        (llmReady || (isFindBuddyThread(messages) && hasActivity)));
+        hasActivity &&
+        llmReady);
 
     if (!canCreate || !hasActivity) {
       return null;

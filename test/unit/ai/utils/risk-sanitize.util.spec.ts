@@ -29,7 +29,7 @@ describe('risk-sanitize.util', () => {
 
   it('detects travel safety keywords', () => {
     expect(needsTravelSafetyTip('上海同路去深圳')).toBe(true);
-    expect(needsTravelSafetyTip('13号A区有人吗')).toBe(false);
+    expect(needsTravelSafetyTip('13号A区缺1人')).toBe(false);
   });
 
   it('appends safety tip for carpool posts', () => {

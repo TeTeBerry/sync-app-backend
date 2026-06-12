@@ -42,7 +42,7 @@ export function isActivityEnterNameInput(input: string): boolean {
 export function buildActivityEnterConfirmationReply(
   activityName: string,
 ): string {
-  return `好的，点下方卡片进入「${activityName}」，我可以帮你找组队或发帖。`;
+  return `好的，点下方卡片进入「${activityName}」，我可以帮你了解活动或发帖。`;
 }
 
 export function toRecommendedActivityCard(

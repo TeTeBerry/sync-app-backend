@@ -30,7 +30,7 @@ const TAG_TO_TYPE = {
 const BODY_PATTERNS = [
   { pattern: /拼房|住宿|酒店|同房|合住/i, type: 'accommodation' },
   { pattern: /同路|顺路|顺风车|接送|包车/i, type: 'carpool' },
-  { pattern: /组队|找组队|求组队|搭子|结伴|同行/i, type: 'team' },
+  { pattern: /组队|求组队|结伴|同行/i, type: 'team' },
 ];
 
 function inferContentTypesFromTags(tags) {

@@ -81,7 +81,7 @@ export function buildActivityGuideReply(activity?: Activity | null): string {
         '',
         '你还可以：',
         '· 说「上海2人舒适自驾」或「帮我规划行程」生成交通/住宿/散场攻略长图；点「AI出行攻略」可用表单',
-        '· 点「找组队 / 找卡座」等找现有组队帖',
+        '· 在活动详情浏览现有组队帖',
         '· 点「模板发帖」填写帖子信息',
       ]);
     }
@@ -96,7 +96,7 @@ export function buildActivityGuideReply(activity?: Activity | null): string {
   }
   lines.push(
     '',
-    '一句话说出出发地、人数、预算即可生成攻略；点「AI出行攻略」可用表单。找现有帖请点「找组队」等快捷按钮。',
+    '一句话说出出发地、人数、预算即可生成攻略；点「AI出行攻略」可用表单。浏览现有帖请前往活动详情。',
   );
   return composeReply(lines);
 }

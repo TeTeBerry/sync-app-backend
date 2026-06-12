@@ -125,7 +125,7 @@ describe('WechatContentSecurityService', () => {
       json: async () => ({ errcode: 0 }),
     });
 
-    await service.assertTextSafe('找组队拼房');
+    await service.assertTextSafe('组队拼房');
 
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/wxa/msg_sec_check'),

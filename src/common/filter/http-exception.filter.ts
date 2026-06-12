@@ -4,10 +4,13 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse();
@@ -24,6 +27,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
         const msg = (res as Record<string, unknown>).message;
         message = typeof msg === 'string' ? msg : JSON.stringify(msg);
       }
+    } else if (exception instanceof Error) {
+      this.logger.error(exception.message, exception.stack);
+    } else {
+      this.logger.error(String(exception));
     }
 
     response.status(status).json({

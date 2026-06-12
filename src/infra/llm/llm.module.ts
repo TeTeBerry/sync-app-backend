@@ -1,9 +1,10 @@
+/** Hunyuan text (TextLlmClient) + Qwen VL (LlmService). See docs/LLM.md. */
 import { Module } from '@nestjs/common';
-import { DashscopeChatClient } from './dashscope-chat.client';
 import { LlmService } from './llm.service';
+import { TextLlmClient } from './text-llm.client';
 
 @Module({
-  providers: [DashscopeChatClient, LlmService],
-  exports: [DashscopeChatClient, LlmService],
+  providers: [TextLlmClient, LlmService],
+  exports: [TextLlmClient, LlmService],
 })
 export class InfraLlmModule {}

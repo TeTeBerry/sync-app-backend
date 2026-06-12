@@ -1,5 +1,4 @@
 import { ChatMessageDto } from '../../shared/chat';
-import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import {
   ACTIVITY_PICKER_PROMPT,
   findAssistantBeforeIndex,
@@ -8,7 +7,6 @@ import {
 import { resolveActivityId } from '../utils/activity-id.util';
 
 export interface ConversationContext {
-  mode?: 'find_buddy';
   activityId?: string;
   activityKeyword?: string;
   activityPickerIndex?: number;
@@ -95,27 +93,6 @@ export function isActivityKeywordInput(input: string): boolean {
   return ACTIVITY_KEYWORD_RE.test(text);
 }
 
-export function isFindBuddyThread(messages: ChatMessageDto[]): boolean {
-  let active = false;
-
-  for (const message of messages) {
-    if (message.role !== 'user') continue;
-
-    if (
-      isAiShortcutTag(message.content.trim()) ||
-      message.content.trim() === '帮我找搭子' ||
-      message.content.trim() === '帮我结伴' ||
-      message.content.trim() === '帮我组队' ||
-      message.content.trim() === '帮我dd' ||
-      /找搭子|找同行|帮我结伴|帮我组队|结伴|组队/.test(message.content)
-    ) {
-      active = true;
-    }
-  }
-
-  return active;
-}
-
 export function isShortContextReply(input: string): boolean {
   const text = input.trim();
   if (!text || text.length > 40) return false;
@@ -131,10 +108,6 @@ export function parseConversationContext(
   _latestInput: string,
 ): ConversationContext {
   const ctx: ConversationContext = {};
-
-  if (isFindBuddyThread(messages)) {
-    ctx.mode = 'find_buddy';
-  }
 
   for (let index = 0; index < messages.length; index += 1) {
     const message = messages[index];
@@ -198,7 +171,7 @@ export function buildKnownFactsSummary(
   if (ctx.genderPreference) lines.push(`· 性别偏好：${ctx.genderPreference}`);
 
   if (lines.length === 1) {
-    return '收到，我先帮你查平台现有信息。';
+    return '收到，请继续补充你的需求。';
   }
 
   return lines.join('\n');

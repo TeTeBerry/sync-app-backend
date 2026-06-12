@@ -14,8 +14,8 @@ describe('festival-shortcut.util', () => {
   });
 
   it('does not treat compound buddy messages as homepage shortcut chips', () => {
-    expect(resolveHomeFestivalShortcutCode('风暴电音节 找组队')).toBe('storm');
-    expect(isHomeFestivalShortcutInput('风暴电音节 找组队')).toBe(false);
+    expect(resolveHomeFestivalShortcutCode('风暴电音节 组队')).toBe('storm');
+    expect(isHomeFestivalShortcutInput('风暴电音节 组队')).toBe(false);
   });
 
   it('uses exact storm artist lineup', () => {

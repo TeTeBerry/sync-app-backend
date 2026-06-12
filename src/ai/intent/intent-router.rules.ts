@@ -1,4 +1,3 @@
-import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import { isBuddyPostEntryIntent } from '../publish/buddy-post-flow.util';
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
 import {
@@ -53,10 +52,6 @@ export function resolveChatIntentFastPath(
 
   if (isBuddyPostEntryIntent(trimmed) && params.activityLegacyId != null) {
     return { kind: 'create_post', source: 'rule' };
-  }
-
-  if (isAiShortcutTag(trimmed) && params.activityLegacyId != null) {
-    return { kind: 'quick_reply', source: 'rule' };
   }
 
   if (params.activityLegacyId != null && trimmed) {

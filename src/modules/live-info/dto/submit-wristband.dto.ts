@@ -1,7 +1,7 @@
+import { UserImageRefConstraint } from '../../../common/media/user-image-ref.constraint';
 import {
   IsNotEmpty,
   IsString,
-  IsUrl,
   MaxLength,
   Validate,
   ValidatorConstraint,
@@ -26,7 +26,7 @@ export class SubmitLiveInfoWristbandDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(2048)
-  @IsUrl({ require_protocol: true }, { message: 'imageUrl 必须是有效 URL' })
+  @Validate(UserImageRefConstraint)
   @Validate(NotDataUrlConstraint)
   imageUrl!: string;
 }

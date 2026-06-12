@@ -2,19 +2,6 @@ import { ChatMessageDto } from '../../shared/chat';
 
 export const ACTIVITY_PICKER_PROMPT = '你想参加哪个活动？';
 
-export function buildScopedFindBuddyReply(activityName: string): string {
-  return [
-    `好的，我来帮你在「${activityName}」找同行伙伴 🎵`,
-    '',
-    '请告诉我：',
-    '· 出行时间',
-    '· 人数',
-    '· 性别偏好',
-    '',
-    '也可以直接补充出发城市、预算、住宿偏好等需求。',
-  ].join('\n');
-}
-
 export function parseActivityPickerIndex(input: string): number | null {
   const match = input.trim().match(/^([1-5])$/);
   return match ? Number(match[1]) : null;

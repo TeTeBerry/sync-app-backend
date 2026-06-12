@@ -135,7 +135,7 @@ describe('AiTurnPipeline homepage activity gating', () => {
       replyText: '已发布',
       postCard: {
         postId: 'p1',
-        snippet: '找搭子',
+        snippet: '组队',
         authorName: 'A',
         eventTitle: '风暴',
       },
@@ -144,10 +144,10 @@ describe('AiTurnPipeline homepage activity gating', () => {
     const result = await pipeline.runTurn(
       {
         ...baseDto,
-        messages: [{ role: 'user', content: '风暴电音节 找组队' }],
+        messages: [{ role: 'user', content: '风暴电音节 组队发帖' }],
       },
-      [{ role: 'user', content: '风暴电音节 找组队' }],
-      '风暴电音节 找组队',
+      [{ role: 'user', content: '风暴电音节 组队发帖' }],
+      '风暴电音节 组队发帖',
       { version: 1, flow: 'idle' },
       'req-home-storm',
       'home-session',
@@ -359,10 +359,10 @@ describe('AiTurnPipeline homepage activity gating', () => {
       {
         ...baseDto,
         activityLegacyId: 9,
-        messages: [{ role: 'user', content: '找搭子' }],
+        messages: [{ role: 'user', content: '发一条组队帖' }],
       },
-      [{ role: 'user', content: '找搭子' }],
-      '找搭子',
+      [{ role: 'user', content: '发一条组队帖' }],
+      '发一条组队帖',
       { version: 1, flow: 'idle' },
       'req-scoped',
       'scoped-session',

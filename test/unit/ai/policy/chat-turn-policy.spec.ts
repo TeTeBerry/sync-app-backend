@@ -30,7 +30,7 @@ describe('chat-turn-policy', () => {
     expect(isReadOnlyTurn('Marshmello 是什么风格', 5)).toBe(true);
     expect(isReadOnlyTurn('风暴电音节', undefined)).toBe(true);
     expect(isReadOnlyTurn('这场几点开始', 5)).toBe(true);
-    expect(isReadOnlyTurn('13号 A区 有人吗', 4)).toBe(false);
+    expect(isReadOnlyTurn('13号 A区 缺1人', 4)).toBe(false);
   });
 
   it('allows agent on homepage and read-only activity turns', () => {
@@ -53,16 +53,7 @@ describe('chat-turn-policy', () => {
     ).toBe(true);
   });
 
-  it('blocks agent for buddy search and posting flows', () => {
-    expect(
-      shouldRunAgentFirst({
-        agentEnabled: true,
-        dto: { ...baseDto, activityLegacyId: 4 },
-        input: '13号 A区 有人吗',
-        conversationState: { version: 1, flow: 'idle' },
-      }),
-    ).toBe(false);
-
+  it('blocks agent during publish_confirm flow', () => {
     expect(
       shouldRunAgentFirst({
         agentEnabled: true,
@@ -73,8 +64,10 @@ describe('chat-turn-policy', () => {
     ).toBe(false);
   });
 
-  it('blocks agent for activity-scoped write/search heuristics', () => {
-    expect(shouldBlockAgentForActivityInput('找组队', 4)).toBe(true);
+  it('blocks agent for ticket resale input', () => {
+    expect(shouldBlockAgentForActivityInput('折价出一张 VIP 舞台票', 4)).toBe(
+      true,
+    );
     expect(shouldBlockAgentForActivityInput('Marshmello 是什么风格', 5)).toBe(
       false,
     );

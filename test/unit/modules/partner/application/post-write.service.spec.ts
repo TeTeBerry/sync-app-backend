@@ -96,13 +96,13 @@ describe('PostWriteService', () => {
     });
     (repository.findOwnerSimilarActivePost as jest.Mock).mockResolvedValue({
       _id: 'existing',
-      body: '找组队，6.13-6.14，上海，1人',
+      body: '组队，6.13-6.14，上海，1人',
       status: 'active',
     });
 
     await expect(
       service.createPost(
-        { body: '找组队 6.13-6.14 上海 1人', activityLegacyId: 9 },
+        { body: '组队 6.13-6.14 上海 1人', activityLegacyId: 9 },
         toRequestActor('demo-user', 'Zara Chen'),
         { skipRiskCheck: true },
       ),

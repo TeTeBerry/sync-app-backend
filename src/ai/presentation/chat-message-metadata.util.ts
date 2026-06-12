@@ -12,17 +12,12 @@ export interface ChatMessageImageContext {
 
 export type ChatMessageRichMetadata = Pick<
   ChatMessageDto,
-  | 'imageContext'
-  | 'recommendedPosts'
-  | 'recommendedActivity'
-  | 'createdPost'
-  | 'suggestedReplies'
+  'imageContext' | 'recommendedActivity' | 'createdPost' | 'suggestedReplies'
 >;
 
 export function extractAssistantMessageMetadata(
   events: AiStreamEvent[],
 ): Omit<ChatMessageRichMetadata, 'imageContext'> {
-  let recommendedPosts: RecommendedPostCard[] | undefined;
   let recommendedActivity: RecommendedActivityCard | undefined;
   let createdPost: RecommendedPostCard | undefined;
   let suggestedReplies: string[] | undefined;
@@ -40,7 +35,6 @@ export function extractAssistantMessageMetadata(
   }
 
   return {
-    ...(recommendedPosts ? { recommendedPosts } : {}),
     ...(recommendedActivity ? { recommendedActivity } : {}),
     ...(createdPost ? { createdPost } : {}),
     ...(suggestedReplies ? { suggestedReplies } : {}),

@@ -68,7 +68,7 @@ describe('PostingTurnOrchestrator', () => {
       replyText: '已发布',
       postCard: {
         postId: 'p1',
-        snippet: '找搭子',
+        snippet: '组队',
         authorName: 'A',
         eventTitle: '风暴',
       },
@@ -77,10 +77,10 @@ describe('PostingTurnOrchestrator', () => {
     const events = await orchestrator.run({
       dto: {
         ...baseDto,
-        messages: [{ role: 'user', content: '风暴电音节 找组队' }],
+        messages: [{ role: 'user', content: '风暴电音节 组队发帖' }],
       },
-      messages: [{ role: 'user', content: '风暴电音节 找组队' }],
-      input: '风暴电音节 找组队',
+      messages: [{ role: 'user', content: '风暴电音节 组队发帖' }],
+      input: '风暴电音节 组队发帖',
       sink: sink as never,
       profileSync: null,
       timings: {},

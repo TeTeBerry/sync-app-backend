@@ -15,7 +15,7 @@ describe('post-content-type.util (组队发帖标签)', () => {
   it('supports multiple tags (intersection)', () => {
     const types = inferPostContentTypes({
       tags: ['#组队', '#拼房'],
-      body: '找同行',
+      body: '组队同行',
     });
     expect(types).toContain('team');
     expect(types).toContain('accommodation');

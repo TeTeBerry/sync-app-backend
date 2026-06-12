@@ -50,9 +50,6 @@ export class ChatService {
 
     const content = message.content?.trim() ?? '';
     const imageContext = this.normalizeImageContext(message.imageContext);
-    const recommendedPosts = this.normalizeRecommendedPosts(
-      message.recommendedPosts,
-    );
     const recommendedActivity = this.normalizeRecommendedActivity(
       message.recommendedActivity,
     );
@@ -64,7 +61,6 @@ export class ChatService {
     if (
       !content &&
       !imageContext &&
-      !recommendedPosts?.length &&
       !recommendedActivity &&
       !createdPost &&
       !suggestedReplies?.length
@@ -76,7 +72,6 @@ export class ChatService {
       role: message.role,
       content,
       ...(imageContext ? { imageContext } : {}),
-      ...(recommendedPosts?.length ? { recommendedPosts } : {}),
       ...(recommendedActivity ? { recommendedActivity } : {}),
       ...(createdPost ? { createdPost } : {}),
       ...(suggestedReplies?.length ? { suggestedReplies } : {}),
@@ -94,21 +89,6 @@ export class ChatService {
       ...(source ? { source } : {}),
       ...(ocrText ? { ocrText } : {}),
     };
-  }
-
-  private normalizeRecommendedPosts(
-    posts?: ChatMessageDto['recommendedPosts'],
-  ): ChatMessageDto['recommendedPosts'] | undefined {
-    if (!posts?.length) return undefined;
-    const normalized = posts.filter(
-      (post) =>
-        typeof post?.postId === 'string' &&
-        post.postId.trim() &&
-        typeof post?.snippet === 'string' &&
-        typeof post?.authorName === 'string' &&
-        typeof post?.eventTitle === 'string',
-    );
-    return normalized.length ? normalized : undefined;
   }
 
   private normalizeRecommendedActivity(

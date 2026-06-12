@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { TravelGuideGenerationService } from '@src/modules/travel-guide/travel-guide-generation.service';
 import { ActivityService } from '@src/modules/activity/activity.service';
 import { LlmService } from '@src/infra/llm/llm.service';
@@ -54,6 +55,13 @@ describe('TravelGuideGenerationService cache', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         TravelGuideGenerationService,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: (key: string) =>
+              key === 'hunyuan.travelGuideReasoningEffort' ? 'high' : undefined,
+          },
+        },
         {
           provide: ActivityService,
           useValue: {

@@ -28,7 +28,7 @@ export const LIVE_INFO_SEED_UPDATES: LiveInfoSeedUpdate[] = [
       { categoryId: 'smoke_drink', score: 3 },
       { categoryId: 'sound_level', score: 4 },
     ],
-    remark: '只查包不查身，北门比南门好进，主舞台这边人最多',
+    remark: '只查包不查身，北门比南门好进，A区这边人最多',
     likedByUserIds: ['demo-zara', 'demo-luna'],
   },
   {

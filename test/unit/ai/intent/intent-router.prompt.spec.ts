@@ -6,9 +6,8 @@ import {
 
 describe('intent-router.prompt', () => {
   it('includes few-shot examples with dj_info', () => {
-    expect(INTENT_ROUTER_FEW_SHOTS.length).toBeGreaterThanOrEqual(10);
+    expect(INTENT_ROUTER_FEW_SHOTS.length).toBeGreaterThanOrEqual(8);
     const system = buildIntentRouterSystemPrompt();
-    expect(system).toContain('13号 A区 有人吗');
     expect(system).toContain('chitchat');
     expect(system).toContain('dj_info');
     expect(system).toContain('Marshmello 是什么风格');

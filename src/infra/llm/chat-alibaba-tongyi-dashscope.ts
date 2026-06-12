@@ -6,8 +6,8 @@ export function isQwenHybridThinkingModel(model: string): boolean {
 }
 
 /**
- * DashScope text-generation wrapper: non-streaming Qwen3 calls must pass
- * `enable_thinking: false` (see DashScope deep-thinking docs).
+ * LangChain Qwen3 helper (`enable_thinking: false` for non-streaming JSON).
+ * Primary text path uses TextLlmClient (OpenAI-compatible), not this class.
  */
 export class ChatAlibabaTongyiDashScope extends ChatAlibabaTongyi {
   override invocationParams() {

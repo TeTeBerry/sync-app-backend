@@ -4,8 +4,8 @@
  */
 
 const GENDER_TAG_RULES: Array<{ pattern: RegExp; tag: string }> = [
-  { pattern: /姐妹|小姐姐|妹子|女搭子/i, tag: '#女生' },
-  { pattern: /兄弟|老哥|男搭子/i, tag: '#男生' },
+  { pattern: /姐妹|小姐姐|妹子/i, tag: '#女生' },
+  { pattern: /兄弟|老哥/i, tag: '#男生' },
   { pattern: /女生优先|限女生|只要女生|女孩子更好/i, tag: '#女生优先' },
   { pattern: /男生优先|限男生|只要男生/i, tag: '#男生优先' },
   { pattern: /(\d+)人女生|女生同行|我们女生|女生一起/i, tag: '#女生' },
@@ -149,7 +149,7 @@ export function inferIntentTagsFromText(
   inferZoneAndDayTags(haystack, tags);
   inferTicketResaleTags(haystack, tags);
 
-  if (/搭子|组队|cpdd|dd一个|缺\d|有人吗|有姐妹|找同行/i.test(haystack)) {
+  if (/组队|缺\d|有姐妹/i.test(haystack)) {
     addTag(tags, '#组队');
   }
 

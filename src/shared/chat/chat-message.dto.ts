@@ -34,10 +34,6 @@ export class ChatMessageDto {
   imageContext?: ChatMessageImageContextDto;
 
   @IsOptional()
-  @IsArray()
-  recommendedPosts?: RecommendedPostCard[];
-
-  @IsOptional()
   recommendedActivity?: RecommendedActivityCard;
 
   @IsOptional()

@@ -4,7 +4,7 @@ describe('resolve-activity-from-chat.util', () => {
   it('extracts storm festival from buddy post text', () => {
     const keywords = extractActivityLookupKeywords(
       [],
-      '风暴电音节 找组队 深圳站 6月13日',
+      '风暴电音节 组队 深圳站 6月13日',
     );
     expect(keywords.some((k) => /风暴|storm/i.test(k))).toBe(true);
   });

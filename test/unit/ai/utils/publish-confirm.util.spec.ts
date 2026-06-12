@@ -12,12 +12,12 @@ describe('publish-confirm.util', () => {
   it('detects publish confirm intents', () => {
     expect(isPublishConfirmIntent('确认发布')).toBe(true);
     expect(isPublishConfirmIntent('确认')).toBe(true);
-    expect(isPublishConfirmIntent('组队队友')).toBe(false);
+    expect(isPublishConfirmIntent('组队发帖')).toBe(false);
   });
 
   it('does not detect awaiting confirmation from marker without persisted state', () => {
     const messages = [
-      { role: 'user' as const, content: '组队队友' },
+      { role: 'user' as const, content: '组队发帖' },
       {
         role: 'assistant' as const,
         content: `${PUBLISH_CONFIRM_PROMPT_MARKER}\n请确认`,
@@ -29,7 +29,7 @@ describe('publish-confirm.util', () => {
   });
 
   it('extracts draft paragraph from publish confirm reply', () => {
-    const draft = 'cpdd三个男生';
+    const draft = '6.13 上海 3个男生';
     const content = buildPublishConfirmReply({
       activityLabel: '风暴电音节',
       draftBody: draft,
@@ -43,7 +43,7 @@ describe('publish-confirm.util', () => {
     const content = buildPublishConfirmReply({
       activityLabel: '风暴电音节',
       draftBody: draft,
-      shortcutTag: '组队队友',
+      shortcutTag: '组队',
       draftTags: ['#13号A区', '#女生'],
     });
     expect(extractDraftTagsFromPublishConfirmContent(content)).toEqual([
@@ -57,7 +57,7 @@ describe('publish-confirm.util', () => {
     expect(
       isAwaitingPublishConfirmation(
         messages,
-        enterPublishConfirmState({ activityLegacyId: 1, draftBody: '找搭子' }),
+        enterPublishConfirmState({ activityLegacyId: 1, draftBody: '组队' }),
       ),
     ).toBe(true);
   });

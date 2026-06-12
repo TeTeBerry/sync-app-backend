@@ -1,5 +1,6 @@
+/** Agent tool-calling over TextLlmClient (Hunyuan). Vision not used here. */
 import { Injectable } from '@nestjs/common';
-import { DashscopeChatClient } from '../../infra/llm/dashscope-chat.client';
+import { TextLlmClient } from '../../infra/llm/text-llm.client';
 
 interface OpenAiToolCall {
   id?: string;
@@ -17,18 +18,14 @@ export interface OpenAiChatMessage {
   tool_call_id?: string;
 }
 
-function isQwenHybridThinkingModel(model: string): boolean {
-  return /qwen3/i.test(model);
-}
-
 @Injectable()
 export class AgentLlmService {
   private readonly model: string;
   readonly enabled: boolean;
 
-  constructor(private readonly dashscope: DashscopeChatClient) {
-    this.enabled = this.dashscope.enabled;
-    this.model = this.dashscope.resolveAgentModel();
+  constructor(private readonly textLlm: TextLlmClient) {
+    this.enabled = this.textLlm.enabled;
+    this.model = this.textLlm.resolveAgentModel();
   }
 
   async chatWithTools(params: {
@@ -47,22 +44,13 @@ export class AgentLlmService {
       return null;
     }
 
-    const body: Record<string, unknown> = {
+    const data = await this.textLlm.chat({
+      messages: params.messages,
       model: this.model,
       temperature: 0.2,
-      stream: false,
-      messages: params.messages,
-      tools: params.tools,
-      tool_choice: 'auto',
-    };
-
-    if (isQwenHybridThinkingModel(this.model)) {
-      body.enable_thinking = false;
-    }
-
-    const data = await this.dashscope.postChatCompletions({
-      body,
       timeoutMs: params.timeoutMs,
+      tools: params.tools,
+      toolChoice: 'auto',
     });
 
     if (!data) {

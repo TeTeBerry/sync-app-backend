@@ -1,18 +1,10 @@
-import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import { isTicketResaleIntent } from '../buddy/activity-scope-guard.util';
 import { isBuddyPostEntryIntent } from '../publish/buddy-post-flow.util';
-import {
-  isInformalPostBodyInput,
-  isExplicitReplacePostIntent,
-} from '../conversation/existing-post-guidance.util';
 import { isDjInfoIntent } from '../dj/dj-info-query.util';
-import { detectUserIntent } from '../intent/user-intent';
 import type { ResolvedChatIntent } from '../intent/chat-intent.types';
-import { inferBuddySearchHintKind } from '../utils/buddy-search-hint.util';
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
 import { isActivityBriefIntent } from '../utils/activity-brief-intent.util';
 import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
-import { isTravelGuideIntent } from '../utils/activity-guide.util';
 import { isAwaitingSelfPostBodyCollection } from '../publish/buddy-post-flow.util';
 import type { ConversationState } from '../conversation';
 import type { ChatMessageDto } from '../../shared/chat';
@@ -57,57 +49,16 @@ export function isReadOnlyTurn(
 
 export function shouldBlockAgentForActivityInput(
   input: string,
-  activityLegacyId: number,
+  _activityLegacyId: number,
 ): boolean {
-  const trimmed = input.trim();
-  if (isAiShortcutTag(trimmed)) {
-    return true;
-  }
-  if (isTicketResaleIntent(trimmed)) {
-    return true;
-  }
-  if (inferBuddySearchHintKind(trimmed)) {
-    return true;
-  }
-  if (/(有人吗|有没有人|有没有\s*搭子|组队帖|结伴帖)/.test(trimmed)) {
-    return true;
-  }
-  if (/帮我看看有没有|搜一下.*帖/.test(trimmed)) {
-    return true;
-  }
-  if (detectUserIntent(trimmed) === 'find_buddy') {
-    return true;
-  }
-  if (isInformalPostBodyInput(trimmed)) {
-    return true;
-  }
-  return false;
+  return isTicketResaleIntent(input.trim());
 }
 
 export function resolveActivityScopedFastPath(
   trimmed: string,
-  activityLegacyId: number,
+  _activityLegacyId: number,
 ): ResolvedChatIntent | null {
   if (isTicketResaleIntent(trimmed)) {
-    return { kind: 'create_post', source: 'rule' };
-  }
-
-  if (isInformalPostBodyInput(trimmed)) {
-    return { kind: 'create_post', source: 'rule' };
-  }
-
-  const buddySearchKind = inferBuddySearchHintKind(trimmed);
-  if (buddySearchKind && /(有人吗|有没有人|搭子)/.test(trimmed)) {
-    return { kind: 'quick_reply', source: 'rule' };
-  }
-
-  if (detectUserIntent(trimmed) === 'find_buddy') {
-    if (/(组队帖|结伴帖)/.test(trimmed)) {
-      return null;
-    }
-    if (/(dj|艺人)/i.test(trimmed) && /(风格|曲风|类似|相近)/i.test(trimmed)) {
-      return null;
-    }
     return { kind: 'create_post', source: 'rule' };
   }
 

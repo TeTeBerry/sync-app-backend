@@ -45,12 +45,12 @@ describe('toLiveInfoFeedItemDto', () => {
     } as unknown as EventLiveUpdateDocument;
 
     const dto = toLiveInfoFeedItemDto(doc, undefined, {
-      zones: [{ id: 'stage_a', label: 'A 舞台' }],
+      zones: [{ id: 'stage_a', label: 'A区' }],
       authorOnSiteVerified: true,
     });
 
     expect(dto.zoneTag).toBe('stage_a');
-    expect(dto.zoneLabel).toBe('A 舞台');
+    expect(dto.zoneLabel).toBe('A区');
     expect(dto.authorOnSiteVerified).toBe(true);
   });
 

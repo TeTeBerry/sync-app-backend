@@ -10,7 +10,7 @@ import {
 describe('user-profile-hints.util', () => {
   it('buildBuddyPostProfileHints maps location from post', () => {
     const hints = buildBuddyPostProfileHints({
-      body: '找组队，6.13-6.14，上海，2人',
+      body: '组队，6.13-6.14，上海，2人',
       location: '上海',
       tags: ['#组队'],
     });

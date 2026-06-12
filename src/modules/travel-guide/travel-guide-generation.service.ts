@@ -5,6 +5,8 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { HunyuanReasoningEffort } from '../../infra/llm/text-llm.client';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import {
   assertUserUgcTexts,
@@ -56,11 +58,15 @@ const TRAVEL_GUIDE_MAP_JSON_SYSTEM = [
   '不要输出天气。',
 ].join('');
 
+const TRAVEL_GUIDE_LLM_TIMEOUT_MS = 90_000;
+
 @Injectable()
 export class TravelGuideGenerationService {
   private readonly logger = new Logger(TravelGuideGenerationService.name);
+  private readonly travelGuideReasoningEffort: HunyuanReasoningEffort;
 
   constructor(
+    private readonly config: ConfigService,
     private readonly activityService: ActivityService,
     private readonly llmService: LlmService,
     private readonly amap: AmapMapService,
@@ -69,7 +75,11 @@ export class TravelGuideGenerationService {
     private readonly generationCache: TravelGuideGenerationCacheService,
     private readonly userProfileSync: UserProfileSyncService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
-  ) {}
+  ) {
+    this.travelGuideReasoningEffort = (this.config.get<string>(
+      'hunyuan.travelGuideReasoningEffort',
+    ) ?? 'high') as HunyuanReasoningEffort;
+  }
 
   async generate(
     activityLegacyId: number,
@@ -269,7 +279,8 @@ export class TravelGuideGenerationService {
       const result = await this.llmService.invokeJson<LlmTravelGuidePayload>(
         TRAVEL_GUIDE_MAP_JSON_SYSTEM,
         user,
-        60_000,
+        TRAVEL_GUIDE_LLM_TIMEOUT_MS,
+        { reasoningEffort: this.travelGuideReasoningEffort },
       );
       const sanitized = sanitizeLlmTravelGuidePayload(result);
       if (!this.isValidMapSourcedPayload(sanitized, dto.selfDrive)) return null;

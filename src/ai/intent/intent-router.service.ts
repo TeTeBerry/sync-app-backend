@@ -152,11 +152,7 @@ export class IntentRouterService {
       return { kind: 'create_post', source: 'llm' };
     }
 
-    if (
-      intent === 'chitchat' ||
-      intent === 'quick_find_buddy' ||
-      intent === 'near_events'
-    ) {
+    if (intent === 'chitchat' || intent === 'near_events') {
       return { kind: 'quick_reply', source: 'llm' };
     }
 

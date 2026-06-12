@@ -15,9 +15,9 @@ describe('live-info-zones.util', () => {
   it('uses configured zones when present', () => {
     expect(
       resolveLiveInfoZones({
-        liveInfoZones: [{ id: 'stage_a', label: 'A 舞台' }],
+        liveInfoZones: [{ id: 'stage_a', label: 'A区' }],
       }),
-    ).toEqual([{ id: 'stage_a', label: 'A 舞台' }]);
+    ).toEqual([{ id: 'stage_a', label: 'A区' }]);
   });
 
   it('normalizes missing zoneTag to venue', () => {
@@ -35,8 +35,8 @@ describe('live-info-zones.util', () => {
   });
 
   it('maps zone label from config', () => {
-    const zones = [{ id: 'stage_b', label: 'B 舞台' }];
-    expect(zoneLabelForTag(zones, 'stage_b')).toBe('B 舞台');
+    const zones = [{ id: 'stage_b', label: 'B区' }];
+    expect(zoneLabelForTag(zones, 'stage_b')).toBe('B区');
     expect(zoneLabelForTag(zones, undefined)).toBe('全场');
   });
 });

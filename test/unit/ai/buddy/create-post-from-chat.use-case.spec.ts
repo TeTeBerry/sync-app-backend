@@ -31,7 +31,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
     onStateChange: jest.fn(),
   };
 
-  const gateMessages = [{ role: 'user' as const, content: '组队队友' }];
+  const gateMessages = [{ role: 'user' as const, content: '发一条' }];
 
   function createUseCase(overrides?: {
     existingPost?: { id: string; body: string; eventTitle?: string } | null;
@@ -343,7 +343,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
       ...baseParams,
       conversationState: { version: 1, flow: 'idle' },
       messages: [
-        { role: 'user', content: '组队队友' },
+        { role: 'user', content: '发一条' },
         { role: 'user', content: '重新发贴' },
       ],
       input: '重新发贴',
@@ -361,7 +361,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
     );
   });
 
-  it('publishes cpdd verbatim after repost flow', async () => {
+  it('publishes custom body after repost flow', async () => {
     const buildPostBody = jest
       .fn()
       .mockImplementation(
@@ -379,15 +379,15 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
         publishDraft: { activityLegacyId: 9, fromSelfPost: true },
       },
       messages: [
-        { role: 'user', content: '组队队友' },
+        { role: 'user', content: '发一条' },
         { role: 'user', content: '重新发贴' },
         {
           role: 'assistant',
           content: `${SELF_POST_COLLECT_BODY_MARKER}\n请描述需求`,
         },
-        { role: 'user', content: 'cpdd' },
+        { role: 'user', content: '6.13 上海 2人 拼房' },
       ],
-      input: 'cpdd',
+      input: '6.13 上海 2人 拼房',
       onStateChange,
     });
 
@@ -399,39 +399,8 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
     );
     expect(buildPostBody).toHaveBeenCalledWith(
       expect.objectContaining({
-        parsedBody: 'cpdd',
-        input: 'cpdd',
-      }),
-    );
-  });
-
-  it('publishes cpdd when stuck in clarify_buddy state', async () => {
-    const buildPostBody = jest
-      .fn()
-      .mockImplementation(
-        async ({ parsedBody }: { parsedBody?: string }) =>
-          parsedBody?.trim() ?? '',
-      );
-    const useCase = createUseCase({ buildPostBody });
-    const onStateChange = jest.fn();
-
-    const result = await useCase.execute({
-      ...baseParams,
-      conversationState: { version: 1, flow: 'clarify_buddy' },
-      messages: [
-        { role: 'user', content: '组队队友' },
-        { role: 'user', content: '重新发贴' },
-        { role: 'assistant', content: '计划哪天出发/到场？' },
-        { role: 'user', content: 'cpdd' },
-      ],
-      input: 'cpdd',
-      onStateChange,
-    });
-
-    expect(result).toEqual(
-      expect.objectContaining({
-        kind: 'created',
-        postId: 'post-new',
+        parsedBody: '6.13 上海 2人 拼房',
+        input: '6.13 上海 2人 拼房',
       }),
     );
   });

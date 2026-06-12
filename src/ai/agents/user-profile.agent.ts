@@ -2,12 +2,10 @@ import { Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { UserService } from '../../modules/user/user.service';
 import {
-  hasUserMatchProfileSignal,
   mergeUserProfileHints,
   extractProfileGenresFromText,
   normalizeProfileBudgetLevel,
   normalizeProfileGenres,
-  userMatchProfilesEqual,
   type UserMatchProfile,
 } from '../../modules/user/user-profile-hints.util';
 import { LlmService } from '../../infra/llm/llm.service';
@@ -15,7 +13,6 @@ import { ChatMessageDto } from '../../shared/chat';
 import { formatConversationHistory } from '../utils/conversation-format.util';
 import {
   buildKnownFactsSummary,
-  isFindBuddyThread,
   parseConversationContext,
 } from '../conversation/conversation-context.parser';
 import type { UserMatchProfile as AgentUserMatchProfile } from './agent.types';
@@ -102,51 +99,12 @@ export class UserProfileAgent {
     return mergeLlmExtract(existingProfile, extracted, ctx.city);
   }
 
-  async syncProfileFromChat(params: {
+  async syncProfileFromChat(_params: {
     messages: ChatMessageDto[];
     input: string;
     actor: RequestActor;
   }): Promise<UserProfileSyncResult | null> {
-    const { messages, input, actor } = params;
-    const trimmedInput = input.trim();
-
-    if (!trimmedInput || !isFindBuddyThread(messages)) {
-      return null;
-    }
-
-    let existing: UserMatchProfile | undefined;
-    try {
-      const me = await this.userService.getMe(actor);
-      existing = {
-        city: me.city,
-        favorGenres: me.favorGenres,
-        budgetLevel: me.budgetLevel,
-      };
-    } catch {
-      existing = undefined;
-    }
-
-    const profile = await this.buildProfileFromChat(
-      messages,
-      trimmedInput,
-      existing,
-    );
-
-    if (!hasUserMatchProfileSignal(profile)) return null;
-
-    const changed = !userMatchProfilesEqual(existing, profile);
-    if (changed && actor.clientUserId.trim()) {
-      await this.userService.patchMe(
-        {
-          city: profile.city,
-          favorGenres: profile.favorGenres,
-          budgetLevel: profile.budgetLevel,
-        },
-        actor,
-      );
-    }
-
-    return { profile, updated: changed };
+    return null;
   }
 
   toAgentProfile(profile: UserMatchProfile): AgentUserMatchProfile {

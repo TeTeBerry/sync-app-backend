@@ -1,7 +1,6 @@
 import {
   isActivityScopeMismatch,
   isTicketResaleIntent,
-  shouldSkipActivityScopedBuddyRecommend,
 } from '@src/ai/buddy/activity-scope-guard.util';
 
 const ASOT_HK_TICKET =
@@ -37,18 +36,6 @@ describe('activity-scope-guard.util', () => {
           STORM_SHENZHEN_ACTIVITY,
         ),
       ).toBe(false);
-    });
-  });
-
-  describe('shouldSkipActivityScopedBuddyRecommend', () => {
-    it('skips buddy recommend for ticket resale in activity chat', () => {
-      expect(shouldSkipActivityScopedBuddyRecommend(ASOT_HK_TICKET, 9)).toBe(
-        true,
-      );
-    });
-
-    it('skips ticket resale on homepage without bound activity', () => {
-      expect(shouldSkipActivityScopedBuddyRecommend(ASOT_HK_TICKET)).toBe(true);
     });
   });
 });

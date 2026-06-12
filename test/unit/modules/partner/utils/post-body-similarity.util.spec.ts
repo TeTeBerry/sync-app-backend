@@ -5,23 +5,23 @@ import {
 
 describe('post-body-similarity.util', () => {
   it('normalizes punctuation and whitespace', () => {
-    expect(normalizePostBodyForComparison('找组队，6.13-6.14，上海，1人')).toBe(
-      normalizePostBodyForComparison('找组队 6.13-6.14 上海 1人'),
+    expect(normalizePostBodyForComparison('组队，6.13-6.14，上海，1人')).toBe(
+      normalizePostBodyForComparison('组队 6.13-6.14 上海 1人'),
     );
   });
 
   it('treats near-identical post copy as similar', () => {
     expect(
       arePostBodiesSimilar(
-        '找组队，6.13-6.14，上海，1人',
-        '找组队，6.13-6.14，上海，1人',
+        '组队，6.13-6.14，上海，1人',
+        '组队，6.13-6.14，上海，1人',
       ),
     ).toBe(true);
 
     expect(
       arePostBodiesSimilar(
-        '找组队，6.13-6.14，上海，1人',
-        '找组队 6.13-6.14 上海 1人',
+        '组队，6.13-6.14，上海，1人',
+        '组队 6.13-6.14 上海 1人',
       ),
     ).toBe(true);
   });
@@ -29,8 +29,8 @@ describe('post-body-similarity.util', () => {
   it('does not treat different headcount as similar', () => {
     expect(
       arePostBodiesSimilar(
-        '找组队，6.13-6.14，上海，1人',
-        '找组队，6.13-6.14，上海，2人',
+        '组队，6.13-6.14，上海，1人',
+        '组队，6.13-6.14，上海，2人',
       ),
     ).toBe(false);
   });

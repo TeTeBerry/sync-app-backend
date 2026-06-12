@@ -11,7 +11,7 @@ export type PostContentType =
   | 'other';
 
 const CONTENT_TYPE_LABELS: Record<PostContentType, string> = {
-  team: '组队队友',
+  team: '组队',
   accommodation: '住宿同行',
   carpool: '同路同行',
   ticket: '转票',
@@ -21,9 +21,7 @@ const CONTENT_TYPE_LABELS: Record<PostContentType, string> = {
 
 /** 标签/快捷词 → 内容类型映射 */
 const TAG_TO_TYPE: Record<string, PostContentType> = {
-  组队队友: 'team',
   组队: 'team',
-  找组队: 'team',
   求组队: 'team',
   住宿同行: 'accommodation',
   拼房: 'accommodation',
@@ -62,8 +60,7 @@ const BODY_PATTERNS: Array<{ pattern: RegExp; type: PostContentType }> = [
   { pattern: /拼房|住宿|酒店|同房|合住/i, type: 'accommodation' },
   { pattern: /拼卡|同路|顺路|顺风车|接送|包车/i, type: 'carpool' },
   {
-    pattern:
-      /组队|找组队|求组队|搭子|结伴|同行|姐妹|兄弟|cpdd|有人吗|有姐妹|缺\d|[A-Za-z]区|\d+号/i,
+    pattern: /组队|求组队|结伴|同行|姐妹|兄弟|有姐妹|缺\d|[A-Za-z]区|\d+号/i,
     type: 'team',
   },
 ];

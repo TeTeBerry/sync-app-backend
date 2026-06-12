@@ -22,14 +22,13 @@ describe('intent-router.rules', () => {
     expect(hit?.source).toBe('rule');
   });
 
-  it('routes informal post body to create_post when activity is bound', () => {
-    const hit = resolveChatIntentFastPath('13 号 A区 cpdd一个搭子', {
+  it('does not auto-route informal slang to create_post', () => {
+    const hit = resolveChatIntentFastPath('13 号 A区 缺1人', {
       messages: [],
-      input: '13 号 A区 cpdd一个搭子',
+      input: '13 号 A区 缺1人',
       activityLegacyId: 9,
     });
-    expect(hit?.kind).toBe('create_post');
-    expect(hit?.source).toBe('rule');
+    expect(hit).toBeNull();
   });
 
   it('routes confirm publish to create_post', () => {
@@ -54,33 +53,14 @@ describe('intent-router.rules', () => {
     expect(hit?.source).toBe('rule');
   });
 
-  it('routes shortcut tag with bound activity to quick_reply', () => {
-    const hit = resolveChatIntentFastPath('帮我dd', {
-      messages: [],
-      input: '帮我dd',
-      activityLegacyId: 4,
-    });
-    expect(hit?.kind).toBe('quick_reply');
-  });
-
-  it('routes 找卡座 shortcut with bound activity to quick_reply', () => {
-    const hit = resolveChatIntentFastPath('找卡座', {
-      messages: [],
-      input: '找卡座',
-      activityLegacyId: 4,
-    });
-    expect(hit?.kind).toBe('quick_reply');
-    expect(hit?.source).toBe('rule');
-  });
-
-  it('routes zone+搭子 search with bound activity to quick_reply', () => {
-    const hit = resolveChatIntentFastPath('13号 A区 有人吗', {
-      messages: [],
-      input: '13号 A区 有人吗',
-      activityLegacyId: 4,
-    });
-    expect(hit?.kind).toBe('quick_reply');
-    expect(hit?.source).toBe('rule');
+  it('does not rule-route deprecated shortcut labels alone', () => {
+    expect(
+      resolveChatIntentFastPath('找卡座', {
+        messages: [],
+        input: '找卡座',
+        activityLegacyId: 4,
+      }),
+    ).toBeNull();
   });
 
   it('does not rule-route post search phrases (delegated to intent LLM)', () => {
@@ -103,17 +83,16 @@ describe('intent-router.rules', () => {
     ).toEqual({ kind: 'dj_info', source: 'rule' });
   });
 
-  it('routes obvious find-buddy phrase with bound activity to create_post', () => {
-    const hit = resolveChatIntentFastPath('找搭子一起', {
+  it('returns null for zone-only inquiry (no auto post)', () => {
+    const hit = resolveChatIntentFastPath('13号 A区 缺1人', {
       messages: [],
-      input: '找搭子一起',
+      input: '13号 A区 缺1人',
       activityLegacyId: 4,
     });
-    expect(hit?.kind).toBe('create_post');
-    expect(hit?.source).toBe('rule');
+    expect(hit).toBeNull();
   });
 
-  it('returns null for zone-only text without buddy cue (LLM path)', () => {
+  it('returns null for zone-only text (LLM path)', () => {
     const hit = resolveChatIntentFastPath('13号 A区', {
       messages: [],
       input: '13号 A区',

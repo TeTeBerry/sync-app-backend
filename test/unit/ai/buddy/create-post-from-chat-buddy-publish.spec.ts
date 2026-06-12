@@ -30,7 +30,7 @@ describe('CreatePostFromChatUseCase buddy publish (WS chat)', () => {
     date: '06/13-14',
   };
 
-  it('creates post when find-buddy thread has activity and llm ready', async () => {
+  it('creates post when informal body is parsed ready with activity', async () => {
     const createPost = jest.fn().mockResolvedValue({ id: 'post-ws-1' });
     const buildPostBody = jest
       .fn()
@@ -73,7 +73,7 @@ describe('CreatePostFromChatUseCase buddy publish (WS chat)', () => {
 
     const result = await useCase.execute({
       messages: [
-        { role: 'user', content: '组队队友' },
+        { role: 'user', content: '发一条' },
         { role: 'user', content: '6.13-6.14 上海 2人 拼房' },
       ],
       input: '6.13-6.14 上海 2人 拼房',
@@ -130,8 +130,8 @@ describe('CreatePostFromChatUseCase buddy publish (WS chat)', () => {
     );
 
     const result = await useCase.execute({
-      messages: [{ role: 'user', content: '找搭子' }],
-      input: '找搭子',
+      messages: [{ role: 'user', content: '随便聊聊' }],
+      input: '随便聊聊',
       actor: toRequestActor('user-1', 'Test User'),
       activityLegacyId: 9,
       conversationState: { version: 1, flow: 'idle' },

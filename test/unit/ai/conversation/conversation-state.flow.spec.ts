@@ -8,7 +8,7 @@ describe('conversation-state.flow', () => {
   it('resets publish_confirm when user confirms publish', () => {
     const state = enterPublishConfirmState({
       activityLegacyId: 1,
-      draftBody: '找搭子',
+      draftBody: '组队',
     });
     expect(applyFlowSwitch(state, '确认发布')).toEqual(resetToIdle());
   });
@@ -16,7 +16,7 @@ describe('conversation-state.flow', () => {
   it('returns null for unrelated input on publish_confirm', () => {
     const state = enterPublishConfirmState({
       activityLegacyId: 1,
-      draftBody: '找搭子',
+      draftBody: '组队',
     });
     expect(applyFlowSwitch(state, '再看看别的活动')).toBeNull();
   });

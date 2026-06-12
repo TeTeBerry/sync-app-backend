@@ -11,13 +11,6 @@ import {
   QuickReplyExecutor,
   QuickReplyComposer,
 } from './quick-reply';
-import {
-  StructuredReplyHandler,
-  StructuredReplyMatcher,
-  StructuredReplyPlanner,
-  StructuredReplyExecutor,
-  StructuredReplyComposer,
-} from './structured-reply';
 
 @Module({
   imports: [ActivityModule],
@@ -26,19 +19,11 @@ import {
     QuickReplyPlanner,
     QuickReplyExecutor,
     QuickReplyComposer,
-    StructuredReplyMatcher,
-    StructuredReplyPlanner,
-    StructuredReplyExecutor,
-    StructuredReplyComposer,
     QuickReplyHandler,
-    StructuredReplyHandler,
     {
       provide: HANDLER_REGISTRY_TOKEN,
-      useFactory: (
-        quickReply: QuickReplyHandler,
-        structuredReply: StructuredReplyHandler,
-      ) => [quickReply, structuredReply],
-      inject: [QuickReplyHandler, StructuredReplyHandler],
+      useFactory: (quickReply: QuickReplyHandler) => [quickReply],
+      inject: [QuickReplyHandler],
     },
     HandlerRegistryService,
   ],

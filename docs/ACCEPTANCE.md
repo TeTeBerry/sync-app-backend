@@ -103,7 +103,7 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
 | Chroma | 未设置 `CHROMA_URL` 时活动知识库 RAG 与用户画像向量禁用；不影响发帖主流程 |
 | Redis | 不可用时自动 Mongo fallback；`/api/health` 报告 `redis: disabled` |
 | Demo 身份 | 仍使用 query `userId` / demo-owner，无 JWT（P0-H5 后置） |
-| LLM | 需配置通义等 API Key；未配置时 intent router 走 rules/default |
+| LLM | 文本：`HUNYUAN_API_KEY`；视觉：`QWEN_API_KEY`；缺 Key 时 intent router 走 rules/default |
 | 前端 bundle | H5 `app.js` ~329 KiB，超出 webpack 推荐值（非阻塞） |
 | Activity Catalog | 外网 catalog refresh 失败时日志 warning，不影响本地 seed 数据 |
 
@@ -115,7 +115,7 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
 2. **启动后端**：`npm run dev`，确认控制台 `API: http://localhost:3000/api`
 3. **启动前端 H5**：`cd sync-app && npm run dev:h5`，浏览器打开本地地址
 4. **活动页**：进入「活动」Tab，卡片无价格/热度条，CTA 为「加入」；搜索条为静态占位
-5. **活动详情 → AI**：打开任一活动，点击快捷标签（如「找搭子」），应跳转 AI 助手并自动发送首条消息
+5. **活动详情 → AI**：打开任一活动，进入 AI 助手，点「模板发帖」或描述需求发起对话
 6. **发帖闭环**：在活动上下文下发组队需求或点「组队发帖」chip，确认后出现 `post_created` toast，活动帖列表刷新
 8. **健康检查**：`curl http://localhost:3000/api/health`，确认 `ai.transport` 为 `websocket`、`mongodb: up` 及 chroma/redis 状态符合预期
 

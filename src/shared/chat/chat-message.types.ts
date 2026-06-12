@@ -15,7 +15,6 @@ export interface ChatMessage {
   role: ChatMessageRole;
   content: string;
   imageContext?: ChatMessageImageContext;
-  recommendedPosts?: RecommendedPostCard[];
   recommendedActivity?: RecommendedActivityCard;
   createdPost?: RecommendedPostCard;
   suggestedReplies?: string[];

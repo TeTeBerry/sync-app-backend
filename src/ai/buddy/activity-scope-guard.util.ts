@@ -135,11 +135,3 @@ export function isActivityScopeMismatch(
 
   return false;
 }
-
-/** Skip buddy matching when user is listing tickets (home or activity-scoped chat). */
-export function shouldSkipActivityScopedBuddyRecommend(
-  userInput: string,
-  _activityLegacyId?: number,
-): boolean {
-  return isTicketResaleIntent(userInput);
-}

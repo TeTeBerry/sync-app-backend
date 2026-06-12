@@ -22,7 +22,7 @@ When adding new posting behavior, extend `BuddyModule` use cases or `PostIntentS
 | Layer | Role |
 |-------|------|
 | `AiTurnPipeline` | Intent resolve, profile sync, dispatch by `routed.kind` |
-| `AgentFirstTurnHandler` | `AI_AGENT_MODE=on` tool-calling loop + DJ suggested replies |
+| `AgentFirstTurnHandler` | `AI_AGENT_MODE=on` tool-calling loop（`AgentLlmService` / 混元）+ DJ suggested replies |
 | `DjInfoTurnHandler` | Legacy `dj_info` when agent returns empty (pipeline dispatches directly) |
 | `PostingTurnOrchestrator` | Post intent + `CreatePostFromChatUseCase` |
 | `ChatTurnPolicy` | Shared gates for router, agent-first, and posting skip rules |

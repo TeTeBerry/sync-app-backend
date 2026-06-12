@@ -138,7 +138,6 @@ export class TextParseAgent {
       input.activityLegacyId != null
         ? `当前活动 legacyId: ${input.activityLegacyId}`
         : '',
-      ctx.mode === 'find_buddy' ? '对话模式: 找同行/组队' : '',
       `【已知信息摘要】\n${knownFacts}`,
       missingFields.length
         ? `【仍缺字段】${missingFields.join('、')}`

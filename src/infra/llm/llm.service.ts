@@ -1,8 +1,11 @@
+/** Text via Hunyuan (TextLlmClient); vision via DashScope VL (QWEN_API_KEY). See docs/LLM.md. */
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import { ChatAlibabaTongyiDashScope } from './chat-alibaba-tongyi-dashscope';
-import { DashscopeChatClient } from './dashscope-chat.client';
+import { TextLlmClient, type HunyuanReasoningEffort } from './text-llm.client';
+
+export type LlmInvokeJsonOptions = {
+  reasoningEffort?: HunyuanReasoningEffort;
+};
 
 const MULTIMODAL_API_URL =
   'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
@@ -34,53 +37,27 @@ function extractMultimodalText(data: DashScopeMultimodalResponse): string {
 @Injectable()
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
-  public readonly llm: ChatAlibabaTongyiDashScope;
-  public readonly jsonLlm: ChatAlibabaTongyiDashScope;
-  public readonly rerankLlm: ChatAlibabaTongyiDashScope;
   public readonly vlModel: string;
   public readonly jsonModel: string;
-  public readonly rerankModel: string;
-  private readonly defaultModel: string;
-  private readonly apiKey: string;
+  public readonly textProvider: string;
+  /** Hunyuan text JSON / agent tasks. */
   public readonly enabled: boolean;
+  /** Qwen VL multimodal (requires QWEN_API_KEY). */
   public readonly visionEnabled: boolean;
+  private readonly vlApiKey: string;
 
   constructor(
     private readonly config: ConfigService,
-    private readonly dashscope: DashscopeChatClient,
+    private readonly textLlm: TextLlmClient,
   ) {
-    this.apiKey = this.dashscope.apiKey;
-    this.enabled = this.dashscope.enabled;
-    this.visionEnabled = this.enabled;
+    this.vlApiKey = this.config.get<string>('llm.vlApiKey') ?? '';
+    this.enabled = this.textLlm.enabled;
+    this.visionEnabled = Boolean(
+      this.vlApiKey && this.vlApiKey !== 'MISSING_API_KEY',
+    );
     this.vlModel = this.config.get<string>('llm.vlModel') ?? 'qwen-vl-plus';
-    this.defaultModel = this.config.get<string>('llm.model') ?? 'qwen-max';
-    this.jsonModel = this.config.get<string>('llm.jsonModel') ?? 'qwen-plus';
-    this.rerankModel =
-      this.config.get<string>('llm.rerankModel') ?? 'qwen-plus';
-
-    const apiKey = this.apiKey || 'MISSING_API_KEY';
-    const baseOptions = {
-      alibabaApiKey: apiKey,
-      temperature: 0.1,
-    };
-
-    this.llm = new ChatAlibabaTongyiDashScope({
-      ...baseOptions,
-      model: this.defaultModel,
-      streaming: true,
-    });
-
-    this.jsonLlm = new ChatAlibabaTongyiDashScope({
-      ...baseOptions,
-      model: this.jsonModel,
-      streaming: false,
-    });
-
-    this.rerankLlm = new ChatAlibabaTongyiDashScope({
-      ...baseOptions,
-      model: this.rerankModel,
-      streaming: false,
-    });
+    this.jsonModel = this.textLlm.jsonModel;
+    this.textProvider = this.textLlm.provider;
   }
 
   private parseJsonFromText<T>(text: string): T | null {
@@ -103,14 +80,16 @@ export class LlmService {
     if (!this.enabled) return null;
 
     try {
-      const response = await this.withTimeout(
-        this.jsonLlm.invoke([
-          new SystemMessage(system),
-          new HumanMessage(user),
-        ]),
+      const data = await this.textLlm.chat({
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+        model: this.jsonModel,
+        temperature: 0.1,
         timeoutMs,
-      );
-      const text = String(response.content ?? '').trim();
+      });
+      const text = this.textLlm.extractAssistantText(data);
       return text || null;
     } catch (error) {
       this.logger.warn(
@@ -127,39 +106,43 @@ export class LlmService {
     system: string,
     user: string,
     timeoutMs = 15000,
+    options?: LlmInvokeJsonOptions,
   ): Promise<T | null> {
-    return this.invokeJsonWithModel<T>(this.jsonModel, system, user, timeoutMs);
+    return this.invokeJsonWithModel<T>(
+      this.jsonModel,
+      system,
+      user,
+      timeoutMs,
+      options,
+    );
   }
 
-  /** 指定模型做结构化 JSON 抽取（如 post match rerank） */
+  /** 指定模型做结构化 JSON 抽取 */
   async invokeJsonWithModel<T>(
     model: string,
     system: string,
     user: string,
     timeoutMs = 15000,
+    options?: LlmInvokeJsonOptions,
   ): Promise<T | null> {
     if (!this.enabled) return null;
 
-    const llm =
-      model === this.jsonModel
-        ? this.jsonLlm
-        : model === this.rerankModel
-          ? this.rerankLlm
-          : model === this.defaultModel
-            ? this.llm
-            : new ChatAlibabaTongyiDashScope({
-                alibabaApiKey: this.apiKey || 'MISSING_API_KEY',
-                model,
-                streaming: false,
-                temperature: 0.1,
-              });
-
     try {
-      const response = await this.withTimeout(
-        llm.invoke([new SystemMessage(system), new HumanMessage(user)]),
+      const data = await this.withTimeout(
+        this.textLlm.chat({
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: user },
+          ],
+          model,
+          temperature: 0.1,
+          timeoutMs,
+          reasoningEffort: options?.reasoningEffort,
+        }),
         timeoutMs,
       );
-      return this.parseJsonFromText<T>(String(response.content ?? '').trim());
+      const text = this.textLlm.extractAssistantText(data);
+      return this.parseJsonFromText<T>(text);
     } catch (error) {
       this.logger.warn(
         `invokeJsonWithModel failed (${model}): ${
@@ -177,7 +160,7 @@ export class LlmService {
     return Promise.race([promise, timeout]);
   }
 
-  /** 千问 VL（multimodal-generation）：图片 + 文本 → 结构化 JSON */
+  /** 千问 VL（DashScope multimodal-generation）：图片 + 文本 → 结构化 JSON */
   async invokeVisionJson<T>(
     system: string,
     userText: string,
@@ -211,7 +194,7 @@ export class LlmService {
         fetch(MULTIMODAL_API_URL, {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${this.apiKey}`,
+            Authorization: `Bearer ${this.vlApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(buildPayload(includeResultFormat)),

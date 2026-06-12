@@ -31,7 +31,7 @@ export function applyFlowSwitch(
   }
 
   const intent = detectUserIntent(trimmed);
-  if (intent === 'near_events' || intent === 'find_buddy') {
+  if (intent === 'near_events') {
     return resetToIdle();
   }
 

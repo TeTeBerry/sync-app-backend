@@ -19,7 +19,7 @@ describe('activity-guide.util', () => {
     expect(isTravelGuideIntent('帮我生成出行攻略')).toBe(true);
     expect(isTravelGuideIntent('规划')).toBe(true);
     expect(isTravelGuideIntent('攻略')).toBe(true);
-    expect(isTravelGuideIntent('组队队友')).toBe(false);
+    expect(isTravelGuideIntent('组队发帖')).toBe(false);
   });
 
   it('prompts for festival when no activity bound', () => {
@@ -38,6 +38,6 @@ describe('activity-guide.util', () => {
     } as never);
     expect(reply).toContain('AI 攻略');
     expect(reply).toContain('MARSHMELLO');
-    expect(reply).toContain('找组队');
+    expect(reply).toContain('模板发帖');
   });
 });

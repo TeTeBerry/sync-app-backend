@@ -24,7 +24,7 @@ describe('chat conversation-state contract', () => {
         flow: 'publish_confirm',
         publishDraft: {
           activityLegacyId: 4,
-          draftBody: '找搭子',
+          draftBody: '组队',
           fromSelfPost: true,
         },
       },

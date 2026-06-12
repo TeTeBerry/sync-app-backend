@@ -118,18 +118,22 @@ describe('IntentRouterService', () => {
     expect(result).toEqual({ kind: 'dj_info', source: 'rule' });
   });
 
-  it('uses rule fast path for zone buddy search when activity is bound', async () => {
+  it('delegates zone inquiry to LLM when activity is bound', async () => {
+    (llmService.invokeJson as jest.Mock).mockResolvedValue({
+      intent: 'chitchat',
+    });
+
     const result = await router.resolve({
-      messages: [{ role: 'user', content: '13号 A区 有人吗' }],
-      input: '13号 A区 有人吗',
+      messages: [{ role: 'user', content: '13号 A区怎么样' }],
+      input: '13号 A区怎么样',
       activityLegacyId: 4,
       sessionId: 'sess-2',
       requestId: 'req-2',
     });
 
-    expect(llmService.invokeJson).not.toHaveBeenCalled();
+    expect(llmService.invokeJson).toHaveBeenCalled();
     expect(result.kind).toBe('quick_reply');
-    expect(result.source).toBe('rule');
+    expect(result.source).toBe('llm');
   });
 
   it('calls mocked LLM when rules miss and maps chitchat to quick_reply', async () => {
@@ -181,7 +185,7 @@ describe('IntentRouterService', () => {
 
     const base = {
       messages: [],
-      input: '有人吗',
+      input: '我想认识新朋友聊聊天',
       sessionId: 'sess-act',
       requestId: 'req-act',
     };

@@ -61,7 +61,8 @@ AppModule
 | `ActivityLookupModule` + `ACTIVITY_LOOKUP_PORT` | 活动只读查询；报名 / 发帖校验 / BFF |
 | `PartnerReadModule` + `POST_READ_PORT` | 帖子只读；`HomeModule` / `ProfileModule` BFF |
 
-> LLM 能力统一由 `infra/llm/InfraLlmModule` 提供（原 `ai/parser` 已移除）。
+> LLM 能力统一由 `infra/llm/InfraLlmModule` 提供（原 `ai/parser` 已移除）。  
+> 文本（JSON / Agent）经 `TextLlmClient`（混元）；视觉经 `LlmService.invokeVisionJson`（千问 VL / `QWEN_API_KEY`）。详见 [LLM.md](./LLM.md)。
 
 ---
 
@@ -73,7 +74,7 @@ AppModule
 用户消息
   → AiService：校验、限流、会话合并
   → AiTurnPipeline.runTurn
-       → IntentRouterService.resolve（规则快路径优先，未命中再 qwen-max 意图 JSON）
+       → IntentRouterService.resolve（规则快路径优先，未命中再 TextLlm JSON 意图）
        → syncProfileOnce（发帖路径）
        → create_post：PostIntentService.tryCreatePostFromChat
        → quick_reply / chitchat / dj_info / activity_enter：DeterministicReply 或 Agent
@@ -88,7 +89,7 @@ AppModule
 | 项 | 实现 |
 |----|------|
 | 并行 | `create-post`：TextParse/ImageParse ∥ resolveActivity |
-| 风控成本 | 快捷「确认发布」：`RiskAgent.assess(..., { rulesOnly: true })`，规则+重复通过后跳过 Qwen-Max |
+| 风控成本 | 快捷「确认发布」：`RiskAgent.assess(..., { rulesOnly: true })`，规则+重复通过后跳过文本 LLM |
 | 限流 | `AiRateLimitService` Redis INCR 或内存 fallback；`config.ai.rateLimit`（默认 30 次 / 5 分钟 / userId∥sessionId） |
 | 意图缓存 | `IntentCacheService` Redis SETEX + 进程内 Map 降级；key 含 `sessionId` / `activityLegacyId` / `hasImage` / input hash；`config.ai.intentCache` |
 | 流式帧 | `delta` + `message_complete` + `done`（WebSocket JSON） |
@@ -115,9 +116,9 @@ AppModule
 
 | Agent | 实现 | 说明 |
 |-------|------|------|
-| TextParseAgent | Qwen-Max `invokeJson` | 文本 → 结构化发帖字段 |
-| ImageParseAgent | Qwen-VL `invokeVisionJson` | 截图 → 结构化字段 |
-| RiskAgent | 规则 + Qwen-Max + 重复帖检测 | spam / 重复 / 严重违规 |
+| TextParseAgent | `LlmService.invokeJson`（混元） | 文本 → 结构化发帖字段 |
+| ImageParseAgent | `LlmService.invokeVisionJson`（DashScope VL） | 截图 → 结构化字段 |
+| RiskAgent | 规则 + 文本 LLM + 重复帖检测 | spam / 重复 / 严重违规 |
 | NoticeAgent | — | 发帖拒绝通知 |
 
 发帖经 `PostIntentService` → `CreatePostFromChatUseCase` 编排；`ALL_AGENT_TOOLS = []`，**未**接入 `AgentRuntimeService` 工具链。详见 `src/ai/orchestration/README.md`。
