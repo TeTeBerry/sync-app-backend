@@ -24,6 +24,7 @@ import { MediaSecurityModule } from './modules/media-security/media-security.mod
 import { HealthModule } from './common/health/health.module';
 import { AuthCoreModule } from './common/auth/auth-core.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CloudModule } from './infra/cloud/cloud.module';
 import { ActivityContextMiddleware } from './common/middleware/activity-context.middleware';
 import { RequestActorMiddleware } from './common/middleware/request-actor.middleware';
 
@@ -48,6 +49,7 @@ import { RequestActorMiddleware } from './common/middleware/request-actor.middle
         serverSelectionTimeoutMS: 8000,
       }),
     }),
+    CloudModule,
     RedisModule,
     ActivityModule,
     AuthModule,

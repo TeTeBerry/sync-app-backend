@@ -18,7 +18,7 @@ export {
   USER_IMAGE_URL_INVALID_MESSAGE,
 } from '../../common/media/user-image-ref.util';
 
-async function fetchUploadAsDataUrl(url: string): Promise<string> {
+export async function fetchRemoteImageAsDataUrl(url: string): Promise<string> {
   const response = await fetch(url);
   if (!response.ok) {
     throw new BadRequestException('无法读取上传的图片');
@@ -43,7 +43,7 @@ async function fetchUploadAsDataUrl(url: string): Promise<string> {
 export async function resolveImageInput(ref: string): Promise<string> {
   const trimmed = ref.trim();
   if (isCloudBaseTempImageUrl(trimmed)) {
-    return fetchUploadAsDataUrl(trimmed);
+    return fetchRemoteImageAsDataUrl(trimmed);
   }
 
   assertUserImageRefSync(trimmed);
@@ -54,7 +54,7 @@ export async function resolveImageInput(ref: string): Promise<string> {
     logger.warn(`Rejected image URL host/path: ${trimmed}`);
     throw new BadRequestException(USER_IMAGE_URL_INVALID_MESSAGE);
   }
-  return fetchUploadAsDataUrl(trimmed);
+  return fetchRemoteImageAsDataUrl(trimmed);
 }
 
 /** Sync validation for AI WS / REST image fields. */

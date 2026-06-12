@@ -40,7 +40,7 @@ export type TravelPlanReceiptRecognizeForm = {
 
 export type RecognizeTravelPlanReceiptPayload = {
   category: TravelPlanReceiptCategory;
-  /** Local dev: JPEG data URL. Production weapp: CloudBase temp HTTPS URL from getTempFileURL. */
+  /** Local dev: JPEG data URL. Production weapp: `cloud://` fileID from wx.cloud.uploadFile. */
   image: string;
 };
 

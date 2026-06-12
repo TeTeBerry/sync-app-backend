@@ -14,7 +14,11 @@ import {
   assertUserUgcImageDataUrl,
   assertUserUgcRemoteImageUrl,
 } from '../../common/media/user-ugc-image.util';
-import { isCloudBaseTempImageUrl } from '../../common/media/user-image-ref.util';
+import {
+  isCloudBaseTempImageUrl,
+  isCloudStorageFileId,
+} from '../../common/media/user-image-ref.util';
+import { CloudStorageService } from '../../infra/cloud/cloud-storage.service';
 import { ActivityService } from '../activity/activity.service';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import type { RecognizeTravelPlanReceiptDto } from './dto/recognize-travel-plan-receipt.dto';
@@ -35,12 +39,17 @@ export class TravelPlanReceiptRecognizeService {
     private readonly llmService: LlmService,
     private readonly activityService: ActivityService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
+    private readonly cloudStorage: CloudStorageService,
   ) {}
 
   private async resolveReceiptImage(ref: string): Promise<string> {
     const trimmed = ref.trim();
     if (!trimmed) {
       throw new BadRequestException('请上传截图');
+    }
+
+    if (isCloudStorageFileId(trimmed)) {
+      return this.cloudStorage.fetchUgcImageAsDataUrl(trimmed);
     }
 
     if (/^data:image\//i.test(trimmed)) {
@@ -57,6 +66,9 @@ export class TravelPlanReceiptRecognizeService {
 
   private async assertReceiptImageSafe(imageRef: string): Promise<void> {
     const trimmed = imageRef.trim();
+    if (isCloudStorageFileId(trimmed)) {
+      return;
+    }
     if (/^data:image\//i.test(trimmed)) {
       await assertUserUgcImageDataUrl(this.wechatContentSecurity, trimmed);
       return;
