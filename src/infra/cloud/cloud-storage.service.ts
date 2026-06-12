@@ -37,10 +37,6 @@ export class CloudStorageService {
     return this.config.get<string>('cloudbase.envId')?.trim() ?? '';
   }
 
-  get enabled(): boolean {
-    return Boolean(this.envId && this.accessToken.isConfigured());
-  }
-
   /** Resolve `cloud://` fileID to a data URL for vision APIs. */
   async fetchUgcImageAsDataUrl(fileId: string): Promise<string> {
     const trimmed = fileId.trim();

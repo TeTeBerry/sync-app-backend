@@ -10,13 +10,6 @@ import { decodeBase64Payload, ImageTooLargeError } from './image-base64.util';
 const logger = new Logger('ImageRefUtil');
 
 export { ImageTooLargeError };
-export {
-  assertUserImageRefSync,
-  isAllowedUserUploadImageUrl,
-  normalizeUserImageUrls,
-  USER_IMAGE_MUST_UPLOAD_MESSAGE,
-  USER_IMAGE_URL_INVALID_MESSAGE,
-} from '../../common/media/user-image-ref.util';
 
 export async function fetchRemoteImageAsDataUrl(url: string): Promise<string> {
   const response = await fetch(url);

@@ -9,15 +9,8 @@ import {
   decodeBase64Payload,
   toDataUrl,
 } from '../../ai/utils/image-base64.util';
-import { resolveImageInput } from '../../ai/utils/image-ref.util';
-import {
-  assertUserUgcImageDataUrl,
-  assertUserUgcRemoteImageUrl,
-} from '../../common/media/user-ugc-image.util';
-import {
-  isCloudBaseTempImageUrl,
-  isCloudStorageFileId,
-} from '../../common/media/user-image-ref.util';
+import { assertUserUgcImageDataUrl } from '../../common/media/user-ugc-image.util';
+import { isCloudStorageFileId } from '../../common/media/user-image-ref.util';
 import { CloudStorageService } from '../../infra/cloud/cloud-storage.service';
 import { ActivityService } from '../activity/activity.service';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
@@ -57,10 +50,6 @@ export class TravelPlanReceiptRecognizeService {
       return toDataUrl(mimeType, base64);
     }
 
-    if (/^https?:\/\//i.test(trimmed)) {
-      return resolveImageInput(trimmed);
-    }
-
     throw new BadRequestException('请提交本地截图进行识别');
   }
 
@@ -71,10 +60,6 @@ export class TravelPlanReceiptRecognizeService {
     }
     if (/^data:image\//i.test(trimmed)) {
       await assertUserUgcImageDataUrl(this.wechatContentSecurity, trimmed);
-      return;
-    }
-    if (isCloudBaseTempImageUrl(trimmed)) {
-      await assertUserUgcRemoteImageUrl(this.wechatContentSecurity, trimmed);
     }
   }
 

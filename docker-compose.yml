@@ -49,7 +49,6 @@ services:
       - NODE_ENV=production
       - MONGODB_URI=mongodb://mongo:27017/sync-app
       - REDIS_URL=redis://redis:6379
-      - SEED_DEMO_DATA=false
       # Enable Chroma RAG: docker compose --profile chroma up -d
       # and set CHROMA_URL=http://chroma:8000 in .env.production
       # - CORS_ORIGINS=https://h5.your-domain.com

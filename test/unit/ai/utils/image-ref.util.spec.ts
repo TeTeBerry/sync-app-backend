@@ -1,8 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
+import { USER_IMAGE_MUST_UPLOAD_MESSAGE } from '@src/common/media/user-image-ref.util';
 import {
   resolveImageInput,
   validateImageRefSync,
-  USER_IMAGE_MUST_UPLOAD_MESSAGE,
 } from '@src/ai/utils/image-ref.util';
 
 describe('image-ref.util', () => {
@@ -11,6 +11,7 @@ describe('image-ref.util', () => {
 
   beforeAll(() => {
     process.env.UPLOAD_PUBLIC_BASE_URL = 'http://127.0.0.1:3000';
+    process.env.ENABLE_LOCAL_UPLOADS = 'true';
   });
 
   afterAll(() => {

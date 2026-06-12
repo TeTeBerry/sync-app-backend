@@ -36,7 +36,6 @@
     "db:translate-dj-locale": "node scripts/translate-dj-locale.mjs",
     "db:import-damai": "node scripts/import-damai-activities.mjs --inline",
     "db:fix-damai-images": "node scripts/fix-damai-activity-images.mjs",
-    "db:patch-storm-heroes": "node scripts/patch-storm-post-hero-images.mjs",
     "db:patch-festival-images": "node scripts/patch-festival-activity-images.mjs",
     "dev": "npm run wait:mongo && npm run stop:dev && nest build && nest start --watch",
     "dev:all": "npm run infra:up:cn && npm run wait:mongo && npm run stop:dev && nest build && nest start --watch",

@@ -62,8 +62,6 @@ export const ALL_FESTIVAL_SESSION_SEED = [
   },
 ];
 
-export const FESTIVAL_SESSION_SEED = ALL_FESTIVAL_SESSION_SEED;
-
 /** 深圳风暴电音节 2026 完整阵容（activity legacyId 4）— 单主舞台，与官宣海报一致。 */
 export const STORM_ARTIST_PERFORMANCE_SEED = [
   perf({
