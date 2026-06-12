@@ -132,6 +132,41 @@ export class ActivityService implements OnModuleInit {
         },
       );
     }
+
+    await this.syncAttendeeCounts();
+  }
+
+  /** Persist registration totals on each activity's `attendees` field. */
+  async syncAttendeeCounts(legacyIds?: number[]): Promise<void> {
+    const match: Record<string, unknown> = { status: 'registered' };
+    if (legacyIds?.length) {
+      match.activityLegacyId = { $in: legacyIds };
+    }
+
+    const grouped = await this.registrationModel.aggregate<{
+      _id: number;
+      count: number;
+    }>([
+      { $match: match },
+      { $group: { _id: '$activityLegacyId', count: { $sum: 1 } } },
+    ]);
+
+    const countByLegacyId = new Map(
+      grouped.map((row) => [row._id, row.count] as const),
+    );
+
+    const filter = legacyIds?.length ? { legacyId: { $in: legacyIds } } : {};
+
+    const activities = await this.model.find(filter).select('legacyId').lean();
+
+    await Promise.all(
+      activities.map((activity) =>
+        this.model.updateOne(
+          { legacyId: activity.legacyId },
+          { $set: { attendees: countByLegacyId.get(activity.legacyId) ?? 0 } },
+        ),
+      ),
+    );
   }
 
   /** Remove festivals whose catalog dates have passed. */
@@ -411,9 +446,6 @@ export class ActivityService implements OnModuleInit {
     }
     if (dto.hot !== undefined) {
       patch.hot = dto.hot;
-    }
-    if (dto.attendees !== undefined) {
-      patch.attendees = dto.attendees;
     }
 
     if (Object.keys(patch).length === 0) {

@@ -1,11 +1,4 @@
-import {
-  IsBoolean,
-  IsIn,
-  IsInt,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
 import { ACTIVITY_TYPES } from '../utils/activity-type.util';
 
 export class UpdateActivityDto {
@@ -32,9 +25,4 @@ export class UpdateActivityDto {
   @IsOptional()
   @IsBoolean()
   hot?: boolean;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  attendees?: number;
 }

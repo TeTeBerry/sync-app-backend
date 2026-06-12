@@ -16,7 +16,6 @@ type LlmCatalogPatch = {
   location?: string;
   image?: string;
   hot?: boolean;
-  attendees?: number;
   reason?: string;
 };
 
@@ -94,7 +93,7 @@ export class ActivityCatalogRefreshService implements OnModuleInit {
           '你是电音节活动 catalog 维护助手。',
           '根据提供的官方知识片段，核对并更新活动字段。',
           '仅在有可靠依据时标记 changed=true；无变化则 changed=false。',
-          '返回 JSON：{ changed, name?, date?, location?, image?, hot?, attendees?, reason? }',
+          '返回 JSON：{ changed, name?, date?, location?, image?, hot?, reason? }',
           'date 格式与现有 catalog 一致，如 06/13-14；image 必须是可公开访问的 https URL。',
         ].join('\n'),
         [
@@ -106,7 +105,6 @@ export class ActivityCatalogRefreshService implements OnModuleInit {
             location: activity.location,
             image: activity.image,
             hot: activity.hot,
-            attendees: activity.attendees,
           }),
           '',
           '官方知识片段:',
@@ -122,9 +120,6 @@ export class ActivityCatalogRefreshService implements OnModuleInit {
       if (patch.location !== undefined) dto.location = patch.location.trim();
       if (patch.image !== undefined) dto.image = patch.image.trim();
       if (typeof patch.hot === 'boolean') dto.hot = patch.hot;
-      if (typeof patch.attendees === 'number' && patch.attendees >= 0) {
-        dto.attendees = patch.attendees;
-      }
 
       if (Object.keys(dto).length === 0) continue;
 

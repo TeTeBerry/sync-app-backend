@@ -20,7 +20,6 @@ export const ACTIVITY_SEED = [
       'https://mma.prnewswire.com/media/2921955/Tomorrowland_Thailand_PR_Newswire.jpg',
     activityType: 'festival',
     hot: true,
-    attendees: 1500,
   },
   {
     legacyId: 4,
@@ -36,7 +35,6 @@ export const ACTIVITY_SEED = [
       'https://img.alicdn.com/imgextra/i2/2251059038/O1CN011VWlmX2GdSmiFVt13_!!2251059038.jpg',
     activityType: 'festival',
     hot: true,
-    attendees: 420,
     liveInfoZones: [
       { id: 'stage_a', label: 'A区' },
       { id: 'stage_b', label: 'B区' },
@@ -58,6 +56,5 @@ export const ACTIVITY_SEED = [
       'https://ik.imagekit.io/TBR/Island%20Events/EDC%20Thailand%202026.png?updatedAt=1763068886366',
     activityType: 'festival',
     hot: true,
-    attendees: 180,
   },
 ];

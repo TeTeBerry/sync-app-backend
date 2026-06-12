@@ -209,7 +209,7 @@ Demo：`legacyId=4`（风暴电音节）启动时 seed **2026-06-13/14 深圳站
 
 ## 前端对接
 
-`sync-app/.env.development` / `.env.production`（Taro `--mode` 加载，无 `.env` / `.env.local`）：
+`sync-app/.env` / `.env.production`（Taro `--mode` 加载；`.env` 为本地默认，production 模式由 `.env.production` 覆盖）：
 
 ```env
 TARO_APP_API_BASE_URL=https://sync-backend-prd-xxxx.sh.run.tcloudbase.com/api

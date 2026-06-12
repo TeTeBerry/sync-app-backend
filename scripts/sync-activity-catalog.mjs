@@ -29,7 +29,6 @@ const ACTIVITY_SEED = [
     image:
       'https://mma.prnewswire.com/media/2921955/Tomorrowland_Thailand_PR_Newswire.jpg',
     hot: true,
-    attendees: 1500,
   },
   {
     legacyId: 4,
@@ -44,7 +43,6 @@ const ACTIVITY_SEED = [
     image:
       'https://img.alicdn.com/imgextra/i2/2251059038/O1CN011VWlmX2GdSmiFVt13_!!2251059038.jpg',
     hot: true,
-    attendees: 420,
   },
   {
     legacyId: 5,
@@ -59,7 +57,6 @@ const ACTIVITY_SEED = [
     image:
       'https://ik.imagekit.io/TBR/Island%20Events/EDC%20Thailand%202026.png?updatedAt=1763068886366',
     hot: true,
-    attendees: 180,
   },
 ];
 
@@ -91,6 +88,24 @@ async function main() {
   }
 
   const removed = await activities.deleteMany(DEPRECATED_FILTER);
+
+  const registrations = mongoose.connection.db.collection('activityregistrations');
+  const grouped = await registrations
+    .aggregate([
+      { $match: { status: 'registered' } },
+      { $group: { _id: '$activityLegacyId', count: { $sum: 1 } } },
+    ])
+    .toArray();
+  const countByLegacyId = new Map(grouped.map((row) => [row._id, row.count]));
+  const catalog = await activities.find({}).project({ legacyId: 1 }).toArray();
+  await Promise.all(
+    catalog.map((activity) =>
+      activities.updateOne(
+        { _id: activity._id },
+        { $set: { attendees: countByLegacyId.get(activity.legacyId) ?? 0 } },
+      ),
+    ),
+  );
 
   console.log('✅ Activity catalog synced');
   console.log(`   upserted: ${ACTIVITY_SEED.length} festivals`);

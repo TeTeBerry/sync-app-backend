@@ -2,6 +2,7 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { ownerFilterFromActor } from '../../../common/auth/actor-query.util';
 import { UserService } from '../../user/user.service';
+import { ActivityService } from '../activity.service';
 import {
   ACTIVITY_LOOKUP_PORT,
   type IActivityLookupPort,
@@ -38,6 +39,7 @@ export class ActivityRegistrationService {
     private readonly registrationRepository: IActivityRegistrationRepository,
     @Inject(ACTIVITY_LOOKUP_PORT)
     private readonly activityLookup: IActivityLookupPort,
+    private readonly activityService: ActivityService,
     private readonly userService: UserService,
   ) {}
 
@@ -87,6 +89,8 @@ export class ActivityRegistrationService {
       throw error;
     }
 
+    await this.activityService.syncAttendeeCounts([legacyId]);
+
     return {
       ok: true,
       activityLegacyId: legacyId,
@@ -120,6 +124,10 @@ export class ActivityRegistrationService {
       filter,
       legacyId,
     );
+
+    if (removed) {
+      await this.activityService.syncAttendeeCounts([legacyId]);
+    }
 
     return {
       ok: true,
