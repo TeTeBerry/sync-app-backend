@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AMAP_WS } from './amap.capabilities';
+import { parseAmapCost } from './amap-poi-fields.util';
 import { MapApiRateLimiter } from './map-api-rate-limiter';
 import type { GeocodedPlace, RawMapPoi } from './travel-guide-map.types';
 import type { MapPoiKind } from './travel-guide-map.types';
@@ -47,8 +48,8 @@ type PlacePoiItem = {
   type?: string;
   tel?: string | string[];
   biz_ext?: {
-    rating?: string;
-    cost?: string;
+    rating?: string | number;
+    cost?: string | number | string[];
   };
 };
 
@@ -468,13 +469,6 @@ function normalizeRating(value?: string | number): number | undefined {
   if (num <= 0) return undefined;
   if (num > 5) return Math.min(5, num / 10);
   return Math.round(num * 10) / 10;
-}
-
-function parseAmapCost(cost?: string): number | undefined {
-  if (!cost?.trim() || cost === '[]') return undefined;
-  const num = Number(cost);
-  if (!Number.isFinite(num) || num <= 0) return undefined;
-  return num;
 }
 
 function isLateNightFriendly(

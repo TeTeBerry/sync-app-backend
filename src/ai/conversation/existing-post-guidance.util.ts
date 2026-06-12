@@ -1,14 +1,7 @@
-import { isExactQuickReply } from '../intent/user-intent';
-
 /** 用户希望放弃旧帖、重新发帖 */
 export function isExplicitReplacePostIntent(input: string): boolean {
   const text = input.trim();
   return /重新发帖|重新发贴|再发一条|换一条|重新发|新发一条/.test(text);
-}
-
-/** @deprecated 口语自动发帖已下线，仅保留显式发帖流程 */
-export function isInformalPostBodyInput(_input: string): boolean {
-  return false;
 }
 
 export function buildExistingPostGuidanceReply(params: {
