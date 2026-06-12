@@ -25,6 +25,12 @@ type GeocodeResponse = AmapBaseResponse & {
 type RegeoResponse = AmapBaseResponse & {
   regeocode?: {
     formatted_address?: string;
+    addressComponent?: {
+      city?: string | string[];
+      district?: string;
+      province?: string;
+      township?: string;
+    };
   };
 };
 
@@ -144,18 +150,28 @@ export class AmapMapService {
   }
 
   async reverseGeocode(lat: number, lng: number): Promise<string | null> {
+    const label = await this.reverseGeocodeLocationLabel(lat, lng);
+    return label;
+  }
+
+  /** City / district label for post location metadata. */
+  async reverseGeocodeLocationLabel(
+    lat: number,
+    lng: number,
+  ): Promise<string | null> {
     if (!this.enabled) return null;
     const query = new URLSearchParams({
       location: toAmapLocation(lat, lng),
       key: this.key,
       output: 'JSON',
+      extensions: 'base',
     });
 
     const data = await this.getJson<RegeoResponse>(
       `${BASE}${AMAP_WS.regeo}?${query.toString()}`,
     );
     if (!data || data.status !== '1' || !data.regeocode) return null;
-    return data.regeocode.formatted_address?.trim() || null;
+    return pickRegeoLocationLabel(data.regeocode);
   }
 
   async getSuggestion(input: {
@@ -478,4 +494,25 @@ function isLateNightFriendly(
 ): boolean {
   const blob = `${name} ${category} ${keyword}`.toLowerCase();
   return /24|酒吧|夜店|club|live|夜宵|烧烤|餐吧|酒馆|whisky|威士忌/.test(blob);
+}
+
+function normalizeCityLabelForPost(value?: string): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed || trimmed === '[]') return undefined;
+  return trimmed.replace(/(市|省|自治区|特别行政区)$/u, '') || trimmed;
+}
+
+export function pickRegeoLocationLabel(
+  regeocode: NonNullable<RegeoResponse['regeocode']>,
+): string | null {
+  const comp = regeocode.addressComponent;
+  const rawCity = Array.isArray(comp?.city) ? comp.city[0] : comp?.city;
+  const city = normalizeCityLabelForPost(rawCity);
+  const district = comp?.district?.trim();
+  if (city && district && district !== city) {
+    return `${city}${district}`;
+  }
+  if (city) return city;
+  const formatted = regeocode.formatted_address?.trim();
+  return formatted || null;
 }

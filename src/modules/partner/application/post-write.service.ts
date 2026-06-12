@@ -69,7 +69,11 @@ export class PostWriteService {
     private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
 
-  private async toCreatedEventDetailItem(post: PostRecord, liked = false) {
+  private async toCreatedEventDetailItem(
+    post: PostRecord,
+    liked = false,
+    moderationReason?: string,
+  ) {
     const activityLegacyId = post.activityLegacyId;
     const authorOnSiteVerified =
       activityLegacyId != null
@@ -78,7 +82,16 @@ export class PostWriteService {
             activityLegacyId,
           )
         : false;
-    return PostMapper.toEventDetailItem(post, liked, authorOnSiteVerified);
+    const item = PostMapper.toEventDetailItem(
+      post,
+      liked,
+      authorOnSiteVerified,
+    );
+    return {
+      ...item,
+      status: post.status ?? 'active',
+      ...(moderationReason ? { moderationReason } : {}),
+    };
   }
 
   async createPost(
@@ -122,6 +135,8 @@ export class PostWriteService {
 
     const structuredBuddyForm =
       Boolean(dto.contentTypes?.length) && Boolean(dto.tags?.length);
+    const isMessageBoardPost =
+      dto.contentTypes?.length === 1 && dto.contentTypes[0] === 'other';
 
     if (!options?.skipRiskCheck) {
       const risk = await this.postModeration.assessPost(
@@ -130,7 +145,9 @@ export class PostWriteService {
           actor,
           activityLegacyId: dto.activityLegacyId ?? activity?.legacyId,
         },
-        structuredBuddyForm ? { rulesOnly: true } : undefined,
+        structuredBuddyForm || isMessageBoardPost
+          ? { rulesOnly: true }
+          : undefined,
       );
       if (!risk.publishable) {
         void this.accountRisk.recordPublishRiskViolation(actor, risk, {
@@ -236,7 +253,7 @@ export class PostWriteService {
         created.activityLegacyId,
         rejectionReason,
       );
-      return this.toCreatedEventDetailItem(created);
+      return this.toCreatedEventDetailItem(created, false, rejectionReason);
     }
 
     return this.toCreatedEventDetailItem(created);

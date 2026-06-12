@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, BadRequestException } from '@nestjs/common';
 import { Public } from '../../common/auth/public.decorator';
 import { AmapMapService } from './map/amap.service';
 import {
@@ -42,5 +42,21 @@ export class TravelGuideMapController {
     }
 
     return { data: mergePlaceSuggestions(q, remote) };
+  }
+
+  /** GCJ-02 coordinates → short city/district label for post location metadata. */
+  @Public()
+  @Get('reverse-geocode')
+  async reverseGeocode(
+    @Query('lat') latRaw?: string,
+    @Query('lng') lngRaw?: string,
+  ) {
+    const lat = Number(latRaw);
+    const lng = Number(lngRaw);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new BadRequestException('无效的坐标');
+    }
+    const label = await this.map.reverseGeocodeLocationLabel(lat, lng);
+    return { label };
   }
 }

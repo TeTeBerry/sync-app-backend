@@ -133,6 +133,40 @@ describe('PostWriteService', () => {
     expect(repository.create).not.toHaveBeenCalled();
   });
 
+  it('message board posts use rules-only moderation', async () => {
+    (userService.resolveProfile as jest.Mock).mockResolvedValue({
+      name: 'Zara Chen',
+    });
+    (activityService.findByLegacyId as jest.Mock).mockResolvedValue({
+      legacyId: 4,
+      name: '风暴电音节',
+    });
+    (postModeration.assessPost as jest.Mock).mockResolvedValue({
+      publishable: true,
+    });
+    (repository.countByOwnerAndActivity as jest.Mock).mockResolvedValue(0);
+    (repository.create as jest.Mock).mockResolvedValue({
+      _id: 'post-board-1',
+      userId: 'owner-1',
+      body: '特特',
+      eventTitle: '风暴电音节',
+      tags: [],
+      activityLegacyId: 4,
+      status: 'active',
+      contentTypes: ['other'],
+    });
+
+    await service.createPost(
+      { body: '特特', activityLegacyId: 4, contentTypes: ['other'] },
+      toRequestActor('demo-user', 'Zara Chen'),
+    );
+
+    expect(postModeration.assessPost).toHaveBeenCalledWith(
+      expect.objectContaining({ body: '特特' }),
+      { rulesOnly: true },
+    );
+  });
+
   it('createPost with listedInFeed false persists unlisted active post', async () => {
     (userService.resolveProfile as jest.Mock).mockResolvedValue({
       name: 'Zara Chen',
