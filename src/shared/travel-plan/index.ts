@@ -13,6 +13,8 @@ export type {
   TravelPlanNodePayload,
   TravelPlanReceiptCategory,
   TravelPlanReceiptRecognizeForm,
+  TravelPlanReceiptRecognizeJobResult,
+  TravelPlanReceiptRecognizeJobStatus,
 } from './dto';
 
 export { TRAVEL_PLAN_RECEIPT_CATEGORIES } from './dto';

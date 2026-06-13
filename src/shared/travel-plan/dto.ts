@@ -52,3 +52,15 @@ export type RecognizeTravelPlanReceiptResult = {
   forms?: TravelPlanReceiptRecognizeForm[];
   message?: string;
 };
+
+export type TravelPlanReceiptRecognizeJobStatus =
+  | 'pending'
+  | 'completed'
+  | 'failed';
+
+export type TravelPlanReceiptRecognizeJobResult = {
+  jobId: string;
+  status: TravelPlanReceiptRecognizeJobStatus;
+  result?: RecognizeTravelPlanReceiptResult;
+  errorMessage?: string;
+};
