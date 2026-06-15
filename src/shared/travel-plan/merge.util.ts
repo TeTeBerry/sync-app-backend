@@ -31,13 +31,14 @@ export function filterUserTravelPlanNodes<T extends TravelPlanNodeRecord>(
 ): T[] {
   return nodes.filter((node) => {
     const source = (node as TravelPlanNode).source;
-    if (source === 'user') {
-      return true;
-    }
     if (source === 'activity') {
       return false;
     }
-    return node.category !== 'event' && !isActivityTravelPlanNodeId(node.id);
+    if (source === 'user') {
+      return true;
+    }
+    // Persisted nodes and save payloads omit `source`; activity nodes use activity-event-* ids.
+    return !isActivityTravelPlanNodeId(node.id);
   });
 }
 

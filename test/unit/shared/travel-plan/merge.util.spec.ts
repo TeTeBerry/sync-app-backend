@@ -40,4 +40,30 @@ describe('shared travel-plan merge.util', () => {
     expect(filterUserTravelPlanNodes(nodes)).toHaveLength(1);
     expect(filterUserTravelPlanNodes(nodes)[0]?.id).toBe('user-1');
   });
+
+  it('filterUserTravelPlanNodes keeps user event nodes without source', () => {
+    const nodes = [
+      {
+        id: 'plan-abc',
+        category: 'event' as const,
+        startDate: '2026-03-15',
+        endDate: '2026-03-15',
+        title: '其他安排',
+        subtitle: '待补充详情',
+        confirmed: true,
+      },
+      {
+        id: 'activity-event-mar15',
+        category: 'event' as const,
+        startDate: '2026-03-15',
+        endDate: '2026-03-15',
+        title: 'Festival Day 1',
+        subtitle: 'Main stage',
+        confirmed: true,
+      },
+    ];
+
+    expect(filterUserTravelPlanNodes(nodes)).toHaveLength(1);
+    expect(filterUserTravelPlanNodes(nodes)[0]?.id).toBe('plan-abc');
+  });
 });
