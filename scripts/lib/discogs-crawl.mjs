@@ -8,6 +8,7 @@ import {
   expandFestivalArtistNames,
   getDiscogsSearchQueries,
   getLineupCoverageKeys,
+  LINEUP_MANUAL_DJ_PROFILES,
   loadEdcThailandFallbackNames,
   loadEdcKoreaFallbackNames,
   normalizeArtistNameKey,
@@ -371,6 +372,15 @@ export async function crawlArtistNames({
 
   for (const artistName of artistNames) {
     console.log(`\n查找 ${label}:`, artistName);
+    const manualProfile =
+      LINEUP_MANUAL_DJ_PROFILES[artistName.trim().toUpperCase()];
+    if (manualProfile) {
+      const data = { ...manualProfile, crawledAt: new Date() };
+      await upsertDjRecord(Dj, data);
+      upserted += 1;
+      console.log('→ 人工档案（无 Discogs 艺人页）');
+      continue;
+    }
     if (SEED_ONLY_LINEUP_ARTISTS.has(artistName.trim().toUpperCase())) {
       console.log('↷ 跳过（Discogs 无可靠条目，保留 seed 风格）');
       continue;

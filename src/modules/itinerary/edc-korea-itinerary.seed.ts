@@ -79,7 +79,7 @@ const EDC_KOREA_ARTISTS: EdcArtistSeed[] = [
   ),
   dj('ELIANA', 'House', 'Afro House · Melodic House', 78, '#f472b6'),
   dj('FISHER', 'House', 'Tech House', 94, '#84cc16'),
-  dj('HOHO ONE', 'House', 'Tech House', 75, '#06b6d4'),
+  dj('HOHO ONE', 'House', 'Cantopop · EDM · Tech House', 75, '#06b6d4'),
   dj('DEMI', 'House', 'Tech House · Bass House', 77, '#ec4899'),
   dj(
     'ILLENIUM B2B DABIN',
@@ -110,7 +110,13 @@ const EDC_KOREA_ARTISTS: EdcArtistSeed[] = [
   dj('NO1 (HONGJOONG)', 'House', 'Open Format · EDM', 80, '#6366f1'),
   dj('OGUZ', 'Techno', 'Hard Techno', 83, '#4f46e5'),
   dj('ONEJ', 'House', 'Tech House', 74, '#059669'),
-  dj('PAUL EUN', 'House', 'Melodic House', 73, '#0ea5e9'),
+  dj(
+    'PAUL EUN',
+    'Trance',
+    'Progressive Trance · Uplifting Trance',
+    78,
+    '#0ea5e9',
+  ),
   dj('PLUKO', 'Future Bass', 'Melodic Bass', 76, '#c026d3'),
   dj('R3HAB', 'House', 'Big Room · Electro House', 91, '#facc15'),
   dj('RIORDAN', 'Techno', 'Melodic Techno', 82, '#5b21b6'),

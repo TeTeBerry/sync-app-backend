@@ -4,6 +4,8 @@ const B2B_PATTERN = /\s+B2B\s+/i;
 
 export const DISCOGS_LINEUP_ARTIST_IDS: Record<string, number> = {
   KANINE: 5865864,
+  'SVDDEN DEATH': 5375145,
+  'HOHO ONE': 1889815,
 };
 
 /** No reliable Discogs profile — itinerary uses seed genreLabel instead. */
@@ -39,7 +41,6 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   'BEN NICKY PRESENTS XTREME': 'Ben Nicky',
   'CASEPEAT X PURPLE RABBIT': 'Casepeat',
   'CHEEZ & YUKA': 'Cheez',
-  'HOHO ONE': 'Hoho One',
   'ALY & FILA': 'Aly & Fila',
 };
 
@@ -55,6 +56,9 @@ export const LINEUP_COVERAGE_NAME_KEYS: Record<string, string[]> = {
   'DAVICO B2B DEMUK B2B DEPARTS': ['davico', 'demuk', 'departs'],
   'ILLENIUM B2B DABIN': ['illenium', 'dabin'],
   'CASEPEAT X PURPLE RABBIT': ['casepeat', 'purplerabbit'],
+  'SVDDEN DEATH': ['suddendeath', 'svddendeath'],
+  'HOHO ONE': ['erickwok', 'hohoone'],
+  'PAUL EUN': ['pauleun'],
 };
 
 export function expandFestivalArtistName(lineupName: string): string[] {

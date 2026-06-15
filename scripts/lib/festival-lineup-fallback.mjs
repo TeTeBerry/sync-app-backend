@@ -129,6 +129,13 @@ export function expandFestivalArtistNames(lineupNames) {
 /** Force Discogs artist id when search returns the wrong homonym. */
 export const DISCOGS_LINEUP_ARTIST_IDS = {
   KANINE: 5865864,
+  /** Discogs lists as "Sudden Death (16)" — dubstep producer Svdden Death */
+  'SVDDEN DEATH': 5375145,
+  /**
+   * HO HO ONE = Eric Kwok (郭偉亮) × Dan James Cantopop/EDM duo.
+   * No standalone Discogs page; producer half is #1889815.
+   */
+  'HOHO ONE': 1889815,
 };
 
 /** Skip Discogs crawl — no reliable match; itinerary keeps seed genreLabel. */
@@ -168,7 +175,6 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   'BEN NICKY PRESENTS XTREME': 'Ben Nicky',
   'CASEPEAT X PURPLE RABBIT': 'Casepeat',
   'CHEEZ & YUKA': 'Cheez',
-  'HOHO ONE': 'Hoho One',
   'ALY & FILA': 'Aly & Fila',
 };
 
@@ -185,6 +191,30 @@ export const LINEUP_COVERAGE_NAME_KEYS = {
   'DAVICO B2B DEMUK B2B DEPARTS': ['davico', 'demuk', 'departs'],
   'ILLENIUM B2B DABIN': ['illenium', 'dabin'],
   'CASEPEAT X PURPLE RABBIT': ['casepeat', 'purplerabbit'],
+  'SVDDEN DEATH': ['suddendeath', 'svddendeath'],
+  'HOHO ONE': ['erickwok', 'hohoone'],
+  'PAUL EUN': ['pauleun'],
+};
+
+/**
+ * Curated DJ rows when Discogs has no artist page.
+ * Uses reserved positive ids (99xxxxxxx) to avoid collision with real Discogs ids.
+ */
+export const LINEUP_MANUAL_DJ_PROFILES = {
+  'PAUL EUN': {
+    discogsId: 990000008,
+    name: 'Paul Eun',
+    realName: '',
+    profile:
+      'Seoul-based trance DJ and Trancempire organizer. Hosts In Trance We United sets at Club Temple, Seoul.',
+    genres: ['Electronic'],
+    styles: ['Trance', 'Progressive Trance', 'Uplifting Trance'],
+    country: 'South Korea',
+    urls: ['https://soundcloud.com/paul-eun'],
+    members: [],
+    thumbnail: '',
+    representativeWorks: [],
+  },
 };
 
 export function normalizeArtistNameKey(name) {
