@@ -56,18 +56,6 @@ export class Activity {
   /** Official ticketing page (e.g. detail.damai.cn). */
   @Prop()
   externalUrl?: string;
-
-  /** On-site live-info zone chips (e.g. 风暴 A区 / B区 / 卡座). */
-  @Prop({
-    type: [
-      {
-        id: { type: String, required: true },
-        label: { type: String, required: true },
-      },
-    ],
-    default: undefined,
-  })
-  liveInfoZones?: { id: string; label: string }[];
 }
 
 export const ActivitySchema = SchemaFactory.createForClass(Activity);

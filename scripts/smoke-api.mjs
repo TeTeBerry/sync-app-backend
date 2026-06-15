@@ -243,11 +243,6 @@ step(`POST /activities/${activityId}/travel-plan/save`, async (ctx) => {
   assert(data?.ok === true, 'travel-plan save should return ok: true');
 });
 
-step(`GET /activities/${activityId}/live-info`, async (ctx) => {
-  const data = await request('GET', `activities/${ctx.activityId}/live-info?${ctx.q}`);
-  assert(data?.viewer != null, 'live-info viewer missing');
-});
-
 step('GET /notifications', async (ctx) => {
   await request('GET', `notifications?${ctx.q}`);
 });

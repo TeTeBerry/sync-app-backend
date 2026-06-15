@@ -31,14 +31,8 @@ export interface IPostRepository {
     id: string,
     patch: Partial<PostRecord>,
   ): Promise<PostRecord | null>;
-  incrementCounter(
-    id: string,
-    field: 'likes' | 'comments',
-    delta?: number,
-  ): Promise<PostRecord | null>;
   deleteById(id: string): Promise<boolean>;
   countByOwner(filter: PostQueryFilter): Promise<number>;
-  sumLikesByOwner(filter: PostQueryFilter): Promise<number>;
   existsDuplicateBody(
     userId: string,
     body: string,

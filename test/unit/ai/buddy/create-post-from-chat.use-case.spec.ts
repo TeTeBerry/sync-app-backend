@@ -287,7 +287,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
     );
   });
 
-  it('omits location from dto when no conversation city so profile fallback applies', async () => {
+  it('omits location from dto when no conversation city', async () => {
     const createPost = jest.fn().mockResolvedValue({ id: 'post-new' });
     const customBody = '13号 A区 dd';
     const buildPostBody = jest

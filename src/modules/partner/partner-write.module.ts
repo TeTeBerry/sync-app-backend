@@ -6,7 +6,6 @@ import { AccountRiskModule } from '../account-risk/account-risk.module';
 import { UserModule } from '../user/user.module';
 import { PostWriteService } from './application/post-write.service';
 import { PartnerRepositoryModule } from './partner-repository.module';
-import { LiveInfoModule } from '../live-info/live-info.module';
 import { MediaSecurityModule } from '../media-security/media-security.module';
 
 @Module({
@@ -16,7 +15,6 @@ import { MediaSecurityModule } from '../media-security/media-security.module';
     PartnerRepositoryModule,
     UserModule,
     AccountRiskModule,
-    LiveInfoModule,
     ActivityLookupModule,
     PostAgentAdaptersModule,
   ],

@@ -10,8 +10,6 @@ import type { IPostRepository } from '@src/modules/partner/interfaces/post.repos
 import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { UserService } from '@src/modules/user/user.service';
 import type { UserBlockService } from '@src/modules/user/user-block.service';
-import type { PostInteractionService } from '@src/modules/partner/post-interaction.service';
-import type { OnSiteIdentityService } from '@src/modules/live-info/on-site-identity.service';
 
 function createPost(overrides: Partial<PostRecord> = {}): PostRecord {
   return {
@@ -46,39 +44,19 @@ describe('PostQueryService.listPopular', () => {
     loadBuddyUserIds: jest.fn(),
   } as unknown as UserBlockService;
 
-  const postInteraction = {
-    findLikedPostIds: jest.fn(),
-  } as unknown as PostInteractionService;
-
-  const onSiteIdentity = {
-    getOnSiteCertifiedUserIds: jest.fn().mockResolvedValue(new Set()),
-  } as unknown as OnSiteIdentityService;
-
   let service: PostQueryService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new PostQueryService(
-      repository,
-      userService,
-      userBlockService,
-      postInteraction,
-      onSiteIdentity,
-    );
+    service = new PostQueryService(repository, userService, userBlockService);
     (userBlockService.getBlockExclusionSet as jest.Mock).mockResolvedValue(
       new Set(),
     );
     (userBlockService.loadBuddyUserIds as jest.Mock).mockResolvedValue(
       new Set(),
     );
-    (postInteraction.findLikedPostIds as jest.Mock).mockResolvedValue(
-      new Set(),
-    );
     (userService.findPrivacyLevelsByExternalIds as jest.Mock).mockResolvedValue(
       new Map(),
-    );
-    (onSiteIdentity.getOnSiteCertifiedUserIds as jest.Mock).mockResolvedValue(
-      new Set(),
     );
   });
 
@@ -92,7 +70,6 @@ describe('PostQueryService.listPopular', () => {
 
     expect(result).toEqual([]);
     expect(repository.findPopular).toHaveBeenCalledWith(20);
-    expect(postInteraction.findLikedPostIds).not.toHaveBeenCalled();
   });
 
   it('passes limit to repository.findPopular', async () => {
@@ -103,17 +80,15 @@ describe('PostQueryService.listPopular', () => {
     expect(repository.findPopular).toHaveBeenCalledWith(5);
   });
 
-  it('returns popular posts in repository order with like counts', async () => {
+  it('returns popular posts in repository order', async () => {
     const hotPost = createPost({
       _id: 'post-hot',
-      likes: 50,
-      body: 'Most liked',
+      body: 'Most recent',
     });
     const warmPost = createPost({
       _id: 'post-warm',
       userId: 'demo-mia',
       authorName: 'Mia',
-      likes: 20,
       body: 'Second place',
     });
     (repository.findPopular as jest.Mock).mockResolvedValue([
@@ -128,9 +103,7 @@ describe('PostQueryService.listPopular', () => {
 
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe('post-hot');
-    expect(result[0].likes).toBe(50);
     expect(result[1].id).toBe('post-warm');
-    expect(result[1].likes).toBe(20);
   });
 
   it('excludes posts from blocked users', async () => {
@@ -142,7 +115,6 @@ describe('PostQueryService.listPopular', () => {
       _id: 'post-blocked',
       userId: 'demo-blocked',
       authorName: 'Blocked User',
-      likes: 99,
     });
     (repository.findPopular as jest.Mock).mockResolvedValue([
       blockedPost,
@@ -162,35 +134,6 @@ describe('PostQueryService.listPopular', () => {
     expect(userBlockService.getBlockExclusionSet).toHaveBeenCalledWith(
       'demo-kyle',
     );
-  });
-
-  it('marks posts liked by the current user', async () => {
-    const likedPost = createPost({ _id: 'post-liked', likes: 12 });
-    const otherPost = createPost({
-      _id: 'post-other',
-      userId: 'demo-mia',
-      authorName: 'Mia',
-      likes: 8,
-    });
-    (repository.findPopular as jest.Mock).mockResolvedValue([
-      likedPost,
-      otherPost,
-    ]);
-    (postInteraction.findLikedPostIds as jest.Mock).mockResolvedValue(
-      new Set(['post-liked']),
-    );
-
-    const result = await service.listPopular(
-      20,
-      toRequestActor('demo-kyle', 'Kyle'),
-    );
-
-    expect(postInteraction.findLikedPostIds).toHaveBeenCalledWith('demo-kyle', [
-      'post-liked',
-      'post-other',
-    ]);
-    expect(result[0].liked).toBe(true);
-    expect(result[1].liked).toBe(false);
   });
 
   it('masks personal info for authors with restricted privacy', async () => {

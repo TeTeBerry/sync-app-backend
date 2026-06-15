@@ -35,12 +35,6 @@ export const ACTIVITY_SEED = [
       'https://img.alicdn.com/imgextra/i2/2251059038/O1CN011VWlmX2GdSmiFVt13_!!2251059038.jpg',
     activityType: 'festival',
     hot: true,
-    liveInfoZones: [
-      { id: 'stage_a', label: 'A区' },
-      { id: 'stage_b', label: 'B区' },
-      { id: 'vip_booth', label: '卡座' },
-      { id: 'venue', label: '全场' },
-    ],
   },
   {
     legacyId: 5,

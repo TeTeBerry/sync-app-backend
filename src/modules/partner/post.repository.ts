@@ -36,7 +36,7 @@ export class PostRepository implements IPostRepository {
         ...FEED_LISTED_FILTER,
         ...TEAM_POST_FEED_FILTER,
       })
-      .sort({ likes: -1, createdAt: -1 })
+      .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
   }
@@ -111,16 +111,6 @@ export class PostRepository implements IPostRepository {
     return this.model.findByIdAndUpdate(id, patch, { new: true }).lean();
   }
 
-  async incrementCounter(
-    id: string,
-    field: 'likes' | 'comments',
-    delta = 1,
-  ): Promise<PostRecord | null> {
-    return this.model
-      .findByIdAndUpdate(id, { $inc: { [field]: delta } }, { new: true })
-      .lean();
-  }
-
   async deleteById(id: string): Promise<boolean> {
     const result = await this.model.deleteOne({ _id: id });
     return (result.deletedCount ?? 0) > 0;
@@ -128,18 +118,6 @@ export class PostRepository implements IPostRepository {
 
   async countByOwner(filter: PostQueryFilter): Promise<number> {
     return this.model.countDocuments(buildOwnerFilter(filter));
-  }
-
-  async sumLikesByOwner(filter: PostQueryFilter): Promise<number> {
-    const rows = await this.model
-      .aggregate<{
-        total: number;
-      }>([
-        { $match: { ...buildOwnerFilter(filter), ...TEAM_POST_FEED_FILTER } },
-        { $group: { _id: null, total: { $sum: '$likes' } } },
-      ])
-      .exec();
-    return rows[0]?.total ?? 0;
   }
 
   async findOwnerSimilarActivePost(

@@ -5,7 +5,6 @@ import { canViewPersonalInfo } from '../../../common/utils/privacy.util';
 import { UserBlockService } from '../../user/user-block.service';
 import { UserService } from '../../user/user.service';
 import { PostMapper } from '../post.mapper';
-import { PostInteractionService } from '../post-interaction.service';
 import {
   IPostRepository,
   POST_REPOSITORY,
@@ -16,7 +15,6 @@ import {
   decodePostCursor,
   encodePostCursor,
 } from '../domain/post-cursor.util';
-import { OnSiteIdentityService } from '../../live-info/on-site-identity.service';
 
 /** Read-side post queries (lists, enrichment, owner lookups). */
 @Injectable()
@@ -26,18 +24,16 @@ export class PostQueryService {
     private readonly repository: IPostRepository,
     private readonly userService: UserService,
     private readonly userBlockService: UserBlockService,
-    private readonly postInteraction: PostInteractionService,
-    private readonly onSiteIdentity: OnSiteIdentityService,
   ) {}
 
   async listPopular(limit = 20, actor: RequestActor) {
     const rows = await this.repository.findPopular(limit);
-    return this.mapPostsWithLiked(rows, PostMapper.toHomeFeedItem, actor);
+    return this.mapPosts(rows, PostMapper.toHomeFeedItem, actor);
   }
 
   async listByActivity(activityLegacyId: number, actor: RequestActor) {
     const rows = await this.repository.findByActivityLegacyId(activityLegacyId);
-    return this.mapPostsWithLiked(rows, PostMapper.toEventDetailItem, actor);
+    return this.mapPosts(rows, PostMapper.toEventDetailItem, actor);
   }
 
   async listByActivityPage(
@@ -64,7 +60,7 @@ export class PostQueryService {
     const hasMore = rows.length > limit;
     const pageRows = hasMore ? rows.slice(0, limit) : rows;
 
-    let items = await this.mapPostsWithLiked(
+    let items = await this.mapPosts(
       pageRows,
       PostMapper.toEventDetailItem,
       actor,
@@ -80,7 +76,7 @@ export class PostQueryService {
         anchorRecord.listedInFeed !== false &&
         !(anchorRecord.contentTypes ?? []).includes('share')
       ) {
-        const [anchorItem] = await this.mapPostsWithLiked(
+        const [anchorItem] = await this.mapPosts(
           [anchorRecord],
           PostMapper.toEventDetailItem,
           actor,
@@ -148,67 +144,25 @@ export class PostQueryService {
     );
   }
 
-  private async mapPostsWithLiked<T extends { userId?: string }>(
+  private async mapPosts<T extends { userId?: string }>(
     posts: PostRecord[],
-    mapper: (
-      post: PostRecord,
-      liked: boolean,
-      authorOnSiteVerified: boolean,
-    ) => T,
+    mapper: (post: PostRecord) => T,
     actor: RequestActor,
   ): Promise<T[]> {
     if (!posts.length) return [];
 
     const visiblePosts = await this.filterPostsForViewer(posts, actor);
-    const postIds = visiblePosts.map((post) => String(post._id));
-    const [likedIds, onSiteByActivity] = await Promise.all([
-      this.postInteraction.findLikedPostIds(actor.resolvedUserId, postIds),
-      this.loadOnSiteCertifiedByActivity(visiblePosts),
-    ]);
     const buddyUserIds = await this.userBlockService.loadBuddyUserIds(
       actor.resolvedUserId,
     );
 
-    const mapped = visiblePosts.map((post) => {
-      const id = String(post._id);
-      const activityId = post.activityLegacyId;
-      const certified =
-        activityId != null &&
-        onSiteByActivity.get(activityId)?.has(post.userId) === true;
-      return mapper(post, likedIds.has(id), certified);
-    });
+    const mapped = visiblePosts.map((post) => mapper(post));
 
     return this.applyPrivacyToFeedItems(
       mapped,
       actor.resolvedUserId,
       buddyUserIds,
     );
-  }
-
-  private async loadOnSiteCertifiedByActivity(
-    posts: PostRecord[],
-  ): Promise<Map<number, Set<string>>> {
-    const userIdsByActivity = new Map<number, string[]>();
-    for (const post of posts) {
-      const activityId = post.activityLegacyId;
-      const userId = post.userId?.trim();
-      if (activityId == null || !userId) continue;
-      const list = userIdsByActivity.get(activityId) ?? [];
-      list.push(userId);
-      userIdsByActivity.set(activityId, list);
-    }
-
-    const result = new Map<number, Set<string>>();
-    await Promise.all(
-      [...userIdsByActivity.entries()].map(async ([activityId, userIds]) => {
-        const certified = await this.onSiteIdentity.getOnSiteCertifiedUserIds(
-          activityId,
-          userIds,
-        );
-        result.set(activityId, certified);
-      }),
-    );
-    return result;
   }
 
   private async filterPostsForViewer(

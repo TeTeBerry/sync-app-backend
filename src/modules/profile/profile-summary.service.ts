@@ -21,7 +21,6 @@ import {
   resolveProfileActivityStatus,
   compareActivityDateDesc,
 } from '../../common/utils/activity-date.util';
-import { sumProfilePostLikes } from '../../common/utils/profile-likes.util';
 
 function registrationFilterFromActor(
   actor: RequestActor,
@@ -41,7 +40,6 @@ export interface ProfileSummaryDto {
   avatar: string;
   stats: {
     events: number;
-    likes: number;
     posts: number;
   };
 }
@@ -97,7 +95,6 @@ export class ProfileSummaryService {
     );
 
     const posts = ownerPosts.length;
-    const likes = sumProfilePostLikes(ownerPosts);
 
     return {
       name: profile?.name ?? 'Zara Chen',
@@ -109,7 +106,6 @@ export class ProfileSummaryService {
         'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
       stats: {
         events,
-        likes,
         posts,
       },
     };

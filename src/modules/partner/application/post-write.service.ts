@@ -38,7 +38,6 @@ import {
   inferPostContentTypes,
   MAX_POST_IMAGES,
 } from '../utils/post-content-type.util';
-import { OnSiteIdentityService } from '../../live-info/on-site-identity.service';
 import { normalizeUserImageUrls } from '../../../common/media/user-image-ref.util';
 import { assertUserUgcImages } from '../../../common/media/user-ugc-image.util';
 import {
@@ -64,29 +63,15 @@ export class PostWriteService {
     private readonly postNotification: IPostNotificationPort,
     @Inject(POST_MODERATION_PORT)
     private readonly postModeration: IPostModerationPort,
-    private readonly onSiteIdentity: OnSiteIdentityService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
 
   private async toCreatedEventDetailItem(
     post: PostRecord,
-    liked = false,
     moderationReason?: string,
   ) {
-    const activityLegacyId = post.activityLegacyId;
-    const authorOnSiteVerified =
-      activityLegacyId != null
-        ? await this.onSiteIdentity.isUserOnSiteCertified(
-            post.userId,
-            activityLegacyId,
-          )
-        : false;
-    const item = PostMapper.toEventDetailItem(
-      post,
-      liked,
-      authorOnSiteVerified,
-    );
+    const item = PostMapper.toEventDetailItem(post);
     return {
       ...item,
       status: post.status ?? 'active',
@@ -161,8 +146,7 @@ export class PostWriteService {
     }
 
     const activityLegacyId = dto.activityLegacyId ?? activity?.legacyId;
-    const location =
-      dto.location?.trim() || profile?.location || activity?.location;
+    const location = dto.location?.trim() || activity?.location;
     const departureCity = resolveDepartureCity({
       departureCity: dto.departureCity,
       location,
@@ -232,8 +216,6 @@ export class PostWriteService {
       contentTypes,
       status,
       listedInFeed,
-      likes: 0,
-      comments: 0,
       images,
     });
 
@@ -253,7 +235,7 @@ export class PostWriteService {
         created.activityLegacyId,
         rejectionReason,
       );
-      return this.toCreatedEventDetailItem(created, false, rejectionReason);
+      return this.toCreatedEventDetailItem(created, rejectionReason);
     }
 
     return this.toCreatedEventDetailItem(created);

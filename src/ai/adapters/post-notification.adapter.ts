@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { NoticeAgent } from '../agents/notice.agent';
 import type { IPostNotificationPort } from '../../modules/partner/ports/post-notification.port';
-import type { PostRecord } from '../../modules/partner/interfaces/post.repository.interface';
 
 @Injectable()
 export class PostNotificationAdapter implements IPostNotificationPort {
@@ -18,49 +17,6 @@ export class PostNotificationAdapter implements IPostNotificationPort {
       postId,
       activityLegacyId,
       reason,
-    );
-  }
-
-  notifyLike(
-    post: PostRecord,
-    postId: string,
-    actorUserId: string,
-    authorName?: string,
-  ): void {
-    void this.noticeAgent.notifyLike(post, postId, actorUserId, authorName);
-  }
-
-  notifyComment(
-    post: PostRecord,
-    postId: string,
-    actorUserId: string,
-    authorName: string | undefined,
-    preview: string,
-  ): void {
-    void this.noticeAgent.notifyComment(
-      post,
-      postId,
-      actorUserId,
-      authorName,
-      preview,
-    );
-  }
-
-  notifyCommentReply(
-    post: PostRecord,
-    postId: string,
-    parentComment: { _id?: unknown; userId: string; authorName?: string },
-    actorUserId: string,
-    actorName: string | undefined,
-    preview: string,
-  ): void {
-    void this.noticeAgent.notifyCommentReply(
-      post,
-      postId,
-      parentComment,
-      actorUserId,
-      actorName,
-      preview,
     );
   }
 }

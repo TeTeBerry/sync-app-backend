@@ -10,11 +10,7 @@ function resolvePostImages(post: PostRecord): string[] {
 }
 
 export class PostMapper {
-  static toHomeFeedItem(
-    post: PostRecord,
-    liked = false,
-    authorOnSiteVerified = false,
-  ) {
+  static toHomeFeedItem(post: PostRecord) {
     return {
       id: String(post._id),
       userId: post.userId,
@@ -25,22 +21,14 @@ export class PostMapper {
       location: post.location ?? '',
       body: post.body,
       time: formatRelativeTime(post.createdAt),
-      likes: post.likes ?? 0,
-      liked,
-      comments: post.comments ?? 0,
       avatar: post.authorAvatar ?? '',
       contentTypes: post.contentTypes ?? [],
       tags: post.tags ?? [],
       images: resolvePostImages(post),
-      ...(authorOnSiteVerified ? { authorOnSiteVerified: true } : {}),
     };
   }
 
-  static toEventDetailItem(
-    post: PostRecord,
-    liked = false,
-    authorOnSiteVerified = false,
-  ) {
+  static toEventDetailItem(post: PostRecord) {
     const createdAt =
       post.createdAt instanceof Date
         ? post.createdAt.toISOString()
@@ -56,39 +44,8 @@ export class PostMapper {
       body: post.body,
       tags: post.tags ?? [],
       contentTypes: post.contentTypes ?? [],
-      likes: post.likes ?? 0,
-      liked,
-      comments: post.comments ?? 0,
       avatar: post.authorAvatar ?? '',
       images: resolvePostImages(post),
-      ...(authorOnSiteVerified ? { authorOnSiteVerified: true } : {}),
-    };
-  }
-
-  static toCommentItem(comment: {
-    _id?: unknown;
-    userId: string;
-    authorName?: string;
-    body: string;
-    createdAt?: Date | string;
-    authorAvatar?: string;
-    replies?: Array<{
-      id: string;
-      userId: string;
-      authorName: string;
-      avatar: string;
-      body: string;
-      time: string;
-    }>;
-  }) {
-    return {
-      id: String(comment._id),
-      userId: comment.userId,
-      authorName: comment.authorName ?? '用户',
-      avatar: comment.authorAvatar ?? '',
-      body: comment.body,
-      time: formatRelativeTime(comment.createdAt),
-      ...(comment.replies?.length ? { replies: comment.replies } : {}),
     };
   }
 
@@ -97,8 +54,6 @@ export class PostMapper {
       id: String(post._id),
       title: post.eventTitle,
       content: post.body,
-      likes: post.likes ?? 0,
-      comments: post.comments ?? 0,
       date: formatDateLabel(post.createdAt),
       activityLegacyId: post.activityLegacyId,
       contentTypes: post.contentTypes ?? [],

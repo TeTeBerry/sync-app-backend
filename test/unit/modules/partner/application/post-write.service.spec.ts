@@ -9,7 +9,6 @@ import type { IPostNotificationPort } from '@src/modules/partner/ports/post-noti
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
 import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
 import type { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
-import type { OnSiteIdentityService } from '@src/modules/live-info/on-site-identity.service';
 import type { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
 
 jest.mock('chromadb', () => require('../../../../mocks/chromadb'));
@@ -51,10 +50,6 @@ describe('PostWriteService', () => {
     recordPublishRiskViolation: jest.fn(),
   } as unknown as AccountRiskService;
 
-  const onSiteIdentity = {
-    isUserOnSiteCertified: jest.fn().mockResolvedValue(false),
-  } as unknown as OnSiteIdentityService;
-
   const wechatContentSecurity = {
     assertTextSafe: jest.fn().mockResolvedValue(undefined),
     assertTextsSafe: jest.fn().mockResolvedValue(undefined),
@@ -80,7 +75,6 @@ describe('PostWriteService', () => {
       activityService,
       postNotification,
       postModeration,
-      onSiteIdentity,
       wechatContentSecurity,
       mediaChecks,
     );

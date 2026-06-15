@@ -137,12 +137,6 @@ export default () => ({
     },
   },
 
-  wristband: {
-    minConfidence: parseFloat(
-      cleanEnv(process.env.WRISTBAND_VERIFY_MIN_CONFIDENCE, '0.72'),
-    ),
-  },
-
   /** AI 出行攻略 — 高德地图 Web 服务 */
   amap: {
     key: cleanEnv(

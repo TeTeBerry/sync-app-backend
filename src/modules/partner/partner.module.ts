@@ -4,13 +4,11 @@ import { ActivityLookupModule } from '../activity/activity-lookup.module';
 import { NotificationModule } from '../notification/notification.module';
 import { AccountRiskModule } from '../account-risk/account-risk.module';
 import { UserModule } from '../user/user.module';
-import { PostInteractionService } from './post-interaction.service';
 import { PostQueryService } from './application/post-query.service';
 import { PartnerWriteModule } from './partner-write.module';
 import { PostController } from './post.controller';
 import { PartnerRepositoryModule } from './partner-repository.module';
 import { PostService } from './post.service';
-import { LiveInfoModule } from '../live-info/live-info.module';
 import { MediaSecurityModule } from '../media-security/media-security.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
@@ -21,14 +19,6 @@ import {
   PostApplicationMessage,
   PostApplicationMessageSchema,
 } from '../../database/schemas/post-application-message.schema';
-import {
-  PostComment,
-  PostCommentSchema,
-} from '../../database/schemas/post-comment.schema';
-import {
-  PostLike,
-  PostLikeSchema,
-} from '../../database/schemas/post-like.schema';
 import { Post, PostSchema } from '../../database/schemas/post.schema';
 
 @Module({
@@ -36,7 +26,6 @@ import { Post, PostSchema } from '../../database/schemas/post.schema';
     AuthModule,
     UserModule,
     AccountRiskModule,
-    LiveInfoModule,
     MediaSecurityModule,
     ActivityLookupModule,
     PartnerRepositoryModule,
@@ -44,21 +33,18 @@ import { Post, PostSchema } from '../../database/schemas/post.schema';
     NotificationModule,
     MongooseModule.forFeature([
       { name: Post.name, schema: PostSchema },
-      { name: PostLike.name, schema: PostLikeSchema },
       { name: PostApplication.name, schema: PostApplicationSchema },
       {
         name: PostApplicationMessage.name,
         schema: PostApplicationMessageSchema,
       },
-      { name: PostComment.name, schema: PostCommentSchema },
     ]),
   ],
   controllers: [PostController],
-  providers: [PostInteractionService, PostQueryService, PostService],
+  providers: [PostQueryService, PostService],
   exports: [
     PostService,
     PartnerWriteModule,
-    PostInteractionService,
     PostQueryService,
     PartnerRepositoryModule,
   ],
