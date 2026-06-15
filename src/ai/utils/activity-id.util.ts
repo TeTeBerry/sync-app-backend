@@ -10,6 +10,9 @@ function resolveEdcActivityId(text: string): string | undefined {
   if (/edc.*thailand|泰国.*edc|edc泰国/.test(compact + lower)) {
     return 'edc-thailand';
   }
+  if (/edc.*korea|韩国.*edc|edc韩国|edckorea|仁川.*edc/.test(compact + lower)) {
+    return 'edc-korea';
+  }
   if (/edc|edcchina|edc电音|edc中国/.test(compact + lower)) {
     return 'edc';
   }

@@ -66,6 +66,12 @@ const ACTIVITY_MAP_COORD_PATCHES = [
     longitude: 98.35,
     region: 'overseas',
   },
+  {
+    legacyId: 8,
+    latitude: 37.466757,
+    longitude: 126.390594,
+    region: 'overseas',
+  },
 ] as const;
 
 function formatActivityDate(eventDate?: string): string | undefined {
@@ -241,6 +247,11 @@ export class ActivityService implements OnModuleInit {
       if (thailand) return thailand;
     }
 
+    if (/edc/.test(kw) && /韩国|korea|仁川|incheon|首尔|seoul/.test(kw)) {
+      const korea = await this.model.findOne({ code: 'edc-korea' }).lean();
+      if (korea) return korea;
+    }
+
     if (/edc/.test(kw) && /中国|china|阳澄湖|苏州/.test(kw)) {
       const china = await this.model.findOne({ code: 'edc' }).lean();
       if (china) return china;
@@ -260,6 +271,9 @@ export class ActivityService implements OnModuleInit {
 
       if (code === 'edc' && /泰国|thailand|泰國/.test(kw)) continue;
       if (code === 'edc-thailand' && /中国|china|阳澄湖/.test(kw)) continue;
+      if (code === 'edc-thailand' && /韩国|korea|仁川|incheon/.test(kw))
+        continue;
+      if (code === 'edc-korea' && /泰国|thailand|泰國|普吉/.test(kw)) continue;
       if (code === 'edc' && /vac|vision|colour|珠海|hilton|希尔顿/.test(kw)) {
         continue;
       }

@@ -60,6 +60,35 @@ export function loadEdcThailandFallbackNames() {
   ];
 }
 
+/** Read `EDC_KOREA_ARTISTS` names from seed when Mongo has no performances. */
+export function loadEdcKoreaFallbackNames() {
+  const seedPath = join(
+    __dirname,
+    '..',
+    '..',
+    'src',
+    'modules',
+    'itinerary',
+    'edc-korea-itinerary.seed.ts',
+  );
+
+  try {
+    const content = readFileSync(seedPath, 'utf8');
+    const block = content.match(/const EDC_KOREA_ARTISTS[\s\S]*?\];/)?.[0] ?? '';
+    const names = [
+      ...block.matchAll(/dj\('((?:\\'|[^'])*)'/g),
+    ].map((match) => match[1].replace(/\\'/g, "'"));
+
+    if (names.length) {
+      return names;
+    }
+  } catch {
+    // fall through
+  }
+
+  return ['TIËSTO', 'SUBTRONICS', 'FISHER', 'DJ SNAKE'];
+}
+
 const B2B_PATTERN = /\s+B2B\s+/i;
 
 /**
@@ -111,6 +140,11 @@ export const SEED_ONLY_LINEUP_ARTISTS = new Set([
   'CRUSH',
   'TIYA',
   'YOHAN',
+  /** EDC Korea stage / showcase labels */
+  'BASSRUSH EXPERIENCE',
+  'DREAMSTATE PRESENTS ELECTRIK SEOUL',
+  'INSOMNIAC RECORDS TAKEOVER',
+  'SORAERE BROCKEN',
 ]);
 
 /** Discogs search aliases for hard-to-match EDC lineup display names. */
@@ -128,6 +162,14 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   'VIDOJEAN (VJ X OL)': 'Vidojean',
   VIDOJEAN: 'Vidojean',
   WHYBEATZ: 'WhyBeatz',
+  '999999999': '999999999',
+  'DØMINA': 'Domina',
+  'NO1 (HONGJOONG)': 'Hongjoong',
+  'BEN NICKY PRESENTS XTREME': 'Ben Nicky',
+  'CASEPEAT X PURPLE RABBIT': 'Casepeat',
+  'CHEEZ & YUKA': 'Cheez',
+  'HOHO ONE': 'Hoho One',
+  'ALY & FILA': 'Aly & Fila',
 };
 
 /** Lineup display name → normalized keys of acceptable `djs.name` matches. */
@@ -140,6 +182,9 @@ export const LINEUP_COVERAGE_NAME_KEYS = {
   VIDOJEAN: ['vidojean'],
   WHYBEATZ: ['whybeatz'],
   CRUBBIXZ: ['crubbixz'],
+  'DAVICO B2B DEMUK B2B DEPARTS': ['davico', 'demuk', 'departs'],
+  'ILLENIUM B2B DABIN': ['illenium', 'dabin'],
+  'CASEPEAT X PURPLE RABBIT': ['casepeat', 'purplerabbit'],
 };
 
 export function normalizeArtistNameKey(name) {

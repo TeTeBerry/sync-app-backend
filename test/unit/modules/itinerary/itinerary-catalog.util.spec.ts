@@ -5,6 +5,7 @@ import {
 } from '@src/modules/itinerary/domain/itinerary-catalog.util';
 import {
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
+  ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
   STORM_ACTIVITY_LEGACY_ID,
 } from '@src/modules/itinerary/itinerary.seed';
 
@@ -13,6 +14,9 @@ describe('itinerary-catalog.util', () => {
     expect(hasItineraryCatalogSeed(STORM_ACTIVITY_LEGACY_ID)).toBe(true);
     expect(
       hasItineraryCatalogSeed(ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID),
+    ).toBe(true);
+    expect(
+      hasItineraryCatalogSeed(ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID),
     ).toBe(true);
     expect(hasItineraryCatalogSeed(999)).toBe(false);
   });
@@ -39,6 +43,26 @@ describe('itinerary-catalog.util', () => {
     expect(
       resolveLineupDjs(ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID).length,
     ).toBeGreaterThan(0);
+  });
+
+  it('returns lineup DJs without performances for EDC Korea', () => {
+    const seed = resolveItineraryCatalogSeed(
+      ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
+    );
+
+    expect(seed.performances).toHaveLength(0);
+    expect(seed.sessions.map((session) => session.dateKey)).toEqual([
+      'oct03',
+      'oct04',
+    ]);
+    expect(
+      resolveLineupDjs(ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID).length,
+    ).toBeGreaterThan(70);
+    expect(
+      resolveLineupDjs(ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID).some(
+        (dj) => dj.name === 'TIËSTO',
+      ),
+    ).toBe(true);
   });
 
   it('filters catalog seed by dateKey', () => {

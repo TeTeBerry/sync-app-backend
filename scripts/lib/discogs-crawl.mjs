@@ -9,36 +9,45 @@ import {
   getDiscogsSearchQueries,
   getLineupCoverageKeys,
   loadEdcThailandFallbackNames,
+  loadEdcKoreaFallbackNames,
   normalizeArtistNameKey,
 } from './festival-lineup-fallback.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export function loadDotEnv() {
-  const envPath = join(__dirname, '..', '..', '.env');
-  if (!existsSync(envPath)) {
-    return;
-  }
+  const root = join(__dirname, '..', '..');
+  const nodeEnv = process.env.NODE_ENV ?? 'development';
+  const paths = [
+    join(root, '.env'),
+    join(root, '.env.local'),
+    join(root, `.env.${nodeEnv}`),
+    join(root, `.env.${nodeEnv}.local`),
+  ];
 
-  const content = readFileSync(envPath, 'utf8');
-  for (const line of content.split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) {
+  for (const envPath of paths) {
+    if (!existsSync(envPath)) {
       continue;
     }
-    const eq = trimmed.indexOf('=');
-    if (eq <= 0) {
-      continue;
-    }
-    const key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    if (process.env[key] === undefined) {
+
+    const content = readFileSync(envPath, 'utf8');
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) {
+        continue;
+      }
+      const eq = trimmed.indexOf('=');
+      if (eq <= 0) {
+        continue;
+      }
+      const key = trimmed.slice(0, eq).trim();
+      let value = trimmed.slice(eq + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
       process.env[key] = value;
     }
   }
@@ -56,6 +65,9 @@ export function getCrawlConfig() {
     ),
     edcThailandActivityLegacyId: Number(
       process.env.DISCOGS_EDC_THAILAND_ACTIVITY_LEGACY_ID ?? 5,
+    ),
+    edcKoreaActivityLegacyId: Number(
+      process.env.DISCOGS_EDC_KOREA_ACTIVITY_LEGACY_ID ?? 8,
     ),
     requestDelayMs: Number(process.env.DISCOGS_REQUEST_DELAY_MS ?? 1100),
     representativeWorksLimit: Math.min(
@@ -302,8 +314,14 @@ export async function loadFestivalLineupArtistNames(db, config) {
     loadEdcThailandFallbackNames(),
     'EDC Thailand',
   );
+  const edcKorea = await loadLineupArtistNames(
+    db,
+    config.edcKoreaActivityLegacyId,
+    loadEdcKoreaFallbackNames(),
+    'EDC Korea',
+  );
 
-  return expandFestivalArtistNames([...storm, ...edc]);
+  return expandFestivalArtistNames([...storm, ...edc, ...edcKorea]);
 }
 
 export function isLineupArtistCovered(lineupName, djs) {

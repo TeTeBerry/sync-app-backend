@@ -58,6 +58,29 @@ const ACTIVITY_SEED = [
       'https://ik.imagekit.io/TBR/Island%20Events/EDC%20Thailand%202026.png?updatedAt=1763068886366',
     hot: true,
   },
+  {
+    legacyId: 8,
+    code: 'edc-korea',
+    name: 'EDC Korea 2026',
+    alias: [
+      'edc korea',
+      'edc korea 2026',
+      'edc韩国',
+      '韩国edc',
+      'korea edc',
+      'edckorea',
+      '仁川edc',
+    ],
+    date: '10/03-04',
+    location: '仁川 Inspire Entertainment Resort',
+    latitude: 37.466757,
+    longitude: 126.390594,
+    region: 'overseas',
+    image:
+      'https://d3vhc53cl8e8km.cloudfront.net/hello-staging/wp-content/uploads/sites/73/2026/02/09161528/edck_2026_mk_an_fest_site_seo_1200x630_r01.png',
+    activityType: 'festival',
+    hot: true,
+  },
 ];
 
 const DEPRECATED_FILTER = {

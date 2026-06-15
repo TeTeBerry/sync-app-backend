@@ -27,6 +27,7 @@ import {
   ARTIST_PERFORMANCE_SEED,
   STORM_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
+  ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
 } from './itinerary.seed';
 import {
   hasItineraryCatalogSeed,
@@ -95,6 +96,7 @@ export interface ItineraryScheduleDto {
 const DISCOGS_STYLE_ACTIVITY_LEGACY_IDS = new Set([
   STORM_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
+  ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
 ]);
 
 @Injectable()
@@ -145,6 +147,12 @@ export class ItineraryScheduleService implements OnModuleInit {
       ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
       ALL_ARTIST_PERFORMANCE_SEED.filter(
         (p) => p.activityLegacyId === ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
+      ),
+    );
+    await this.pruneStalePerformances(
+      ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
+      ALL_ARTIST_PERFORMANCE_SEED.filter(
+        (p) => p.activityLegacyId === ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
       ),
     );
   }

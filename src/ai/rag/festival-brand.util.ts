@@ -28,6 +28,19 @@ export const FESTIVAL_BRANDS: FestivalBrand[] = [
     aliases: ['edc thailand', 'edc泰国', '泰国edc', 'edc thai'],
   },
   {
+    code: 'edc-korea',
+    name: 'EDC Korea',
+    aliases: [
+      'edc korea',
+      'edc korea 2026',
+      'edc韩国',
+      '韩国edc',
+      'korea edc',
+      'edckorea',
+      '仁川edc',
+    ],
+  },
+  {
     code: 'edc',
     name: 'EDC China',
     aliases: ['edc china', 'edc中国', 'edc电音', 'edc'],

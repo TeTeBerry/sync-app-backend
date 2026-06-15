@@ -24,6 +24,11 @@ export const KNOWLEDGE_DOCUMENTS: Document[] = [
   }),
   new Document({
     pageContent:
+      'EDC Korea（edc-korea）2026 年演出档期：2026-10-03 至 2026-10-04，地点韩国仁川 Inspire Entertainment Resort。别名：edc korea、edc韩国、韩国edc、仁川edc。与 EDC Thailand 区分。',
+    metadata: { topic: 'activity', code: 'edc-korea' },
+  }),
+  new Document({
+    pageContent:
       'Tomorrowland Thailand 2026（tomorrowland）2026 年 12 月 11 日至 13 日，地点泰国芭提雅 Wisdom Valley。别名：tomorrowland、tml泰国、明日世界。',
     metadata: { topic: 'activity', code: 'tomorrowland' },
   }),

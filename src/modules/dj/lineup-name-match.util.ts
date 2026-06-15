@@ -14,6 +14,10 @@ export const SEED_ONLY_LINEUP_ARTISTS = new Set([
   'CRUSH',
   'TIYA',
   'YOHAN',
+  'BASSRUSH EXPERIENCE',
+  'DREAMSTATE PRESENTS ELECTRIK SEOUL',
+  'INSOMNIAC RECORDS TAKEOVER',
+  'SORAERE BROCKEN',
 ]);
 
 export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
@@ -29,6 +33,14 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   'VIDOJEAN (VJ X OL)': 'Vidojean',
   VIDOJEAN: 'Vidojean',
   WHYBEATZ: 'WhyBeatz',
+  '999999999': '999999999',
+  DØMINA: 'Domina',
+  'NO1 (HONGJOONG)': 'Hongjoong',
+  'BEN NICKY PRESENTS XTREME': 'Ben Nicky',
+  'CASEPEAT X PURPLE RABBIT': 'Casepeat',
+  'CHEEZ & YUKA': 'Cheez',
+  'HOHO ONE': 'Hoho One',
+  'ALY & FILA': 'Aly & Fila',
 };
 
 export const LINEUP_COVERAGE_NAME_KEYS: Record<string, string[]> = {
@@ -40,6 +52,9 @@ export const LINEUP_COVERAGE_NAME_KEYS: Record<string, string[]> = {
   VIDOJEAN: ['vidojean'],
   WHYBEATZ: ['whybeatz'],
   CRUBBIXZ: ['crubbixz'],
+  'DAVICO B2B DEMUK B2B DEPARTS': ['davico', 'demuk', 'departs'],
+  'ILLENIUM B2B DABIN': ['illenium', 'dabin'],
+  'CASEPEAT X PURPLE RABBIT': ['casepeat', 'purplerabbit'],
 };
 
 export function expandFestivalArtistName(lineupName: string): string[] {
