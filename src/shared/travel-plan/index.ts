@@ -1,8 +1,6 @@
 export type {
   TravelPlanCategory,
   TravelPlanBillLineItem,
-  TravelPlanDiningBillItem,
-  TravelPlanTransportBillItem,
   TravelPlanNode,
   TravelPlanNodeRecord,
   TravelPlanNodeSource,

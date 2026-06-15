@@ -12,7 +12,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class TravelPlanDiningBillItemDto {
+export class TravelPlanBillLineItemDto {
   @IsString()
   @MaxLength(64)
   id!: string;
@@ -96,14 +96,14 @@ export class TravelPlanNodeDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => TravelPlanDiningBillItemDto)
-  diningBills?: TravelPlanDiningBillItemDto[];
+  @Type(() => TravelPlanBillLineItemDto)
+  diningBills?: TravelPlanBillLineItemDto[];
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => TravelPlanDiningBillItemDto)
-  transportBills?: TravelPlanDiningBillItemDto[];
+  @Type(() => TravelPlanBillLineItemDto)
+  transportBills?: TravelPlanBillLineItemDto[];
 }
 
 export class SaveTravelPlanDto {

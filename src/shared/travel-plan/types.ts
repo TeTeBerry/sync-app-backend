@@ -17,11 +17,6 @@ export type TravelPlanBillLineItem = {
   startTime?: string;
 };
 
-/** @deprecated Use TravelPlanBillLineItem */
-export type TravelPlanDiningBillItem = TravelPlanBillLineItem;
-
-export type TravelPlanTransportBillItem = TravelPlanBillLineItem;
-
 /** Persisted/API node shape (no UI-only fields). */
 export type TravelPlanNodeRecord = {
   id: string;

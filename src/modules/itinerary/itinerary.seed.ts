@@ -7,9 +7,6 @@ import {
 
 export const STORM_ACTIVITY_LEGACY_ID = 4;
 
-/** @deprecated Use STORM_ACTIVITY_LEGACY_ID */
-export const ITINERARY_DEMO_ACTIVITY_LEGACY_ID = STORM_ACTIVITY_LEGACY_ID;
-
 export { ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID };
 
 const MAIN_STAGE = 'main' as const;

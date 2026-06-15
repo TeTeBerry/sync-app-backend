@@ -151,7 +151,6 @@
 
 - [x] `StoredAuthorRecord` + `UserService.resolveProfileFromStoredAuthor`（评论头像等）
 - [x] `PostModerationPort`：`assessPost` 收 `RequestActor`
-- [x] `resolveProfileFromLegacy` 保留为 `@deprecated` 别名（无新调用方）
 
 ### 前端对齐（同批）
 
