@@ -24,7 +24,8 @@ export const STORM_FESTIVAL_ARTISTS = [
 export type HomeFestivalShortcutCode =
   | 'storm'
   | 'tomorrowland'
-  | 'edc-thailand';
+  | 'edc-thailand'
+  | 'edc-korea';
 
 export interface HomeFestivalShortcutDef {
   code: HomeFestivalShortcutCode;
@@ -86,6 +87,24 @@ export const HOME_FESTIVAL_SHORTCUTS: readonly HomeFestivalShortcutDef[] = [
       '更多阵容见我的电音时间表',
     ],
   },
+  {
+    code: 'edc-korea',
+    chipLabel: 'EDC Korea',
+    submitText: 'EDC Korea',
+    fallbackName: 'EDC Korea 2026',
+    fallbackDate: '10/03-04',
+    fallbackLocation: '仁川 Inspire Entertainment Resort',
+    artists: [
+      'TIËSTO',
+      'SUBTRONICS',
+      'FISHER',
+      'DJ SNAKE',
+      'ILLENIUM B2B DABIN',
+      'SARA LANDRY',
+      'VINI VICI',
+      '更多阵容见我的电音时间表',
+    ],
+  },
 ] as const;
 
 const SUBMIT_TEXT_TO_CODE: Map<string, HomeFestivalShortcutCode> = (() => {
@@ -117,6 +136,13 @@ export function resolveHomeFestivalShortcutCode(
       def.code === 'edc-thailand' &&
       /edc/i.test(trimmed) &&
       /泰国|thailand/i.test(trimmed)
+    ) {
+      return def.code;
+    }
+    if (
+      def.code === 'edc-korea' &&
+      /edc/i.test(trimmed) &&
+      /韩国|korea|仁川/i.test(trimmed)
     ) {
       return def.code;
     }
