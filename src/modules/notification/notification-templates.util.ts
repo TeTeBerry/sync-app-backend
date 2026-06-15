@@ -5,9 +5,6 @@ import type {
 } from '../../database/schemas/notification.schema';
 
 export type NotificationTemplateKey =
-  | 'like'
-  | 'comment'
-  | 'commentReply'
   | 'postRejected'
   | 'postHidden'
   | 'activityUpdate';
@@ -16,9 +13,6 @@ export const NOTIFICATION_CATEGORY_BY_TEMPLATE: Record<
   NotificationTemplateKey,
   NotificationCategory
 > = {
-  like: 'like',
-  comment: 'comment',
-  commentReply: 'comment',
   postRejected: 'system',
   postHidden: 'system',
   activityUpdate: 'system',
@@ -28,21 +22,6 @@ const TEMPLATE_DEFAULTS: Record<
   NotificationTemplateKey,
   { type: NotificationType; title: string; body: string }
 > = {
-  like: {
-    type: 'interaction',
-    title: '有人赞了你的帖子',
-    body: '{{actor}} 赞了你的帖子',
-  },
-  comment: {
-    type: 'interaction',
-    title: '有人评论了你的帖子',
-    body: '{{actor}}：{{preview}}',
-  },
-  commentReply: {
-    type: 'interaction',
-    title: '有人回复了你的评论',
-    body: '{{actor}}：{{preview}}',
-  },
   postRejected: {
     type: 'system',
     title: '帖子审核未通过',

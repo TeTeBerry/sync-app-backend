@@ -37,18 +37,6 @@ export function buildPostRiskSystemPrompt(): string {
   ].join('\n\n');
 }
 
-export function buildCommentRiskSystemPrompt(): string {
-  return [
-    '你是电音结伴平台专属风控审核助手 RiskAgent，审核组队帖评论是否可发布。',
-    '执行隐私脱敏与合规校验；评论场景无需追加同路/拼住宿安全提示。',
-    CORE_RULES.replace(
-      '【安全提示规则】',
-      '【安全提示规则】\n（评论场景：通过时 content 为脱敏后评论正文，不追加出行住宿安全提示）',
-    ),
-    RISK_JSON_SCHEMA,
-  ].join('\n\n');
-}
-
 export function buildImageRiskSystemPrompt(): string {
   return [
     '你是电音结伴平台专属风控审核助手 RiskAgent，审核组队相关图片及配文是否可发布。',
@@ -60,10 +48,6 @@ export function buildImageRiskSystemPrompt(): string {
 
 export function buildPostRiskUserPrompt(body: string): string {
   return `待审核组队帖正文:\n${body}`;
-}
-
-export function buildCommentRiskUserPrompt(body: string): string {
-  return `待审核评论:\n${body}`;
 }
 
 export function buildImageRiskUserPrompt(body: string): string {

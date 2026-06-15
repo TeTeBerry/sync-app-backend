@@ -8,7 +8,6 @@ jest.mock('@src/modules/notification/notification.service', () => ({
 import { NoticeAgent } from '@src/ai/agents/notice.agent';
 import type { NotificationService } from '@src/modules/notification/notification.service';
 import type { UserService } from '@src/modules/user/user.service';
-import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
 
 describe('NoticeAgent', () => {
   let agent: NoticeAgent;
@@ -16,12 +15,6 @@ describe('NoticeAgent', () => {
     Pick<NotificationService, 'createFromTemplate' | 'hasRecentByMeta'>
   >;
   let userService: jest.Mocked<Pick<UserService, 'isNotificationsEnabled'>>;
-
-  const post = {
-    userId: 'owner-1',
-    authorName: 'Owner',
-    activityLegacyId: 10,
-  } as unknown as PostRecord;
 
   beforeEach(() => {
     notificationService = {
@@ -34,49 +27,6 @@ describe('NoticeAgent', () => {
     agent = new NoticeAgent(
       notificationService as unknown as NotificationService,
       userService as unknown as UserService,
-    );
-  });
-
-  it('skips like notification when notifications are disabled', async () => {
-    userService.isNotificationsEnabled.mockResolvedValue(false);
-
-    await agent.notifyLike(post, 'post-1', 'actor-1', 'Actor');
-
-    expect(notificationService.createFromTemplate).not.toHaveBeenCalled();
-  });
-
-  it('creates like notification for post owner with category', async () => {
-    await agent.notifyLike(post, 'post-1', 'actor-1', 'Actor');
-
-    expect(notificationService.createFromTemplate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: 'owner-1',
-        templateKey: 'like',
-        meta: expect.objectContaining({
-          category: 'like',
-          type: 'like',
-          postId: 'post-1',
-          actorUserId: 'actor-1',
-        }),
-      }),
-    );
-  });
-
-  it('does not notify post owner when actor is the owner', async () => {
-    await agent.notifyLike(post, 'post-1', 'owner-1', 'Owner');
-
-    expect(notificationService.createFromTemplate).not.toHaveBeenCalled();
-  });
-
-  it('creates comment notification with preview', async () => {
-    await agent.notifyComment(post, 'post-1', 'actor-2', 'Bob', '你好');
-
-    expect(notificationService.createFromTemplate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        templateKey: 'comment',
-        templateParams: { actor: 'Bob', preview: '你好' },
-        meta: expect.objectContaining({ category: 'comment', type: 'comment' }),
-      }),
     );
   });
 

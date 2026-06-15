@@ -5,18 +5,10 @@ import type {
   NotificationMeta,
 } from '../../database/schemas/notification.schema';
 import { NotificationService } from '../../modules/notification/notification.service';
-import { categoryForInteractionType } from '../../modules/notification/notification-category.util';
 import type { NotificationTemplateKey } from '../../modules/notification/notification-templates.util';
 import { toRequestActor } from '../../common/auth/actor-query.util';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { UserService } from '../../modules/user/user.service';
-import type { PostRecord } from '../../modules/partner/interfaces/post.repository.interface';
-import { isResourceOwnedByClient } from '../../common/utils/demo-owner.util';
-
-export interface NoticeInteractionCopy {
-  templateKey: NotificationTemplateKey;
-  templateParams: Record<string, string>;
-}
 
 export interface NoticeDispatchInput {
   userId: string;
@@ -44,88 +36,6 @@ export class NoticeAgent {
     private readonly notificationService: NotificationService,
     private readonly userService: UserService,
   ) {}
-
-  async notifyLike(
-    post: PostRecord,
-    postId: string,
-    actorUserId: string,
-    actorName?: string,
-  ): Promise<void> {
-    await this.notifyPostOwnerInteraction(
-      post,
-      postId,
-      actorUserId,
-      actorName,
-      'like',
-      {
-        templateKey: 'like',
-        templateParams: { actor: actorName?.trim() || '有人' },
-      },
-    );
-  }
-
-  async notifyComment(
-    post: PostRecord,
-    postId: string,
-    actorUserId: string,
-    actorName: string | undefined,
-    preview: string,
-  ): Promise<void> {
-    const actorLabel = actorName?.trim() || '有人';
-    await this.notifyPostOwnerInteraction(
-      post,
-      postId,
-      actorUserId,
-      actorName,
-      'comment',
-      {
-        templateKey: 'comment',
-        templateParams: { actor: actorLabel, preview },
-      },
-    );
-  }
-
-  async notifyCommentReply(
-    post: PostRecord,
-    postId: string,
-    parentComment: { _id?: unknown; userId: string; authorName?: string },
-    actorUserId: string,
-    actorName: string | undefined,
-    preview: string,
-  ): Promise<void> {
-    const parentUserId = parentComment.userId?.trim();
-    if (!parentUserId || parentUserId === actorUserId) {
-      return;
-    }
-
-    if (parentUserId === post.userId?.trim()) {
-      return;
-    }
-
-    await this.dispatch({
-      userId: parentUserId,
-      category: 'comment',
-      templateKey: 'commentReply',
-      templateParams: {
-        actor: actorName?.trim() || '有人',
-        preview,
-      },
-      meta: {
-        activityLegacyId: post.activityLegacyId,
-        postId,
-        type: 'comment_reply',
-        actorUserId,
-        actorUserName: actorName?.trim(),
-        parentCommentId: String(parentComment._id),
-      },
-      dedupe: {
-        metaType: 'comment_reply',
-        postId,
-        actorUserId,
-        sinceMs: 60 * 60 * 1000,
-      },
-    });
-  }
 
   async notifyPostRejected(
     actor: RequestActor,
@@ -252,46 +162,6 @@ export class NoticeAgent {
 
   private async shouldNotify(userId: string): Promise<boolean> {
     return this.userService.isNotificationsEnabled(toRequestActor(userId));
-  }
-
-  private async notifyPostOwnerInteraction(
-    post: PostRecord,
-    postId: string,
-    actorUserId: string,
-    actorName: string | undefined,
-    interactionType: NotificationInteractionType,
-    copy: NoticeInteractionCopy,
-  ): Promise<void> {
-    const ownerUserId = post.userId?.trim();
-    if (!ownerUserId || ownerUserId === actorUserId) {
-      return;
-    }
-
-    if (
-      isResourceOwnedByClient(
-        { userId: post.userId, authorName: post.authorName },
-        actorUserId,
-        actorName,
-      )
-    ) {
-      return;
-    }
-
-    const category = categoryForInteractionType(interactionType);
-
-    await this.dispatch({
-      userId: ownerUserId,
-      category,
-      templateKey: copy.templateKey,
-      templateParams: copy.templateParams,
-      meta: {
-        activityLegacyId: post.activityLegacyId,
-        postId,
-        type: interactionType,
-        actorUserId,
-        actorUserName: actorName?.trim(),
-      },
-    });
   }
 
   private buildRejectionReasonSummary(reason?: string): string {

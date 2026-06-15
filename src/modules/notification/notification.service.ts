@@ -13,6 +13,7 @@ import {
   buildNotificationFromTemplate,
   type NotificationTemplateKey,
 } from './notification-templates.util';
+import { isDeprecatedNotificationMeta } from './notification-visibility.util';
 
 export interface CreateNotificationInput {
   userId: string;
@@ -142,12 +143,20 @@ export class NotificationService {
       .limit(100)
       .lean();
 
-    return rows.map((row) => toDto(row));
+    return rows
+      .filter((row) => !isDeprecatedNotificationMeta(row.meta))
+      .map((row) => toDto(row));
   }
 
   async unreadCount(actor: RequestActor): Promise<number> {
     const uid = resolveUserId(actor);
-    return this.notificationModel.countDocuments({ userId: uid, read: false });
+    const rows = await this.notificationModel
+      .find({ userId: uid, read: false })
+      .select({ meta: 1 })
+      .limit(200)
+      .lean();
+
+    return rows.filter((row) => !isDeprecatedNotificationMeta(row.meta)).length;
   }
 
   async markRead(id: string, actor: RequestActor): Promise<NotificationDto> {

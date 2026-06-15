@@ -39,6 +39,23 @@ describe('RiskAgent rules-only shortcut path', () => {
     expect(invokeJson).not.toHaveBeenCalled();
   });
 
+  it('preserves structured buddy contact line when rulesOnly', async () => {
+    const body = '组队，6.13-6.14，上海，2人，联系方式：13800138000';
+
+    const result = await agent.assess(
+      {
+        body,
+        actor,
+        activityLegacyId: 9,
+      },
+      { rulesOnly: true },
+    );
+
+    expect(result.publishable).toBe(true);
+    expect(result.sanitizedBody).toBe(body);
+    expect(invokeJson).not.toHaveBeenCalled();
+  });
+
   it('still rejects duplicate posts when rulesOnly', async () => {
     existsDuplicateBody.mockResolvedValueOnce(true);
 

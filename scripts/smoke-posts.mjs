@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Post business smoke — create / list / like / comment / update / delete.
+ * Post business smoke — create / list / delete.
  * Requires running backend (default http://localhost:3000/api).
  */
 
@@ -11,8 +11,6 @@ const baseUrl = (process.env.SMOKE_API_BASE || 'http://localhost:3000/api').repl
 const activityId = Number(process.env.SMOKE_ACTIVITY_ID || 4);
 const ownerId = process.env.SMOKE_OWNER_ID || `post-smoke-owner-${Date.now()}`;
 const ownerName = process.env.SMOKE_OWNER_NAME || 'PostSmokeOwner';
-const applicantId = process.env.SMOKE_APPLICANT_ID || `post-smoke-applicant-${Date.now()}`;
-const applicantName = process.env.SMOKE_APPLICANT_NAME || 'PostSmokeApplicant';
 const timeoutMs = Number(process.env.SMOKE_TIMEOUT_MS || 30_000);
 
 /** @type {{ name: string, run: (ctx: Record<string, unknown>) => Promise<void> }[]} */
@@ -85,7 +83,7 @@ step('GET /posts?activityLegacyId (list)', async (ctx) => {
   assert(items.some((p) => p.id === ctx.postId), 'created post should appear in activity feed');
 });
 
-step('GET /posts/popular (home feed)', async (ctx) => {
+step('GET /posts/popular (home feed)', async () => {
   const data = await request('GET', 'posts/popular?limit=20', {
     userId: ownerId,
     authorName: ownerName,
@@ -100,46 +98,6 @@ step('GET /profile/posts (owner)', async (ctx) => {
   });
   assert(Array.isArray(data), 'profile posts should be array');
   assert(data.some((p) => p.id === ctx.postId), 'created post in profile list');
-});
-
-step('POST /posts/:id/like (toggle on)', async (ctx) => {
-  const data = await request('POST', `posts/${ctx.postId}/like`, {
-    userId: applicantId,
-    authorName: applicantName,
-  });
-  assert(data?.liked === true, 'like should set liked=true');
-});
-
-step('POST /posts/:id/like (toggle off)', async (ctx) => {
-  const data = await request('POST', `posts/${ctx.postId}/like`, {
-    userId: applicantId,
-    authorName: applicantName,
-  });
-  assert(data?.liked === false, 'second like should unlike');
-});
-
-step('POST /posts/:id/comments', async (ctx) => {
-  const data = await request('POST', `posts/${ctx.postId}/comments`, {
-    userId: applicantId,
-    authorName: applicantName,
-    body: { body: '想一起组队！' },
-  });
-  assert(data?.id === ctx.postId, 'comment should return updated post');
-});
-
-step('GET /posts/:id/comments', async (ctx) => {
-  const data = await request('GET', `posts/${ctx.postId}/comments`);
-  assert(Array.isArray(data) && data.length > 0, 'comments list non-empty');
-  ctx.commentId = data[0]?.id;
-});
-
-step('PATCH /posts/:id (update body)', async (ctx) => {
-  const data = await request('PATCH', `posts/${ctx.postId}`, {
-    userId: ownerId,
-    authorName: ownerName,
-    body: { body: `${ctx.postBody ?? 'smoke post'} · updated` },
-  });
-  assert(typeof data?.content === 'string', 'update should return profile post');
 });
 
 step('DELETE /posts/:id (cleanup)', async (ctx) => {

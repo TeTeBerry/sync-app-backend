@@ -2,18 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import { LlmService } from '../../infra/llm/llm.service';
 import { resolveImageInput } from '../utils/image-ref.util';
 import { matchRiskRules } from '../risk/risk-rules.util';
-import {
-  buildPublishableBody,
-  desensitizePrivacy,
-  stripDesensitizationMarkers,
-} from '../risk/risk-sanitize.util';
+import { buildPublishableBody } from '../risk/risk-sanitize.util';
 import {
   IPostRepository,
   POST_REPOSITORY,
 } from '../../modules/partner/interfaces/post.repository.interface';
 import {
-  buildCommentRiskSystemPrompt,
-  buildCommentRiskUserPrompt,
   buildImageRiskSystemPrompt,
   buildImageRiskUserPrompt,
   buildPostRiskSystemPrompt,
@@ -23,7 +17,6 @@ import type {
   RiskAgentInput,
   RiskAssessment,
   RiskAssessOptions,
-  RiskCommentInput,
   RiskImageInput,
 } from './agent.types';
 
@@ -83,40 +76,13 @@ export class RiskAgent {
     if (options?.rulesOnly) {
       return {
         publishable: true,
-        sanitizedBody: buildPublishableBody(body),
+        // Structured buddy / message-board posts reveal contact in-app on tap;
+        // keep the author-provided contact line intact after publish.
+        sanitizedBody: body,
       };
     }
 
     return this.resolvePostAssessment(body);
-  }
-
-  async assessComment(input: RiskCommentInput): Promise<RiskAssessment> {
-    const body = input.body.trim();
-    const ruleMatch = matchRiskRules(body);
-    if (ruleMatch) return fromRuleMatch(ruleMatch);
-
-    const llmResult = await this.llmService.invokeJson<LlmRiskResult>(
-      buildCommentRiskSystemPrompt(),
-      buildCommentRiskUserPrompt(body),
-    );
-
-    if (llmResult?.publishable === false) {
-      return {
-        publishable: false,
-        reason: llmResult.reason?.trim() || '评论未通过审核',
-        violationType: this.normalizeViolationType(llmResult.violationType),
-        severity: 'medium',
-      };
-    }
-
-    const sanitizedBody = stripDesensitizationMarkers(
-      llmResult?.content?.trim() || desensitizePrivacy(body),
-    );
-
-    return {
-      publishable: true,
-      sanitizedBody,
-    };
   }
 
   async assessImage(input: RiskImageInput): Promise<RiskAssessment> {

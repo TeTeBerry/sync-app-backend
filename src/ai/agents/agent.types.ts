@@ -61,12 +61,6 @@ export interface RiskAgentInput {
   activityLegacyId?: number;
 }
 
-export interface RiskCommentInput {
-  body: string;
-  actor?: RequestActor;
-  postId?: string;
-}
-
 export interface RiskImageInput {
   body: string;
   image?: string;

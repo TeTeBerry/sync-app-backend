@@ -7,12 +7,6 @@ export interface PostModerationInput {
   image?: string;
 }
 
-export interface PostCommentModerationInput {
-  body: string;
-  actor: RequestActor;
-  postId?: string;
-}
-
 export interface PostModerationResult {
   publishable: boolean;
   reason?: string;
@@ -31,9 +25,6 @@ export interface IPostModerationPort {
   ): Promise<PostModerationResult>;
   assessPostImage(
     input: PostModerationInput & { image: string },
-  ): Promise<PostModerationResult>;
-  assessComment(
-    input: PostCommentModerationInput,
   ): Promise<PostModerationResult>;
 }
 

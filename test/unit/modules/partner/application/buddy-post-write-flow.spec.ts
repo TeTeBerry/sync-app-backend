@@ -141,6 +141,30 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
     );
   });
 
+  it('persists buddy contact line from moderation sanitized body', async () => {
+    const body = '组队，6.13-6.14，上海，2人，联系方式：13800138000\n\n#组队';
+    const dto = {
+      body,
+      activityLegacyId: 9,
+      eventTitle: '风暴电音节 深圳站',
+      location: '上海',
+      tags: ['#组队'],
+      contentTypes: ['team'] as PostContentType[],
+    };
+    (postModeration.assessPost as jest.Mock).mockResolvedValue({
+      publishable: true,
+      sanitizedBody: body,
+    });
+
+    await service.createPost(dto, toRequestActor('user-1', 'Test User'));
+
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body,
+      }),
+    );
+  });
+
   it('rejects when user exceeds per-activity post limit', async () => {
     (repository.countByOwnerAndActivity as jest.Mock).mockResolvedValue(8);
 

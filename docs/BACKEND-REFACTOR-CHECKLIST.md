@@ -40,8 +40,8 @@
 
 ### 已实现
 
-- **PartnerModule**（`modules/partner/`）：`POST/PATCH/DELETE /posts`；`POST .../like|comments`
-- **Schema**：`post-like`、`post-comment`（`post-application` 仅保留删帖时历史数据清理）
+- **PartnerModule**（`modules/partner/`）：`POST /posts`、`GET /posts`、`DELETE /posts/:id`（**无** PATCH / like / comments）
+- **Schema**：`post` 主表；`post-like` / `post-comment` 仅删帖时历史数据级联清理
 - **AiModule**：WebSocket（`/api/ai/chat/ws`）；`PostIntentService` 编排四 Agent
 - **Agents**：`text-parse` / `image-parse` / `risk`（`src/ai/agents/`）
 - **Chroma**：`sync_knowledge` + `sync_user_profiles`（**已移除** `sync_posts` 帖子向量）
@@ -76,8 +76,8 @@
 
 ### PartnerModule ✅ 核心
 
-- [x] 帖子 CRUD + 互动 API
-- [x] 创建时 Chroma upsert；删帖删向量（**已移除** — 帖子不再写 Chroma）
+- [x] 帖子创建 / 列表 / 删帖
+- [x] 模板帖 `rulesOnly` 风控保留 `联系方式：` 正文（前端点击展示）
 - [x] 目录 `modules/partner/`（`PartnerModule` / `PartnerRepositoryModule` / `PartnerWriteModule`）
 
 ### AiAssistantModule ✅ 核心
@@ -89,13 +89,12 @@
 
 ---
 
-## P2 — Partner 互动 ✅
+## P2 — Partner 写操作 ✅（互动已移除 2026-06）
 
-- [x] `post-like` / `post-comment` Schema（`post-application` 仅删帖级联清理历史数据）
-- [x] `POST /posts/:id/like|comments`
-- [x] 计数更新、删帖级联（现有实现）
-- [ ] `GET /posts/:id/comments` 列表（前端暂未消费）
-- [x] `POST /posts/:id/like|comments` 后通知帖主（`meta.activityLegacyId` / `postId` / `type`）
+- [x] `POST /posts` — 创建（含模板帖 `contentTypes` + `tags`）
+- [x] `DELETE /posts/:id` — 删帖；级联清理历史 like/comment/application 数据
+- [x] ~~`POST /posts/:id/like|comments`~~ — 已移除
+- [x] `GET /activities/:legacyId/itinerary/schedule` — `schedulePublished` 字段
 
 ---
 
@@ -151,8 +150,7 @@
 ### Partner / 历史作者 / 风控
 
 - [x] `StoredAuthorRecord` + `UserService.resolveProfileFromStoredAuthor`（评论头像等）
-- [x] `PostModerationPort`：`assessPost` / `assessComment` 收 `RequestActor`
-- [x] `RiskCommentInput`：`actor?`（与发帖 `RiskAgentInput` 一致）
+- [x] `PostModerationPort`：`assessPost` 收 `RequestActor`
 - [x] `resolveProfileFromLegacy` 保留为 `@deprecated` 别名（无新调用方）
 
 ### 前端对齐（同批）
@@ -165,10 +163,10 @@
 | 项 | 说明 |
 |----|------|
 | ~~`resolveProfileFromLegacy`~~ | ✅ 已删除 |
-| `GET /posts/:id/comments` 列表 | 产品未消费 |
+| `GET /posts/:id/comments` 列表 | 已随帖互动 API 移除 |
 | 生产 `AUTH_ALLOW_DEMO=false` | P0 运维验收，非代码债 |
 | 微信 E2E、JWT-only smoke | P0 验收 |
-| 跨模块 E2E（发帖 → 点赞 → 通知） | P3 / 可选 |
+| 跨模块 E2E（发帖 → 通知） | P3 / 可选 |
 
 ### 关联已完成（架构 P1，非本表 P2 Partner）
 
@@ -254,8 +252,8 @@
 | GET | `/home` | ✅ |
 | GET | `/activities`… | ✅ |
 | POST/DELETE | `/activities/:id/register` | ✅ |
-| GET/POST/PATCH/DELETE | `/posts`… | ✅ |
-| POST | `/posts/:id/like|comments` | ✅ |
+| GET/POST/DELETE | `/posts`… | ✅ |
+| ~~POST~~ | ~~`/posts/:id/like|comments`~~ | 已移除 |
 | GET | `/profile`… | ✅ |
 | WS | `/ai/chat/ws` | ✅ |
 | GET | `/chat/sessions/:id` | ✅ |
@@ -268,7 +266,7 @@
 ### P2 ✅
 
 - [x] `POST /posts` 后可在活动帖列表查到
-- [x] 点赞/评论/申请持久化 MongoDB
+- [x] 模板帖 `rulesOnly` 保留联系方式正文
 
 ### P3 ✅
 

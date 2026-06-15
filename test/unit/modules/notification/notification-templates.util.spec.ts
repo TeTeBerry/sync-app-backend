@@ -5,25 +5,23 @@ import {
 
 describe('notification-templates.util', () => {
   it('maps template keys to notice categories', () => {
-    expect(NOTIFICATION_CATEGORY_BY_TEMPLATE.like).toBe('like');
-    expect(NOTIFICATION_CATEGORY_BY_TEMPLATE.comment).toBe('comment');
     expect(NOTIFICATION_CATEGORY_BY_TEMPLATE.postRejected).toBe('system');
+    expect(NOTIFICATION_CATEGORY_BY_TEMPLATE.activityUpdate).toBe('system');
   });
 
-  it('renders like notification with category in meta', () => {
+  it('renders post rejected notification with category in meta', () => {
     const built = buildNotificationFromTemplate(
-      'like',
-      { actor: 'Alex' },
+      'postRejected',
+      { reason: '内容未通过审核' },
       {
-        postId: 'post-1',
-        type: 'like',
+        type: 'post_rejected',
       },
     );
 
-    expect(built.type).toBe('interaction');
-    expect(built.title).toContain('赞');
-    expect(built.body).toContain('Alex');
-    expect(built.meta.category).toBe('like');
-    expect(built.meta.templateKey).toBe('notifications.types.like');
+    expect(built.type).toBe('system');
+    expect(built.title).toContain('审核');
+    expect(built.body).toContain('内容未通过审核');
+    expect(built.meta.category).toBe('system');
+    expect(built.meta.templateKey).toBe('notifications.types.postRejected');
   });
 });

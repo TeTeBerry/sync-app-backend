@@ -1,7 +1,4 @@
-import {
-  buildCommentRiskSystemPrompt,
-  buildPostRiskSystemPrompt,
-} from '@src/ai/agents/risk.prompt';
+import { buildPostRiskSystemPrompt } from '@src/ai/agents/risk.prompt';
 
 describe('risk.prompt', () => {
   it('includes core desensitization and safety rules for posts', () => {
@@ -11,11 +8,5 @@ describe('risk.prompt', () => {
     expect(prompt).toContain('同路、拼住宿、同住');
     expect(prompt).toContain('"content"');
     expect(prompt).toContain('off_topic');
-  });
-
-  it('skips travel safety tip for comments', () => {
-    const prompt = buildCommentRiskSystemPrompt();
-    expect(prompt).toContain('评论场景');
-    expect(prompt).toContain('不追加出行住宿安全提示');
   });
 });

@@ -39,4 +39,4 @@
 
 - Mongo 文档字段仍为 `userId` / `authorName`（持久化作者）
 - `UserService.resolveProfileFromStoredAuthor` — 评论/通知等历史作者展示（`StoredAuthorRecord`）
-- Partner `PostModerationPort` 入参为 `RequestActor`（`assessPost` / `assessComment`）
+- Partner `PostModerationPort` 入参为 `RequestActor`（`assessPost`）

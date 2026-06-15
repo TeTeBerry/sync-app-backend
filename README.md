@@ -17,6 +17,7 @@ NestJS 后端：组队活动、AI 对话 WebSocket、四 Agent 发帖闭环、Ch
 架构说明：[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)  
 LLM 配置：[docs/LLM.md](./docs/LLM.md)（混元文本 + 千问 VL）  
 改造清单：[docs/BACKEND-REFACTOR-CHECKLIST.md](./docs/BACKEND-REFACTOR-CHECKLIST.md)  
+帖子全链路（与前端对照）：[`../sync-app/docs/POST-LIFECYCLE.md`](../sync-app/docs/POST-LIFECYCLE.md)  
 Nest/Mongoose 升级：[docs/UPGRADE-NEST-MONGOOSE.md](./docs/UPGRADE-NEST-MONGOOSE.md)
 
 ## 快速开始
@@ -126,7 +127,7 @@ LLM 分工见 [docs/LLM.md](./docs/LLM.md)。鉴权说明：[docs/AUTH.md](./doc
 | GET | `/api/activities` | 活动列表 |
 | GET | `/api/activities/:legacyId` | 活动详情 |
 | POST/DELETE | `/api/activities/:legacyId/register` | 活动报名 / 取消 |
-| GET/POST/PATCH/DELETE | `/api/posts`… | 帖子 CRUD + 点赞/评论 |
+| GET/POST/DELETE | `/api/posts`… | 帖子创建 / 列表 / 删帖 |
 | POST | `/api/auth/logout` | 退出登录（Bearer；递增 `tokenVersion` 吊销旧 JWT） |
 | GET/PATCH | `/api/users/me` | 当前用户资料 |
 | GET | `/api/profile` | 个人页 BFF 摘要 |

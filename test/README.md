@@ -43,7 +43,7 @@ Imports use the `@src/...` alias (see `package.json` → `jest.moduleNameMapper`
 | `live-info-frontend-reexports.contract.spec.ts` | Live-info shared types |
 | `travel-plan-frontend-reexports.contract.spec.ts` | Travel-plan re-exports |
 | `travel-plan-merge-parity.contract.spec.ts` | Merge util parity |
-| `post-mutation.contract.spec.ts` | Like/comment `{ post }` shape |
+| `post-mutation.contract.spec.ts` | **已废弃** — 原 Like/comment `{ post }` 契约（帖互动 API 已移除） |
 
 ### 帖子发帖相关用例
 
@@ -78,6 +78,6 @@ npm run smoke:api:wait      # wait for :3000, then smoke
 SMOKE_API_BASE=https://your-host/api SMOKE_ACTIVITY_ID=4 npm run smoke:api
 ```
 
-Script: `scripts/smoke-api.mjs` — health, home, activities, posts, profile, user, register, itinerary (schedule→generate→save→saved), live-info, notifications, optional post like, register cleanup.
+Script: `scripts/smoke-api.mjs` — health, home, activities, posts, profile, user, register, itinerary (schedule→generate→save→saved), live-info, notifications, register cleanup.
 
 Production code lives only under `src/`; specs are not co-located with sources.

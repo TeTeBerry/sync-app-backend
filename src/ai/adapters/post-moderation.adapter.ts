@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { RiskAgent } from '../agents/risk.agent';
 import type {
   IPostModerationPort,
-  PostCommentModerationInput,
   PostModerationAssessOptions,
   PostModerationInput,
   PostModerationResult,
@@ -34,16 +33,6 @@ export class PostModerationAdapter implements IPostModerationPort {
       image: input.image,
       actor: input.actor,
       activityLegacyId: input.activityLegacyId,
-    });
-  }
-
-  assessComment(
-    input: PostCommentModerationInput,
-  ): Promise<PostModerationResult> {
-    return this.riskAgent.assessComment({
-      body: input.body,
-      actor: input.actor,
-      postId: input.postId,
     });
   }
 }

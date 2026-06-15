@@ -15,7 +15,7 @@ AppModule
 ├── ActivityModule           # 活动 + registration/
 ├── ActivityExperienceModule # 活动域聚合（travel-plan / itinerary / live-info / travel-guide）
 ├── UserModule               # Demo 用户 seed
-├── PartnerModule              # 帖子（REST 仍为 /posts）
+├── PartnerModule              # 帖子（REST：GET/POST/DELETE /posts）
 ├── ProfileModule            # 个人页 BFF（摘要 / 活动 / 帖子）
 ├── HomeModule               # 首页 BFF
 ├── NotificationModule
@@ -37,7 +37,7 @@ AppModule
 |----------|----------|------|
 | User | `modules/user/` | `GET/PATCH /users/me`（Query 身份）✅ |
 | Activity | `modules/activity/` | 列表 / 关键词解析 / 详情 / 报名（`registration/`）✅ |
-| Partner | `modules/partner/` | 帖子 CRUD + `PostInteractionService`（赞/评/申请）✅ |
+| Partner | `modules/partner/` | 帖子创建 / 列表 / 删帖（赞评 API 已移除）✅ |
 | AiAssistant | `ai/` + `modules/chat/` | WebSocket + Agent ✅ |
 | BFF | `home/`、`profile/` | 聚合读 ✅ |
 | ActivityExperience | `modules/activity-experience/` | 四域 API 聚合 ✅ |

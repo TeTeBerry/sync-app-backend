@@ -10,11 +10,6 @@ export function categoryForInteractionType(
   interactionType: NotificationInteractionType,
 ): NotificationCategory {
   switch (interactionType) {
-    case 'like':
-      return 'like';
-    case 'comment':
-    case 'comment_reply':
-      return 'comment';
     case 'activity_update':
     case 'post_rejected':
     case 'post_hidden':
