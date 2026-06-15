@@ -1,9 +1,14 @@
+import type { TravelPlanBillLineItem } from '../../../shared/travel-plan/types';
 import type { TravelPlanNodeRecord } from '../../../database/schemas/user-travel-plan.schema';
-import type { TravelPlanNodeDto } from '../dto/save-travel-plan.dto';
+import type {
+  TravelPlanBillLineItemDto,
+  TravelPlanNodeDto,
+} from '../dto/save-travel-plan.dto';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_OF_DAY = /^([01]\d|2[0-3]):[0-5]\d$/;
 const MAX_NODES = 100;
+const MAX_BILLS_PER_NODE = 50;
 
 function normalizeIsoDate(value: string): string | null {
   const trimmed = value.trim();
@@ -30,6 +35,42 @@ function normalizeDateRange(startDate: string, endDate: string) {
   return { startDate: start, endDate: end };
 }
 
+function normalizeBillLineItems(
+  bills: TravelPlanBillLineItemDto[] | undefined,
+): TravelPlanBillLineItem[] | undefined {
+  if (!bills?.length) {
+    return undefined;
+  }
+
+  const normalized: TravelPlanBillLineItem[] = [];
+  for (const bill of bills.slice(0, MAX_BILLS_PER_NODE)) {
+    const id = bill.id.trim();
+    const title = bill.title.trim();
+    const startDate = normalizeIsoDate(bill.startDate);
+    if (!id || !title || !startDate) {
+      continue;
+    }
+
+    const description = bill.description?.trim();
+    const startTime = normalizeTime(bill.startTime);
+    const cost =
+      bill.cost != null && Number.isFinite(bill.cost) && bill.cost >= 0
+        ? bill.cost
+        : undefined;
+
+    normalized.push({
+      id,
+      title,
+      startDate,
+      ...(description ? { description } : {}),
+      ...(startTime ? { startTime } : {}),
+      ...(cost != null ? { cost } : {}),
+    });
+  }
+
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 export function normalizeTravelPlanNodesForSave(
   nodes: TravelPlanNodeDto[],
 ): TravelPlanNodeRecord[] {
@@ -53,6 +94,8 @@ export function normalizeTravelPlanNodesForSave(
 
     const startTime = normalizeTime(node.startTime);
     const endTime = normalizeTime(node.endTime);
+    const diningBills = normalizeBillLineItems(node.diningBills);
+    const transportBills = normalizeBillLineItems(node.transportBills);
 
     normalized.push({
       id,
@@ -69,6 +112,8 @@ export function normalizeTravelPlanNodesForSave(
         ? { price: node.price }
         : {}),
       confirmed: Boolean(node.confirmed),
+      ...(diningBills ? { diningBills } : {}),
+      ...(transportBills ? { transportBills } : {}),
     });
   }
 
