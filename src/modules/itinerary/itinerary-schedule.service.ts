@@ -28,7 +28,10 @@ import {
   STORM_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
 } from './itinerary.seed';
-import { hasItineraryCatalogSeed } from './domain/itinerary-catalog.util';
+import {
+  hasItineraryCatalogSeed,
+  resolveLineupDjs,
+} from './domain/itinerary-catalog.util';
 import { ItineraryCacheService } from './itinerary-cache.service';
 import {
   detectPerformanceConflicts,
@@ -85,6 +88,8 @@ export interface ItineraryScheduleDto {
     genreColor: string;
   }>;
   conflicts: ItineraryConflict[];
+  /** False when only lineup is published without official performance slots. */
+  schedulePublished: boolean;
 }
 
 const DISCOGS_STYLE_ACTIVITY_LEGACY_IDS = new Set([
@@ -215,7 +220,13 @@ export class ItineraryScheduleService implements OnModuleInit {
       activityLegacyId,
       performances as ArtistPerformance[],
     );
-    const djs = this.aggregateDjs(styledPerformances);
+    const schedulePublished = styledPerformances.length > 0;
+    const djs = schedulePublished
+      ? this.aggregateDjs(styledPerformances)
+      : await this.applyDiscogsStylesToLineupDjs(
+          activityLegacyId,
+          resolveLineupDjs(activityLegacyId),
+        );
     const slots = this.toPerformanceSlots(styledPerformances);
     const conflicts = options?.selectedDjIds?.length
       ? detectPerformanceConflicts(slots, options.selectedDjIds)
@@ -248,6 +259,7 @@ export class ItineraryScheduleService implements OnModuleInit {
         genreColor: p.genreColor,
       })),
       conflicts,
+      schedulePublished,
     };
 
     if (!options?.selectedDjIds?.length) {
@@ -402,6 +414,37 @@ export class ItineraryScheduleService implements OnModuleInit {
       genreLabel:
         styledByActivity.get(perf.activityLegacyId)?.get(perf.artistId) ??
         perf.genreLabel,
+    }));
+  }
+
+  private async applyDiscogsStylesToLineupDjs(
+    activityLegacyId: number,
+    djs: ItineraryDjDto[],
+  ): Promise<ItineraryDjDto[]> {
+    if (
+      !DISCOGS_STYLE_ACTIVITY_LEGACY_IDS.has(activityLegacyId) ||
+      !djs.length
+    ) {
+      return djs;
+    }
+
+    const lookupNames = [
+      ...new Set(
+        djs.flatMap((dj) => [dj.name, ...expandFestivalArtistName(dj.name)]),
+      ),
+    ];
+    const catalogByLineupName =
+      await this.djService.lookupForLineupArtists(lookupNames);
+    const catalog = await this.djService.loadCatalog();
+
+    return djs.map((dj) => ({
+      ...dj,
+      genreLabel: this.resolveDiscogsGenreLabel(
+        dj.name,
+        dj.genreLabel,
+        catalogByLineupName,
+        catalog,
+      ),
     }));
   }
 

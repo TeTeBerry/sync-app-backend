@@ -1,31 +1,12 @@
-import { parseTimeToMinutes } from './domain/time-minutes.util';
-
 export const ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID = 5;
 
 const MAIN_STAGE = 'main' as const;
-const MAIN_STAGE_LABEL = '主舞台';
 
 type EdcArtistSeed = {
   name: string;
   genre: string;
   genreLabel: string;
   popularity: number;
-  genreColor: string;
-};
-
-type SeedPerformance = {
-  dateKey: string;
-  dateLabel: string;
-  artistId: string;
-  artistName: string;
-  genre: string;
-  genreLabel: string;
-  stage: string;
-  stageLabel: string;
-  startTime: string;
-  endTime: string;
-  popularity: number;
-  avatarSeed: string;
   genreColor: string;
 };
 
@@ -39,30 +20,10 @@ function artistId(name: string): string {
     .replace(/^-|-$/g, '');
 }
 
-function minutesToTime(totalMinutes: number): string {
-  const mins = ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
-function perf(input: SeedPerformance) {
-  const startMinutes = parseTimeToMinutes(input.startTime);
-  let endMinutes = parseTimeToMinutes(input.endTime);
-  if (endMinutes <= startMinutes) {
-    endMinutes += 24 * 60;
-  }
-  return {
-    activityLegacyId: ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
-    ...input,
-    startMinutes,
-    endMinutes,
-  };
-}
-
 /**
- * EDC Thailand 2026 官宣阵容（Rhythm Park · 12/18–20）— 日程为占位，便于专属行程选 DJ。
+ * EDC Thailand 2026 官宣阵容（Rhythm Park · 12/18–20）。
  * `genre` 为主筛选项；`genreLabel` 为艺人实际代表曲风。
+ * 官方演出时间表未发布前仅提供阵容预选，不写入占位排期。
  */
 const EDC_THAILAND_ARTISTS: EdcArtistSeed[] = [
   {
@@ -625,30 +586,24 @@ export const EDC_THAILAND_FESTIVAL_SESSION_SEED = EDC_DATE_META.map((day) => ({
   ...day,
 }));
 
-export const EDC_THAILAND_ARTIST_PERFORMANCE_SEED = EDC_THAILAND_ARTISTS.map(
-  (artist, index) => {
-    const day = EDC_DATE_META[index % EDC_DATE_META.length];
-    const slotInDay = Math.floor(index / EDC_DATE_META.length);
-    const startMinutes = 14 * 60 + slotInDay * 45;
-    const endMinutes = startMinutes + 45;
+export const EDC_THAILAND_LINEUP_DJ_SEED = EDC_THAILAND_ARTISTS.map(
+  (artist) => {
     const id = artistId(artist.name);
-    return perf({
-      dateKey: day.dateKey,
-      dateLabel: day.label,
-      artistId: id,
-      artistName: artist.name,
+    return {
+      id,
+      name: artist.name,
       genre: artist.genre,
       genreLabel: artist.genreLabel,
       stage: MAIN_STAGE,
-      stageLabel: MAIN_STAGE_LABEL,
-      startTime: minutesToTime(startMinutes),
-      endTime: minutesToTime(endMinutes),
       popularity: artist.popularity,
       avatarSeed: id,
       genreColor: artist.genreColor,
-    });
+    };
   },
 );
+
+/** Lineup-only: official timetable not published yet. */
+export const EDC_THAILAND_ARTIST_PERFORMANCE_SEED = [] as const;
 
 export const EDC_THAILAND_ARTIST_NAMES = EDC_THAILAND_ARTISTS.map(
   (a) => a.name,

@@ -176,4 +176,19 @@ describe('ItineraryScheduleService discogs styles', () => {
     const schedule = await service.getSchedule(5);
     expect(schedule.performances[0]?.genreLabel).toBe('Tech House');
   });
+
+  it('serves lineup DJs with schedulePublished false when no performances exist', async () => {
+    performanceModel.find.mockReturnValue({
+      lean: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue([]),
+      }),
+    });
+
+    const schedule = await service.getSchedule(5);
+
+    expect(schedule.schedulePublished).toBe(false);
+    expect(schedule.performances).toHaveLength(0);
+    expect(schedule.djs.length).toBeGreaterThan(0);
+    expect(schedule.djs.some((dj) => dj.name === 'MARTIN GARRIX')).toBe(true);
+  });
 });

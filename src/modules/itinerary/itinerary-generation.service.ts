@@ -82,6 +82,10 @@ export class ItineraryGenerationService {
           input.dateKey,
         );
 
+      if (performances.length === 0) {
+        throw new BadRequestException('官方演出时间表尚未发布，请耐心等待');
+      }
+
       const primaryDateKey = input.dateKey ?? sessions[0]?.dateKey ?? 'jun13';
 
       const cached =

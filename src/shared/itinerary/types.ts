@@ -47,6 +47,8 @@ export type ItineraryScheduleSnapshot = {
     genreColor: string;
   }>;
   conflicts: ItineraryConflict[];
+  /** False when only lineup is published without official performance slots. */
+  schedulePublished: boolean;
 };
 
 export type ItineraryTimelineDotColor = 'pink' | 'cyan' | 'purple';

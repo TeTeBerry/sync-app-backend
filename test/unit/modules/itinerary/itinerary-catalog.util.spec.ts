@@ -1,6 +1,7 @@
 import {
   hasItineraryCatalogSeed,
   resolveItineraryCatalogSeed,
+  resolveLineupDjs,
 } from '@src/modules/itinerary/domain/itinerary-catalog.util';
 import {
   ITINERARY_DEMO_ACTIVITY_LEGACY_ID,
@@ -31,6 +32,17 @@ describe('itinerary-catalog.util', () => {
     expect(
       seed.performances.some((perf) => perf.artistId === 'marshmello'),
     ).toBe(true);
+  });
+
+  it('returns lineup DJs without performances for EDC Thailand', () => {
+    const seed = resolveItineraryCatalogSeed(
+      ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
+    );
+
+    expect(seed.performances).toHaveLength(0);
+    expect(
+      resolveLineupDjs(ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID).length,
+    ).toBeGreaterThan(0);
   });
 
   it('filters catalog seed by dateKey', () => {

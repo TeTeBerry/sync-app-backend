@@ -6,14 +6,34 @@ import {
   STORM_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
 } from '../itinerary.seed';
+import { EDC_THAILAND_LINEUP_DJ_SEED } from '../edc-thailand-itinerary.seed';
 
 export const ITINERARY_CATALOG_ACTIVITY_LEGACY_IDS = new Set([
   STORM_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
 ]);
 
+export type LineupDjSeed = {
+  id: string;
+  name: string;
+  genre: string;
+  genreLabel: string;
+  stage: string;
+  popularity: number;
+  avatarSeed: string;
+  genreColor: string;
+};
+
+const LINEUP_DJS_BY_ACTIVITY_LEGACY_ID = new Map<number, LineupDjSeed[]>([
+  [ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID, EDC_THAILAND_LINEUP_DJ_SEED],
+]);
+
 export function hasItineraryCatalogSeed(activityLegacyId: number): boolean {
   return ITINERARY_CATALOG_ACTIVITY_LEGACY_IDS.has(activityLegacyId);
+}
+
+export function resolveLineupDjs(activityLegacyId: number): LineupDjSeed[] {
+  return [...(LINEUP_DJS_BY_ACTIVITY_LEGACY_ID.get(activityLegacyId) ?? [])];
 }
 
 /** Seed catalog snapshot for tests/scripts — runtime schedule reads MongoDB only. */

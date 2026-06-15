@@ -24,7 +24,7 @@ export const ACTIVITY_SEED = [
   {
     legacyId: 4,
     code: 'storm',
-    name: '风暴电音节 深圳站',
+    name: '风暴电音节 深圳站 2026',
     alias: ['storm', '风暴', '风暴电音节', '百威风暴', '口味王风暴'],
     date: '06/13-14',
     location: '深圳国际会展中心',

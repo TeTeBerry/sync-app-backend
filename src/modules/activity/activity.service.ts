@@ -23,10 +23,6 @@ import {
 } from './registration/interfaces/activity-registration.repository.interface';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import {
-  extractYearFromText,
-  isActivityEnded,
-} from '../../common/utils/activity-date.util';
-import {
   ActivityRegistration,
   ActivityRegistrationDocument,
 } from '../../database/schemas/activity-registration.schema';
@@ -102,7 +98,6 @@ export class ActivityService implements OnModuleInit {
 
   async onModuleInit() {
     await this.initData();
-    await this.removeExpiredActivities();
     await this.removeDeprecatedActivities();
   }
 
@@ -167,28 +162,6 @@ export class ActivityService implements OnModuleInit {
         ),
       ),
     );
-  }
-
-  /** Remove festivals whose catalog dates have passed. */
-  async removeExpiredActivities() {
-    const all = await this.model.find().lean();
-    const expiredLegacyIds: number[] = [];
-
-    for (const activity of all) {
-      const yearHint =
-        extractYearFromText(activity.name) ??
-        extractYearFromText(activity.date);
-      if (isActivityEnded(activity.date, { yearHint })) {
-        expiredLegacyIds.push(activity.legacyId);
-      }
-    }
-
-    if (!expiredLegacyIds.length) return;
-
-    await this.model.deleteMany({ legacyId: { $in: expiredLegacyIds } });
-    await this.registrationModel.deleteMany({
-      activityLegacyId: { $in: expiredLegacyIds },
-    });
   }
 
   /** Drop retired festivals still present from older seeds (e.g. S2O). */
