@@ -217,4 +217,67 @@ describe('normalizeTravelPlanReceiptResult', () => {
     expect(result.form?.startTime).toBe('12:55');
     expect(result.form?.endTime).toBe('15:25');
   });
+
+  it('parses multiple dining bills from a transaction list', () => {
+    const result = normalizeTravelPlanReceiptResult(
+      'dining',
+      {
+        ready: true,
+        legs: [
+          {
+            title: '星巴克',
+            description: '6/15 13:53',
+            cost: 33,
+            startDate: '2026-06-15',
+            startTime: '13:53',
+          },
+          {
+            title: '国展中心澳园餐厅',
+            description: '6/14 19:37',
+            cost: 29.9,
+            startDate: '2026-06-14',
+            startTime: '19:37',
+          },
+        ],
+      },
+      { yearHint: '2026' },
+    );
+
+    expect(result.filled).toBe(true);
+    expect(result.forms).toHaveLength(2);
+    expect(result.message).toContain('2 笔账单');
+    expect(result.forms?.[0]?.title).toBe('星巴克');
+    expect(result.forms?.[1]?.cost).toBe('29.9');
+  });
+
+  it('parses multiple ride-hailing bills from a transaction list', () => {
+    const result = normalizeTravelPlanReceiptResult(
+      'transport',
+      {
+        ready: true,
+        legs: [
+          {
+            title: '滴滴出行',
+            description: '6/15 13:53',
+            cost: 33,
+            startDate: '2026-06-15',
+            startTime: '13:53',
+          },
+          {
+            title: '高德打车',
+            description: '6/14 19:37',
+            cost: 29.9,
+            startDate: '2026-06-14',
+            startTime: '19:37',
+          },
+        ],
+      },
+      { yearHint: '2026' },
+    );
+
+    expect(result.filled).toBe(true);
+    expect(result.forms).toHaveLength(2);
+    expect(result.message).toContain('2 笔打车记录');
+    expect(result.forms?.[0]?.title).toBe('滴滴出行');
+  });
 });

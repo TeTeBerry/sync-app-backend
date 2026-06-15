@@ -7,6 +7,21 @@ export type TravelPlanCategory =
 
 export type TravelPlanNodeSource = 'activity' | 'user';
 
+/** One parsed bill line from a transaction-list screenshot. */
+export type TravelPlanBillLineItem = {
+  id: string;
+  title: string;
+  description?: string;
+  cost?: number;
+  startDate: string;
+  startTime?: string;
+};
+
+/** @deprecated Use TravelPlanBillLineItem */
+export type TravelPlanDiningBillItem = TravelPlanBillLineItem;
+
+export type TravelPlanTransportBillItem = TravelPlanBillLineItem;
+
 /** Persisted/API node shape (no UI-only fields). */
 export type TravelPlanNodeRecord = {
   id: string;
@@ -21,6 +36,10 @@ export type TravelPlanNodeRecord = {
   detail?: string;
   price?: number;
   confirmed: boolean;
+  /** Present when a dining node aggregates multiple bill lines from one screenshot. */
+  diningBills?: TravelPlanBillLineItem[];
+  /** Present when a transport node aggregates multiple ride-hailing bills. */
+  transportBills?: TravelPlanBillLineItem[];
 };
 
 /** UI node with optional source and display label from API. */

@@ -2,9 +2,10 @@ import type { TravelPlanReceiptCategory } from '../dto/recognize-travel-plan-rec
 
 const CATEGORY_HINT: Record<TravelPlanReceiptCategory, string> = {
   transport:
-    '交通票务：高铁/火车/机票/打车/网约车订单。提取车次航班、座位舱位、起止站。若截图为往返机票/联程票，必须拆成多段单程分别识别。',
+    '交通票务：高铁/火车/机票/打车/网约车订单。机票火车票按单程拆分；微信/支付宝账单中的多条打车记录须按每笔拆成 legs。',
   hotel: '住宿订单：酒店/民宿预订。提取酒店名、房型、入住退房日期、是否含早。',
-  dining: '餐饮小票：餐厅/外卖订单。提取店名、菜品摘要、就餐时间。',
+  dining:
+    '餐饮消费：餐厅小票、外卖订单，或微信/支付宝账单列表截图。账单列表截图须按每条消费拆成多笔 legs。',
   event: '活动门票：演出/音乐节/展会票务。提取活动名、场次日期、票档座位。',
 };
 
@@ -17,6 +18,18 @@ function buildLegFieldSpec(category: TravelPlanReceiptCategory): string[] {
       '- remark: 备注（预订号等；勿输出姓名、手机号、身份证号）',
       '- startDate: 入住日期 YYYY-MM-DD（也可用 checkInDate）',
       '- endDate: 退房日期 YYYY-MM-DD（离店日，非末晚；也可用 checkOutDate）',
+    ];
+  }
+
+  if (category === 'dining') {
+    return [
+      '- title: 商家名称（如「星巴克」「国展中心澳园餐厅」）',
+      '- description: 消费时间摘要（如「6/15 13:53」），可含支付方式',
+      '- cost: 该笔金额（支出为负数时取绝对值；仅当旁有 ¥/￥/元 或列表金额列时填写）',
+      '- remark: 备注（订单号等；勿输出姓名、手机号）',
+      '- startDate: 消费日期 YYYY-MM-DD',
+      '- startTime: 消费时刻 HH:mm（若有）',
+      '- endDate: 与 startDate 相同（单笔消费）',
     ];
   }
 
@@ -74,6 +87,22 @@ export function buildTravelPlanReceiptSystemPrompt(
       '- 若各程有独立 ¥ 票价，才分别填入对应 leg 的 cost',
       '- 标题建议标明方向，如「飞往深圳」「返程上海」',
       '- 航班号/车次（如 Y87566、ZH9521、CA1234）只写入 description，绝不能写入 cost 或 orderTotal',
+      '打车/网约车账单规则：',
+      '- 微信/支付宝「账单」中的滴滴、高德打车、曹操出行等：每条打车记录输出 1 条 leg',
+      '- title: 平台或商户名（如「滴滴出行」「高德打车」），可加起终点摘要',
+      '- description: 乘车时间（如「6/15 13:53」）或起终点',
+      '- cost: 该笔车费（支出负数取绝对值）',
+      '- startDate/startTime: 乘车日期与时刻',
+      '- 月支出汇总行不要作为 leg，也不要填入 orderTotal',
+    );
+  } else if (category === 'dining') {
+    lines.push(
+      '餐饮账单规则：',
+      '- 微信/支付宝「账单」列表、银行交易记录：每条可见消费记录输出 1 条 leg，不要合并',
+      '- 单笔小票/外卖订单：legs 只含 1 段',
+      '- 月支出/收入汇总行（如 Expenditures ¥2075）不要作为 leg，也不要填入 orderTotal',
+      '- 每笔 leg 的 cost 填该笔右侧金额；各笔金额已知时不要填 orderTotal',
+      '- 列表中「-33.00」这类支出金额取绝对值写入 cost',
     );
   } else {
     lines.push(

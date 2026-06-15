@@ -12,6 +12,35 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
+export class TravelPlanDiningBillItemDto {
+  @IsString()
+  @MaxLength(64)
+  id!: string;
+
+  @IsString()
+  @MaxLength(120)
+  title!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  description?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  cost?: number;
+
+  @IsString()
+  @MaxLength(10)
+  startDate!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(5)
+  startTime?: string;
+}
+
 export class TravelPlanNodeDto {
   @IsString()
   @MaxLength(64)
@@ -63,6 +92,18 @@ export class TravelPlanNodeDto {
 
   @IsBoolean()
   confirmed!: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TravelPlanDiningBillItemDto)
+  diningBills?: TravelPlanDiningBillItemDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TravelPlanDiningBillItemDto)
+  transportBills?: TravelPlanDiningBillItemDto[];
 }
 
 export class SaveTravelPlanDto {

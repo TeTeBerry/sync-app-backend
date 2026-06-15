@@ -96,6 +96,67 @@ function parseTransportTimesFromDescription(description: string): {
   };
 }
 
+const DINING_DATETIME_PATTERN = /(\d{1,2})\/(\d{1,2})(?:\s+(\d{1,2}:\d{2}))?/;
+
+function parseBillListDateTimeFromDescription(
+  description: string,
+  yearHint?: string,
+): { startDate?: string; startTime?: string } {
+  const match = description.match(DINING_DATETIME_PATTERN);
+  if (!match) {
+    return {};
+  }
+
+  const year = yearHint ?? String(new Date().getFullYear());
+  const month = match[1].padStart(2, '0');
+  const day = match[2].padStart(2, '0');
+  const startTime = match[3] ? normalizeTime(match[3]) : undefined;
+
+  return {
+    startDate: `${year}-${month}-${day}`,
+    ...(startTime ? { startTime } : {}),
+  };
+}
+
+const RIDE_HAILING_PATTERN =
+  /滴滴|网约车|打车|快车|专车|出租车|高德打车|曹操出行|花小猪|T3出行|Uber|优步|首汽约车|美团打车/i;
+
+const TICKET_LEG_PATTERN =
+  /飞往|返程|回程|去程|航班|高铁|火车|车次|舱位|经济舱|二等座|一等座/i;
+
+const TICKET_CODE_PATTERN =
+  /\bG\d{1,4}\b|\bD\d{1,4}\b|\bCA\d+\b|\bMU\d+\b|\bZH\d+\b|\bY\d{4}\b/i;
+
+function isRideHailingBillListForms(
+  forms: TravelPlanReceiptRecognizeForm[],
+): boolean {
+  if (forms.length <= 1) {
+    return false;
+  }
+
+  const combined = forms
+    .map((form) => `${form.title} ${form.description} ${form.remark}`)
+    .join(' ');
+  const hasTicketMarkers =
+    TICKET_LEG_PATTERN.test(combined) ||
+    forms.some((form) =>
+      TICKET_CODE_PATTERN.test(
+        `${form.title} ${form.description} ${form.remark}`,
+      ),
+    );
+  const hasRideMarkers = RIDE_HAILING_PATTERN.test(combined);
+
+  if (hasTicketMarkers && forms.length <= 2 && !hasRideMarkers) {
+    return false;
+  }
+
+  if (hasRideMarkers) {
+    return true;
+  }
+
+  return forms.length >= 3 && !hasTicketMarkers;
+}
+
 function alignIsoDateToYear(isoDate: string, yearHint: string): string {
   const match = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match || match[1] === yearHint) {
@@ -408,6 +469,19 @@ function normalizeLeg(
     range ?? { startDate: fallbackDate, endDate: fallbackDate },
     yearHint,
   );
+  const parsedBillDateTime =
+    category === 'dining' || category === 'transport'
+      ? parseBillListDateTimeFromDescription(description, yearHint)
+      : {};
+  const mergedRange = {
+    startDate:
+      resolvedRange.startDate || parsedBillDateTime.startDate || fallbackDate,
+    endDate:
+      resolvedRange.endDate ||
+      parsedBillDateTime.startDate ||
+      resolvedRange.startDate ||
+      fallbackDate,
+  };
   const parsedTransportTimes =
     category === 'transport'
       ? parseTransportTimesFromDescription(description)
@@ -415,7 +489,9 @@ function normalizeLeg(
   const startTime =
     category === 'hotel'
       ? undefined
-      : (normalizeTime(raw.startTime) ?? parsedTransportTimes.startTime);
+      : (normalizeTime(raw.startTime) ??
+        parsedBillDateTime.startTime ??
+        parsedTransportTimes.startTime);
   const endTime =
     category === 'hotel'
       ? undefined
@@ -426,8 +502,8 @@ function normalizeLeg(
     description,
     cost,
     remark,
-    startDate: resolvedRange.startDate,
-    endDate: resolvedRange.endDate,
+    startDate: mergedRange.startDate,
+    endDate: mergedRange.endDate,
     ...(startTime ? { startTime } : {}),
     ...(endTime ? { endTime } : {}),
   };
@@ -458,8 +534,18 @@ function extractRawLegs(
   ];
 }
 
-function buildSuccessMessage(legCount: number): string {
+function buildSuccessMessage(
+  category: TravelPlanReceiptCategory,
+  legCount: number,
+  forms: TravelPlanReceiptRecognizeForm[],
+): string {
   if (legCount > 1) {
+    if (category === 'dining') {
+      return `AI 识别完成，已识别 ${legCount} 笔账单`;
+    }
+    if (category === 'transport' && isRideHailingBillListForms(forms)) {
+      return `AI 识别完成，已识别 ${legCount} 笔打车记录`;
+    }
     return `AI 识别完成，已拆分为 ${legCount} 段单程`;
   }
   return 'AI 识别完成，已自动填入';
@@ -489,7 +575,13 @@ export function normalizeTravelPlanReceiptResult(
     .filter((leg): leg is TravelPlanReceiptRecognizeForm => leg != null);
 
   if (orderTotal) {
-    forms = applyOrderTotalToForms(forms, orderTotal);
+    const legsMissingCost = forms.every((form) => !form.cost?.trim());
+    const isBillList =
+      category === 'dining' ||
+      (category === 'transport' && isRideHailingBillListForms(forms));
+    if (!isBillList || legsMissingCost) {
+      forms = applyOrderTotalToForms(forms, orderTotal);
+    }
   }
 
   if (forms.length === 0) {
@@ -507,6 +599,6 @@ export function normalizeTravelPlanReceiptResult(
     category,
     form: forms[0],
     forms,
-    message: buildSuccessMessage(forms.length),
+    message: buildSuccessMessage(category, forms.length, forms),
   };
 }
