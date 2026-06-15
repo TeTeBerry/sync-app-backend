@@ -446,13 +446,45 @@ function buildFallbackDate() {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 }
 
+function resolveRecognizedTitle(
+  category: TravelPlanReceiptCategory,
+  title: string,
+  description: string,
+): string {
+  if (title.trim()) {
+    return title;
+  }
+
+  if (category === 'dining' || category === 'event') {
+    const parts = description
+      .split(/[·|,，]/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    for (const part of parts) {
+      if (/^\d{1,2}\/\d{1,2}/.test(part) || /^\d{1,2}:\d{2}$/.test(part)) {
+        continue;
+      }
+      if (part.length >= 2) {
+        return part.slice(0, 20);
+      }
+    }
+    return category === 'event' ? '其他消费' : '餐饮消费';
+  }
+
+  return title;
+}
+
 function normalizeLeg(
   raw: LlmTravelPlanReceiptLeg,
   fallbackDate: string,
   category: TravelPlanReceiptCategory,
   yearHint?: string,
 ): TravelPlanReceiptRecognizeForm | null {
-  const title = desensitizeText(raw.title);
+  const title = resolveRecognizedTitle(
+    category,
+    desensitizeText(raw.title),
+    desensitizeText(raw.description),
+  );
   const description = desensitizeText(raw.description);
   const remark = desensitizeText(raw.remark);
   const cost = normalizeLegCost(raw.cost, {
@@ -470,7 +502,7 @@ function normalizeLeg(
     yearHint,
   );
   const parsedBillDateTime =
-    category === 'dining' || category === 'transport'
+    category === 'dining' || category === 'transport' || category === 'event'
       ? parseBillListDateTimeFromDescription(description, yearHint)
       : {};
   const mergedRange = {
@@ -543,6 +575,9 @@ function buildSuccessMessage(
     if (category === 'dining') {
       return `AI 识别完成，已识别 ${legCount} 笔账单`;
     }
+    if (category === 'event') {
+      return `AI 识别完成，已识别 ${legCount} 笔记录`;
+    }
     if (category === 'transport' && isRideHailingBillListForms(forms)) {
       return `AI 识别完成，已识别 ${legCount} 笔打车记录`;
     }
@@ -578,6 +613,7 @@ export function normalizeTravelPlanReceiptResult(
     const legsMissingCost = forms.every((form) => !form.cost?.trim());
     const isBillList =
       category === 'dining' ||
+      category === 'event' ||
       (category === 'transport' && isRideHailingBillListForms(forms));
     if (!isBillList || legsMissingCost) {
       forms = applyOrderTotalToForms(forms, orderTotal);

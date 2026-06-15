@@ -6,7 +6,8 @@ const CATEGORY_HINT: Record<TravelPlanReceiptCategory, string> = {
   hotel: '住宿订单：酒店/民宿预订。提取酒店名、房型、入住退房日期、是否含早。',
   dining:
     '餐饮消费：餐厅小票、外卖订单，或微信/支付宝账单列表截图。账单列表截图须按每条消费拆成多笔 legs。',
-  event: '活动门票：演出/音乐节/展会票务。提取活动名、场次日期、票档座位。',
+  event:
+    '其他消费/票务：演出门票、展会、周边商品、景点门票、购物订单，或微信/支付宝账单/订单列表截图。须提取每条记录截图中的主标题（活动名、商品名、商户名）。',
 };
 
 function buildLegFieldSpec(category: TravelPlanReceiptCategory): string[] {
@@ -30,6 +31,18 @@ function buildLegFieldSpec(category: TravelPlanReceiptCategory): string[] {
       '- startDate: 消费日期 YYYY-MM-DD',
       '- startTime: 消费时刻 HH:mm（若有）',
       '- endDate: 与 startDate 相同（单笔消费）',
+    ];
+  }
+
+  if (category === 'event') {
+    return [
+      '- title: 截图中该条记录的主标题（必填；优先活动名/演出名/商品名/商户名/订单标题，20字内）',
+      '- description: 场次或消费时间摘要（如「6/15 19:30」）、票档/规格/场馆',
+      '- cost: 该笔金额（支出为负数时取绝对值；仅当旁有 ¥/￥/元 或列表金额列时填写）',
+      '- remark: 备注（订单号/票号等；勿输出姓名、手机号）',
+      '- startDate: 发生日期 YYYY-MM-DD',
+      '- startTime: 时刻 HH:mm（若有）',
+      '- endDate: 与 startDate 相同（单笔记录）',
     ];
   }
 
@@ -104,10 +117,15 @@ export function buildTravelPlanReceiptSystemPrompt(
       '- 每笔 leg 的 cost 填该笔右侧金额；各笔金额已知时不要填 orderTotal',
       '- 列表中「-33.00」这类支出金额取绝对值写入 cost',
     );
-  } else {
+  } else if (category === 'event') {
     lines.push(
-      '- 非交通类或单次订单：legs 只含 1 段',
-      '- 也可兼容旧格式：无 legs 时可用顶层 title/description/cost/remark/startDate/endDate',
+      '其他消费/票务规则：',
+      '- 微信/支付宝「账单」列表、购物/票务订单列表：每条可见记录输出 1 条 leg，不要合并',
+      '- 每条 leg 的 title 必须填写截图中该条记录的主标题（活动名、商品名、商户名、订单标题），不可留空',
+      '- 单笔门票/购物订单：legs 只含 1 段',
+      '- 月支出/收入汇总行不要作为 leg，也不要填入 orderTotal',
+      '- 每笔 leg 的 cost 填该笔右侧金额；各笔金额已知时不要填 orderTotal',
+      '- 列表中支出金额取绝对值写入 cost',
     );
   }
 

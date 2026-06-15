@@ -280,4 +280,74 @@ describe('normalizeTravelPlanReceiptResult', () => {
     expect(result.message).toContain('2 笔打车记录');
     expect(result.forms?.[0]?.title).toBe('滴滴出行');
   });
+
+  it('parses multiple event records from a transaction list with titles', () => {
+    const result = normalizeTravelPlanReceiptResult(
+      'event',
+      {
+        ready: true,
+        legs: [
+          {
+            title: 'Tomorrowland 单日票',
+            description: '6/15 19:30',
+            cost: 880,
+            startDate: '2026-06-15',
+            startTime: '19:30',
+          },
+          {
+            title: '官方周边 T恤',
+            description: '6/14 12:10',
+            cost: 199,
+            startDate: '2026-06-14',
+            startTime: '12:10',
+          },
+        ],
+      },
+      { yearHint: '2026' },
+    );
+
+    expect(result.filled).toBe(true);
+    expect(result.forms).toHaveLength(2);
+    expect(result.message).toContain('2 笔记录');
+    expect(result.forms?.[0]?.title).toBe('Tomorrowland 单日票');
+    expect(result.forms?.[1]?.title).toBe('官方周边 T恤');
+  });
+
+  it('falls back event title when model omits title', () => {
+    const result = normalizeTravelPlanReceiptResult(
+      'event',
+      {
+        ready: true,
+        legs: [
+          {
+            description: '6/15 19:30 · VIP',
+            cost: 1200,
+            startDate: '2026-06-15',
+          },
+        ],
+      },
+      { yearHint: '2026' },
+    );
+
+    expect(result.form?.title).toBe('VIP');
+  });
+
+  it('uses generic event title when only datetime is recognized', () => {
+    const result = normalizeTravelPlanReceiptResult(
+      'event',
+      {
+        ready: true,
+        legs: [
+          {
+            description: '6/15 19:30',
+            cost: 1200,
+            startDate: '2026-06-15',
+          },
+        ],
+      },
+      { yearHint: '2026' },
+    );
+
+    expect(result.form?.title).toBe('其他消费');
+  });
 });
