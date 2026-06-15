@@ -12,14 +12,6 @@ import type { RequestActor } from '../../common/auth/request-actor.types';
 import { isPostOwnedByActor } from '../../common/auth/actor-query.util';
 import { Post, PostDocument } from '../../database/schemas/post.schema';
 import {
-  PostApplication,
-  PostApplicationDocument,
-} from '../../database/schemas/post-application.schema';
-import {
-  PostApplicationMessage,
-  PostApplicationMessageDocument,
-} from '../../database/schemas/post-application-message.schema';
-import {
   ACTIVITY_LOOKUP_PORT,
   type IActivityLookupPort,
 } from '../activity/ports/activity-lookup.port';
@@ -47,10 +39,6 @@ export class PostService implements OnModuleInit {
     private readonly postWrite: PostWriteService,
     private readonly postQuery: PostQueryService,
     private readonly userService: UserService,
-    @InjectModel(PostApplication.name)
-    private readonly applicationModel: Model<PostApplicationDocument>,
-    @InjectModel(PostApplicationMessage.name)
-    private readonly applicationMessageModel: Model<PostApplicationMessageDocument>,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -59,6 +47,22 @@ export class PostService implements OnModuleInit {
     } catch (error) {
       this.logger.warn(
         `Legacy post status migration failed: ${(error as Error).message}`,
+      );
+    }
+
+    try {
+      await this.migrateRemoveLegacyPostCounters();
+    } catch (error) {
+      this.logger.warn(
+        `Legacy post counter migration failed: ${(error as Error).message}`,
+      );
+    }
+
+    try {
+      await this.purgeLegacyCollections();
+    } catch (error) {
+      this.logger.warn(
+        `Legacy collection cleanup failed: ${(error as Error).message}`,
       );
     }
 
@@ -144,19 +148,6 @@ export class PostService implements OnModuleInit {
       throw new ForbiddenException('无权删除该帖子');
     }
 
-    try {
-      await Promise.all([
-        this.applicationModel.deleteMany({ postId: id }),
-        this.applicationMessageModel.deleteMany({ postId: id }),
-      ]);
-    } catch (error) {
-      this.logger.warn(
-        `Failed to delete applications for post ${id}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-    }
-
     const deleted = await this.repository.deleteById(id);
     if (!deleted) {
       throw new NotFoundException('帖子不存在');
@@ -186,6 +177,51 @@ export class PostService implements OnModuleInit {
       (completed.modifiedCount ?? 0) + (recruiting.modifiedCount ?? 0);
     if (migrated > 0) {
       this.logger.log(`Migrated ${migrated} legacy post statuses to active`);
+    }
+  }
+
+  private async migrateRemoveLegacyPostCounters(): Promise<void> {
+    const result = await this.postModel.updateMany(
+      { $or: [{ likes: { $exists: true } }, { comments: { $exists: true } }] },
+      { $unset: { likes: '', comments: '' } },
+    );
+    if (result.modifiedCount > 0) {
+      this.logger.log(
+        `Removed likes/comments from ${result.modifiedCount} legacy posts`,
+      );
+    }
+
+    try {
+      await this.postModel.collection.dropIndex(
+        'status_1_likes_-1_createdAt_-1',
+      );
+    } catch {
+      // Index may already be dropped.
+    }
+  }
+
+  private async purgeLegacyCollections(): Promise<void> {
+    const db = this.postModel.db;
+    const legacyCollections = [
+      'userblocks',
+      'postapplications',
+      'postapplicationmessages',
+      'postlikes',
+      'postcomments',
+    ];
+
+    for (const name of legacyCollections) {
+      try {
+        await db.dropCollection(name);
+        this.logger.log(`Dropped legacy collection ${name}`);
+      } catch (error) {
+        const codeName = (error as { codeName?: string }).codeName;
+        if (codeName !== 'NamespaceNotFound') {
+          this.logger.warn(
+            `Failed to drop ${name}: ${(error as Error).message}`,
+          );
+        }
+      }
     }
   }
 

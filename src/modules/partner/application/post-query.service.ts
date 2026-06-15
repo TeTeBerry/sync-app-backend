@@ -2,7 +2,6 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { resolveOwnerFilterFromActor } from '../../../common/utils/owner-filter.util';
 import { canViewPersonalInfo } from '../../../common/utils/privacy.util';
-import { UserBlockService } from '../../user/user-block.service';
 import { UserService } from '../../user/user.service';
 import { PostMapper } from '../post.mapper';
 import {
@@ -23,7 +22,6 @@ export class PostQueryService {
     @Inject(POST_REPOSITORY)
     private readonly repository: IPostRepository,
     private readonly userService: UserService,
-    private readonly userBlockService: UserBlockService,
   ) {}
 
   async listPopular(limit = 20, actor: RequestActor) {
@@ -151,29 +149,8 @@ export class PostQueryService {
   ): Promise<T[]> {
     if (!posts.length) return [];
 
-    const visiblePosts = await this.filterPostsForViewer(posts, actor);
-    const buddyUserIds = await this.userBlockService.loadBuddyUserIds(
-      actor.resolvedUserId,
-    );
-
-    const mapped = visiblePosts.map((post) => mapper(post));
-
-    return this.applyPrivacyToFeedItems(
-      mapped,
-      actor.resolvedUserId,
-      buddyUserIds,
-    );
-  }
-
-  private async filterPostsForViewer(
-    posts: PostRecord[],
-    actor: RequestActor,
-  ): Promise<PostRecord[]> {
-    const excluded = await this.userBlockService.getBlockExclusionSet(
-      actor.resolvedUserId,
-    );
-    if (!excluded.size) return posts;
-    return posts.filter((post) => !excluded.has(post.userId));
+    const mapped = posts.map((post) => mapper(post));
+    return this.applyPrivacyToFeedItems(mapped, actor.resolvedUserId);
   }
 
   private async applyPrivacyToFeedItems<
@@ -183,7 +160,7 @@ export class PostQueryService {
       name?: string;
       handle?: string;
     },
-  >(items: T[], viewerUserId: string, buddyUserIds: Set<string>): Promise<T[]> {
+  >(items: T[], viewerUserId: string): Promise<T[]> {
     const authorIds = [
       ...new Set(items.map((item) => item.userId).filter(Boolean) as string[]),
     ];
@@ -199,7 +176,7 @@ export class PostQueryService {
       const canView = canViewPersonalInfo(
         privacyMap.get(authorId),
         false,
-        buddyUserIds.has(authorId),
+        false,
       );
       if (canView) return item;
 

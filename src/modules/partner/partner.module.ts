@@ -11,14 +11,6 @@ import { PartnerRepositoryModule } from './partner-repository.module';
 import { PostService } from './post.service';
 import { MediaSecurityModule } from '../media-security/media-security.module';
 import { MongooseModule } from '@nestjs/mongoose';
-import {
-  PostApplication,
-  PostApplicationSchema,
-} from '../../database/schemas/post-application.schema';
-import {
-  PostApplicationMessage,
-  PostApplicationMessageSchema,
-} from '../../database/schemas/post-application-message.schema';
 import { Post, PostSchema } from '../../database/schemas/post.schema';
 
 @Module({
@@ -31,14 +23,7 @@ import { Post, PostSchema } from '../../database/schemas/post.schema';
     PartnerRepositoryModule,
     PartnerWriteModule,
     NotificationModule,
-    MongooseModule.forFeature([
-      { name: Post.name, schema: PostSchema },
-      { name: PostApplication.name, schema: PostApplicationSchema },
-      {
-        name: PostApplicationMessage.name,
-        schema: PostApplicationMessageSchema,
-      },
-    ]),
+    MongooseModule.forFeature([{ name: Post.name, schema: PostSchema }]),
   ],
   controllers: [PostController],
   providers: [PostQueryService, PostService],

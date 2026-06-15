@@ -139,7 +139,7 @@ AppModule
 
 | 存储 | 用途 |
 |------|------|
-| **MongoDB** | user, activity, activity-registration, post, post-like, post-comment, post-application, chat, notification |
+| **MongoDB** | user, activity, activity-registration, post, chat, notification |
 | **Redis** | `heat:global`、`heat:activity:{legacyId}`（不可用则降级） |
 | **Chroma** | `sync_knowledge`（活动 RAG）、`sync_user_profiles`（用户画像向量，UserProfileAgent 同步） |
 

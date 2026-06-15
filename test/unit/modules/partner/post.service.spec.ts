@@ -9,7 +9,6 @@ import { PostQueryService } from '@src/modules/partner/application/post-query.se
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { UserService } from '@src/modules/user/user.service';
-import type { UserBlockService } from '@src/modules/user/user-block.service';
 
 function createPost(overrides: Partial<PostRecord> = {}): PostRecord {
   return {
@@ -19,8 +18,6 @@ function createPost(overrides: Partial<PostRecord> = {}): PostRecord {
     authorHandle: '@zara',
     eventTitle: 'Storm Fest',
     body: 'Looking for team',
-    likes: 10,
-    comments: 2,
     status: 'active',
     tags: [],
     contentTypes: [],
@@ -39,22 +36,11 @@ describe('PostQueryService.listPopular', () => {
     findPrivacyLevelsByExternalIds: jest.fn(),
   } as unknown as UserService;
 
-  const userBlockService = {
-    getBlockExclusionSet: jest.fn(),
-    loadBuddyUserIds: jest.fn(),
-  } as unknown as UserBlockService;
-
   let service: PostQueryService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new PostQueryService(repository, userService, userBlockService);
-    (userBlockService.getBlockExclusionSet as jest.Mock).mockResolvedValue(
-      new Set(),
-    );
-    (userBlockService.loadBuddyUserIds as jest.Mock).mockResolvedValue(
-      new Set(),
-    );
+    service = new PostQueryService(repository, userService);
     (userService.findPrivacyLevelsByExternalIds as jest.Mock).mockResolvedValue(
       new Map(),
     );
@@ -104,36 +90,6 @@ describe('PostQueryService.listPopular', () => {
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe('post-hot');
     expect(result[1].id).toBe('post-warm');
-  });
-
-  it('excludes posts from blocked users', async () => {
-    const visiblePost = createPost({
-      _id: 'post-visible',
-      userId: 'demo-zara',
-    });
-    const blockedPost = createPost({
-      _id: 'post-blocked',
-      userId: 'demo-blocked',
-      authorName: 'Blocked User',
-    });
-    (repository.findPopular as jest.Mock).mockResolvedValue([
-      blockedPost,
-      visiblePost,
-    ]);
-    (userBlockService.getBlockExclusionSet as jest.Mock).mockResolvedValue(
-      new Set(['demo-blocked']),
-    );
-
-    const result = await service.listPopular(
-      20,
-      toRequestActor('demo-kyle', 'Kyle'),
-    );
-
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('post-visible');
-    expect(userBlockService.getBlockExclusionSet).toHaveBeenCalledWith(
-      'demo-kyle',
-    );
   });
 
   it('masks personal info for authors with restricted privacy', async () => {

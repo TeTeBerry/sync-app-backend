@@ -45,12 +45,6 @@ export class Post {
   @Prop({ type: [String], index: true, default: [] })
   contentTypes: string[];
 
-  @Prop({ default: 0 })
-  likes: number;
-
-  @Prop({ default: 0 })
-  comments: number;
-
   @Prop({ type: [String], default: [] })
   images: string[];
 
@@ -67,5 +61,4 @@ PostSchema.index({ createdAt: -1 });
 PostSchema.index({ activityLegacyId: 1, createdAt: -1 });
 PostSchema.index({ activityLegacyId: 1, status: 1, departureCity: 1 });
 PostSchema.index({ activityLegacyId: 1, status: 1, createdAt: -1 });
-PostSchema.index({ status: 1, likes: -1, createdAt: -1 });
 PostSchema.index({ status: 1, createdAt: -1 });

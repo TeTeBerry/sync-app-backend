@@ -15,7 +15,6 @@ import {
   type IPostReadPort,
 } from '../partner/ports/post-read.port';
 import { canViewPersonalInfo } from '../../common/utils/privacy.util';
-import { UserBlockService } from '../user/user-block.service';
 import { UserService } from '../user/user.service';
 import {
   resolveProfileActivityStatus,
@@ -63,7 +62,6 @@ export class ProfileSummaryService {
     @Inject(POST_READ_PORT)
     private readonly postRead: IPostReadPort,
     private readonly userService: UserService,
-    private readonly userBlockService: UserBlockService,
   ) {}
 
   async getSummary(
@@ -76,23 +74,16 @@ export class ProfileSummaryService {
     const isOwner =
       !viewerId || !ownerExternalId || viewerId === ownerExternalId;
 
-    const [profile, events, ownerPosts, buddyUserIds] = await Promise.all([
+    const [profile, events, ownerPosts] = await Promise.all([
       this.userService.resolveProfile(actor),
       this.registrationRepository.countByOwner(filter),
       this.postRead.listByOwner(actor),
-      viewerId
-        ? this.userBlockService.loadBuddyUserIds(viewerId)
-        : Promise.resolve(new Set<string>()),
     ]);
 
     const privacyLevel =
       (profile as { privacyLevel?: 'public' | 'friends' | 'private' })
         ?.privacyLevel ?? 'public';
-    const canView = canViewPersonalInfo(
-      privacyLevel,
-      isOwner,
-      Boolean(ownerExternalId && buddyUserIds.has(ownerExternalId)),
-    );
+    const canView = canViewPersonalInfo(privacyLevel, isOwner, false);
 
     const posts = ownerPosts.length;
 

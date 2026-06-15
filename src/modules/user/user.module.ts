@@ -1,16 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import {
-  PostApplication,
-  PostApplicationSchema,
-} from '../../database/schemas/post-application.schema';
-import { Post, PostSchema } from '../../database/schemas/post.schema';
-import {
-  UserBlock,
-  UserBlockSchema,
-} from '../../database/schemas/user-block.schema';
 import { User, UserSchema } from '../../database/schemas/user.schema';
-import { UserBlockService } from './user-block.service';
 import { UserController } from './user.controller';
 import { UserRepositoryModule } from './user-repository.module';
 import { AccountRiskModule } from '../account-risk/account-risk.module';
@@ -25,20 +15,10 @@ import { UserService } from './user.service';
     MediaSecurityModule,
     UserRepositoryModule,
     AccountRiskModule,
-    MongooseModule.forFeature([
-      { name: User.name, schema: UserSchema },
-      { name: UserBlock.name, schema: UserBlockSchema },
-      { name: Post.name, schema: PostSchema },
-      { name: PostApplication.name, schema: PostApplicationSchema },
-    ]),
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
   ],
   controllers: [UserController],
-  providers: [UserService, UserProfileSyncService, UserBlockService],
-  exports: [
-    UserService,
-    UserProfileSyncService,
-    UserBlockService,
-    UserRepositoryModule,
-  ],
+  providers: [UserService, UserProfileSyncService],
+  exports: [UserService, UserProfileSyncService, UserRepositoryModule],
 })
 export class UserModule {}
