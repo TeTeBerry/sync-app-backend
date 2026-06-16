@@ -2,6 +2,10 @@ import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
+  extractYearFromText,
+  isActivityEnded,
+} from '../../common/utils/activity-date.util';
+import {
   ArtistPerformance,
   ArtistPerformanceDocument,
 } from '../../database/schemas/artist-performance.schema';
@@ -350,6 +354,48 @@ export class ItineraryScheduleService implements OnModuleInit {
       }
     }
     return [...map.values()].sort((a, b) => b.popularity - a.popularity);
+  }
+
+  /** Unique artists on lineups for festivals that have not ended yet. */
+  async listUpcomingLineupArtists(): Promise<
+    Array<{ artistName: string; genreLabel: string }>
+  > {
+    const activities = await this.activityService.findAll();
+    const upcomingIds = activities
+      .filter((activity) => {
+        const dateLabel = activity.date?.trim() ?? '';
+        const yearHint =
+          extractYearFromText(activity.name) ?? extractYearFromText(dateLabel);
+        return !isActivityEnded(dateLabel, { yearHint });
+      })
+      .map((activity) => activity.legacyId);
+
+    if (!upcomingIds.length) {
+      return [];
+    }
+
+    const performances = await this.performanceModel
+      .find({ activityLegacyId: { $in: upcomingIds } })
+      .select('artistName genreLabel')
+      .lean()
+      .exec();
+
+    const byName = new Map<
+      string,
+      { artistName: string; genreLabel: string }
+    >();
+    for (const perf of performances) {
+      const artistName = perf.artistName?.trim();
+      if (!artistName) continue;
+      const key = artistName.toLowerCase();
+      if (byName.has(key)) continue;
+      byName.set(key, {
+        artistName,
+        genreLabel: perf.genreLabel?.trim() || 'Electronic',
+      });
+    }
+
+    return [...byName.values()];
   }
 
   async findArtistPerformances(params: {

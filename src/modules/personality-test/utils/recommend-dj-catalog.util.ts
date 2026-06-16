@@ -3,6 +3,7 @@ import type { PersonalityTypeMeta } from '../data/personality-types';
 import type { PersonalityTestRuntimeCatalog } from '../personality-test-catalog.types';
 import type { DjCatalogItem } from '../../dj/dj.types';
 import { DjService } from '../../dj/dj.service';
+import type { ItineraryScheduleService } from '../../itinerary/itinerary-schedule.service';
 import {
   EDC_KOREA_PERSONALITY_LINEUP,
   lineupDjId,
@@ -13,6 +14,7 @@ import type {
   PersonalityScoreResult,
   RecommendDjLineupResult,
 } from '../personality-test.types';
+import { buildUpcomingLineupDjPool } from './lineup-dj-pool.util';
 import { recommendDjLineup } from './recommend-dj-lineup.util';
 
 function catalogItemToLineupDj(item: DjCatalogItem): PersonalityLineupDj {
@@ -47,6 +49,7 @@ export async function recommendDjLineupFromCatalog(
     PersonalityTestRuntimeCatalog,
     'typeMeta' | 'fallbackLineup' | 'soulProfiles'
   >,
+  scheduleService?: Pick<ItineraryScheduleService, 'listUpcomingLineupArtists'>,
 ): Promise<RecommendDjLineupResult> {
   const typeMeta = runtimeCatalog?.typeMeta ?? PERSONALITY_TYPE_META;
   const fallbackLineup =
@@ -79,8 +82,18 @@ export async function recommendDjLineupFromCatalog(
     pool = fallbackLineup;
   }
 
+  let lineupDjNames: Set<string> | undefined;
+  if (scheduleService) {
+    const lineup = await buildUpcomingLineupDjPool(scheduleService, djService);
+    lineupDjNames = lineup.lineupDjNames;
+    if (lineup.lineupDjs.length) {
+      pool = uniqueLineup([...lineup.lineupDjs, ...pool]);
+    }
+  }
+
   return recommendDjLineup(score, pool.slice(0, 48), {
     typeMeta,
     soulProfiles,
+    lineupDjNames,
   });
 }

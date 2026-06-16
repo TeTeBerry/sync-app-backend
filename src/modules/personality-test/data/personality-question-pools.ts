@@ -4,10 +4,12 @@ import type {
 } from '../personality-test.types';
 import { PERSONALITY_TEST_MEDIA } from './personality-media';
 import type { PersonalityQuestionSlot } from './personality-question-slots';
+import { PERSONALITY_QUESTION_SLOTS } from './personality-question-slots';
+import { PERSONALITY_QUESTION_POOLS_EXTRA } from './personality-question-pools-extra';
 
 const w = (weights: Partial<Record<RaverPersonalityType, number>>) => weights;
 
-export const PERSONALITY_QUESTION_POOLS: Record<
+const BASE_PERSONALITY_QUESTION_POOLS: Record<
   PersonalityQuestionSlot,
   PersonalityQuestion[]
 > = {
@@ -685,6 +687,19 @@ export const PERSONALITY_QUESTION_POOLS: Record<
     },
   ],
 };
+
+export const PERSONALITY_QUESTION_POOLS: Record<
+  PersonalityQuestionSlot,
+  PersonalityQuestion[]
+> = Object.fromEntries(
+  PERSONALITY_QUESTION_SLOTS.map((slot) => [
+    slot,
+    [
+      ...BASE_PERSONALITY_QUESTION_POOLS[slot],
+      ...PERSONALITY_QUESTION_POOLS_EXTRA[slot],
+    ],
+  ]),
+) as Record<PersonalityQuestionSlot, PersonalityQuestion[]>;
 
 export const ALL_PERSONALITY_POOL_QUESTIONS: PersonalityQuestion[] =
   Object.values(PERSONALITY_QUESTION_POOLS).flat();

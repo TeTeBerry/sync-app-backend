@@ -112,6 +112,7 @@ export class PersonalityTestService {
       score,
       this.djService,
       runtimeCatalog,
+      this.scheduleService,
     );
     const recommendedEvents = await recommendEventsForPersonality(
       recommendations,

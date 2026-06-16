@@ -5,6 +5,7 @@ import { recommendDjLineup } from '@src/modules/personality-test/utils/recommend
 import { buildPersonalityNarrative } from '@src/modules/personality-test/utils/build-narrative.util';
 import { recommendEventsForPersonality } from '@src/modules/personality-test/utils/recommend-events.util';
 import type {
+  PersonalityLineupDj,
   PersonalityQuestion,
   PersonalityTestAnswers,
 } from '@src/modules/personality-test/personality-test.types';
@@ -52,11 +53,58 @@ describe('personality-test scoring', () => {
     expect(first).not.toEqual(second);
   });
 
+  it('shuffles question order across slots', () => {
+    const slotOrder = selectPersonalityQuestions(() => 0.42).map(
+      (question) => question.id.split('-')[0],
+    );
+    const canonicalOrder = [
+      'audio',
+      'track',
+      'stage',
+      'set',
+      'buddy',
+      'peak',
+      'after',
+      'memory',
+    ];
+    expect(slotOrder).not.toEqual(canonicalOrder);
+  });
+
   it('scores rager-heavy answers', () => {
     const questions = selectPersonalityQuestions(() => 0);
     const score = scorePersonality(buildRagerAnswers(questions), questions);
     expect(score.primaryType).toBe('rager');
     expect(recommendDjLineup(score).soulMatch.djName).toBeTruthy();
+  });
+
+  it('prioritizes DJs on upcoming festival lineups', () => {
+    const questions = selectPersonalityQuestions(() => 0);
+    const score = scorePersonality(buildRagerAnswers(questions), questions);
+    const offBill: PersonalityLineupDj = {
+      id: 'dj-off',
+      name: 'Off Bill Artist',
+      genre: 'Big Room',
+      genreLabel: 'Big Room',
+      stage: 'main',
+      popularity: 96,
+      genreColor: '#ff2d55',
+    };
+    const onBill: PersonalityLineupDj = {
+      id: 'dj-on',
+      name: 'On Bill Artist',
+      genre: 'Big Room',
+      genreLabel: 'Big Room',
+      stage: 'main',
+      popularity: 82,
+      genreColor: '#ff2d55',
+    };
+    const plain = recommendDjLineup(score, [offBill, onBill]);
+    expect(plain.soulMatch.djName).toBe('Off Bill Artist');
+
+    const boosted = recommendDjLineup(score, [offBill, onBill], {
+      lineupDjNames: new Set(['on bill artist']),
+    });
+    expect(boosted.soulMatch.djName).toBe('On Bill Artist');
   });
 
   it('builds narrative without LLM', () => {

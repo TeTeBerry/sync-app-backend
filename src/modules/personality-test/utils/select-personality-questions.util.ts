@@ -25,6 +25,15 @@ function findQuestionSlot(
   );
 }
 
+function shuffleInPlace<T>(items: T[], random: () => number): T[] {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex]!, result[index]!];
+  }
+  return result;
+}
+
 export function selectPersonalityQuestions(
   random: () => number = Math.random,
   pools: Record<
@@ -32,11 +41,15 @@ export function selectPersonalityQuestions(
     PersonalityQuestion[]
   > = PERSONALITY_QUESTION_POOLS,
 ): PersonalityQuestion[] {
-  return PERSONALITY_QUESTION_SLOTS.map((slot) => {
+  const selected = PERSONALITY_QUESTION_SLOTS.map((slot) => {
     const pool = pools[slot];
+    if (!pool.length) {
+      throw new Error(`Personality question pool empty for slot: ${slot}`);
+    }
     const index = Math.floor(random() * pool.length);
     return pool[Math.min(index, pool.length - 1)]!;
   });
+  return shuffleInPlace(selected, random);
 }
 
 export function resolvePersonalityQuestionsByIds(

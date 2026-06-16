@@ -12,7 +12,7 @@ export type PersonalityQuestionCatalogSeed = {
   catalogVersion: number;
 };
 
-export const PERSONALITY_TEST_CATALOG_VERSION = 2;
+export const PERSONALITY_TEST_CATALOG_VERSION = 3;
 
 export function buildPersonalityCatalogSeed(): PersonalityQuestionCatalogSeed[] {
   return PERSONALITY_QUESTION_SLOTS.flatMap((slot) =>
