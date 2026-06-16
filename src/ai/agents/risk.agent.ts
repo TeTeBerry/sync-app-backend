@@ -76,8 +76,6 @@ export class RiskAgent {
     if (options?.rulesOnly) {
       return {
         publishable: true,
-        // Structured buddy / message-board posts reveal contact in-app on tap;
-        // keep the author-provided contact line intact after publish.
         sanitizedBody: body,
       };
     }

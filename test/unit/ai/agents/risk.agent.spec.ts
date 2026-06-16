@@ -39,7 +39,7 @@ describe('RiskAgent rules-only shortcut path', () => {
     expect(invokeJson).not.toHaveBeenCalled();
   });
 
-  it('preserves structured buddy contact line when rulesOnly', async () => {
+  it('rejects structured buddy contact line when rulesOnly', async () => {
     const body = '组队，6.13-6.14，上海，2人，联系方式：13800138000';
 
     const result = await agent.assess(
@@ -51,8 +51,8 @@ describe('RiskAgent rules-only shortcut path', () => {
       { rulesOnly: true },
     );
 
-    expect(result.publishable).toBe(true);
-    expect(result.sanitizedBody).toBe(body);
+    expect(result.publishable).toBe(false);
+    expect(result.reason).toContain('联系方式');
     expect(invokeJson).not.toHaveBeenCalled();
   });
 

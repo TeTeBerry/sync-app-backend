@@ -127,6 +127,66 @@ describe('PostWriteService', () => {
     expect(repository.create).not.toHaveBeenCalled();
   });
 
+  it('rejects posts containing contact info before persistence', async () => {
+    (userService.resolveProfile as jest.Mock).mockResolvedValue({
+      name: 'Zara Chen',
+    });
+
+    await expect(
+      service.createPost(
+        { body: '组队 13800138000', activityLegacyId: 4 },
+        toRequestActor('demo-user', 'Zara Chen'),
+      ),
+    ).rejects.toThrow(/联系方式/);
+
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(postModeration.assessPost).not.toHaveBeenCalled();
+  });
+
+  it('runs WeChat text review on final post body before persistence', async () => {
+    (userService.resolveProfile as jest.Mock).mockResolvedValue({
+      name: 'Zara Chen',
+    });
+    (activityService.findByLegacyId as jest.Mock).mockResolvedValue({
+      legacyId: 4,
+      name: '风暴电音节',
+      location: '上海',
+    });
+    (postModeration.assessPost as jest.Mock).mockResolvedValue({
+      publishable: true,
+    });
+    (repository.countByOwnerAndActivity as jest.Mock).mockResolvedValue(0);
+    (repository.create as jest.Mock).mockResolvedValue({
+      _id: 'post-1',
+      userId: 'owner-1',
+      body: '组队，上海，2人',
+      eventTitle: '风暴电音节',
+      tags: ['#组队'],
+      activityLegacyId: 4,
+      status: 'active',
+      contentTypes: ['team'],
+    });
+
+    await service.createPost(
+      {
+        body: '组队，上海，2人',
+        activityLegacyId: 4,
+        tags: ['#组队'],
+        contentTypes: ['team'],
+      },
+      toRequestActor('demo-user', 'Zara Chen'),
+    );
+
+    expect(wechatContentSecurity.assertTextsSafe).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        '组队，上海，2人',
+        '#组队',
+        '上海',
+        '风暴电音节',
+      ]),
+    );
+  });
+
   it('message board posts use rules-only moderation', async () => {
     (userService.resolveProfile as jest.Mock).mockResolvedValue({
       name: 'Zara Chen',

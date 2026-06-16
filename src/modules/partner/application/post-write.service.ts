@@ -44,6 +44,7 @@ import {
   assertUserUgcTexts,
   collectPostWriteUgcTexts,
 } from '../../../common/media/user-ugc-text.util';
+import { assertPostHasNoContactInfo } from '../utils/post-contact.util';
 import { WechatContentSecurityService } from '../../auth/wechat-content-security.service';
 import { MediaSecurityCheckService } from '../../media-security/media-security-check.service';
 
@@ -103,6 +104,8 @@ export class PostWriteService {
     let status: PostStatus = 'active';
     let bodyToSave = dto.body.trim();
     let rejectionReason: string | undefined;
+
+    assertPostHasNoContactInfo(bodyToSave);
 
     if (
       isTicketPublishProhibited({
@@ -201,6 +204,15 @@ export class PostWriteService {
       ownerUserId,
     );
     const images = normalizedImages;
+
+    assertPostHasNoContactInfo(bodyToSave);
+    await assertUserUgcTexts(this.wechatContentSecurity, [
+      bodyToSave,
+      ...(dto.tags ?? []),
+      location,
+      departureCity,
+      eventTitle,
+    ]);
 
     const created = await this.repository.create({
       userId: ownerUserId,

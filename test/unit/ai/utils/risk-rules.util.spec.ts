@@ -26,11 +26,17 @@ describe('matchRiskRules', () => {
 
   it('detects external links', () => {
     expect(matchRiskRules('点击 https://example.com 购买')?.violationType).toBe(
-      'spam',
+      'traffic_diversion',
     );
   });
 
   it('allows normal buddy posts', () => {
     expect(matchRiskRules('找周杰伦演唱会同行，上海出发')).toBeNull();
+  });
+
+  it('rejects contact info in posts', () => {
+    expect(matchRiskRules('组队，联系方式：wx_sync_team')?.reason).toBe(
+      '帖子中不可包含联系方式（手机号、微信号、邮箱、链接等），请修改后重试。',
+    );
   });
 });

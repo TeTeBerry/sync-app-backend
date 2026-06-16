@@ -17,6 +17,9 @@ export interface RuleMatchResult {
   severity: RiskSeverity;
 }
 
+export const POST_CONTACT_FORBIDDEN_MESSAGE =
+  '帖子中不可包含联系方式（手机号、微信号、邮箱、链接等），请修改后重试。';
+
 const SPAM_PATTERN = /(.)\1{8,}/;
 
 const SCALPER_PATTERN =
@@ -29,6 +32,40 @@ const WECHAT_VARIANT_PATTERN =
   /\b(?:vx|wx|wxid)\b|微\s*信|威信|薇信|➕我|加好友/i;
 
 const URL_PATTERN = /https?:\/\/[^\s]+|www\.[^\s]+/i;
+
+const CONTACT_LABEL_PATTERN = /联系方式[：:]/;
+
+const PHONE_PATTERN = /(?<!\d)1[3-9]\d(?:[\s-]?\d){8}(?!\d)/;
+
+const QQ_PATTERN = /(?:QQ|qq)(?:号|：|:)?[\s]*\d{5,12}/i;
+
+const WECHAT_ID_PATTERN =
+  /(?:微信号|微信\s*号|微信\s*ID|wxid|WXID)[：:\s]*[\w-]{4,}/i;
+
+const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+
+/** Detect explicit contact info that must not appear in posts. */
+export function matchPostContactInfo(text: string): RuleMatchResult | null {
+  const normalized = text.trim();
+  if (!normalized) return null;
+
+  if (
+    CONTACT_LABEL_PATTERN.test(normalized) ||
+    PHONE_PATTERN.test(normalized) ||
+    QQ_PATTERN.test(normalized) ||
+    WECHAT_ID_PATTERN.test(normalized) ||
+    EMAIL_PATTERN.test(normalized)
+  ) {
+    return {
+      publishable: false,
+      reason: POST_CONTACT_FORBIDDEN_MESSAGE,
+      violationType: 'traffic_diversion',
+      severity: 'high',
+    };
+  }
+
+  return null;
+}
 
 export function matchRiskRules(text: string): RuleMatchResult | null {
   const normalized = text.trim();
@@ -52,6 +89,9 @@ export function matchRiskRules(text: string): RuleMatchResult | null {
     };
   }
 
+  const contactMatch = matchPostContactInfo(normalized);
+  if (contactMatch) return contactMatch;
+
   if (
     TRAFFIC_DIVERSION_PATTERN.test(normalized) ||
     WECHAT_VARIANT_PATTERN.test(normalized)
@@ -67,9 +107,9 @@ export function matchRiskRules(text: string): RuleMatchResult | null {
   if (URL_PATTERN.test(normalized)) {
     return {
       publishable: false,
-      reason: '内容含外部链接，暂不允许发布',
-      violationType: 'spam',
-      severity: 'medium',
+      reason: POST_CONTACT_FORBIDDEN_MESSAGE,
+      violationType: 'traffic_diversion',
+      severity: 'high',
     };
   }
 

@@ -24,8 +24,8 @@ REST 路径仍为 `/api/posts`（资源名不变）。
 
 **已移除**：`PATCH /posts/:id`、`POST /posts/:id/like`、`GET|POST /posts/:id/comments`
 
-## 模板帖与联系方式
+## 模板帖正文
 
-同时携带 `contentTypes` 与 `tags` 的创建请求走风控 `{ rulesOnly: true }`，**不脱敏**正文中的 `联系方式：` 段，供小程序端点击后展示。
+同时携带 `contentTypes` 与 `tags` 的创建请求走风控 `{ rulesOnly: true }`。帖子正文 **不得包含任何联系方式**（手机号、微信号、QQ、邮箱、链接等），命中规则直接拒绝发布。落库前会对最终正文再次校验，并走微信 `msg_sec_check` 文本审核。
 
 详见前端 `sync-app/docs/POST-LIFECYCLE.md`。
