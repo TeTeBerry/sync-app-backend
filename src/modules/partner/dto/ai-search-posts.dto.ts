@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import { IsNumber, IsString, MinLength } from 'class-validator';
 
 export class AiSearchPostsDto {
@@ -5,6 +6,7 @@ export class AiSearchPostsDto {
   @MinLength(1)
   query: string;
 
+  @Type(() => Number)
   @IsNumber()
   activityLegacyId: number;
 }

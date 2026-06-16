@@ -101,16 +101,14 @@ const SEARCH_STOP_WORDS = new Set([
   '个',
   '人',
   '名',
-  '喜欢',
   '需要',
   '希望',
   '想要',
-  '同逛',
   '搭子',
   '搭伴',
-  '在场',
-  '白天',
-  '晚上',
+  '比如',
+  '检索',
+  '喜欢',
 ]);
 
 export function buildSearchTermsFromParsed(
@@ -145,10 +143,48 @@ export function tokenizeRawBuddySearchQuery(query: string): string[] {
     ...new Set(
       normalized
         .split(' ')
-        .map((part) => part.trim())
+        .map((part) => part.trim().replace(/的搭子$|的搭伴$/, ''))
         .filter((part) => part.length >= 2 && !SEARCH_STOP_WORDS.has(part)),
     ),
   ];
+}
+
+/** Rule-based keyword parse — no LLM; used for buddy-post pool filter only. */
+export function parseBuddyPostSearchQuery(
+  query: string,
+): BuddyPostSearchParsed {
+  const trimmed = query.trim();
+  if (!trimmed) return {};
+
+  const peopleMatch = trimmed.match(/(\d+)\s*(个|人|名)/);
+  const dateMatch = trimmed.match(/(\d{1,2}[./月]\d{1,2}(?:[./月]\d{2,4})?)/);
+  const genreMatch = trimmed.match(/喜欢\s*([^，,。.!！?？；;]+)/);
+
+  const peopleCount = peopleMatch?.[1];
+  const date = dateMatch?.[1];
+  const genre = genreMatch?.[1]?.trim();
+
+  let remainder = trimmed;
+  if (dateMatch?.[0]) remainder = remainder.replace(dateMatch[0], ' ');
+  if (genreMatch?.[0]) remainder = remainder.replace(genreMatch[0], ' ');
+  if (peopleMatch?.[0]) remainder = remainder.replace(peopleMatch[0], ' ');
+
+  const extraKeywords = tokenizeRawBuddySearchQuery(remainder);
+  const parsed: BuddyPostSearchParsed = {
+    date,
+    genre,
+    peopleCount,
+    extraKeywords: extraKeywords.length ? extraKeywords : undefined,
+  };
+
+  if (!buildSearchTermsFromParsed(parsed).length) {
+    const fromRaw = tokenizeRawBuddySearchQuery(trimmed);
+    return fromRaw.length
+      ? { extraKeywords: fromRaw }
+      : { extraKeywords: [trimmed] };
+  }
+
+  return parsed;
 }
 
 export function resolveBuddyPostSearchTerms(

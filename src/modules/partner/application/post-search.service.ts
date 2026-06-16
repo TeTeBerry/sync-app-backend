@@ -35,7 +35,7 @@ export class PostSearchService {
       throw new BadRequestException('活动信息无效');
     }
 
-    const parsed = await this.parseService.parse(trimmed);
+    const parsed = this.parseService.parse(trimmed);
     const searchTerms = resolveBuddyPostSearchTerms(parsed, trimmed);
 
     const rows = await this.repository.findByActivityLegacyId(activityLegacyId);

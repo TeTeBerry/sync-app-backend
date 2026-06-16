@@ -3,6 +3,7 @@ import {
   buildSearchTermsFromParsed,
   filterBuddyPostsBySearchTerms,
   fuzzyTextMatches,
+  parseBuddyPostSearchQuery,
   resolveBuddyPostSearchTerms,
 } from '@src/modules/partner/utils/buddy-post-search.util';
 import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
@@ -77,5 +78,22 @@ describe('buddy-post-search.util', () => {
 
   it('supports fuzzy character subsequence matching', () => {
     expect(fuzzyTextMatches('上海出发组队', '上组')).toBe(true);
+  });
+
+  it('parses natural language into search fields without LLM', () => {
+    const parsed = parseBuddyPostSearchQuery(
+      '10.3 EDC 韩国，喜欢 Techno，白天在场，找 2 个同逛舞台的搭子',
+    );
+
+    expect(parsed.date).toBe('10.3');
+    expect(parsed.genre).toBe('Techno');
+    expect(parsed.peopleCount).toBe('2');
+    expect(parsed.extraKeywords).toEqual(
+      expect.arrayContaining(['EDC', '韩国', '白天在场', '同逛舞台']),
+    );
+
+    const terms = resolveBuddyPostSearchTerms(parsed, '');
+    const post = samplePost({ eventTitle: 'EDC 韩国' });
+    expect(buddyPostMatchesSearchTerms(post, terms)).toBe(true);
   });
 });
