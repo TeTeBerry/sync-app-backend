@@ -21,6 +21,10 @@ lerna-debug.log*
 # OS
 .DS_Store
 
+# Personality test audio (local only; upload to CloudBase, do not commit)
+assets/personality-test/audio/*
+!assets/personality-test/audio/.gitkeep
+
 # Tests
 /coverage
 /.nyc_output

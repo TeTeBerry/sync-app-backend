@@ -12,10 +12,15 @@ interface WechatTokenResponse {
   errmsg?: string;
 }
 
+type GetAccessTokenOptions = {
+  forceRefresh?: boolean;
+};
+
 @Injectable()
 export class WechatAccessTokenService {
   private readonly logger = new Logger(WechatAccessTokenService.name);
   private cached: { token: string; expiresAtMs: number } | null = null;
+  private inFlight: Promise<string> | null = null;
 
   constructor(private readonly config: ConfigService) {}
 
@@ -31,7 +36,8 @@ export class WechatAccessTokenService {
     return Boolean(appId && appSecret);
   }
 
-  async getAccessToken(): Promise<string> {
+  async getAccessToken(options?: GetAccessTokenOptions): Promise<string> {
+    const forceRefresh = options?.forceRefresh ?? false;
     const { appId, appSecret } = this.credentials;
     if (!appId || !appSecret) {
       throw new ServiceUnavailableException(
@@ -40,18 +46,41 @@ export class WechatAccessTokenService {
     }
 
     const now = Date.now();
-    if (this.cached && now < this.cached.expiresAtMs - 60_000) {
+    if (
+      !forceRefresh &&
+      this.cached &&
+      now < this.cached.expiresAtMs - 60_000
+    ) {
       return this.cached.token;
     }
 
-    const url = new URL('https://api.weixin.qq.com/cgi-bin/token');
-    url.searchParams.set('grant_type', 'client_credential');
-    url.searchParams.set('appid', appId);
-    url.searchParams.set('secret', appSecret);
+    if (!this.inFlight) {
+      this.inFlight = this.requestToken(forceRefresh).finally(() => {
+        this.inFlight = null;
+      });
+    }
+
+    return this.inFlight;
+  }
+
+  private async requestToken(forceRefresh: boolean): Promise<string> {
+    const { appId, appSecret } = this.credentials;
 
     let payload: WechatTokenResponse;
     try {
-      const res = await fetch(url.toString());
+      const res = await fetch(
+        'https://api.weixin.qq.com/cgi-bin/stable_token',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            grant_type: 'client_credential',
+            appid: appId,
+            secret: appSecret,
+            force_refresh: forceRefresh,
+          }),
+        },
+      );
       payload = (await res.json()) as WechatTokenResponse;
     } catch (error) {
       this.logger.warn(
@@ -85,7 +114,7 @@ export class WechatAccessTokenService {
     const ttlSec = payload.expires_in ?? 7200;
     this.cached = {
       token: payload.access_token,
-      expiresAtMs: now + ttlSec * 1000,
+      expiresAtMs: Date.now() + ttlSec * 1000,
     };
     return payload.access_token;
   }
@@ -93,5 +122,6 @@ export class WechatAccessTokenService {
   /** Test helper */
   clearCache(): void {
     this.cached = null;
+    this.inFlight = null;
   }
 }

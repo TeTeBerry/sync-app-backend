@@ -23,19 +23,13 @@ export type PersonalityQuestionOption = {
   id: string;
   label: string;
   weights: Partial<Record<RaverPersonalityType, number>>;
-  mediaAssetKey?: string;
-  mediaPosterAssetKey?: string;
 };
 
-export type PersonalityQuestionMedia =
-  | {
-      type: 'audio';
-      assetKey: string;
-      caption?: string;
-    }
-  | {
-      type: 'vj_grid';
-    };
+export type PersonalityQuestionMedia = {
+  type: 'audio';
+  assetKey: string;
+  caption?: string;
+};
 
 export type PersonalityQuestion = {
   id: string;

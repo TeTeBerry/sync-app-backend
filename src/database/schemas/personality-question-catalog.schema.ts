@@ -31,8 +31,6 @@ export class PersonalityQuestionCatalog {
         id: { type: String, required: true },
         label: { type: String, required: true },
         weights: { type: Object, required: true },
-        mediaAssetKey: { type: String },
-        mediaPosterAssetKey: { type: String },
       },
     ],
     required: true,

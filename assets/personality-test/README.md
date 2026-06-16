@@ -10,16 +10,9 @@ Upload these files to **CloudBase 云存储** under `static/personality-test/`.
 
 Short Big Room drop clip (~8–15s), normalized volume.
 
-## VJ previews
-
-Each style needs a short looping MP4 (3–8s) and a JPG poster.
-
-| Style | Video | Poster |
-|-------|-------|--------|
-| 激光射线+爆闪 | `vj/laser-flash.mp4` | `vj/laser-flash-poster.jpg` |
-| 粒子流动+渐变 | `vj/particle-flow.mp4` | `vj/particle-flow-poster.jpg` |
-| 几何矩阵+节奏同步 | `vj/geometry-matrix.mp4` | `vj/geometry-matrix-poster.jpg` |
-| 霓虹文字+复古 | `vj/neon-retro.mp4` | `vj/neon-retro-poster.jpg` |
+Audio files are **not committed** (see `.gitignore`). Place a source WAV locally under
+`audio/big-room-drop-source.wav`, or set `PERSONALITY_TEST_AUDIO_SOURCE` to an absolute path,
+then run `npm run media:generate-personality-test` to produce `audio/big-room-drop.mp3`.
 
 ## Upload
 

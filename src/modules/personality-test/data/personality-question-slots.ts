@@ -1,7 +1,7 @@
 export const PERSONALITY_QUESTION_SLOTS = [
   'audio_drop',
   'track_reaction',
-  'vj_visual',
+  'stage_visual',
   'set_priority',
   'buddy_plan',
   'festival_peak',

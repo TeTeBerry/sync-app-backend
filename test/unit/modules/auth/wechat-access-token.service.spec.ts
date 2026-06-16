@@ -28,5 +28,17 @@ describe('WechatAccessTokenService', () => {
     await expect(service.getAccessToken()).resolves.toBe('cached-token');
     await expect(service.getAccessToken()).resolves.toBe('cached-token');
     expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://api.weixin.qq.com/cgi-bin/stable_token',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          grant_type: 'client_credential',
+          appid: 'wx-app',
+          secret: 'secret',
+          force_refresh: false,
+        }),
+      }),
+    );
   });
 });

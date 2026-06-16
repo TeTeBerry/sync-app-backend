@@ -74,22 +74,14 @@ export class CloudStorageService {
     }
 
     try {
-      const token = await this.accessToken.getAccessToken();
-      const response = await fetch(
-        `https://api.weixin.qq.com/tcb/batchdownloadfile?access_token=${encodeURIComponent(token)}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            env: this.envId,
-            file_list: candidates.map((fileid) => ({
-              fileid,
-              max_age: 3600,
-            })),
-          }),
-        },
-      );
-      const payload = (await response.json()) as WechatBatchDownloadResponse;
+      let token = await this.accessToken.getAccessToken();
+      let payload = await this.batchDownloadFile(token, candidates);
+      if (this.isInvalidAccessTokenError(payload)) {
+        this.logger.warn('WeChat access_token invalid, forcing refresh');
+        this.accessToken.clearCache();
+        token = await this.accessToken.getAccessToken({ forceRefresh: true });
+        payload = await this.batchDownloadFile(token, candidates);
+      }
       if (payload.errcode && payload.errcode !== 0) {
         throw new BadRequestException(
           payload.errmsg || `读取云存储失败 (${payload.errcode})`,
@@ -122,6 +114,39 @@ export class CloudStorageService {
       );
       throw new BadRequestException(invalidMessage);
     }
+  }
+
+  private isInvalidAccessTokenError(
+    payload: WechatBatchDownloadResponse,
+  ): boolean {
+    if (!payload.errcode || payload.errcode === 0) {
+      return false;
+    }
+    if (payload.errcode === 40001 || payload.errcode === 42001) {
+      return true;
+    }
+    return /access_token.*invalid|not latest/i.test(payload.errmsg ?? '');
+  }
+
+  private async batchDownloadFile(
+    token: string,
+    fileIds: string[],
+  ): Promise<WechatBatchDownloadResponse> {
+    const response = await fetch(
+      `https://api.weixin.qq.com/tcb/batchdownloadfile?access_token=${encodeURIComponent(token)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          env: this.envId,
+          file_list: fileIds.map((fileid) => ({
+            fileid,
+            max_age: 3600,
+          })),
+        }),
+      },
+    );
+    return (await response.json()) as WechatBatchDownloadResponse;
   }
 
   private async fetchCloudFileDownloadUrl(

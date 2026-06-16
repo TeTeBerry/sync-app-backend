@@ -33,6 +33,7 @@
     "db:seed-itinerary": "node scripts/seed-itinerary-catalog.mjs",
     "db:sync-personality-test": "node scripts/sync-personality-test-catalog.mjs",
     "media:generate-personality-test": "node scripts/generate-personality-test-media-assets.mjs",
+    "media:render-big-room-drop": "node scripts/render-big-room-drop-audio.mjs",
     "media:upload-personality-test": "node scripts/upload-personality-test-media.mjs",
     "db:crawl-discogs-djs": "node scripts/crawl-discogs-djs.mjs",
     "db:crawl-discogs-djs-gap": "node scripts/crawl-discogs-djs-gap.mjs",
