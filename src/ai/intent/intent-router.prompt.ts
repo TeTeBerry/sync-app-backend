@@ -1,9 +1,33 @@
+/** Intent Router LLM：活动上下文 + few-shot（规则仅保留 3 条快路径） */
+
+export interface IntentRouterActivityContext {
+  name?: string;
+  date?: string;
+  /** 由 catalog 日期推导，如 6月13日、6月14日 */
+  eventDaysLabel?: string;
+}
+
 export const INTENT_ROUTER_FEW_SHOTS: Array<{
   user: string;
   context?: string;
   activity?: string;
   intent: string;
 }> = [
+  {
+    user: '2人 上海出发',
+    activity: '已绑定活动，助手刚问过人数城市',
+    intent: 'create_post',
+  },
+  {
+    user: '确认发布',
+    activity: '已绑定活动',
+    intent: 'create_post',
+  },
+  {
+    user: '重新发帖',
+    activity: '用户已有帖子',
+    intent: 'create_post',
+  },
   {
     user: '最近有什么电音节',
     activity: '未绑定活动',
@@ -40,15 +64,6 @@ export const INTENT_ROUTER_FEW_SHOTS: Array<{
   },
 ];
 
-/** Intent Router LLM：活动上下文 + few-shot（规则仅保留快路径） */
-
-export interface IntentRouterActivityContext {
-  name?: string;
-  date?: string;
-  /** 由 catalog 日期推导，如 6月13日、6月14日 */
-  eventDaysLabel?: string;
-}
-
 export function buildIntentRouterSystemPrompt(): string {
   const fewShotBlock = INTENT_ROUTER_FEW_SHOTS.map((ex, i) =>
     [
@@ -66,6 +81,7 @@ export function buildIntentRouterSystemPrompt(): string {
     '你是聊天意图路由器。根据用户最新一条消息（结合简短上下文）判断应执行的操作。',
     '只输出 JSON，字段：',
     '- intent: 必填',
+    '  - create_post: 发帖、模板发帖、补充人数城市后发布、确认发布、重新发帖',
     '  - near_events: 查最近/热门活动',
     '  - dj_info: 查 DJ/艺人风格、阵容按曲风筛选、介绍某位 DJ、或承接上文找类似风格艺人',
     '  - chitchat: 闲聊或无法判断',

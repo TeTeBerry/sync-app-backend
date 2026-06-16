@@ -14,7 +14,9 @@ import { ChatModule } from './modules/chat/chat.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { HomeModule } from './modules/home/home.module';
 import { AiModule } from './ai/ai.module';
+import { PostAgentAdaptersModule } from './ai/adapters/post-agent-adapters.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { PartnerModule } from './modules/partner/partner.module';
 import { ReportModule } from './modules/report/report.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { ActivityExperienceModule } from './modules/activity-experience/activity-experience.module';
@@ -56,6 +58,8 @@ import { RequestActorMiddleware } from './common/middleware/request-actor.middle
     ChatModule,
     ProfileModule,
     HomeModule,
+    PostAgentAdaptersModule,
+    PartnerModule,
     AiModule,
     NotificationModule,
     ReportModule,

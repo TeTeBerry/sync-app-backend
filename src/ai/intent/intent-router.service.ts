@@ -79,7 +79,7 @@ export class IntentRouterService {
     }
 
     const fallback: ResolvedChatIntent = {
-      kind: 'quick_reply',
+      kind: 'create_post',
       source: 'default',
     };
     await this.intentCache.set(cacheKey, fallback);
@@ -148,11 +148,11 @@ export class IntentRouterService {
 
     const intent = parsed.intent.trim().toLowerCase();
 
-    if (
-      intent === 'legacy_cascade' ||
-      intent === 'chitchat' ||
-      intent === 'near_events'
-    ) {
+    if (intent === 'create_post' || intent === 'legacy_cascade') {
+      return { kind: 'create_post', source: 'llm' };
+    }
+
+    if (intent === 'chitchat' || intent === 'near_events') {
       return { kind: 'quick_reply', source: 'llm' };
     }
 
@@ -160,6 +160,6 @@ export class IntentRouterService {
       return { kind: 'dj_info', source: 'llm' };
     }
 
-    return { kind: 'quick_reply', source: 'llm' };
+    return { kind: 'create_post', source: 'llm' };
   }
 }

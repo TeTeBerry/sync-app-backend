@@ -8,11 +8,12 @@ import {
   AccountRiskEventDocument,
   AccountRiskEventSource,
 } from '../../database/schemas/account-risk-event.schema';
+import { User, UserDocument } from '../../database/schemas/user.schema';
 import {
   ContentReport,
   ContentReportDocument,
 } from '../../database/schemas/content-report.schema';
-import { User, UserDocument } from '../../database/schemas/user.schema';
+import { Post, PostDocument } from '../../database/schemas/post.schema';
 import {
   ACCOUNT_RISK_BAN_DAYS,
   ACCOUNT_RISK_HIGH_SEVERITY_RESTRICT_COUNT,
@@ -70,6 +71,8 @@ export class AccountRiskService {
     private readonly userModel: Model<UserDocument>,
     @InjectModel(ContentReport.name)
     private readonly reportModel: Model<ContentReportDocument>,
+    @InjectModel(Post.name)
+    private readonly postModel: Model<PostDocument>,
   ) {}
 
   resolveUserId(actor: RequestActor): string | undefined {
@@ -179,7 +182,7 @@ export class AccountRiskService {
   }
 
   async resolveReportTargetUserId(
-    targetType: 'user' | 'comment',
+    targetType: 'post' | 'user' | 'comment',
     targetId: string,
     targetUserId?: string,
   ): Promise<string | undefined> {
@@ -188,6 +191,14 @@ export class AccountRiskService {
 
     if (targetType === 'user') {
       return targetId.trim() || undefined;
+    }
+
+    if (targetType === 'post') {
+      const post = await this.postModel
+        .findById(targetId.trim())
+        .select('userId')
+        .lean();
+      return post?.userId?.trim() || undefined;
     }
 
     return undefined;

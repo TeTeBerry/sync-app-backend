@@ -4,7 +4,6 @@
  *
  * Sources (no Damai verticalPic for these codes):
  * - edc: EDC China 2025 official site hero
- * - edc-thailand: December 2026 lineup poster (EDMTunes, Jun 2026)
  * - tomorrowland: TAT / Tomorrowland Thailand PR (PR Newswire, Feb 2026)
  *
  * Usage: node scripts/patch-festival-activity-images.mjs
@@ -25,12 +24,6 @@ const FESTIVAL_IMAGES = [
     image:
       'https://image.electricdaisycarnival.cn/sites/7/2024/12/edccn_2025_mk_an_fest_site_mh_1534x1360_r01.jpg',
     source: 'EDC China 2025 official site (electricdaisycarnival.cn)',
-  },
-  {
-    code: 'edc-thailand',
-    image:
-      'https://www.edmtunes.com/wp-content/uploads/2026/06/Image-5.jpg',
-    source: 'EDC Thailand Dec 2026 lineup poster (EDMTunes, Jun 2026)',
   },
   {
     code: 'tomorrowland',

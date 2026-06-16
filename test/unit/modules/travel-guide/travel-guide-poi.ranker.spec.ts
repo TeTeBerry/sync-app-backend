@@ -73,61 +73,6 @@ describe('TravelGuidePoiRanker', () => {
     expect(economy.hotels[0]?.name).not.toBe(comfort.hotels[0]?.name);
   });
 
-  it('standard tier prefers in-band hotels over cheaper below-band options', () => {
-    const pois = [
-      hotel({
-        name: '如家快捷酒店',
-        distanceM: 300,
-        rating: 4.5,
-        avgPrice: 199,
-      }),
-      hotel({
-        name: '全季商务酒店',
-        distanceM: 500,
-        rating: 4.4,
-        avgPrice: 420,
-      }),
-      hotel({ name: '希尔顿酒店', distanceM: 800, rating: 4.7, avgPrice: 780 }),
-    ];
-    const standard = ranker.rank(
-      { ...baseCtx, pois },
-      { departure: '上海', headcount: 2, budgetTier: 'standard' },
-    );
-
-    expect(standard.hotels[0]?.name).toBe('全季商务酒店');
-    expect(standard.hotels.map((h) => h.name)).not.toContain('如家快捷酒店');
-  });
-
-  it('comfort tier excludes below-band hotels when upscale options exist', () => {
-    const pois = [
-      hotel({
-        name: '汉庭快捷酒店',
-        distanceM: 250,
-        rating: 4.5,
-        avgPrice: 180,
-      }),
-      hotel({
-        name: '深圳香格里拉大酒店',
-        distanceM: 900,
-        rating: 4.8,
-        avgPrice: 980,
-      }),
-      hotel({
-        name: '会展中心商务酒店',
-        distanceM: 600,
-        rating: 4.3,
-        avgPrice: 520,
-      }),
-    ];
-    const comfort = ranker.rank(
-      { ...baseCtx, pois },
-      { departure: '上海', headcount: 2, budgetTier: 'comfort' },
-    );
-
-    expect(comfort.hotels[0]?.name).toBe('深圳香格里拉大酒店');
-    expect(comfort.hotels.map((h) => h.name)).not.toContain('汉庭快捷酒店');
-  });
-
   it('prefers closer hotel when scores are similar', () => {
     const ranked = ranker.rank(
       {

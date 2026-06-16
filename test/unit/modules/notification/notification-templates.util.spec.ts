@@ -5,22 +5,23 @@ import {
 
 describe('notification-templates.util', () => {
   it('maps template keys to notice categories', () => {
+    expect(NOTIFICATION_CATEGORY_BY_TEMPLATE.postRejected).toBe('system');
     expect(NOTIFICATION_CATEGORY_BY_TEMPLATE.activityUpdate).toBe('system');
   });
 
-  it('renders activity update notification with category in meta', () => {
+  it('renders post rejected notification with category in meta', () => {
     const built = buildNotificationFromTemplate(
-      'activityUpdate',
-      { activityName: '风暴电音节', changeSummary: '地点已更新' },
+      'postRejected',
+      { reason: '内容未通过审核' },
       {
-        type: 'activity_update',
+        type: 'post_rejected',
       },
     );
 
     expect(built.type).toBe('system');
-    expect(built.title).toContain('活动信息变更');
-    expect(built.body).toContain('风暴电音节');
+    expect(built.title).toContain('审核');
+    expect(built.body).toContain('内容未通过审核');
     expect(built.meta.category).toBe('system');
-    expect(built.meta.templateKey).toBe('notifications.types.activityUpdate');
+    expect(built.meta.templateKey).toBe('notifications.types.postRejected');
   });
 });

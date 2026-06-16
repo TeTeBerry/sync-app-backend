@@ -6,7 +6,10 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import type { RecommendedActivityCard } from './chat-cards.types';
+import type {
+  RecommendedActivityCard,
+  RecommendedPostCard,
+} from './chat-cards.types';
 
 export class ChatMessageImageContextDto {
   @IsOptional()
@@ -32,6 +35,9 @@ export class ChatMessageDto {
 
   @IsOptional()
   recommendedActivity?: RecommendedActivityCard;
+
+  @IsOptional()
+  createdPost?: RecommendedPostCard;
 
   @IsOptional()
   @IsArray()

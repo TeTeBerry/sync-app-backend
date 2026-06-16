@@ -11,7 +11,7 @@ import type {
 } from '../../../database/schemas/content-report.schema';
 
 export class CreateReportDto {
-  @IsIn(['user', 'comment'])
+  @IsIn(['post', 'user', 'comment'])
   targetType: ReportTargetType;
 
   @IsString()

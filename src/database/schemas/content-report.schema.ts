@@ -3,7 +3,7 @@ import { HydratedDocument } from 'mongoose';
 
 export type ContentReportDocument = HydratedDocument<ContentReport>;
 
-export type ReportTargetType = 'user' | 'comment';
+export type ReportTargetType = 'post' | 'user' | 'comment';
 export type ReportCategory = 'ads' | 'scalper' | 'vulgar';
 export type ReportReviewStatus = 'pending' | 'acknowledged';
 
@@ -12,7 +12,7 @@ export class ContentReport {
   @Prop({ required: true, index: true })
   reporterUserId: string;
 
-  @Prop({ required: true, enum: ['user', 'comment'] })
+  @Prop({ required: true, enum: ['post', 'user', 'comment'] })
   targetType: ReportTargetType;
 
   @Prop({ required: true, index: true })

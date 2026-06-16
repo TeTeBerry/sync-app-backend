@@ -10,6 +10,10 @@ import {
   ActivityRegistrationQueryFilter,
   IActivityRegistrationRepository,
 } from '../activity/registration/interfaces/activity-registration.repository.interface';
+import {
+  POST_READ_PORT,
+  type IPostReadPort,
+} from '../partner/ports/post-read.port';
 import { canViewPersonalInfo } from '../../common/utils/privacy.util';
 import { UserService } from '../user/user.service';
 import {
@@ -35,6 +39,7 @@ export interface ProfileSummaryDto {
   avatar: string;
   stats: {
     events: number;
+    posts: number;
   };
 }
 
@@ -54,6 +59,8 @@ export class ProfileSummaryService {
     private readonly registrationRepository: IActivityRegistrationRepository,
     @Inject(ACTIVITY_LOOKUP_PORT)
     private readonly activityLookup: IActivityLookupPort,
+    @Inject(POST_READ_PORT)
+    private readonly postRead: IPostReadPort,
     private readonly userService: UserService,
   ) {}
 
@@ -67,15 +74,18 @@ export class ProfileSummaryService {
     const isOwner =
       !viewerId || !ownerExternalId || viewerId === ownerExternalId;
 
-    const [profile, events] = await Promise.all([
+    const [profile, events, ownerPosts] = await Promise.all([
       this.userService.resolveProfile(actor),
       this.registrationRepository.countByOwner(filter),
+      this.postRead.listByOwner(actor),
     ]);
 
     const privacyLevel =
       (profile as { privacyLevel?: 'public' | 'friends' | 'private' })
         ?.privacyLevel ?? 'public';
     const canView = canViewPersonalInfo(privacyLevel, isOwner, false);
+
+    const posts = ownerPosts.length;
 
     return {
       name: profile?.name ?? 'Zara Chen',
@@ -87,6 +97,7 @@ export class ProfileSummaryService {
         'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
       stats: {
         events,
+        posts,
       },
     };
   }
@@ -116,5 +127,9 @@ export class ProfileSummaryService {
     );
 
     return items.sort(compareActivityDateDesc);
+  }
+
+  listPosts(actor: RequestActor) {
+    return this.postRead.listByOwner(actor);
   }
 }

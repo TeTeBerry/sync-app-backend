@@ -1,24 +1,25 @@
 import { resolveChatIntentFastPath } from '@src/ai/intent/intent-router.rules';
 
 describe('intent-router.rules', () => {
-  it('routes image upload to quick_reply', () => {
+  it('routes image upload to create_post', () => {
     const hit = resolveChatIntentFastPath('13号A', {
       messages: [],
       input: '13号A',
       activityLegacyId: 1,
       image: 'data:image/png;base64,abc',
     });
-    expect(hit?.kind).toBe('quick_reply');
+    expect(hit?.kind).toBe('create_post');
     expect(hit?.source).toBe('rule');
   });
 
-  it('does not auto-route informal slang to quick_reply', () => {
+  it('routes recommendation decline to create_post when activity is bound', () => {
     const hit = resolveChatIntentFastPath('没有合适的', {
       messages: [],
       input: '没有合适的',
       activityLegacyId: 9,
     });
-    expect(hit).toBeNull();
+    expect(hit?.kind).toBe('create_post');
+    expect(hit?.source).toBe('rule');
   });
 
   it('does not auto-route informal slang to create_post', () => {
@@ -30,16 +31,16 @@ describe('intent-router.rules', () => {
     expect(hit).toBeNull();
   });
 
-  it('does not rule-route confirm publish', () => {
+  it('routes confirm publish to create_post', () => {
     const hit = resolveChatIntentFastPath('确认发布', {
       messages: [],
       input: '确认发布',
       activityLegacyId: 1,
     });
-    expect(hit).toBeNull();
+    expect(hit?.kind).toBe('create_post');
   });
 
-  it('does not rule-route ticket resale in activity chat', () => {
+  it('routes ticket resale in activity chat to create_post', () => {
     const hit = resolveChatIntentFastPath(
       '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～',
       {
@@ -48,7 +49,8 @@ describe('intent-router.rules', () => {
         activityLegacyId: 9,
       },
     );
-    expect(hit).toBeNull();
+    expect(hit?.kind).toBe('create_post');
+    expect(hit?.source).toBe('rule');
   });
 
   it('does not rule-route deprecated shortcut labels alone', () => {

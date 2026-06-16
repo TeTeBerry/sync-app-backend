@@ -16,4 +16,9 @@ export class ProfileController {
   listActivities(@CurrentActor() actor: RequestActor) {
     return this.profileSummaryService.listActivities(actor);
   }
+
+  @Get('posts')
+  listPosts(@CurrentActor() actor: RequestActor) {
+    return this.profileSummaryService.listPosts(actor);
+  }
 }

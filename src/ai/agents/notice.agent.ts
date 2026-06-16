@@ -7,6 +7,7 @@ import type {
 import { NotificationService } from '../../modules/notification/notification.service';
 import type { NotificationTemplateKey } from '../../modules/notification/notification-templates.util';
 import { toRequestActor } from '../../common/auth/actor-query.util';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { UserService } from '../../modules/user/user.service';
 
 export interface NoticeDispatchInput {
@@ -19,6 +20,7 @@ export interface NoticeDispatchInput {
   dedupe?: {
     metaType: NotificationInteractionType;
     activityLegacyId?: number;
+    postId?: string;
     actorUserId?: string;
     /** Activity update: same summary within window → skip. */
     changeSummary?: string;
@@ -34,6 +36,52 @@ export class NoticeAgent {
     private readonly notificationService: NotificationService,
     private readonly userService: UserService,
   ) {}
+
+  async notifyPostRejected(
+    actor: RequestActor,
+    activityLegacyId: number | undefined,
+    reason?: string,
+  ): Promise<void> {
+    const uid = actor.clientUserId?.trim();
+    if (!uid) return;
+
+    const reasonText = this.buildRejectionReasonSummary(reason);
+    await this.dispatch({
+      userId: uid,
+      category: 'system',
+      templateKey: 'postRejected',
+      templateParams: { reason: reasonText },
+      meta: {
+        activityLegacyId,
+        type: 'post_rejected',
+        rejectionReason: reasonText,
+      },
+    });
+  }
+
+  async notifyPostHidden(
+    userId: string | undefined,
+    postId: string,
+    activityLegacyId: number | undefined,
+    reason?: string,
+  ): Promise<void> {
+    const uid = userId?.trim();
+    if (!uid) return;
+
+    const reasonText = this.buildHiddenReasonSummary(reason);
+    await this.dispatch({
+      userId: uid,
+      category: 'system',
+      templateKey: 'postHidden',
+      templateParams: { reason: reasonText },
+      meta: {
+        activityLegacyId,
+        postId,
+        type: 'post_hidden',
+        rejectionReason: reasonText,
+      },
+    });
+  }
 
   async notifyActivityUpdate(
     userIds: string[],
@@ -90,6 +138,7 @@ export class NoticeAgent {
         input.dedupe.metaType,
         {
           activityLegacyId: input.dedupe.activityLegacyId,
+          postId: input.dedupe.postId,
           actorUserId: input.dedupe.actorUserId,
           changeSummary: input.dedupe.changeSummary,
           sinceMs: input.dedupe.sinceMs,
@@ -113,5 +162,40 @@ export class NoticeAgent {
 
   private async shouldNotify(userId: string): Promise<boolean> {
     return this.userService.isNotificationsEnabled(toRequestActor(userId));
+  }
+
+  private buildRejectionReasonSummary(reason?: string): string {
+    const normalized = reason?.trim() ?? '';
+    const reasonHints: Record<string, string> = {
+      '内容疑似重复字符 spam': '内容格式异常，请用自然语言重新描述组队需求。',
+      你已在此活动发布过组队帖:
+        '你在此活动已有帖子。请打开「我的」→ 我的帖子编辑，或在活动详情页查看。',
+      你已发布过相同内容的组队帖:
+        '你已经发布过相同内容的帖子，可在个人主页或活动详情页查看。',
+      内容疑似黄牛倒票或加价引流:
+        '平台禁止黄牛倒票、加价出票等行为，请修改后重试。',
+      '内容疑似站外引流（如微信导流）':
+        '请勿在帖子中引导至微信等站外渠道，请修改后重试。',
+    };
+
+    return (
+      reasonHints[normalized] ??
+      (normalized && normalized !== '内容未通过审核'
+        ? normalized
+        : '内容未通过审核，请修改后重试。')
+    );
+  }
+
+  private buildHiddenReasonSummary(reason?: string): string {
+    const normalized = reason?.trim() ?? '';
+    const reasonHints: Record<string, string> = {
+      内容疑似黄牛倒票或加价引流: '帖子因疑似黄牛倒票或加价引流已被自动隐藏。',
+      '内容疑似站外引流（如微信导流）': '帖子因疑似站外引流已被自动隐藏。',
+    };
+
+    return (
+      reasonHints[normalized] ??
+      (normalized || '内容违反社区规范，帖子已自动隐藏')
+    );
   }
 }

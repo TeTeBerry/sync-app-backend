@@ -1,7 +1,18 @@
 import { Injectable } from '@nestjs/common';
+import { createIdleState, type ConversationState } from '../conversation';
+import {
+  buildRequireBuddyPostFirstReply,
+  REQUIRE_BUDDY_POST_SUGGESTED_REPLIES,
+} from '../publish/buddy-post-flow.util';
+import { enterCollectPostBodyState } from '../conversation';
+import { PUBLISH_CONFIRM_SUGGESTED_REPLIES } from '../publish/publish-confirm.util';
+import type { PostIntentCreateAttempt } from '../post-intent.service';
 import { buildActivityEnterConfirmationReply } from '../utils/activity-enter.util';
-import type { AiStreamEvent, RecommendedActivityCard } from '../../shared/chat';
-import type { ConversationState } from '../conversation';
+import type {
+  AiStreamEvent,
+  RecommendedActivityCard,
+  RecommendedPostCard,
+} from '../../shared/chat';
 
 export interface ReplySink {
   setReply: (text: string) => void;
@@ -31,6 +42,13 @@ export class AiStreamEventBuilder {
     return { type: 'conversation_patch', state: sink.getState() };
   }
 
+  publishConfirmSuggestedRepliesEvent(): AiStreamEvent {
+    return {
+      type: 'suggested_replies',
+      replies: [...PUBLISH_CONFIRM_SUGGESTED_REPLIES],
+    };
+  }
+
   djInfoSuggestedRepliesEvent(replies: string[]): AiStreamEvent | null {
     const unique = [
       ...new Set(replies.map((reply) => reply.trim()).filter(Boolean)),
@@ -54,5 +72,86 @@ export class AiStreamEventBuilder {
       { type: 'delta', content: replyText },
       { type: 'activity_recommendation', activity },
     ];
+  }
+
+  buildRequireBuddyPostFirstEvents(
+    sink: ReplySink,
+    activityLegacyId: number | undefined,
+    activityLabel: string,
+  ): AiStreamEvent[] {
+    const replyText = buildRequireBuddyPostFirstReply(activityLabel);
+    sink.setReply(replyText);
+    sink.setState(
+      enterCollectPostBodyState({
+        activityLegacyId,
+        fromSelfPost: true,
+      }),
+    );
+    return [
+      { type: 'delta', content: replyText },
+      {
+        type: 'suggested_replies',
+        replies: [...REQUIRE_BUDDY_POST_SUGGESTED_REPLIES],
+      },
+      this.conversationPatchEvent(sink),
+    ];
+  }
+
+  eventsFromPostAttempt(
+    postAttempt: PostIntentCreateAttempt,
+    sink: ReplySink,
+  ): AiStreamEvent[] {
+    if (!postAttempt) return [];
+
+    const patchIfNeeded = (): AiStreamEvent[] => {
+      const state = sink.getState();
+      return state.flow !== createIdleState().flow || state.publishDraft
+        ? [this.conversationPatchEvent(sink)]
+        : [];
+    };
+
+    if (postAttempt.kind === 'created') {
+      sink.setState(createIdleState());
+      sink.setReply(postAttempt.replyText);
+      return [
+        {
+          type: 'post_created',
+          postId: postAttempt.postId,
+          activityLegacyId: postAttempt.activityLegacyId,
+          post: postAttempt.createdPost,
+        },
+        { type: 'delta', content: postAttempt.replyText },
+        this.conversationPatchEvent(sink),
+      ];
+    }
+
+    if (postAttempt.kind === 'existing_post') {
+      sink.setReply(postAttempt.replyText);
+      return [
+        {
+          type: 'existing_post',
+          postId: postAttempt.postId,
+          activityLegacyId: postAttempt.activityLegacyId,
+        },
+        { type: 'delta', content: postAttempt.replyText },
+      ];
+    }
+
+    if (
+      postAttempt.kind === 'rejected' ||
+      postAttempt.kind === 'pending_confirmation'
+    ) {
+      sink.setReply(postAttempt.replyText);
+      const events: AiStreamEvent[] = [
+        { type: 'delta', content: postAttempt.replyText },
+        ...patchIfNeeded(),
+      ];
+      if (postAttempt.kind === 'pending_confirmation') {
+        events.push(this.publishConfirmSuggestedRepliesEvent());
+      }
+      return events;
+    }
+
+    return [];
   }
 }

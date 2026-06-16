@@ -12,12 +12,6 @@ import type {
 
 const DEFAULT_MIN_HOTEL_RATING = 4.0;
 
-const TIER_MIN_HOTEL_RATING: Record<TravelGuideBudgetTier, number> = {
-  economy: 4.0,
-  standard: 4.0,
-  comfort: 4.2,
-};
-
 const TIER_PRICE_MID: Record<TravelGuideBudgetTier, number> = {
   economy: 225,
   standard: 450,
@@ -41,10 +35,7 @@ export class TravelGuidePoiRanker {
   ): TravelGuideRankedCandidates {
     const budgetTier = dto.budgetTier;
     const ranges = budgetTierHotelNightRanges(budgetTier);
-    const minHotelRating =
-      options?.minHotelRating ??
-      TIER_MIN_HOTEL_RATING[budgetTier] ??
-      DEFAULT_MIN_HOTEL_RATING;
+    const minHotelRating = options?.minHotelRating ?? DEFAULT_MIN_HOTEL_RATING;
 
     const hotels = this.pickHotelsForBudget(
       ctx.pois.filter((p) => p.kind === 'hotel'),
@@ -162,56 +153,27 @@ export class TravelGuidePoiRanker {
         return a.poi.distanceM - b.poi.distanceM;
       });
 
-    const ordered = orderHotelsByBudgetTier(
-      { inBand, below, above },
-      tier,
-      sortBucket,
-    );
+    const ordered =
+      tier === 'economy'
+        ? [
+            ...sortBucket(inBand, 'asc'),
+            ...sortBucket(below, 'desc'),
+            ...sortBucket(above, 'asc'),
+          ]
+        : tier === 'comfort'
+          ? [
+              ...sortBucket(inBand, 'desc'),
+              ...sortBucket(above, 'asc'),
+              ...sortBucket(below, 'desc'),
+            ]
+          : [
+              ...sortBucket(inBand, 'none'),
+              ...sortBucket(below, 'desc'),
+              ...sortBucket(above, 'asc'),
+            ];
 
     return ordered.map((x) => x.poi).slice(0, 6);
   }
-}
-
-function orderHotelsByBudgetTier(
-  buckets: {
-    inBand: Array<{ poi: RankedMapPoi; price: number }>;
-    below: Array<{ poi: RankedMapPoi; price: number }>;
-    above: Array<{ poi: RankedMapPoi; price: number }>;
-  },
-  tier: TravelGuideBudgetTier,
-  sortBucket: (
-    bucket: Array<{ poi: RankedMapPoi; price: number }>,
-    priceOrder: 'asc' | 'desc' | 'none',
-  ) => Array<{ poi: RankedMapPoi; price: number }>,
-): Array<{ poi: RankedMapPoi; price: number }> {
-  const { inBand, below, above } = buckets;
-
-  if (tier === 'economy') {
-    return [
-      ...sortBucket(inBand, 'asc'),
-      ...sortBucket(below, 'desc'),
-      ...sortBucket(above, 'asc'),
-    ];
-  }
-
-  if (tier === 'comfort') {
-    const upscale = [...inBand, ...above];
-    if (upscale.length > 0) {
-      return [...sortBucket(inBand, 'desc'), ...sortBucket(above, 'asc')];
-    }
-    return sortBucket(below, 'desc');
-  }
-
-  const preferred = [...inBand, ...above];
-  if (preferred.length >= 2) {
-    return [...sortBucket(inBand, 'none'), ...sortBucket(above, 'asc')];
-  }
-
-  return [
-    ...sortBucket(inBand, 'none'),
-    ...sortBucket(above, 'asc'),
-    ...sortBucket(below, 'desc'),
-  ];
 }
 
 function distanceScore(distanceM: number): number {
@@ -236,20 +198,11 @@ function estimateHotelPrice(
   tier: TravelGuideBudgetTier,
 ): number {
   if (poi.avgPrice && poi.avgPrice > 50) return poi.avgPrice;
-
-  const text = `${poi.name} ${poi.category}`;
-  if (/五星|奢华|度假|别墅/.test(text)) return 850;
-  if (
-    /万豪|希尔顿|洲际|凯悦|喜来登|香格里拉|凯宾斯基|丽思|朗廷|四季|瑞吉|W酒店|艾美|皇冠假日|英迪格/.test(
-      text,
-    )
-  ) {
-    return 950;
-  }
-  if (/四星|高档|精品/.test(text)) return 520;
-  if (/全季|亚朵|桔子|维也纳|美居|诺富特|智选假日/.test(text)) return 420;
-  if (/三星|商务/.test(text)) return 380;
-  if (/快捷|经济|如家|汉庭|7天|锦江之星|速8|青旅|连锁/.test(text)) return 220;
+  const cat = poi.category;
+  if (/五星|豪华|度假/.test(cat)) return 750;
+  if (/四星|高档/.test(cat)) return 520;
+  if (/三星|商务/.test(cat)) return 380;
+  if (/快捷|经济|连锁/.test(cat)) return 220;
   return TIER_PRICE_MID[tier];
 }
 

@@ -34,8 +34,8 @@ describe('ReportService', () => {
 
     const result = await service.submit(
       {
-        targetType: 'user',
-        targetId: 'user-1',
+        targetType: 'post',
+        targetId: 'post-1',
         targetUserId: 'author-1',
         category: 'ads',
       },
@@ -45,8 +45,8 @@ describe('ReportService', () => {
     expect(result).toEqual({ ok: true, id: 'report-1' });
     expect(reportModel.create).toHaveBeenCalledWith({
       reporterUserId: 'demo-mia',
-      targetType: 'user',
-      targetId: 'user-1',
+      targetType: 'post',
+      targetId: 'post-1',
       targetUserId: 'author-1',
       category: 'ads',
       reason: undefined,
@@ -59,7 +59,7 @@ describe('ReportService', () => {
 
     await expect(
       service.submit(
-        { targetType: 'user', targetId: 'user-1', category: 'vulgar' },
+        { targetType: 'post', targetId: 'post-1', category: 'vulgar' },
         toRequestActor('demo-mia'),
       ),
     ).rejects.toBeInstanceOf(ConflictException);
@@ -73,16 +73,16 @@ describe('ReportService', () => {
     });
 
     const result = await service.getStatus(
-      'user',
-      'user-1',
+      'post',
+      'post-1',
       toRequestActor('demo-mia'),
     );
 
     expect(result).toEqual({ reported: false });
     expect(reportModel.findOne).toHaveBeenCalledWith({
       reporterUserId: 'demo-mia',
-      targetType: 'user',
-      targetId: 'user-1',
+      targetType: 'post',
+      targetId: 'post-1',
     });
   });
 
@@ -100,8 +100,8 @@ describe('ReportService', () => {
     });
 
     const result = await service.getStatus(
-      'user',
-      'user-9',
+      'post',
+      'post-9',
       toRequestActor('demo-mia'),
     );
 
@@ -126,8 +126,8 @@ describe('ReportService', () => {
     (accountRisk.isUserPostRestricted as jest.Mock).mockResolvedValue(true);
 
     const result = await service.getStatus(
-      'user',
-      'user-x',
+      'post',
+      'post-x',
       toRequestActor('demo-mia'),
     );
 
@@ -138,7 +138,7 @@ describe('ReportService', () => {
     (reportModel.create as jest.Mock).mockResolvedValue({ _id: 'r2' });
 
     await service.submit(
-      { targetType: 'user', targetId: 'p', category: 'scalper' },
+      { targetType: 'post', targetId: 'p', category: 'scalper' },
       toRequestActor('demo-zara', 'Zara Chen'),
     );
 

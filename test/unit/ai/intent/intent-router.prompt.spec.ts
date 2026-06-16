@@ -6,7 +6,7 @@ import {
 
 describe('intent-router.prompt', () => {
   it('includes few-shot examples with dj_info', () => {
-    expect(INTENT_ROUTER_FEW_SHOTS.length).toBeGreaterThanOrEqual(6);
+    expect(INTENT_ROUTER_FEW_SHOTS.length).toBeGreaterThanOrEqual(8);
     const system = buildIntentRouterSystemPrompt();
     expect(system).toContain('chitchat');
     expect(system).toContain('dj_info');

@@ -3,6 +3,7 @@ import { HomeService } from '@src/modules/home/home.service';
 import type { IActivityLookupPort } from '@src/modules/activity/ports/activity-lookup.port';
 import type { ActivityRegistrationService } from '@src/modules/activity/registration/activity-registration.service';
 import type { RedisService } from '@src/redis/redis.service';
+import type { IPostReadPort } from '@src/modules/partner/ports/post-read.port';
 
 describe('HomeService', () => {
   const activities = [
@@ -40,6 +41,10 @@ describe('HomeService', () => {
     getHeat: jest.fn(),
   } as unknown as RedisService;
 
+  const postRead = {
+    listPopular: jest.fn(),
+  } as unknown as IPostReadPort;
+
   let service: HomeService;
 
   beforeEach(() => {
@@ -48,6 +53,15 @@ describe('HomeService', () => {
     (
       registrationService.listRegisteredLegacyIds as jest.Mock
     ).mockResolvedValue(new Set([4]));
+    (postRead.listPopular as jest.Mock).mockResolvedValue([
+      {
+        id: 'post-1',
+        name: 'User',
+        handle: '@user',
+        event: 'Storm Fest',
+        body: 'Hi',
+      },
+    ]);
     (redisService.isEnabled as jest.Mock).mockReturnValue(true);
     (redisService.getHeat as jest.Mock).mockResolvedValue({
       people: 150,
@@ -57,6 +71,7 @@ describe('HomeService', () => {
       activityLookup,
       registrationService,
       redisService,
+      postRead,
     );
   });
 
@@ -84,6 +99,8 @@ describe('HomeService', () => {
     expect(registrationService.listRegisteredLegacyIds).toHaveBeenCalledWith(
       actor,
     );
+    expect(postRead.listPopular).toHaveBeenCalledWith(8, actor);
+    expect(result.popularPosts).toHaveLength(1);
   });
 
   it('writes per-activity heat to redis when enabled', async () => {
