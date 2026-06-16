@@ -15,10 +15,17 @@ import {
   buildTravelGuideDocumentItems,
   buildTravelGuideEssentials,
   isTravelGuideAbroad,
+  travelGuideHotelBookingHint,
   travelGuideRegionKind,
 } from './travel-guide-international.util';
 import { buildTicketChannels } from '../map/travel-guide-map-plan.builder';
 import { destinationCityFromActivityLocation } from '../map/travel-guide-intercity.util';
+import {
+  buildInterCityTransportLines,
+  resolveDestinationTransportProfile,
+  transportSectionTitle,
+  venueTransportSectionTitle,
+} from './travel-guide-transport.util';
 
 function venueCity(location?: string): string {
   const loc = location?.trim() ?? '';
@@ -30,25 +37,20 @@ function venueCity(location?: string): string {
 function buildTransportLines(
   departure: string,
   venue: string,
-  location: string,
+  activity: Activity,
   selfDrive: boolean,
+  interCity: boolean,
 ): string[] {
-  const city = venueCity(location);
-  const lines = [`建议提前 1 天从「${departure}」出发，预留转场与入住缓冲。`];
-
-  if (selfDrive) {
-    lines.push(
-      `自驾前往${city}：导航「${venue}」，高速+市区合计预留 4–6 小时（视出发地而定）。`,
-      '散场后场馆周边拥堵，建议提前确认停车场与离场路线。',
-    );
-  } else {
-    lines.push(
-      `高铁/飞机抵达${city}后，可打车或地铁前往「${venue}」，高峰建议预留 40–60 分钟。`,
-      `散场时段优先预约网约车；${city}返程票建议提前购买。`,
-    );
-  }
-
-  return lines;
+  return buildInterCityTransportLines({
+    departure,
+    venueTitle: venue,
+    venueReadableAddress: activity.location?.trim() || venue,
+    selfDrive,
+    interCity,
+    transportHints: [],
+    destinationCity: destinationCityFromActivityLocation(activity.location),
+    activity,
+  });
 }
 
 function buildParkingLines(venue: string, location: string): string[] {
@@ -72,10 +74,28 @@ function buildHotels(
   budgetTier: TravelGuideBudgetTier,
   headcount: number,
   nights: number,
+  activity: Activity,
 ): TravelGuidePlan['accommodation']['hotels'] {
   const city = venueCity(location);
   const room = roomHint(headcount);
   const nightLabel = `${nights} 晚`;
+  const abroadBookingHint = travelGuideHotelBookingHint(activity);
+
+  if (isTravelGuideAbroad(activity)) {
+    const ranges = budgetTierHotelNightRanges(budgetTier);
+    return [
+      {
+        name: `${city}场馆周边酒店`,
+        note: `约 ${ranges.primary}/晚 · ${nightLabel} · ${room}`,
+        bookingHint: abroadBookingHint,
+      },
+      {
+        name: `${city}市中心/商圈酒店`,
+        note: `约 ${ranges.secondary}/晚 · 餐饮购物方便 · ${room}`,
+        bookingHint: abroadBookingHint,
+      },
+    ];
+  }
 
   const ranges = budgetTierHotelNightRanges(budgetTier);
 
@@ -129,8 +149,9 @@ function buildAccommodationSchemes(
   budgetTier: TravelGuideBudgetTier,
   headcount: number,
   nights: number,
+  activity: Activity,
 ): TravelGuidePlan['accommodation']['schemes'] {
-  const hotels = buildHotels(location, budgetTier, headcount, nights);
+  const hotels = buildHotels(location, budgetTier, headcount, nights, activity);
   return [
     {
       label: '就近方案',
@@ -248,12 +269,12 @@ function buildExtendedSections(
     ...(venueTransportOptions?.length
       ? {
           venueTransport: {
-            title: '会场交通全方案',
+            title: venueTransportSectionTitle(),
             options: venueTransportOptions,
           },
         }
       : {}),
-    budget: { title: '预算参考（全程）', items: budgetItems },
+    budget: { title: '预算参考（全程 · 合计）', items: budgetItems },
   };
 }
 
@@ -284,16 +305,18 @@ export function buildTravelGuidePlan(input: {
     );
   }
 
+  const interCity = Boolean(input.interCity);
+  const destCity = destinationCityFromActivityLocation(activity.location);
+  const transportProfile = resolveDestinationTransportProfile({
+    destinationCity: destCity,
+    activity,
+  });
+
   const transportLines = input.llm?.transportLines?.length
     ? normalizeGuideLines(input.llm.transportLines)
     : mapSourcedOnly
       ? []
-      : buildTransportLines(
-          departure,
-          venue,
-          activity.location ?? '',
-          selfDrive,
-        );
+      : buildTransportLines(departure, venue, activity, selfDrive, interCity);
 
   const schemes = input.llm?.accommodationSchemes?.length
     ? input.llm.accommodationSchemes
@@ -304,6 +327,7 @@ export function buildTravelGuidePlan(input: {
           budgetTier,
           headcount,
           accommodationNights,
+          activity,
         );
 
   const hotels = input.llm?.hotels?.length
@@ -321,6 +345,7 @@ export function buildTravelGuidePlan(input: {
             budgetTier,
             headcount,
             accommodationNights,
+            activity,
           );
 
   const parkingLines =
@@ -359,7 +384,10 @@ export function buildTravelGuidePlan(input: {
     budgetLabel,
     accommodationNights,
     selfDrive,
-    transport: { title: '交通方案', lines: transportLines },
+    transport: {
+      title: transportSectionTitle(interCity, transportProfile),
+      lines: transportLines,
+    },
     accommodation: {
       title: '住宿推荐',
       hotels,

@@ -53,6 +53,7 @@ export class TravelGuidePoiCollector {
       venue,
       destinationCity: destinationCityFromActivityLocation(activity.location),
       selfDrive: Boolean(dto.selfDrive),
+      activity,
     });
 
     const transportHints: string[] = [...(transport.hintLines ?? [])];

@@ -157,9 +157,12 @@ export function buildTravelGuideBudgetItems(input: {
   }, 0);
 
   items.push({
-    label: '合计参考',
+    label: headcount > 1 ? '合计参考（全员）' : '合计参考（单人）',
     range: formatRange(subtotalMin, subtotalMax),
-    note: `${headcount} 人全程估算，不含购物与个人消费差异。`,
+    note:
+      headcount > 1
+        ? `${headcount} 人全程合计估算；人均约 ¥${Math.round(subtotalMin / headcount)}–${Math.round(subtotalMax / headcount)}，不含购物与个人消费差异。`
+        : '单人全程合计估算，不含购物与个人消费差异。',
   });
 
   return items;

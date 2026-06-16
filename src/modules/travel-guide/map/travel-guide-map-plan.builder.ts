@@ -5,14 +5,18 @@ import type {
   TravelGuideHotelItem,
   TravelGuideSpotItem,
   TravelGuideTicketChannel,
-  TravelGuideVenueTransportOption,
 } from '../domain/travel-guide.types';
 import { buildTravelGuideBudgetItems } from '../domain/travel-guide-budget-estimate.util';
 import {
   buildTravelGuideDocumentItems,
   buildTravelGuideEssentials,
+  travelGuideHotelBookingHint,
   travelGuideRegionKind,
 } from '../domain/travel-guide-international.util';
+import {
+  buildInterCityTransportLines,
+  buildVenueTransportOptions,
+} from '../domain/travel-guide-transport.util';
 import { destinationCityFromActivityLocation } from './travel-guide-intercity.util';
 import type {
   DrivingRouteSummary,
@@ -34,127 +38,24 @@ export function buildTransportLinesFromMap(
   route?: DrivingRouteSummary,
   hints: string[] = [],
   interCity = false,
+  activity?: Activity,
 ): string[] {
-  const lines = [
-    `建议提前 1 天从「${departure}」出发，前往 ${venueReadableAddress || venueTitle}，预留转场与入住缓冲。`,
-  ];
-
-  if (interCity) {
-    for (const hint of hints) {
-      if (hint && !lines.includes(hint)) lines.push(hint);
-    }
-    const lastMile = route && route.distanceKm > 0 && route.distanceKm < 120;
-    if (lastMile && !selfDrive) {
-      lines.push(
-        `抵目的地后接驳参考：枢纽至场馆约 ${route.distanceKm} km / ${route.durationMin} 分钟（打车或地铁，高峰多预留）。`,
-      );
-    } else if (selfDrive && route && route.distanceKm >= 120) {
-      lines.push(
-        `全程自驾参考：约 ${route.distanceKm} km / ${route.durationMin} 分钟（以出发日路况为准）。`,
-      );
-    }
-    if (!lines.some((l) => l.includes('散场') || l.includes('返程'))) {
-      lines.push('散场时段优先预约网约车；城际返程票建议提前购买。');
-    }
-    return lines;
-  }
-
-  if (selfDrive && route) {
-    lines.push(
-      `自驾：高德驾车约 ${route.distanceKm} km / ${route.durationMin} 分钟（以出发日路况为准）。`,
-      '散场后场馆周边易拥堵，请提前确认停车场与离场路线。',
-    );
-  } else if (selfDrive) {
-    lines.push(`自驾导航「${venueTitle}」，出发前在高德地图查看实时路况。`);
-  } else if (route) {
-    lines.push(
-      `公共交通+打车：参考行程约 ${route.distanceKm} km / ${route.durationMin} 分钟，高峰请多预留时间。`,
-      '散场时段优先预约网约车；返程票建议提前购买。',
-    );
-  } else {
-    lines.push(
-      `抵达后打车/地铁前往「${venueTitle}」，高峰建议预留 40–60 分钟。`,
-    );
-  }
-
-  for (const hint of hints) {
-    if (hint && !lines.includes(hint)) lines.push(hint);
-  }
-  return lines;
+  return buildInterCityTransportLines({
+    departure,
+    venueTitle,
+    venueReadableAddress,
+    selfDrive,
+    interCity,
+    route,
+    transportHints: hints,
+    destinationCity: activity
+      ? destinationCityFromActivityLocation(activity.location)
+      : undefined,
+    activity,
+  });
 }
 
-export function buildVenueTransportOptions(input: {
-  departure: string;
-  venueTitle: string;
-  venueReadableAddress: string;
-  selfDrive: boolean;
-  interCity: boolean;
-  route?: DrivingRouteSummary;
-  transportHints: string[];
-  destinationCity?: string;
-}): TravelGuideVenueTransportOption[] {
-  const dest = input.destinationCity?.trim() || '目的地';
-  const options: TravelGuideVenueTransportOption[] = [];
-
-  if (input.interCity && !input.selfDrive) {
-    options.push({
-      label: '高铁/动车 + 市内接驳',
-      lines: [
-        `从「${input.departure}」乘高铁/动车至${dest}枢纽站，再地铁或打车前往「${input.venueTitle}」。`,
-        input.route && input.route.distanceKm < 120
-          ? `枢纽至场馆约 ${input.route.distanceKm} km / ${input.route.durationMin} 分钟，高峰建议多预留 30 分钟。`
-          : '抵站后优先地铁（避堵），深夜或行李多建议网约车。',
-        '返程票建议与去程同时购买，音乐节前后票量紧张。',
-      ],
-    });
-    options.push({
-      label: '飞机 + 机场接驳',
-      lines: [
-        `从「${input.departure}」飞抵${dest}机场，机场大巴/地铁/网约车前往酒店或场馆。`,
-        input.transportHints.find((h) => /机场|枢纽/.test(h)) ??
-          '提前查好末班地铁与机场快线时刻，深夜到达建议预约接机。',
-        `活动日再前往「${input.venueTitle}」，${input.venueReadableAddress || '详见地图导航'}。`,
-      ],
-    });
-  }
-
-  if (input.selfDrive) {
-    options.push({
-      label: '自驾直达',
-      lines: input.route
-        ? [
-            `导航「${input.venueTitle}」，全程约 ${input.route.distanceKm} km / ${input.route.durationMin} 分钟。`,
-            '出发前检查胎压与油量；活动日停车场可能紧张，建议提早抵达。',
-            '散场后周边拥堵，可先在车内休息或约夜宵点汇合再离场。',
-          ]
-        : [
-            `导航「${input.venueTitle}」，出发前在高德查看实时路况。`,
-            '活动日停车场可能紧张，建议提早 1–2 小时抵达。',
-          ],
-    });
-  }
-
-  options.push({
-    label: '地铁/公交 + 步行',
-    lines: [
-      `抵达${dest}后，地铁/公交至会场最近站点，步行或短途打车至「${input.venueTitle}」。`,
-      '散场高峰地铁可能限流，可提前查末班车；备用网约车。',
-      input.transportHints.find((h) => /地铁|公交|站/.test(h)) ??
-        '以高德/百度实时公交为准。',
-    ],
-  });
-
-  options.push({
-    label: '网约车/出租车',
-    lines: [
-      `酒店或枢纽直接打车至「${input.venueTitle}」，高峰约需 40–90 分钟（视路况）。`,
-      '散场时段优先预约网约车，设置好上车点避开拥堵路段。',
-      '多人同行可分摊费用，注意核对车牌与平台订单。',
-    ],
-  });
-
-  return options.slice(0, 4);
-}
+export { buildVenueTransportOptions } from '../domain/travel-guide-transport.util';
 
 export function buildTicketChannels(
   activity: Pick<Activity, 'name' | 'externalUrl'>,
@@ -208,7 +109,11 @@ export function hotelsFromRanked(
   nightLabel: string,
   roomHint: string,
   priceBands: [string, string],
+  activity?: Pick<Activity, 'region'>,
 ): TravelGuideHotelItem[] {
+  const bookingHint = activity
+    ? travelGuideHotelBookingHint(activity)
+    : '携程 / 美团';
   const picked = ranked.slice(0, 3);
   if (!picked.length) return [];
 
@@ -220,7 +125,7 @@ export function hotelsFromRanked(
     return {
       name: p.name,
       note: `起步约 ¥${p.avgPrice ?? band}/晚 · ${distanceText}${ratingText} · ${nightLabel} · ${roomHint}`,
-      bookingHint: '携程 / 美团',
+      bookingHint,
     };
   });
 }
@@ -230,7 +135,11 @@ export function accommodationSchemesFromRanked(
   nightLabel: string,
   roomHint: string,
   priceBands: [string, string],
+  activity?: Pick<Activity, 'region'>,
 ): TravelGuideAccommodationScheme[] {
+  const bookingHint = activity
+    ? travelGuideHotelBookingHint(activity)
+    : '携程 / 美团 / 飞猪';
   return [
     schemeFromPoi(
       picks.nearby,
@@ -239,6 +148,7 @@ export function accommodationSchemesFromRanked(
       nightLabel,
       roomHint,
       priceBands[0],
+      bookingHint,
     ),
     schemeFromPoi(
       picks.cityCenter,
@@ -247,6 +157,7 @@ export function accommodationSchemesFromRanked(
       nightLabel,
       roomHint,
       priceBands[1],
+      bookingHint,
     ),
   ];
 }
@@ -258,6 +169,7 @@ function schemeFromPoi(
   nightLabel: string,
   roomHint: string,
   priceBand: string,
+  bookingHint: string,
 ): TravelGuideAccommodationScheme {
   const ratingText = p.rating != null ? ` · 评分 ${p.rating}` : '';
   const distanceText =
@@ -267,7 +179,7 @@ function schemeFromPoi(
     name: p.name,
     note: `起步约 ¥${p.avgPrice ?? priceBand}/晚 · ${distanceText}${ratingText} · ${nightLabel} · ${roomHint}`,
     reason,
-    bookingHint: '携程 / 美团 / Booking',
+    bookingHint,
   };
 }
 
@@ -346,6 +258,7 @@ export function mapCandidatesToLlmFallback(
         nightLabel,
         room,
         ranked.hotelPriceBand,
+        input.activity,
       )
     : accommodationSchemesFromRanked(
         {
@@ -355,6 +268,7 @@ export function mapCandidatesToLlmFallback(
         nightLabel,
         room,
         ranked.hotelPriceBand,
+        input.activity,
       );
 
   const documentItems =
@@ -380,6 +294,7 @@ export function mapCandidatesToLlmFallback(
       ctx.drivingRoute ?? ctx.transitRoute,
       ctx.transportHints,
       interCity,
+      input.activity,
     ),
     hotels: schemes.map((s) => ({
       name: s.name,
@@ -408,6 +323,7 @@ export function mapCandidatesToLlmFallback(
       route: ctx.drivingRoute ?? ctx.transitRoute,
       transportHints: ctx.transportHints,
       destinationCity: destCity,
+      activity: input.activity,
     }),
     budgetItems: buildTravelGuideBudgetItems({
       budgetTier: ranked.budgetTier,

@@ -122,6 +122,10 @@ export class TravelGuideGeoCacheService {
     venue: GeocodedPlace;
     destinationCity?: string;
     selfDrive: boolean;
+    activity?: Pick<
+      import('../../../database/schemas/activity.schema').Activity,
+      'name' | 'location' | 'region'
+    >;
   }): Promise<ResolvedTransport> {
     const hot = findHotActivityProfile(input.activityLegacyId);
     if (hot) {
@@ -181,6 +185,7 @@ export class TravelGuideGeoCacheService {
         destinationCity: destCity,
         venueTitle: input.venue.title,
         selfDrive: input.selfDrive,
+        activity: input.activity,
       });
       if (input.selfDrive) {
         const driving = (await this.map.drivingRoute(from, to)) ?? undefined;

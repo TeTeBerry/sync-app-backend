@@ -17,6 +17,17 @@ export function isTravelGuideAbroad(
   return travelGuideRegionKind(activity) !== 'domestic';
 }
 
+/** 境外/港澳台酒店预订渠道 */
+export const ABROAD_HOTEL_BOOKING_HINT = '携程 / Agoda / Booking / Airbnb';
+
+export function travelGuideHotelBookingHint(
+  activity: Pick<Activity, 'region'>,
+): string {
+  return isTravelGuideAbroad(activity)
+    ? ABROAD_HOTEL_BOOKING_HINT
+    : '携程 / 美团';
+}
+
 export function buildTravelGuideDocumentItems(input: {
   activity: Pick<Activity, 'name' | 'location' | 'region'>;
   destinationCity?: string;

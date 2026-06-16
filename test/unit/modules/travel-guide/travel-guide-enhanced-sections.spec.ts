@@ -81,7 +81,7 @@ describe('travel guide enhanced sections', () => {
     expect(labels).toContain('门票');
     expect(labels).toContain('住宿');
     expect(labels).toContain('餐饮');
-    expect(labels).toContain('合计参考');
+    expect(labels).toContain('合计参考（全员）');
   });
 
   it('mapCandidatesToLlmFallback includes tickets, budget and venue transport', () => {
@@ -131,11 +131,24 @@ describe('travel guide enhanced sections', () => {
     });
 
     expect(payload.accommodationSchemes).toHaveLength(2);
+    expect(payload.accommodationSchemes?.[0]?.bookingHint).toBe(
+      '携程 / Agoda / Booking / Airbnb',
+    );
     expect(payload.documentItems?.length).toBeGreaterThan(0);
     expect(payload.ticketChannels?.[0]?.note).toContain(
       'https://example.com/tickets',
     );
     expect(payload.venueTransportOptions?.length).toBeGreaterThanOrEqual(3);
+    expect(
+      payload.venueTransportOptions?.some((o) => /Grab|Shuttle/i.test(o.label)),
+    ).toBe(true);
+    expect(
+      payload.venueTransportOptions?.some((o) => /高铁|地铁/.test(o.label)),
+    ).toBe(false);
+    expect(payload.transportLines?.join(' ')).toMatch(/国际|航班|直飞/);
+    expect(payload.transportLines?.join(' ')).not.toMatch(
+      /乘高铁|动车至|地铁\/公交至/,
+    );
     expect(payload.budgetItems?.some((b) => b.label.includes('机票'))).toBe(
       true,
     );
@@ -149,7 +162,7 @@ describe('travel guide enhanced sections', () => {
     expect(channels[0]?.name).toBe('官方购票链接');
   });
 
-  it('builds multiple venue transport options for intercity', () => {
+  it('builds multiple venue transport options for intercity domestic', () => {
     const options = buildVenueTransportOptions({
       departure: '北京',
       venueTitle: '国际会展中心',
@@ -158,8 +171,14 @@ describe('travel guide enhanced sections', () => {
       interCity: true,
       transportHints: ['深圳北站接驳'],
       destinationCity: '深圳',
+      activity: {
+        name: 'Storm',
+        location: '深圳·国际会展中心',
+        region: undefined,
+      },
     });
     expect(options.length).toBeGreaterThanOrEqual(3);
-    expect(options.some((o) => o.label.includes('高铁'))).toBe(true);
+    expect(options.some((o) => o.label.includes('枢纽接驳'))).toBe(true);
+    expect(options.some((o) => /高铁\/动车/.test(o.label))).toBe(false);
   });
 });
