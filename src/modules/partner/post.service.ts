@@ -25,6 +25,7 @@ import {
 import { PostWriteService } from './application/post-write.service';
 import { PostQueryService } from './application/post-query.service';
 import { PostCommentService } from './application/post-comment.service';
+import { PostSearchService } from './application/post-search.service';
 
 @Injectable()
 export class PostService implements OnModuleInit {
@@ -40,6 +41,7 @@ export class PostService implements OnModuleInit {
     private readonly postWrite: PostWriteService,
     private readonly postQuery: PostQueryService,
     private readonly postComments: PostCommentService,
+    private readonly postSearch: PostSearchService,
     private readonly userService: UserService,
   ) {}
 
@@ -95,6 +97,18 @@ export class PostService implements OnModuleInit {
 
   listByOwner(actor: RequestActor) {
     return this.postQuery.listByOwner(actor);
+  }
+
+  searchPostsByNaturalLanguage(
+    query: string,
+    activityLegacyId: number,
+    actor: RequestActor,
+  ) {
+    return this.postSearch.searchByNaturalLanguage(
+      query,
+      activityLegacyId,
+      actor,
+    );
   }
 
   createPost(

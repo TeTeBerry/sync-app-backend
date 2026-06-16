@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { InfraLlmModule } from '../../infra/llm/llm.module';
 import { AuthModule } from '../auth/auth.module';
 import { ActivityLookupModule } from '../activity/activity-lookup.module';
 import { NotificationModule } from '../notification/notification.module';
@@ -17,6 +18,8 @@ import {
   PostCommentSchema,
 } from '../../database/schemas/post-comment.schema';
 import { PostCommentService } from './application/post-comment.service';
+import { BuddyPostSearchParseService } from './application/buddy-post-search-parse.service';
+import { PostSearchService } from './application/post-search.service';
 
 @Module({
   imports: [
@@ -28,13 +31,20 @@ import { PostCommentService } from './application/post-comment.service';
     PartnerRepositoryModule,
     PartnerWriteModule,
     NotificationModule,
+    InfraLlmModule,
     MongooseModule.forFeature([
       { name: Post.name, schema: PostSchema },
       { name: PostComment.name, schema: PostCommentSchema },
     ]),
   ],
   controllers: [PostController],
-  providers: [PostQueryService, PostService, PostCommentService],
+  providers: [
+    PostQueryService,
+    PostService,
+    PostCommentService,
+    BuddyPostSearchParseService,
+    PostSearchService,
+  ],
   exports: [
     PostService,
     PartnerWriteModule,

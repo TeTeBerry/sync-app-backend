@@ -20,6 +20,12 @@ const uri =
 /** Keep in sync with activity.seed.ts / sync-activity-catalog.mjs */
 const FESTIVAL_IMAGES = [
   {
+    code: 'edc-thailand',
+    image:
+      'https://ik.imagekit.io/TBR/Island%20Events/EDC%20Thailand%202026.png?updatedAt=1763068886366',
+    source: 'EDC Thailand 2026 official poster (ImageKit / Island Events)',
+  },
+  {
     code: 'edc',
     image:
       'https://image.electricdaisycarnival.cn/sites/7/2024/12/edccn_2025_mk_an_fest_site_mh_1534x1360_r01.jpg',

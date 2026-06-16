@@ -11,6 +11,7 @@ import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import { Public } from '../../common/auth/public.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { CreatePostDto } from './dto/create-post.dto';
+import { AiSearchPostsDto } from './dto/ai-search-posts.dto';
 import { CreatePostCommentDto } from './dto/create-post-comment.dto';
 import { PostService } from './post.service';
 
@@ -58,6 +59,19 @@ export class PostController {
       }
     }
     return this.postService.listByOwner(actor);
+  }
+
+  @Public()
+  @Post('ai-search')
+  aiSearch(
+    @Body() body: AiSearchPostsDto,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.postService.searchPostsByNaturalLanguage(
+      body.query,
+      body.activityLegacyId,
+      actor,
+    );
   }
 
   @Post()

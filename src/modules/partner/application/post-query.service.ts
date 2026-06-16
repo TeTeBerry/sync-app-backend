@@ -142,6 +142,10 @@ export class PostQueryService {
     );
   }
 
+  mapEventDetailPosts(posts: PostRecord[], actor: RequestActor) {
+    return this.mapPosts(posts, PostMapper.toEventDetailItem, actor);
+  }
+
   private async mapPosts<T extends { userId?: string }>(
     posts: PostRecord[],
     mapper: (post: PostRecord) => T,
