@@ -14,13 +14,22 @@ export function isPersonalityStaticAssetKey(raw: string | undefined): boolean {
 export function buildPersonalityCloudFileId(
   envId: string,
   assetKey: string,
+  storageBucket?: string,
 ): string {
   const key = assetKey.trim();
   const env = envId.trim();
+  const bucket = storageBucket?.trim();
   if (!key || !env) {
     return '';
   }
+  if (bucket) {
+    return `cloud://${env}.${bucket}/${key}`;
+  }
   return `cloud://${env}/${key}`;
+}
+
+export function resolveCloudStorageBucket(): string {
+  return process.env.CLOUDBASE_STORAGE_BUCKET?.trim() ?? '';
 }
 
 export function isPersonalityStaticCloudFileId(

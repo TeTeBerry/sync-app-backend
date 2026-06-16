@@ -33,5 +33,11 @@ node scripts/upload-personality-test-media.mjs
 Or upload manually in WeChat CloudBase console to the paths in
 `src/modules/personality-test/data/personality-media.ts`.
 
-The mini program resolves `cloud://{envId}/static/personality-test/...` via
-`wx.cloud.getTempFileURL` at runtime.
+```bash
+npm run media:generate-personality-test
+npm run media:upload-personality-test
+```
+
+After upload, set `CLOUDBASE_STORAGE_BUCKET` on the backend runtime (printed by the upload script).
+
+The mini program resolves media only via backend `GET /api/personality-test/media-urls` (cloud storage temp URLs).

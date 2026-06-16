@@ -32,6 +32,8 @@
     "db:reset-attendees:dry-run": "node scripts/reset-attendees.mjs --dry-run",
     "db:seed-itinerary": "node scripts/seed-itinerary-catalog.mjs",
     "db:sync-personality-test": "node scripts/sync-personality-test-catalog.mjs",
+    "media:generate-personality-test": "node scripts/generate-personality-test-media-assets.mjs",
+    "media:upload-personality-test": "node scripts/upload-personality-test-media.mjs",
     "db:crawl-discogs-djs": "node scripts/crawl-discogs-djs.mjs",
     "db:crawl-discogs-djs-gap": "node scripts/crawl-discogs-djs-gap.mjs",
     "db:translate-dj-locale": "node scripts/translate-dj-locale.mjs",

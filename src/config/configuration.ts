@@ -160,6 +160,8 @@ export default () => ({
 
   cloudbase: {
     envId: cleanEnv(process.env.CLOUDBASE_ENV_ID),
+    /** e.g. `7379-sync-prd-xxxx-1442514260` — required for server-side cloud file download. */
+    storageBucket: cleanEnv(process.env.CLOUDBASE_STORAGE_BUCKET),
   },
 
   itinerary: {

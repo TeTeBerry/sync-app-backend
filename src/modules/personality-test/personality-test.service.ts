@@ -23,6 +23,7 @@ import {
   assertPersonalityStaticCloudFileIdForEnv,
   buildPersonalityCloudFileId,
   isPersonalityStaticAssetKey,
+  resolveCloudStorageBucket,
 } from './utils/personality-media-ref.util';
 
 @Injectable()
@@ -73,7 +74,7 @@ export class PersonalityTestService {
     }
 
     const fileIds = uniqueKeys.map((key) =>
-      buildPersonalityCloudFileId(envId, key),
+      buildPersonalityCloudFileId(envId, key, resolveCloudStorageBucket()),
     );
     const downloads = await this.cloudStorage.fetchCloudFileDownloadUrls(
       fileIds,
