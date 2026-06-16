@@ -30,6 +30,9 @@ const NEARBY_SCHEME_REASON =
 const CITY_CENTER_SCHEME_REASON =
   '市中心/商圈配套更全，餐饮购物与次日出行方便，适合首次到访、想兼顾城市体验的玩家。';
 
+export const TRAVEL_GUIDE_HOTEL_LIST_LIMIT = 6;
+export const TRAVEL_GUIDE_NIGHTLIFE_LIST_LIMIT = 6;
+
 export function buildTransportLinesFromMap(
   departure: string,
   venueTitle: string,
@@ -112,11 +115,12 @@ export function hotelsFromRanked(
   roomHint: string,
   priceBands: [string, string],
   activity?: Pick<Activity, 'region'>,
+  picks?: { nearby: RankedMapPoi; cityCenter: RankedMapPoi },
 ): TravelGuideHotelItem[] {
   const bookingHint = activity
     ? travelGuideHotelBookingHint(activity)
     : '携程 / 美团';
-  const picked = ranked.slice(0, 3);
+  const picked = ranked.slice(0, TRAVEL_GUIDE_HOTEL_LIST_LIMIT);
   if (!picked.length) return [];
 
   return picked.map((p, index) => {
@@ -127,6 +131,7 @@ export function hotelsFromRanked(
     return {
       name: p.name,
       note: `起步约 ¥${p.avgPrice ?? band}/晚 · ${distanceText}${ratingText} · ${nightLabel} · ${roomHint}`,
+      reason: hotelReasonFromPoi(p, picks),
       bookingHint,
     };
   });
@@ -187,10 +192,12 @@ function schemeFromPoi(
 
 export function nightlifeFromRanked(
   ranked: RankedMapPoi[],
+  eventEndHour: number,
 ): TravelGuideSpotItem[] {
-  return ranked.slice(0, 4).map((p) => ({
+  return ranked.slice(0, TRAVEL_GUIDE_NIGHTLIFE_LIST_LIMIT).map((p) => ({
     name: p.name,
     note: formatNightlifeNote(p),
+    reason: nightlifeReasonFromPoi(p, eventEndHour),
   }));
 }
 
@@ -207,7 +214,26 @@ export function mergeRankedHotelsWithLlmPolish(
     return {
       name: hotel.name,
       note: polished.note?.trim() ? polished.note : hotel.note,
+      reason: polished.reason?.trim() ? polished.reason : hotel.reason,
       bookingHint: polished.bookingHint?.trim() || hotel.bookingHint,
+    };
+  });
+}
+
+/** 散场夜宵以地图排序为准；LLM 仅润色同名店铺的 note/reason */
+export function mergeNightlifeWithLlmPolish(
+  ranked: TravelGuideSpotItem[],
+  llmSpots: TravelGuideSpotItem[] | undefined,
+): TravelGuideSpotItem[] {
+  if (!llmSpots?.length) return ranked;
+  const llmByName = new Map(llmSpots.map((s) => [s.name, s]));
+  return ranked.map((spot) => {
+    const polished = llmByName.get(spot.name);
+    if (!polished) return spot;
+    return {
+      name: spot.name,
+      note: polished.note?.trim() ? polished.note : spot.note,
+      reason: polished.reason?.trim() ? polished.reason : spot.reason,
     };
   });
 }
@@ -255,24 +281,27 @@ export function mapCandidatesToLlmFallback(
   const regionKind = travelGuideRegionKind(input.activity);
   const interCity = Boolean(ctx.interCity);
 
-  const schemes = ranked.accommodationPicks
-    ? accommodationSchemesFromRanked(
-        ranked.accommodationPicks,
-        nightLabel,
-        room,
-        ranked.hotelPriceBand,
-        input.activity,
-      )
-    : accommodationSchemesFromRanked(
-        {
-          nearby: ranked.hotels[0]!,
-          cityCenter: ranked.hotels[1] ?? ranked.hotels[0]!,
-        },
-        nightLabel,
-        room,
-        ranked.hotelPriceBand,
-        input.activity,
-      );
+  const picks = ranked.accommodationPicks ?? {
+    nearby: ranked.hotels[0]!,
+    cityCenter: ranked.hotels[1] ?? ranked.hotels[0]!,
+  };
+
+  const schemes = accommodationSchemesFromRanked(
+    picks,
+    nightLabel,
+    room,
+    ranked.hotelPriceBand,
+    input.activity,
+  );
+
+  const hotels = hotelsFromRanked(
+    ranked.hotels,
+    nightLabel,
+    room,
+    ranked.hotelPriceBand,
+    input.activity,
+    picks,
+  );
 
   const documentItems =
     regionKind !== 'domestic'
@@ -300,16 +329,12 @@ export function mapCandidatesToLlmFallback(
       input.activity,
       input.departureCity,
     ),
-    hotels: schemes.map((s) => ({
-      name: s.name,
-      note: s.note,
-      bookingHint: s.bookingHint,
-    })),
+    hotels,
     accommodationSchemes: schemes,
     parkingLines: input.selfDrive
       ? buildParkingLinesFromMap(ranked.parking, ctx.venue.title)
       : undefined,
-    nightlifeSpots: nightlifeFromRanked(ranked.nightlife),
+    nightlifeSpots: nightlifeFromRanked(ranked.nightlife, ctx.eventEndHour),
     tipItems: [
       '以上交通、住宿与散场点位来自高德地图周边检索，并结合预算与距离智能排序。',
       '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
@@ -347,6 +372,59 @@ function formatNightlifeNote(p: RankedMapPoi): string {
   if (p.lateNightFriendly) parts.push('适合散场后前往');
   if (p.address) parts.push(p.address);
   return parts.join(' · ');
+}
+
+function hotelReasonFromPoi(
+  p: RankedMapPoi,
+  picks?: { nearby: RankedMapPoi; cityCenter: RankedMapPoi },
+): string {
+  if (picks?.nearby.name === p.name) return NEARBY_SCHEME_REASON;
+  if (picks?.cityCenter.name === p.name) return CITY_CENTER_SCHEME_REASON;
+
+  const parts: string[] = [];
+  if (p.distanceM <= 800) {
+    parts.push('步行或短途即可到会场，散场后回酒店最省时');
+  } else if (p.distanceM <= 1500) {
+    parts.push('距会场适中，打车几分钟可达，便利与性价比兼顾');
+  } else if (p.distanceM >= 2000) {
+    parts.push('位于商圈或市区，餐饮购物方便，适合兼顾城市体验');
+  } else {
+    parts.push('综合距离、评分与预算入选，可作为备选');
+  }
+  if (p.rating != null && p.rating >= 4.5) {
+    parts.push('地图评分较高，口碑相对稳定');
+  }
+  if (/五星|豪华|度假/.test(p.category)) {
+    parts.push('档次偏高，适合追求住宿体验');
+  } else if (/快捷|经济|连锁/.test(p.category)) {
+    parts.push('连锁/经济型，适合控预算');
+  }
+  return `${parts.join('；')}。`;
+}
+
+function nightlifeReasonFromPoi(p: RankedMapPoi, eventEndHour: number): string {
+  const parts: string[] = [];
+  if (p.lateNightFriendly) {
+    parts.push('营业时段覆盖散场后，适合凌晨补能量');
+  }
+  if (/24/.test(`${p.name} ${p.category}`)) {
+    parts.push('24 小时营业，不怕散场太晚');
+  }
+  if (/火锅|烧烤|串|砂锅|粥|夜宵|宵夜/.test(`${p.name} ${p.category}`)) {
+    parts.push('品类适合多人聚食、快速填饱');
+  }
+  if (p.distanceM <= 1500) {
+    parts.push('离会场近，散场后打车或步行都方便');
+  } else if (p.distanceM <= 3500) {
+    parts.push('距离可接受，值得一去');
+  }
+  if (eventEndHour >= 22) {
+    parts.push('与深夜场次节奏匹配');
+  }
+  if (!parts.length) {
+    parts.push('综合距离与评分入选，散场后可作备选');
+  }
+  return `${parts.slice(0, 3).join('；')}。`;
 }
 
 function formatKm(distanceM: number): string {

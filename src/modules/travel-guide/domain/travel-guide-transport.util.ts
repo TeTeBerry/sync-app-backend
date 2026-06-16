@@ -186,6 +186,47 @@ export function resolveVenueTransportCapabilities(
   };
 }
 
+/** 城际/国际段文案，不应出现在会场接驳 lines 中 */
+export function isInterCityTransportLine(line: string): boolean {
+  const t = line.trim();
+  if (!t) return true;
+
+  if (
+    /往返机票|搭乘国际航班|国际航班.*飞往|建议从.*飞往|从.*国际机场.*飞往/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  if (/提前\s*2[\-–—]8\s*周/.test(t) && /机票|票量/.test(t)) {
+    return true;
+  }
+  if (/12306|高铁.*至|动车.*至/.test(t)) {
+    return true;
+  }
+  if (
+    /建议从/.test(t) &&
+    /(国际机场|机场（[A-Z]{3}）)/.test(t) &&
+    /飞往/.test(t)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function filterVenueTransportLines(lines: string[]): string[] {
+  return lines
+    .map((line) => line.trim())
+    .filter((line) => line && !isInterCityTransportLine(line));
+}
+
+function pickVenueTransportHint(
+  hints: string[],
+  pattern: RegExp,
+): string | undefined {
+  return hints.find((h) => pattern.test(h) && !isInterCityTransportLine(h));
+}
+
 /** 过滤 LLM 或模板中不符合目的地能力的会场接驳项 */
 export function sanitizeVenueTransportOptions(
   profile: DestinationTransportProfile,
@@ -196,27 +237,34 @@ export function sanitizeVenueTransportOptions(
     selfDrive: true,
     activity: undefined,
   });
-  return options.filter((opt) => {
-    const text = `${opt.label} ${opt.lines.join(' ')}`;
-    if (/地铁|轻轨|MTR|BTS/.test(opt.label) && !caps.urbanRail.available) {
-      return false;
-    }
-    if (
-      /Grab|Bolt/.test(opt.label) &&
-      profile.regionKind === 'overseas' &&
-      !profile.thailand
-    ) {
-      return false;
-    }
-    if (/双条车|Songthaew/i.test(opt.label) && !caps.localMinibus.available) {
-      return false;
-    }
-    if (profile.regionKind === 'overseas') {
-      if (caps.forbiddenInVenue.test(text)) return false;
-      if (/高铁|12306|动车/.test(text)) return false;
-    }
-    return true;
-  });
+  return options
+    .map((opt) => {
+      const lines = filterVenueTransportLines(opt.lines);
+      if (!lines.length) return null;
+      return { label: opt.label, lines };
+    })
+    .filter((opt): opt is TravelGuideVenueTransportOption => opt != null)
+    .filter((opt) => {
+      const text = `${opt.label} ${opt.lines.join(' ')}`;
+      if (/地铁|轻轨|MTR|BTS/.test(opt.label) && !caps.urbanRail.available) {
+        return false;
+      }
+      if (
+        /Grab|Bolt/.test(opt.label) &&
+        profile.regionKind === 'overseas' &&
+        !profile.thailand
+      ) {
+        return false;
+      }
+      if (/双条车|Songthaew/i.test(opt.label) && !caps.localMinibus.available) {
+        return false;
+      }
+      if (profile.regionKind === 'overseas') {
+        if (caps.forbiddenInVenue.test(text)) return false;
+        if (/高铁|12306|动车/.test(text)) return false;
+      }
+      return true;
+    });
 }
 
 /** 会场接驳以地图构建为准；LLM 仅润色同名 label 的 lines，禁止增删方式 */
@@ -239,7 +287,8 @@ export function mergeVenueTransportWithLlmPolish(
         : null;
     const polishedLines = polished.lines
       .map((l) => l.trim())
-      .filter((l) => l && (!dropGrab || !dropGrab.test(l)));
+      .filter((l) => l && !isInterCityTransportLine(l))
+      .filter((l) => !dropGrab || !dropGrab.test(l));
     const safeLines = polishedLines.filter(
       (l) =>
         sanitizeVenueTransportOptions(profile, [
@@ -464,8 +513,9 @@ function buildOverseasVenueOptions(
   const venue = input.venueTitle;
   const address = input.venueReadableAddress;
   const options: TravelGuideVenueTransportOption[] = [];
-  const airportHint = input.transportHints.find((h) =>
-    /机场|shuttle|接驳/i.test(h),
+  const airportHint = pickVenueTransportHint(
+    input.transportHints,
+    /机场|shuttle|接驳/i,
   );
 
   if (caps.airportArrival) {
@@ -512,7 +562,7 @@ function buildOverseasVenueOptions(
       lines: [
         `曼谷活动日可乘 BTS（天铁）或 MRT（地铁）至最近站点，再步行或短途 Grab 至「${venue}」。`,
         '高峰时段天铁可能限流，备 Grab 作为散场备选；注意末班车时间。',
-        input.transportHints.find((h) => /BTS|MRT|天铁|地铁/.test(h)) ??
+        pickVenueTransportHint(input.transportHints, /BTS|MRT|天铁|地铁/) ??
           '以 Google Maps 实时路线为准。',
       ],
     });
@@ -575,8 +625,9 @@ function buildHmtVenueOptions(
   const caps = resolveVenueTransportCapabilities(profile, input);
   const dest = profile.destinationCity;
   const options: TravelGuideVenueTransportOption[] = [];
-  const hubHint = input.transportHints.find((h) =>
-    /机场|高铁|枢纽|站|接驳/.test(h),
+  const hubHint = pickVenueTransportHint(
+    input.transportHints,
+    /机场|高铁|枢纽|站|接驳/,
   );
 
   if (caps.airportArrival) {
@@ -598,7 +649,7 @@ function buildHmtVenueOptions(
       label: caps.urbanRail.label,
       lines: [
         `在${dest}乘${caps.urbanRail.label.replace(/ \+ 步行$/, '')}至最近站点，步行或短途打车至「${input.venueTitle}」。`,
-        input.transportHints.find((h) => /地铁|MTR|捷运|轻轨/.test(h)) ??
+        pickVenueTransportHint(input.transportHints, /地铁|MTR|捷运|轻轨/) ??
           '散场高峰可能限流，留意末班车；备用网约车。',
         '以当地地铁 App 或 Google Maps 实时路线为准。',
       ],
@@ -633,8 +684,9 @@ function buildDomesticVenueOptions(
   const caps = resolveVenueTransportCapabilities(profile, input);
   const dest = profile.destinationCity;
   const options: TravelGuideVenueTransportOption[] = [];
-  const hubHint = input.transportHints.find((h) =>
-    /机场|北站|枢纽|站|接驳/.test(h),
+  const hubHint = pickVenueTransportHint(
+    input.transportHints,
+    /机场|北站|枢纽|站|接驳/,
   );
 
   if (caps.airportArrival) {
@@ -659,7 +711,7 @@ function buildDomesticVenueOptions(
       label: caps.urbanRail.label,
       lines: [
         `在${dest}乘地铁/公交至会场最近站点，步行或短途打车至「${input.venueTitle}」。`,
-        input.transportHints.find((h) => /地铁|公交|线/.test(h)) ??
+        pickVenueTransportHint(input.transportHints, /地铁|公交|线/) ??
           '以高德/百度实时公交为准；散场高峰地铁可能限流。',
         '备用网约车，提前查末班车时间。',
       ],
@@ -669,7 +721,7 @@ function buildDomesticVenueOptions(
       label: '公交 + 步行',
       lines: [
         `在${dest}乘公交至会场附近站点，步行或短途打车至「${input.venueTitle}」。`,
-        input.transportHints.find((h) => /公交|线/.test(h)) ??
+        pickVenueTransportHint(input.transportHints, /公交|线/) ??
           '以高德/百度实时公交为准；散场高峰可能拥堵。',
         '备用网约车，提前查末班车时间。',
       ],

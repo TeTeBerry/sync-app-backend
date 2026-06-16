@@ -61,7 +61,7 @@ export class TravelGuidePoiRanker {
       preferLateNight: true,
       eventEndHour: ctx.eventEndHour,
       isHotel: false,
-    }).slice(0, 8);
+    }).slice(0, 10);
 
     const accommodationPicks =
       hotels.length > 0 ? pickAccommodationSchemes(hotels) : undefined;
@@ -176,7 +176,7 @@ export class TravelGuidePoiRanker {
               ...sortBucket(above, 'asc'),
             ];
 
-    return ordered.map((x) => x.poi).slice(0, 6);
+    return ordered.map((x) => x.poi).slice(0, 8);
   }
 }
 

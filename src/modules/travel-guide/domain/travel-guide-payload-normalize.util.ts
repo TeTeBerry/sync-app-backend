@@ -92,9 +92,14 @@ function normalizeHotel(item: unknown): TravelGuideHotelItem | null {
       : typeof record.booking_hint === 'string'
         ? record.booking_hint.trim()
         : undefined;
+  const reason =
+    typeof record.reason === 'string'
+      ? record.reason.trim()
+      : (coerceGuideLine(record.rationale) ?? undefined);
   return {
     name,
     note: note || '详见地图平台',
+    reason: reason || undefined,
     bookingHint: bookingHint || undefined,
   };
 }
@@ -152,7 +157,15 @@ function normalizeSpot(item: unknown): TravelGuideSpotItem | null {
       ? record.note.trim()
       : (coerceGuideLine(record.description) ?? '');
   if (!name) return null;
-  return { name, note: note || '详见地图平台' };
+  const reason =
+    typeof record.reason === 'string'
+      ? record.reason.trim()
+      : (coerceGuideLine(record.rationale) ?? undefined);
+  return {
+    name,
+    note: note || '详见地图平台',
+    reason: reason || undefined,
+  };
 }
 
 function normalizeTicketChannel(

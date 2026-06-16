@@ -40,6 +40,7 @@ import {
 import {
   mapCandidatesToLlmFallback,
   mergeAccommodationSchemesWithLlmPolish,
+  mergeNightlifeWithLlmPolish,
   mergeRankedHotelsWithLlmPolish,
 } from './map/travel-guide-map-plan.builder';
 import { mergeVenueTransportWithLlmPolish } from './domain/travel-guide-transport.util';
@@ -57,12 +58,12 @@ const TRAVEL_GUIDE_MAP_JSON_SYSTEM = [
   '硬性规则：',
   '- 酒店/店铺名称必须来自 candidates，禁止编造列表外商户。',
   '- accommodationSchemes 必须恰好 2 项：label 分别为「就近方案」「市中心方案」，各含 name/note/reason/bookingHint；reason 说明为何选该方案；境外场 bookingHint 用「携程 / Agoda / Booking / Airbnb」。',
-  '- hotels 与 accommodationSchemes 的 name 一一对应，便于展示。',
+  '- hotels 输出 candidates.hotels 前 6 项（与地图排序一致），每项含 name/note/reason/bookingHint；reason 说明距离、预算、评分或场景优势，禁止编造列表外酒店。',
   '- 酒店 note 写明预算区间、距会场距离、评分（若有）、拼房/晚数提示；价格落在 hotelPriceBand 内。',
-  '- 散场 nightlife 仅来自「夜宵」检索候选，优先 lateNightFriendly=true，避免普通午市餐厅。',
+  '- 散场 nightlifeSpots 输出 candidates.nightlife 前 6 项，每项含 name/note/reason；仅来自「夜宵」检索候选，优先 lateNightFriendly=true；reason 说明为何适合散场后前往（营业时段、距离、品类等）。',
   '- transportLines 必须是字符串数组（每项为一句完整中文），禁止输出对象；须结合 route、transportHints、venueReadableAddress。',
   '- transportLines 仅写城际/国际段（从出发地到目的地城市）：国内跨城写高铁/航班，境外写国际航班与入境准备；境外须从用户出发地对应机场出发（如深圳→深圳宝安 SZX），禁止写高铁/深圳北站等国内枢纽；勿写机场/酒店到会场的细节。',
-  '- venueTransportOptions 仅写目的地市内最后一段（机场/酒店/车站 → 会场）；方式与 label 须符合目的地真实交通（普吉无地铁/高铁/BTS，曼谷可用 BTS/MRT，无地铁城市勿写地铁）；禁止编造具体线路号；不得增删条目，仅润色 lines。',
+  '- venueTransportOptions 仅写目的地市内最后一段（机场/酒店/车站 → 会场）；方式与 label 须符合目的地真实交通；禁止写国际航班订票、出发机场飞往目的机场、往返机票等城际/国际段内容；不得增删条目，仅润色 lines。',
   '- transportLines 与 venueTransportOptions 内容禁止重复；城际段与接驳段分开写。',
   '- venueTransportOptions 给出 3–4 种抵达会场方式，每项含 label 与 lines 数组。',
   '- ticketChannels 列出官方与常用购票渠道（含 externalUrl 若有）；每项含 name 与 note。',
@@ -240,6 +241,10 @@ export class TravelGuideGenerationService {
       accommodationSchemes: mergeAccommodationSchemesWithLlmPolish(
         mapPayload.accommodationSchemes ?? [],
         polishedOrMap.accommodationSchemes,
+      ),
+      nightlifeSpots: mergeNightlifeWithLlmPolish(
+        mapPayload.nightlifeSpots,
+        polishedOrMap.nightlifeSpots,
       ),
       documentItems: polishedOrMap.documentItems?.length
         ? polishedOrMap.documentItems

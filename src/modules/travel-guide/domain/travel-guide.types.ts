@@ -3,6 +3,8 @@ export type TravelGuideBudgetTier = 'economy' | 'standard' | 'comfort';
 export interface TravelGuideHotelItem {
   name: string;
   note: string;
+  /** 为何推荐该酒店（距离/预算/评分等） */
+  reason?: string;
   bookingHint?: string;
 }
 
@@ -18,6 +20,8 @@ export interface TravelGuideAccommodationScheme {
 export interface TravelGuideSpotItem {
   name: string;
   note: string;
+  /** 为何适合散场后前往 */
+  reason?: string;
 }
 
 export interface TravelGuideTicketChannel {

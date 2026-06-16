@@ -1,6 +1,7 @@
 import {
   buildInterCityTransportLines,
   buildVenueTransportOptions,
+  isInterCityTransportLine,
   mergeVenueTransportWithLlmPolish,
   sanitizeVenueTransportOptions,
   resolveDestinationTransportProfile,
@@ -184,5 +185,47 @@ describe('travel-guide-transport.util', () => {
     ]);
     expect(cleaned).toHaveLength(1);
     expect(cleaned[0]?.label).toMatch(/Grab/);
+  });
+
+  it('strips inter-city flight lines from venue transport', () => {
+    const input = {
+      departure: '昆明',
+      venueTitle: 'Rhythm Park',
+      venueReadableAddress: '泰国普吉岛',
+      selfDrive: false,
+      interCity: true,
+      transportHints: [
+        '建议从昆明长水国际机场（KMG）搭乘国际航班飞往普吉国际机场（HKT）；往返机票建议提前 2-8 周关注，音乐节期间票量与房价波动大。',
+      ],
+      destinationCity: '泰国',
+      activity: thailandActivity,
+    };
+    const mapOptions = buildVenueTransportOptions(input);
+    expect(
+      mapOptions.every((o) =>
+        o.lines.every((line) => !isInterCityTransportLine(line)),
+      ),
+    ).toBe(true);
+
+    const merged = mergeVenueTransportWithLlmPolish(
+      mapOptions,
+      mapOptions.map((o) => ({
+        label: o.label,
+        lines: [
+          '建议从昆明长水国际机场（KMG）搭乘国际航班飞往普吉国际机场（HKT）；往返机票建议提前 2-8 周关注，音乐节期间票量与房价波动大。',
+        ],
+      })),
+      input,
+    );
+    expect(
+      merged.every((o) =>
+        o.lines.every((line) => !isInterCityTransportLine(line)),
+      ),
+    ).toBe(true);
+    expect(
+      merged.some((o) =>
+        o.lines.some((line) => /Grab|Shuttle|双条车|飞抵/.test(line)),
+      ),
+    ).toBe(true);
   });
 });

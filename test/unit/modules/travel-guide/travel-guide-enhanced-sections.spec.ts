@@ -131,6 +131,9 @@ describe('travel guide enhanced sections', () => {
     });
 
     expect(payload.accommodationSchemes).toHaveLength(2);
+    expect(payload.hotels.length).toBeGreaterThanOrEqual(2);
+    expect(payload.hotels[0]?.reason).toBeTruthy();
+    expect(payload.nightlifeSpots[0]?.reason).toBeTruthy();
     expect(payload.accommodationSchemes?.[0]?.bookingHint).toBe(
       '携程 / Agoda / Booking / Airbnb',
     );
