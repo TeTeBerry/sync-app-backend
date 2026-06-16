@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CloudModule } from '@src/infra/cloud/cloud.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
   PersonalityDjCatalog,
@@ -38,6 +39,7 @@ import { PersonalityTestService } from './personality-test.service';
     ActivityLookupModule,
     DjModule,
     ItineraryModule,
+    CloudModule,
   ],
   controllers: [PersonalityTestController],
   providers: [PersonalityTestCatalogService, PersonalityTestService],

@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { CloudStorageService } from '@src/infra/cloud/cloud-storage.service';
 import { DjService } from '../dj/dj.service';
 import { ItineraryScheduleService } from '../itinerary/itinerary-schedule.service';
 import {
@@ -18,6 +19,11 @@ import {
   scorePersonality,
 } from './utils/score-personality.util';
 import type { SubmitPersonalityTestDto } from './dto/submit-personality-test.dto';
+import {
+  assertPersonalityStaticCloudFileIdForEnv,
+  buildPersonalityCloudFileId,
+  isPersonalityStaticAssetKey,
+} from './utils/personality-media-ref.util';
 
 @Injectable()
 export class PersonalityTestService {
@@ -27,6 +33,7 @@ export class PersonalityTestService {
     private readonly djService: DjService,
     private readonly scheduleService: ItineraryScheduleService,
     private readonly catalog: PersonalityTestCatalogService,
+    private readonly cloudStorage: CloudStorageService,
   ) {}
 
   async getQuestions() {
@@ -48,6 +55,40 @@ export class PersonalityTestService {
       soulProfiles: runtime.soulProfiles,
       defaultSoulProfile: DEFAULT_DJ_SOUL_PROFILE,
     };
+  }
+
+  async resolveMediaUrls(assetKeys: string[]) {
+    const envId = process.env.CLOUDBASE_ENV_ID?.trim() ?? '';
+    const keys = assetKeys
+      .map((key) => key.trim())
+      .filter((key) => isPersonalityStaticAssetKey(key));
+    const uniqueKeys = [...new Set(keys)];
+
+    if (!uniqueKeys.length) {
+      return { urls: {} as Record<string, string> };
+    }
+
+    if (!envId) {
+      throw new BadRequestException('云存储未配置，无法解析测试媒体');
+    }
+
+    const fileIds = uniqueKeys.map((key) =>
+      buildPersonalityCloudFileId(envId, key),
+    );
+    const downloads = await this.cloudStorage.fetchCloudFileDownloadUrls(
+      fileIds,
+      assertPersonalityStaticCloudFileIdForEnv,
+      '无法读取测试媒体，请稍后再试',
+    );
+
+    const urls: Record<string, string> = {};
+    uniqueKeys.forEach((key, index) => {
+      const url = downloads[index]?.trim() ?? '';
+      if (url) {
+        urls[key] = url;
+      }
+    });
+    return { urls };
   }
 
   async submit(dto: SubmitPersonalityTestDto): Promise<PersonalityTestResult> {

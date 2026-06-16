@@ -39,17 +39,38 @@ export class CloudStorageService {
 
   /** Resolve `cloud://` fileID to a data URL for vision APIs. */
   async fetchUgcImageAsDataUrl(fileId: string): Promise<string> {
-    const trimmed = fileId.trim();
-    if (!isCloudStorageFileId(trimmed)) {
-      throw new BadRequestException('图片地址无效，请重新上传');
+    const downloadUrl = await this.fetchCloudFileDownloadUrl(fileId, {
+      validate: (id) => {
+        if (!isCloudStorageFileId(id)) {
+          throw new BadRequestException('图片地址无效，请重新上传');
+        }
+        assertCloudStorageFileIdForEnv(id);
+      },
+      invalidMessage: '无法读取上传的截图，请重试',
+    });
+    return fetchRemoteImageAsDataUrl(downloadUrl);
+  }
+
+  /** Resolve CloudBase fileIDs to HTTPS download URLs (WeChat `batchdownloadfile`). */
+  async fetchCloudFileDownloadUrls(
+    fileIds: string[],
+    validate: (fileId: string) => void,
+    invalidMessage = '无法读取云存储文件',
+  ): Promise<string[]> {
+    const candidates = fileIds.map((id) => id.trim()).filter(Boolean);
+    if (!candidates.length) {
+      return [];
     }
-    assertCloudStorageFileIdForEnv(trimmed);
+
+    for (const fileId of candidates) {
+      validate(fileId);
+    }
 
     if (!this.envId) {
-      throw new ServiceUnavailableException('云存储未配置，无法读取截图');
+      throw new ServiceUnavailableException('云存储未配置，无法读取文件');
     }
     if (!this.accessToken.isConfigured()) {
-      throw new ServiceUnavailableException('微信凭证未配置，无法读取截图');
+      throw new ServiceUnavailableException('微信凭证未配置，无法读取文件');
     }
 
     try {
@@ -61,7 +82,10 @@ export class CloudStorageService {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             env: this.envId,
-            file_list: [{ fileid: trimmed, max_age: 3600 }],
+            file_list: candidates.map((fileid) => ({
+              fileid,
+              max_age: 3600,
+            })),
           }),
         },
       );
@@ -72,13 +96,18 @@ export class CloudStorageService {
         );
       }
 
-      const row = payload.file_list?.[0];
-      const downloadUrl = row?.download_url?.trim();
-      if (!downloadUrl || row?.status !== 0) {
-        throw new BadRequestException('无法读取上传的截图，请重试');
-      }
-
-      return fetchRemoteImageAsDataUrl(downloadUrl);
+      return candidates.map((fileId, index) => {
+        const row = payload.file_list?.[index];
+        const downloadUrl =
+          row?.fileid === fileId ? row.download_url?.trim() : '';
+        if (!downloadUrl || row?.status !== 0) {
+          this.logger.warn(
+            `cloud file download unavailable: ${fileId} status=${row?.status ?? 'missing'}`,
+          );
+          return '';
+        }
+        return downloadUrl;
+      });
     } catch (error) {
       if (
         error instanceof BadRequestException ||
@@ -91,7 +120,25 @@ export class CloudStorageService {
           error instanceof Error ? error.message : String(error)
         }`,
       );
-      throw new BadRequestException('无法读取上传的截图，请重试');
+      throw new BadRequestException(invalidMessage);
     }
+  }
+
+  private async fetchCloudFileDownloadUrl(
+    fileId: string,
+    options: {
+      validate: (fileId: string) => void;
+      invalidMessage: string;
+    },
+  ): Promise<string> {
+    const [downloadUrl] = await this.fetchCloudFileDownloadUrls(
+      [fileId],
+      options.validate,
+      options.invalidMessage,
+    );
+    if (!downloadUrl) {
+      throw new BadRequestException(options.invalidMessage);
+    }
+    return downloadUrl;
   }
 }

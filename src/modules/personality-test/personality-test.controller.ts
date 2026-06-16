@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { SubmitPersonalityTestDto } from './dto/submit-personality-test.dto';
 import { PersonalityTestService } from './personality-test.service';
 
@@ -9,6 +9,17 @@ export class PersonalityTestController {
   @Get('catalog')
   getCatalog() {
     return this.personalityTest.getCatalog();
+  }
+
+  @Get('media-urls')
+  getMediaUrls(@Query('keys') keys?: string | string[]) {
+    const assetKeys = Array.isArray(keys)
+      ? keys
+      : (keys
+          ?.split(',')
+          .map((key) => key.trim())
+          .filter(Boolean) ?? []);
+    return this.personalityTest.resolveMediaUrls(assetKeys);
   }
 
   @Get('questions')
