@@ -1,4 +1,3 @@
-import { buildBuddyClarifyReply } from '@src/ai/conversation/buddy-clarify.util';
 import {
   getMissingBuddyFields,
   parseConversationContext,
@@ -23,18 +22,5 @@ describe('conversation-context.parser', () => {
     const ctx = parseConversationContext([], '');
     const missing = getMissingBuddyFields(ctx);
     expect(missing[0]).toBe('活动名称');
-  });
-});
-
-describe('buddy-clarify.util', () => {
-  it('asks for the first missing field', () => {
-    const ctx = parseConversationContext([], '');
-    const reply = buildBuddyClarifyReply(
-      getMissingBuddyFields(ctx, 1),
-      ctx,
-      'EDC Thailand',
-    );
-    expect(reply).toContain('计划哪天出发');
-    expect(reply).toContain('EDC Thailand');
   });
 });

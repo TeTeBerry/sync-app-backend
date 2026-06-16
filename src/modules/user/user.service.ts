@@ -15,10 +15,6 @@ import { MediaSecurityCheckService } from '../media-security/media-security-chec
 import { AccountRiskService } from '../account-risk/account-risk.service';
 import type { AccountRiskPublicStatus } from '../account-risk/account-risk.service';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import { toRequestActor } from '../../common/auth/actor-query.util';
-import type { StoredAuthorRecord } from './stored-author.types';
-
-export type { StoredAuthorRecord } from './stored-author.types';
 
 export interface UserMeDto {
   id: string;
@@ -66,13 +62,6 @@ export class UserService {
     const uid = actor.clientUserId?.trim();
     if (!uid) return null;
     return this.repository.findByExternalId(uid);
-  }
-
-  /** Resolve profile for stored post/comment author fields. */
-  resolveProfileFromStoredAuthor(record: StoredAuthorRecord) {
-    return this.resolveProfile(
-      toRequestActor(record.userId, record.authorName),
-    );
   }
 
   private resolveExternalId(actor: RequestActor): string {
