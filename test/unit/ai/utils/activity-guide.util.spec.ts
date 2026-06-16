@@ -38,6 +38,6 @@ describe('activity-guide.util', () => {
     } as never);
     expect(reply).toContain('AI 攻略');
     expect(reply).toContain('MARSHMELLO');
-    expect(reply).toContain('模板发帖');
+    expect(reply).toContain('AI出行攻略');
   });
 });

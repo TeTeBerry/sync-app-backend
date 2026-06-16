@@ -49,7 +49,7 @@ export class User {
   @Prop({ default: 0 })
   tokenVersion: number;
 
-  /** `restricted` / `banned` block new posts & comments until `postRestrictedUntil`. */
+  /** `restricted` / `banned` block interaction until `postRestrictedUntil` (field name retained). */
   @Prop({ default: 'normal', enum: ['normal', 'restricted', 'banned'] })
   accountRiskStatus?: 'normal' | 'restricted' | 'banned';
 

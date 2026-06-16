@@ -41,10 +41,10 @@ describe('DjInfoTurnHandler', () => {
       input: 'Marshmello 是什么风格',
       sink: sink as never,
       routed: { kind: 'dj_info', source: 'rule' },
-      profileSync: null,
       timings: {},
       requestId: 'r1',
       sessionId: 's1',
+      profileSync: null,
     });
 
     expect(djInfoService.answerFromChat).toHaveBeenCalled();

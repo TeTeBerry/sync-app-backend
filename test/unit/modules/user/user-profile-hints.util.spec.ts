@@ -1,5 +1,4 @@
 import {
-  buildBuddyPostProfileHints,
   buildTravelGuideProfileHints,
   extractProfileGenresFromText,
   mergeUserProfileHints,
@@ -8,28 +7,6 @@ import {
 } from '@src/modules/user/user-profile-hints.util';
 
 describe('user-profile-hints.util', () => {
-  it('buildBuddyPostProfileHints maps location from post', () => {
-    const hints = buildBuddyPostProfileHints({
-      body: '组队，6.13-6.14，上海，2人',
-      location: '上海',
-      tags: ['#组队'],
-    });
-
-    expect(hints.city).toBe('上海');
-  });
-
-  it('extracts favorGenres from post body', () => {
-    const hints = buildBuddyPostProfileHints({
-      body: '上海出发，喜欢 techno 和 house',
-      location: '上海',
-      tags: ['#组队'],
-    });
-
-    expect(hints.favorGenres).toEqual(
-      expect.arrayContaining(['Techno', 'House']),
-    );
-  });
-
   it('prefers compound genres over substring matches', () => {
     const genres = extractProfileGenresFromText(
       '只听 tech house 和 melodic techno',

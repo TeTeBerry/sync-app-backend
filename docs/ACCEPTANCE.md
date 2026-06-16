@@ -1,6 +1,6 @@
 # P0–P3 全栈验收报告
 
-> 验收日期：2026-05-27（复验）；**2026-06 更新**：帖子向量检索 / Recommend Gate / `post_recommendations` / `aiMatch` 配额已移除  
+> 验收日期：2026-05-27（复验）；**2026-06 更新**：组队帖子功能已移除；Recommend Gate / `post_recommendations` 已移除  
 > 范围：后端 P0–P3 + 前端 AI/活动页/性能优化 + 契约对齐
 
 ---
@@ -12,7 +12,7 @@
 | AI 聊天 WebSocket | ✅ | `ws://…/api/ai/chat/ws`；前后端事件类型一致；delta / message_complete / done 正常 |
 | Recommend Gate | — 已移除 | 原 `post_recommendations` + AI 配额；见 `ARCHITECTURE.md` |
 | Intent Router | ✅ | 22 套件含 `intent-router.service.spec.ts` 等，规则/LLM/缓存覆盖 |
-| Post Create 闭环 | ✅ | `post_created` / `existing_post` / `conversation_patch` 契约对齐 |
+| Post Create 闭环 | — 已移除 | 2026-06 移除 Partner 模块与 `post_created` 帧 |
 | Events UI | ✅ | 活动列表 Tab/卡片；价格与组队热度已移除；按钮「加入」 |
 | Search Bar | ✅ | 活动页搜索条为静态占位（无输入框/filter），仅展示样式 |
 | 后端测试 | ✅ | 全量 unit + contract 通过（套件数随迭代增长） |
@@ -56,8 +56,6 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
 | `delta` | ✅ | ✅ | ✅ | 打字机 append |
 | `message_complete` | ✅ | ✅ | ✅ | setFullText |
 | `done` | ✅ | ✅ | ✅ | 结束流、持久化 sessionId |
-| `post_created` | ✅ | ✅ | ✅ | onPostCreated 回调 |
-| `existing_post` | ✅ | ✅ | ✅ | onExistingPost 回调 |
 | `activity_recommendation` | ✅ | ✅ | ✅ | 活动推荐卡片 |
 | `suggested_replies` | ✅ | ✅ | ✅ | 渲染快捷 chip |
 | `conversation_patch` | ✅ | ✅ | ✅ | `aiChatStore.applyConversationPatch` |
@@ -81,10 +79,10 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
   → POST body.activityLegacyId + Header X-Activity-Id
 ```
 
-### 发帖流程（当前）
+### AI 对话（当前）
 
-- 后端：`buddy-post-flow.util.ts` + `create-post-from-chat.use-case` + `ai.service.buddy-flow.spec.ts`
-- 前端：`AiAssistantPage` 渲染 `suggestedReplies` chip；`post_created` / `existing_post` 刷新帖列表
+- 后端：`AiTurnPipeline` + `DeterministicReplyService` / `DjInfoTurnHandler`
+- 前端：`AiAssistantChat` 渲染 `suggestedReplies` chip；`activity_recommendation` 展示活动卡片
 
 ---
 
@@ -100,7 +98,7 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
 
 | 项 | 说明 |
 |----|------|
-| Chroma | 未设置 `CHROMA_URL` 时活动知识库 RAG 与用户画像向量禁用；不影响发帖主流程 |
+| Chroma | 未设置 `CHROMA_URL` 时活动知识库 RAG 禁用；不影响 AI 主流程 |
 | Redis | 不可用时自动 Mongo fallback；`/api/health` 报告 `redis: disabled` |
 | Demo 身份 | 仍使用 query `userId` / demo-owner，无 JWT（P0-H5 后置） |
 | LLM | 文本：`HUNYUAN_API_KEY`；视觉：`QWEN_API_KEY`；缺 Key 时 intent router 走 rules/default |
@@ -115,8 +113,8 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
 2. **启动后端**：`npm run dev`，确认控制台 `API: http://localhost:3000/api`
 3. **启动前端 H5**：`cd sync-app && npm run dev:h5`，浏览器打开本地地址
 4. **活动页**：进入「活动」Tab，卡片无价格/热度条，CTA 为「加入」；搜索条为静态占位
-5. **活动详情 → AI**：打开任一活动，进入 AI 助手，点「模板发帖」或描述需求发起对话
-6. **发帖闭环**：在活动上下文下发组队需求或点「组队发帖」chip，确认后出现 `post_created` toast，活动帖列表刷新
+5. **活动详情 → AI**：打开任一活动，进入 AI 助手，点「AI出行攻略」或描述出行需求
+6. **攻略生成**：在活动上下文下发出发地/人数/预算，确认后生成出行攻略长图
 8. **健康检查**：`curl http://localhost:3000/api/health`，确认 `ai.transport` 为 `websocket`、`mongodb: up` 及 chroma/redis 状态符合预期
 
 ---

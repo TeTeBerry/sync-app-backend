@@ -227,7 +227,7 @@ export function buildHomeFestivalShortcutReply(
     '',
     HOME_FESTIVAL_ENTER_ACTIVITY_PROMPT,
     '',
-    `直接回复活动名（如「${def.chipLabel}」）即可；我不会自动绑定活动，等你确认后再帮你了解活动或发帖。`,
+    `直接回复活动名（如「${def.chipLabel}」）即可；我不会自动绑定活动，等你确认后再帮你了解活动。`,
   ]);
 }
 
