@@ -137,7 +137,7 @@ const BASE_PERSONALITY_QUESTION_POOLS: Record<
     },
     {
       id: 'track-set-open',
-      prompt: 'セット开场前三分钟，你更可能？',
+      prompt: 'Set 开场前三分钟，你更可能？',
       options: [
         {
           id: 'track-set-open-a',
