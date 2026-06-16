@@ -54,12 +54,13 @@ describe('IntentRouterService', () => {
   it('uses rule fast path without calling LLM', async () => {
     const result = await router.resolve({
       messages: [],
-      input: '确认发布',
+      input: 'Marshmello 是什么风格',
+      activityLegacyId: 5,
       sessionId: 'sess-1',
       requestId: 'req-1',
     });
 
-    expect(result).toEqual({ kind: 'create_post', source: 'rule' });
+    expect(result).toEqual({ kind: 'dj_info', source: 'rule' });
     expect(llmService.invokeJson).not.toHaveBeenCalled();
   });
 
@@ -161,7 +162,7 @@ describe('IntentRouterService', () => {
 
   it('returns cached intent for same session+input within TTL', async () => {
     (llmService.invokeJson as jest.Mock).mockResolvedValue({
-      intent: 'create_post',
+      intent: 'chitchat',
     });
 
     const params = {
@@ -180,7 +181,7 @@ describe('IntentRouterService', () => {
 
   it('does not share cache across different activityLegacyId', async () => {
     (llmService.invokeJson as jest.Mock).mockResolvedValue({
-      intent: 'create_post',
+      intent: 'chitchat',
     });
 
     const base = {
@@ -239,7 +240,7 @@ describe('IntentRouterService', () => {
     expect(llmService.invokeJson).not.toHaveBeenCalled();
   });
 
-  it('falls back to create_post when LLM is disabled', async () => {
+  it('falls back to quick_reply when LLM is disabled', async () => {
     (llmService as { enabled: boolean }).enabled = false;
 
     const result = await router.resolve({
@@ -249,7 +250,7 @@ describe('IntentRouterService', () => {
       requestId: 'req-3',
     });
 
-    expect(result).toEqual({ kind: 'create_post', source: 'default' });
+    expect(result).toEqual({ kind: 'quick_reply', source: 'default' });
     expect(llmService.invokeJson).not.toHaveBeenCalled();
 
     (llmService as { enabled: boolean }).enabled = true;

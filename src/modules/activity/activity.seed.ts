@@ -46,8 +46,7 @@ export const ACTIVITY_SEED = [
     latitude: 7.96,
     longitude: 98.35,
     region: 'overseas',
-    image:
-      'https://ik.imagekit.io/TBR/Island%20Events/EDC%20Thailand%202026.png?updatedAt=1763068886366',
+    image: 'https://www.edmtunes.com/wp-content/uploads/2026/06/Image-5.jpg',
     activityType: 'festival',
     hot: true,
   },

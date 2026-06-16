@@ -4,12 +4,7 @@ import {
   type ConversationState,
 } from '../../src/shared/chat/conversation-state.types';
 
-const FLOWS: ConversationFlow[] = [
-  'idle',
-  'publish_confirm',
-  'clarify_buddy',
-  'collect_post_body',
-];
+const FLOWS: ConversationFlow[] = ['idle'];
 
 describe('chat conversation-state contract', () => {
   it('backend version is stable', () => {
@@ -17,24 +12,7 @@ describe('chat conversation-state contract', () => {
   });
 
   it('accepts every documented flow shape', () => {
-    const samples: ConversationState[] = [
-      { version: 1, flow: 'idle' },
-      {
-        version: 1,
-        flow: 'publish_confirm',
-        publishDraft: {
-          activityLegacyId: 4,
-          draftBody: '组队',
-          fromSelfPost: true,
-        },
-      },
-      { version: 1, flow: 'clarify_buddy' },
-      {
-        version: 1,
-        flow: 'collect_post_body',
-        publishDraft: { activityLegacyId: 4, fromSelfPost: true },
-      },
-    ];
+    const samples: ConversationState[] = [{ version: 1, flow: 'idle' }];
 
     for (const state of samples) {
       expect(FLOWS).toContain(state.flow);

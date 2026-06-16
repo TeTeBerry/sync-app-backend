@@ -1,7 +1,5 @@
 import {
   isReadOnlyTurn,
-  mustForceCreatePostIntent,
-  shouldBlockAgentForActivityInput,
   shouldRunAgentFirst,
 } from '@src/ai/policy/chat-turn-policy';
 import { toRequestActor } from '@src/common/auth/actor-query.util';
@@ -12,19 +10,6 @@ describe('chat-turn-policy', () => {
     actor: toRequestActor('u1', 'User'),
     messages: [],
   };
-
-  it('forces create_post during collect_post_body flow', () => {
-    expect(
-      mustForceCreatePostIntent(
-        '13号 A区',
-        {
-          version: 1,
-          flow: 'collect_post_body',
-        },
-        [],
-      ),
-    ).toBe(true);
-  });
 
   it('detects read-only turns', () => {
     expect(isReadOnlyTurn('Marshmello 是什么风格', 5)).toBe(true);
@@ -51,25 +36,5 @@ describe('chat-turn-policy', () => {
         conversationState: { version: 1, flow: 'idle' },
       }),
     ).toBe(true);
-  });
-
-  it('blocks agent during publish_confirm flow', () => {
-    expect(
-      shouldRunAgentFirst({
-        agentEnabled: true,
-        dto: { ...baseDto, activityLegacyId: 4 },
-        input: '确认发布',
-        conversationState: { version: 1, flow: 'publish_confirm' },
-      }),
-    ).toBe(false);
-  });
-
-  it('blocks agent for ticket resale input', () => {
-    expect(shouldBlockAgentForActivityInput('折价出一张 VIP 舞台票', 4)).toBe(
-      true,
-    );
-    expect(shouldBlockAgentForActivityInput('Marshmello 是什么风格', 5)).toBe(
-      false,
-    );
   });
 });

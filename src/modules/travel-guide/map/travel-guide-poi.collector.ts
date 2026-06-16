@@ -13,9 +13,9 @@ import type {
   RawMapPoi,
   TravelGuideMapContext,
 } from './travel-guide-map.types';
+import { hotelSearchKeywordsForBudgetTier } from './travel-guide-hotel-keywords.util';
 
 const PARKING_KEYWORDS = ['停车场', '停车'];
-const HOTEL_KEYWORDS = ['酒店', '宾馆'];
 
 const DEFAULT_EVENT_END_HOUR = 23.5;
 /** Align with default `AMAP_QPS` / `AMAP_MAX_CONCURRENT`. */
@@ -63,7 +63,10 @@ export class TravelGuidePoiCollector {
       transportHints.push(transport.transitHint);
     }
 
-    const poiSearchTasks = buildPoiSearchTasks(Boolean(dto.selfDrive));
+    const poiSearchTasks = buildPoiSearchTasks(
+      Boolean(dto.selfDrive),
+      dto.budgetTier,
+    );
     const poiBatches = await runInBatches(
       poiSearchTasks,
       POI_SEARCH_BATCH_SIZE,
@@ -113,8 +116,13 @@ export class TravelGuidePoiCollector {
 
 type PoiSearchTask = { keyword: string; kind: MapPoiKind };
 
-function buildPoiSearchTasks(selfDrive: boolean): PoiSearchTask[] {
-  const tasks: PoiSearchTask[] = HOTEL_KEYWORDS.map((keyword) => ({
+function buildPoiSearchTasks(
+  selfDrive: boolean,
+  budgetTier: GenerateTravelGuideDto['budgetTier'],
+): PoiSearchTask[] {
+  const tasks: PoiSearchTask[] = hotelSearchKeywordsForBudgetTier(
+    budgetTier,
+  ).map((keyword) => ({
     keyword,
     kind: 'hotel' as const,
   }));

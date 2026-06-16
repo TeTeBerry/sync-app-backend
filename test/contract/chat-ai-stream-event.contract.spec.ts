@@ -1,25 +1,15 @@
 import type { AiStreamEvent } from '../../src/shared/chat/ai-stream-event.types';
-import type { RecommendedPostCard } from '../../src/shared/chat/chat-cards.types';
 import { CONVERSATION_STATE_VERSION } from '../../src/shared/chat/conversation-state.types';
 
 const STREAM_EVENT_TYPES: AiStreamEvent['type'][] = [
   'delta',
   'message_complete',
   'done',
-  'post_created',
-  'existing_post',
   'activity_recommendation',
   'suggested_replies',
   'conversation_patch',
   'error',
 ];
-
-const samplePost: RecommendedPostCard = {
-  postId: 'p1',
-  snippet: '求组队',
-  authorName: 'Zara',
-  eventTitle: '风暴电音节',
-};
 
 describe('chat AiStreamEvent contract', () => {
   it('documents every stream frame variant', () => {
@@ -27,13 +17,6 @@ describe('chat AiStreamEvent contract', () => {
       { type: 'delta', content: 'hi' },
       { type: 'message_complete', content: 'done', requestId: 'req-1' },
       { type: 'done', messageId: 'm1', sessionId: 's1' },
-      {
-        type: 'post_created',
-        postId: 'p1',
-        activityLegacyId: 4,
-        post: samplePost,
-      },
-      { type: 'existing_post', postId: 'p1', activityLegacyId: 4 },
       {
         type: 'activity_recommendation',
         activity: {

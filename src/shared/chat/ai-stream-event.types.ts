@@ -1,7 +1,4 @@
-import type {
-  RecommendedActivityCard,
-  RecommendedPostCard,
-} from './chat-cards.types';
+import type { RecommendedActivityCard } from './chat-cards.types';
 import type { ConversationState } from './conversation-state.types';
 
 /** WebSocket AI stream frames (`AiService.streamChat` → client). */
@@ -16,17 +13,6 @@ export type AiStreamEvent =
       type: 'done';
       messageId?: string;
       sessionId?: string;
-    }
-  | {
-      type: 'post_created';
-      postId: string;
-      activityLegacyId?: number;
-      post?: RecommendedPostCard;
-    }
-  | {
-      type: 'existing_post';
-      postId: string;
-      activityLegacyId?: number;
     }
   | {
       type: 'activity_recommendation';

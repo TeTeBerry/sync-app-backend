@@ -1,7 +1,4 @@
-import type {
-  RecommendedActivityCard,
-  RecommendedPostCard,
-} from './chat-cards.types';
+import type { RecommendedActivityCard } from './chat-cards.types';
 
 export type ChatMessageRole = 'user' | 'assistant' | 'system';
 
@@ -16,6 +13,5 @@ export interface ChatMessage {
   content: string;
   imageContext?: ChatMessageImageContext;
   recommendedActivity?: RecommendedActivityCard;
-  createdPost?: RecommendedPostCard;
   suggestedReplies?: string[];
 }

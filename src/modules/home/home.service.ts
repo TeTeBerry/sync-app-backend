@@ -6,14 +6,7 @@ import {
   type IActivityLookupPort,
 } from '../activity/ports/activity-lookup.port';
 import { ActivityRegistrationService } from '../activity/registration/activity-registration.service';
-import {
-  POST_READ_PORT,
-  type IPostReadPort,
-} from '../partner/ports/post-read.port';
 import { getActivityTypeLabel } from '../activity/utils/activity-type.util';
-
-/** Matches frontend `HOME_POPULAR_POSTS_PERSIST_LIMIT`. */
-const HOME_POPULAR_POSTS_LIMIT = 8;
 
 @Injectable()
 export class HomeService {
@@ -22,15 +15,12 @@ export class HomeService {
     private readonly activityLookup: IActivityLookupPort,
     private readonly registrationService: ActivityRegistrationService,
     private readonly redisService: RedisService,
-    @Inject(POST_READ_PORT)
-    private readonly postRead: IPostReadPort,
   ) {}
 
   async getSummary(actor: RequestActor) {
-    const [activities, registeredLegacyIds, popularPosts] = await Promise.all([
+    const [activities, registeredLegacyIds] = await Promise.all([
       this.activityLookup.findAll(),
       this.registrationService.listRegisteredLegacyIds(actor),
-      this.postRead.listPopular(HOME_POPULAR_POSTS_LIMIT, actor),
     ]);
 
     const signupEvents = activities.map((item) => ({
@@ -66,7 +56,6 @@ export class HomeService {
     return {
       signupEvents,
       heat,
-      popularPosts,
     };
   }
 }

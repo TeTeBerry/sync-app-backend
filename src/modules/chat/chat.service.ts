@@ -53,7 +53,6 @@ export class ChatService {
     const recommendedActivity = this.normalizeRecommendedActivity(
       message.recommendedActivity,
     );
-    const createdPost = this.normalizeCreatedPost(message.createdPost);
     const suggestedReplies = this.normalizeSuggestedReplies(
       message.suggestedReplies,
     );
@@ -62,7 +61,6 @@ export class ChatService {
       !content &&
       !imageContext &&
       !recommendedActivity &&
-      !createdPost &&
       !suggestedReplies?.length
     ) {
       return null;
@@ -73,7 +71,6 @@ export class ChatService {
       content,
       ...(imageContext ? { imageContext } : {}),
       ...(recommendedActivity ? { recommendedActivity } : {}),
-      ...(createdPost ? { createdPost } : {}),
       ...(suggestedReplies?.length ? { suggestedReplies } : {}),
     };
   }
@@ -111,22 +108,6 @@ export class ChatService {
       ...(date ? { date } : {}),
       ...(venue ? { venue } : {}),
     };
-  }
-
-  private normalizeCreatedPost(
-    post?: ChatMessageDto['createdPost'],
-  ): ChatMessageDto['createdPost'] | undefined {
-    if (
-      !post ||
-      typeof post.postId !== 'string' ||
-      !post.postId.trim() ||
-      typeof post.snippet !== 'string' ||
-      typeof post.authorName !== 'string' ||
-      typeof post.eventTitle !== 'string'
-    ) {
-      return undefined;
-    }
-    return post;
   }
 
   private normalizeSuggestedReplies(
@@ -197,14 +178,18 @@ export class ChatService {
     if (!state.flow) {
       return createIdleState();
     }
+    const legacyFlow = (state as { flow?: string }).flow;
     const flow =
-      (state as { flow?: string }).flow === 'recommend_gate'
+      legacyFlow === 'idle' ||
+      legacyFlow === 'recommend_gate' ||
+      legacyFlow === 'publish_confirm' ||
+      legacyFlow === 'collect_post_body' ||
+      legacyFlow === 'clarify_buddy'
         ? 'idle'
-        : state.flow;
+        : 'idle';
     return {
       version: state.version ?? CONVERSATION_STATE_VERSION,
       flow,
-      ...(state.publishDraft ? { publishDraft: state.publishDraft } : {}),
     };
   }
 

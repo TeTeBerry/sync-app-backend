@@ -1,7 +1,7 @@
 import {
   inferDepartureCityFromText,
   normalizeCityName,
-} from '../partner/utils/departure-city.util';
+} from '../../common/utils/departure-city.util';
 
 export interface UserMatchProfile {
   city?: string;

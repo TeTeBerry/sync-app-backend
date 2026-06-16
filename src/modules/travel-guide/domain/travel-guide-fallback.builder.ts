@@ -225,7 +225,7 @@ export function buildTravelGuidePlan(input: {
     ...(parkingLines?.length
       ? { parking: { title: '停车指引', lines: parkingLines } }
       : {}),
-    nightlife: { title: '散场 AP · 夜宵', spots: nightlifeSpots },
+    nightlife: { title: '散场 夜宵', spots: nightlifeSpots },
     tips: { title: '小贴士', items: tipItems },
   };
 }

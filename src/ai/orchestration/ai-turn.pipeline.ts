@@ -2,14 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ActivityService } from '../../modules/activity/activity.service';
 import { IntentRouterService } from '../intent/intent-router.service';
 import { DeterministicReplyService } from '../orchestration/deterministic-reply.service';
-import { PostIntentService } from '../post-intent.service';
-import {
-  UserProfileAgent,
-  type UserProfileSyncResult,
-} from '../agents/user-profile.agent';
-import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
-import { mustForceCreatePostIntent } from '../policy/chat-turn-policy';
-import { PostingTurnOrchestrator } from './posting-turn.orchestrator';
 import { AgentFirstTurnHandler } from './handlers/agent-first-turn.handler';
 import { DjInfoTurnHandler } from './handlers/dj-info-turn.handler';
 import type {
@@ -50,14 +42,11 @@ export class AiTurnPipeline {
 
   constructor(
     private readonly agenticReplyService: DeterministicReplyService,
-    private readonly postIntentService: PostIntentService,
-    private readonly userProfileAgent: UserProfileAgent,
     private readonly intentRouter: IntentRouterService,
     private readonly sseBuilder: AiStreamEventBuilder,
     private readonly activityService: ActivityService,
     private readonly agentFirstTurnHandler: AgentFirstTurnHandler,
     private readonly djInfoTurnHandler: DjInfoTurnHandler,
-    private readonly postingTurnOrchestrator: PostingTurnOrchestrator,
   ) {}
 
   async runTurn(
@@ -85,22 +74,14 @@ export class AiTurnPipeline {
     const timings: AiTurnTimings = {};
 
     const intentStartedAt = Date.now();
-    const forceCreatePostIntent = mustForceCreatePostIntent(
-      lastInput,
-      conversationState,
-      fullMessages,
-    );
-
-    const routed = forceCreatePostIntent
-      ? { kind: 'create_post' as const, source: 'rule' as const }
-      : await this.intentRouter.resolve({
-          messages: fullMessages,
-          input: lastInput,
-          activityLegacyId: dto.activityLegacyId,
-          image: dto.image,
-          sessionId,
-          requestId,
-        });
+    const routed = await this.intentRouter.resolve({
+      messages: fullMessages,
+      input: lastInput,
+      activityLegacyId: dto.activityLegacyId,
+      image: dto.image,
+      sessionId,
+      requestId,
+    });
     timings.ms_intent = Date.now() - intentStartedAt;
 
     logAiTurn(this.logger, {
@@ -140,30 +121,10 @@ export class AiTurnPipeline {
       };
     }
 
-    const profileStartedAt = Date.now();
-    const profileSync = await this.syncProfileOnce(
-      routed.kind,
-      fullMessages,
-      lastInput,
-      dto.actor,
-    );
-    timings.ms_profile = Date.now() - profileStartedAt;
-    handlerCtx.profileSync = profileSync;
-
     let events: AiStreamEvent[] = [];
-    const buddyStartedAt = Date.now();
+    const replyStartedAt = Date.now();
 
     switch (routed.kind) {
-      case 'create_post':
-        events = await this.postingTurnOrchestrator.run({
-          dto,
-          messages: fullMessages,
-          input: lastInput,
-          sink,
-          profileSync,
-          timings,
-        });
-        break;
       case 'quick_reply':
         events = await this.collectDeterministicOnly(
           dto,
@@ -187,18 +148,16 @@ export class AiTurnPipeline {
         events = await this.djInfoTurnHandler.run(handlerCtx);
         break;
       default:
-        events = await this.postingTurnOrchestrator.run({
+        events = await this.collectDeterministicOnly(
           dto,
-          messages: fullMessages,
-          input: lastInput,
+          fullMessages,
+          lastInput,
           sink,
-          profileSync,
-          timings,
-        });
+        );
         break;
     }
 
-    timings.ms_buddy = Date.now() - buddyStartedAt;
+    timings.ms_buddy = Date.now() - replyStartedAt;
 
     return {
       events,
@@ -207,27 +166,6 @@ export class AiTurnPipeline {
       intent: routed.kind,
       timings,
     };
-  }
-
-  private async syncProfileOnce(
-    kind: string,
-    messages: ChatMessageDto[],
-    input: string,
-    actor: ChatRequestDto['actor'],
-  ): Promise<UserProfileSyncResult | null> {
-    if (kind !== 'create_post') {
-      return null;
-    }
-
-    if (isAiShortcutTag(input)) {
-      return null;
-    }
-
-    return this.userProfileAgent.syncProfileFromChat({
-      messages,
-      input,
-      actor,
-    });
   }
 
   private async collectActivityEnter(
