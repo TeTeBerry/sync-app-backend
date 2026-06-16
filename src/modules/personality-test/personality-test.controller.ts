@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { Public } from '../../common/auth/public.decorator';
+import { CurrentActor } from '../../common/auth/current-actor.decorator';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { SubmitPersonalityTestDto } from './dto/submit-personality-test.dto';
 import { PersonalityTestService } from './personality-test.service';
 
@@ -29,8 +31,16 @@ export class PersonalityTestController {
     return this.personalityTest.getQuestions();
   }
 
+  @Get('result')
+  getSavedResult(@CurrentActor() actor: RequestActor) {
+    return this.personalityTest.getSavedResult(actor.resolvedUserId);
+  }
+
   @Post('submit')
-  submit(@Body() body: SubmitPersonalityTestDto) {
-    return this.personalityTest.submit(body);
+  submit(
+    @Body() body: SubmitPersonalityTestDto,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.personalityTest.submit(body, actor.resolvedUserId);
   }
 }

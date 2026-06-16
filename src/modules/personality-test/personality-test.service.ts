@@ -1,4 +1,10 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import {
+  UserPersonalityTestResult,
+  type UserPersonalityTestResultDocument,
+} from '@src/database/schemas/user-personality-test-result.schema';
 import { CloudStorageService } from '@src/infra/cloud/cloud-storage.service';
 import { DjService } from '../dj/dj.service';
 import { ItineraryScheduleService } from '../itinerary/itinerary-schedule.service';
@@ -35,6 +41,8 @@ export class PersonalityTestService {
     private readonly scheduleService: ItineraryScheduleService,
     private readonly catalog: PersonalityTestCatalogService,
     private readonly cloudStorage: CloudStorageService,
+    @InjectModel(UserPersonalityTestResult.name)
+    private readonly resultModel: Model<UserPersonalityTestResultDocument>,
   ) {}
 
   async getQuestions() {
@@ -92,7 +100,39 @@ export class PersonalityTestService {
     return { urls };
   }
 
-  async submit(dto: SubmitPersonalityTestDto): Promise<PersonalityTestResult> {
+  async getSavedResult(userId: string): Promise<PersonalityTestResult | null> {
+    const trimmed = userId.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const doc = await this.resultModel.findOne({ userId: trimmed }).lean();
+    if (!doc?.result || doc.result.version !== 1) {
+      return null;
+    }
+    return doc.result;
+  }
+
+  private async persistResult(
+    userId: string,
+    result: PersonalityTestResult,
+  ): Promise<void> {
+    const trimmed = userId.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    await this.resultModel.findOneAndUpdate(
+      { userId: trimmed },
+      { userId: trimmed, result },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+  }
+
+  async submit(
+    dto: SubmitPersonalityTestDto,
+    userId?: string,
+  ): Promise<PersonalityTestResult> {
     if (dto.questionIds.length !== PERSONALITY_TEST_DRAW_COUNT) {
       throw new BadRequestException('题目信息无效，请重新开始测试');
     }
@@ -126,7 +166,7 @@ export class PersonalityTestService {
       runtimeCatalog.typeMeta,
     );
 
-    return {
+    const result: PersonalityTestResult = {
       version: 1,
       completedAt: new Date().toISOString(),
       answers: dto.answers,
@@ -135,5 +175,9 @@ export class PersonalityTestService {
       recommendedEvents,
       narrative,
     };
+
+    await this.persistResult(userId ?? '', result);
+
+    return result;
   }
 }

@@ -13,6 +13,10 @@ import {
   PersonalityTypeCatalog,
   PersonalityTypeCatalogSchema,
 } from '@src/database/schemas/personality-type-catalog.schema';
+import {
+  UserPersonalityTestResult,
+  UserPersonalityTestResultSchema,
+} from '@src/database/schemas/user-personality-test-result.schema';
 import { ActivityLookupModule } from '../activity/activity-lookup.module';
 import { DjModule } from '../dj/dj.module';
 import { ItineraryModule } from '../itinerary/itinerary.module';
@@ -34,6 +38,10 @@ import { PersonalityTestService } from './personality-test.service';
       {
         name: PersonalityDjCatalog.name,
         schema: PersonalityDjCatalogSchema,
+      },
+      {
+        name: UserPersonalityTestResult.name,
+        schema: UserPersonalityTestResultSchema,
       },
     ]),
     ActivityLookupModule,
