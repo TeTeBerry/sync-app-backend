@@ -4,6 +4,11 @@ import {
   type TravelGuideRegionKind,
   travelGuideRegionKind,
 } from './travel-guide-international.util';
+import {
+  filterDomesticTransportHints,
+  resolveDepartureAirportLabel,
+  resolveDestinationAirportLabel,
+} from './travel-guide-departure-airport.util';
 import { destinationCityFromActivityLocation } from '../map/travel-guide-intercity.util';
 import type { DrivingRouteSummary } from '../map/travel-guide-map.types';
 
@@ -12,10 +17,241 @@ export interface DestinationTransportProfile {
   destinationCity: string;
   thailand: boolean;
   bangkok: boolean;
+  phuket: boolean;
   /** 目的地是否有城市轨道交通（国内地铁、曼谷 BTS/MRT 等） */
   hasUrbanRail: boolean;
   /** 是否可用高铁/动车作为城际方式（仅中国大陆/部分港澳台线路） */
   hasHighSpeedRail: boolean;
+}
+
+/** 中国大陆已开通城市轨道交通的主要城市（不含仅有城际/单线的中小城） */
+const DOMESTIC_METRO_CITIES = new Set([
+  '上海',
+  '北京',
+  '广州',
+  '深圳',
+  '杭州',
+  '南京',
+  '成都',
+  '武汉',
+  '重庆',
+  '西安',
+  '天津',
+  '青岛',
+  '厦门',
+  '长沙',
+  '郑州',
+  '宁波',
+  '合肥',
+  '昆明',
+  '南宁',
+  '大连',
+  '沈阳',
+  '哈尔滨',
+  '济南',
+  '福州',
+  '南昌',
+  '贵阳',
+  '海口',
+  '苏州',
+  '无锡',
+  '常州',
+  '东莞',
+  '佛山',
+  '珠海',
+  '温州',
+  '绍兴',
+  '长春',
+  '太原',
+  '石家庄',
+  '兰州',
+  '乌鲁木齐',
+  '呼和浩特',
+  '徐州',
+  '南通',
+  '芜湖',
+  '洛阳',
+  '厦门',
+]);
+
+export interface VenueTransportCapabilities {
+  airportArrival: boolean;
+  rideHail: { available: boolean; label: string };
+  urbanRail: { available: boolean; label: string };
+  localMinibus: { available: boolean; label: string };
+  taxiShuttle: { available: boolean; label: string };
+  selfDrive: boolean;
+  /** 该目的地不应出现在会场接驳中的关键词（用于过滤 LLM 编造） */
+  forbiddenInVenue: RegExp;
+}
+
+function resolveDomesticHasUrbanRail(city: string): boolean {
+  const normalized = city.replace(/市$/, '').trim();
+  return DOMESTIC_METRO_CITIES.has(normalized);
+}
+
+function resolveHmtHasUrbanRail(corpus: string): boolean {
+  if (/香港|hong\s*kong/.test(corpus)) return true;
+  if (/台北|taoyuan|桃园|高雄|kaohsiung|台中|taichung/.test(corpus)) {
+    return true;
+  }
+  return false;
+}
+
+export function resolveVenueTransportCapabilities(
+  profile: DestinationTransportProfile,
+  input: Pick<
+    TravelGuideTransportBuildInput,
+    'interCity' | 'selfDrive' | 'activity'
+  >,
+): VenueTransportCapabilities {
+  const corpus =
+    `${input.activity?.name ?? ''} ${input.activity?.location ?? ''} ${profile.destinationCity}`.toLowerCase();
+
+  const baseForbidden =
+    profile.regionKind === 'overseas' && profile.thailand && !profile.bangkok
+      ? /高铁|12306|BTS|MRT|地铁|动车|国内地铁|深圳北|虹桥|北站|南站|东站|西站/
+      : profile.regionKind === 'overseas' && profile.thailand && profile.bangkok
+        ? /高铁|12306|国内地铁|深圳北|虹桥|北站|南站/
+        : profile.regionKind === 'domestic' && !profile.hasUrbanRail
+          ? /地铁|轻轨|MTR|BTS|MRT/
+          : /高铁|12306|深圳北|虹桥/;
+
+  if (profile.regionKind === 'overseas') {
+    if (profile.thailand) {
+      return {
+        airportArrival: input.interCity,
+        rideHail: {
+          available: true,
+          label: 'Grab / Bolt 网约车',
+        },
+        urbanRail: {
+          available: profile.bangkok,
+          label: 'BTS / MRT + 步行或短驳',
+        },
+        localMinibus: {
+          available: !profile.bangkok,
+          label: '双条车 / 当地小巴 / 出租车',
+        },
+        taxiShuttle: { available: true, label: '出租车 / 酒店 Shuttle' },
+        selfDrive: input.selfDrive,
+        forbiddenInVenue: baseForbidden,
+      };
+    }
+    return {
+      airportArrival: input.interCity,
+      rideHail: {
+        available: true,
+        label: '当地网约车 / 出租车',
+      },
+      urbanRail: { available: false, label: '' },
+      localMinibus: { available: false, label: '' },
+      taxiShuttle: { available: true, label: '出租车 / 酒店 Shuttle' },
+      selfDrive: input.selfDrive,
+      forbiddenInVenue: baseForbidden,
+    };
+  }
+
+  if (profile.regionKind === 'hmt') {
+    const urbanLabel = /香港|hong\s*kong/.test(corpus)
+      ? '港铁 MTR + 步行'
+      : /台北|桃园|高雄|台中/.test(corpus)
+        ? '捷运 / 地铁 + 步行'
+        : '地铁 / 轻轨 + 步行';
+    return {
+      airportArrival: input.interCity,
+      rideHail: { available: true, label: '网约车 / 出租车' },
+      urbanRail: {
+        available: profile.hasUrbanRail,
+        label: urbanLabel,
+      },
+      localMinibus: { available: false, label: '' },
+      taxiShuttle: { available: false, label: '' },
+      selfDrive: input.selfDrive,
+      forbiddenInVenue: baseForbidden,
+    };
+  }
+
+  return {
+    airportArrival: input.interCity,
+    rideHail: { available: true, label: '网约车 / 出租车' },
+    urbanRail: {
+      available: profile.hasUrbanRail,
+      label: '地铁 / 公交 + 步行',
+    },
+    localMinibus: { available: false, label: '' },
+    taxiShuttle: { available: false, label: '' },
+    selfDrive: input.selfDrive,
+    forbiddenInVenue: baseForbidden,
+  };
+}
+
+/** 过滤 LLM 或模板中不符合目的地能力的会场接驳项 */
+export function sanitizeVenueTransportOptions(
+  profile: DestinationTransportProfile,
+  options: TravelGuideVenueTransportOption[],
+): TravelGuideVenueTransportOption[] {
+  const caps = resolveVenueTransportCapabilities(profile, {
+    interCity: true,
+    selfDrive: true,
+    activity: undefined,
+  });
+  return options.filter((opt) => {
+    const text = `${opt.label} ${opt.lines.join(' ')}`;
+    if (/地铁|轻轨|MTR|BTS/.test(opt.label) && !caps.urbanRail.available) {
+      return false;
+    }
+    if (
+      /Grab|Bolt/.test(opt.label) &&
+      profile.regionKind === 'overseas' &&
+      !profile.thailand
+    ) {
+      return false;
+    }
+    if (/双条车|Songthaew/i.test(opt.label) && !caps.localMinibus.available) {
+      return false;
+    }
+    if (profile.regionKind === 'overseas') {
+      if (caps.forbiddenInVenue.test(text)) return false;
+      if (/高铁|12306|动车/.test(text)) return false;
+    }
+    return true;
+  });
+}
+
+/** 会场接驳以地图构建为准；LLM 仅润色同名 label 的 lines，禁止增删方式 */
+export function mergeVenueTransportWithLlmPolish(
+  ranked: TravelGuideVenueTransportOption[],
+  llmOptions: TravelGuideVenueTransportOption[] | undefined,
+  input: TravelGuideTransportBuildInput,
+): TravelGuideVenueTransportOption[] {
+  const profile = resolveDestinationTransportProfile(input);
+  const sanitized = sanitizeVenueTransportOptions(profile, ranked);
+  if (!llmOptions?.length) return sanitized;
+
+  const llmByLabel = new Map(llmOptions.map((o) => [o.label, o]));
+  const merged = sanitized.map((opt) => {
+    const polished = llmByLabel.get(opt.label);
+    if (!polished) return opt;
+    const dropGrab =
+      profile.regionKind === 'overseas' && !profile.thailand
+        ? /Grab|Bolt/
+        : null;
+    const polishedLines = polished.lines
+      .map((l) => l.trim())
+      .filter((l) => l && (!dropGrab || !dropGrab.test(l)));
+    const safeLines = polishedLines.filter(
+      (l) =>
+        sanitizeVenueTransportOptions(profile, [
+          { label: opt.label, lines: [l] },
+        ]).length > 0,
+    );
+    return {
+      label: opt.label,
+      lines: safeLines.length ? safeLines : opt.lines,
+    };
+  });
+  return sanitizeVenueTransportOptions(profile, merged);
 }
 
 export interface TravelGuideTransportBuildInput {
@@ -27,6 +263,7 @@ export interface TravelGuideTransportBuildInput {
   route?: DrivingRouteSummary;
   transportHints: string[];
   destinationCity?: string;
+  departureCity?: string;
   activity?: Pick<Activity, 'name' | 'location' | 'region'>;
 }
 
@@ -47,16 +284,24 @@ export function resolveDestinationTransportProfile(
       corpus,
     );
   const bangkok = /曼谷|bangkok/.test(corpus);
+  const phuket = /普吉|phuket|patong/.test(corpus);
+
+  let hasUrbanRail = false;
+  if (regionKind === 'domestic') {
+    hasUrbanRail = resolveDomesticHasUrbanRail(destinationCity);
+  } else if (regionKind === 'hmt') {
+    hasUrbanRail = resolveHmtHasUrbanRail(corpus);
+  } else if (regionKind === 'overseas' && bangkok) {
+    hasUrbanRail = true;
+  }
 
   return {
     regionKind,
     destinationCity,
     thailand,
     bangkok,
-    hasUrbanRail:
-      regionKind === 'domestic' ||
-      regionKind === 'hmt' ||
-      (regionKind === 'overseas' && bangkok),
+    phuket,
+    hasUrbanRail,
     hasHighSpeedRail: regionKind === 'domestic' || regionKind === 'hmt',
   };
 }
@@ -91,29 +336,34 @@ export function buildInterCityTransportLines(
   const lines: string[] = [];
 
   if (profile.regionKind === 'overseas') {
+    const depAirport = resolveDepartureAirportLabel(
+      departure,
+      input.departureCity,
+    );
+    const destAirport = resolveDestinationAirportLabel(
+      profile,
+      input.activity?.location,
+    );
+
     lines.push(
       `从「${departure}」前往${dest}为国际出行，建议提前 1–2 天飞抵，留出入境、取卡与休整时间。`,
+      `建议从${depAirport}搭乘国际航班飞往${destAirport}；往返机票建议提前 2–8 周关注，音乐节期间票量与房价波动大。`,
     );
     if (profile.thailand) {
       lines.push(
-        '常用航线：国内主要城市可直飞曼谷（BKK/DMK）或普吉（HKT）等，音乐节期间票量与房价波动大，建议尽早预订机票与酒店。',
         '入境需准备护照、返程机票与酒店订单；落地签/免签政策以入境当日官方为准。',
-        '机场至酒店/会场的 Grab、Shuttle 等接驳方式见下方「会场接驳」，勿与国内城际/轨道交通混淆。',
+        '抵目的地机场后的 Grab、Shuttle 等接驳见下方「会场接驳」。',
       );
     } else {
       lines.push(
-        `预订飞往${dest}的国际航班（或经枢纽中转），并提前确认签证/入境要求与返程票。`,
-        '建议打印酒店与返程行程单备查；当地叫车与会场接驳见下方「会场接驳」。',
+        '提前确认签证/入境要求；当地叫车与会场接驳见下方「会场接驳」。',
       );
     }
     if (selfDrive) {
       lines.push(
-        `若在当地租车，取车后导航「${venueLabel}」；泰国等右舵国家请确认驾照翻译件/国际驾照要求。`,
+        `若在当地租车，取车后导航「${venueLabel}」；请确认国际驾照/翻译件要求。`,
       );
     }
-    appendUniqueHints(lines, input.transportHints, {
-      excludePattern: /地铁|高铁|动车|12306|北站|宝安机场|深圳/,
-    });
     if (!lines.some((l) => l.includes('返程'))) {
       lines.push('国际返程机票建议与去程同时预订，活动前后舱位紧张。');
     }
@@ -177,11 +427,13 @@ function buildSameCityTransportLines(
   } else if (selfDrive) {
     lines.push(`自驾导航「${venueTitle}」，出发前在地图 App 查看实时路况。`);
   } else if (route) {
+    const modeHint = profile.hasUrbanRail ? '地铁/公交/网约车' : '公交/网约车';
     lines.push(
-      `参考行程约 ${route.distanceKm} km / ${route.durationMin} 分钟，具体地铁/公交/网约车方案见「会场接驳」。`,
+      `参考行程约 ${route.distanceKm} km / ${route.durationMin} 分钟，具体${modeHint}方案见「会场接驳」。`,
     );
   } else {
-    lines.push(`具体地铁/公交/网约车方案见下方「会场接驳」。`);
+    const modeHint = profile.hasUrbanRail ? '地铁/公交/网约车' : '公交/网约车';
+    lines.push(`具体${modeHint}方案见下方「会场接驳」。`);
   }
 
   appendUniqueHints(lines, input.transportHints);
@@ -207,12 +459,16 @@ function buildOverseasVenueOptions(
   input: TravelGuideTransportBuildInput,
   profile: DestinationTransportProfile,
 ): TravelGuideVenueTransportOption[] {
+  const caps = resolveVenueTransportCapabilities(profile, input);
   const dest = profile.destinationCity;
   const venue = input.venueTitle;
   const address = input.venueReadableAddress;
   const options: TravelGuideVenueTransportOption[] = [];
+  const airportHint = input.transportHints.find((h) =>
+    /机场|shuttle|接驳/i.test(h),
+  );
 
-  if (input.interCity) {
+  if (caps.airportArrival) {
     options.push({
       label: profile.thailand
         ? '机场落地 + Grab / Shuttle'
@@ -220,51 +476,63 @@ function buildOverseasVenueOptions(
       lines: profile.thailand
         ? [
             `飞抵${dest}机场后，可 Grab/Bolt 直达酒店或「${venue}」；大型电音节常售 Official Shuttle 套票，购票时留意是否含接驳。`,
-            input.transportHints.find((h) => /机场|shuttle|接驳/i.test(h)) ??
+            airportHint ??
               '机场出口有正规出租车与网约车候车区，勿乘坐无标识黑车；提前下载 Grab 并绑定支付方式。',
             `活动日再前往「${venue}」，${address || '以 Google Maps 导航为准'}。`,
           ]
         : [
-            `飞抵${dest}机场后，可乘机场大巴/网约车前往酒店，活动日再前往「${venue}」。`,
-            '提前查好末班接驳与入境取行李时间，深夜到达建议预约接机。',
+            `飞抵${dest}机场后，可乘机场大巴/当地网约车前往酒店，活动日再前往「${venue}」。`,
+            airportHint ??
+              '提前查好末班接驳与入境取行李时间，深夜到达建议预约接机。',
             `${address || '会场地址详见官方地图'}`,
           ],
     });
   }
 
-  options.push({
-    label: 'Grab / Bolt 网约车',
-    lines: [
-      `在${dest}用 Grab 或 Bolt 从酒店直达「${venue}」，散场高峰建议提前预约并确认上车点。`,
-      profile.thailand
-        ? '泰国不支持国内滴滴/高德打车；需当地 SIM 或 eSIM 才能正常叫车。'
-        : '使用当地主流网约车 App，核对车牌与订单后再上车。',
-      '多人同行可分摊费用；凌晨散场注意安全结伴。',
-    ],
-  });
-
-  if (profile.bangkok) {
+  if (caps.rideHail.available) {
     options.push({
-      label: 'BTS / MRT + 步行或短驳',
+      label: caps.rideHail.label,
+      lines: profile.thailand
+        ? [
+            `在${dest}用 Grab 或 Bolt 从酒店直达「${venue}」，散场高峰建议提前预约并确认上车点。`,
+            '泰国不支持国内滴滴/高德打车；需当地 SIM 或 eSIM 才能正常叫车。',
+            '多人同行可分摊费用；凌晨散场注意安全结伴。',
+          ]
+        : [
+            `在${dest}用当地主流网约车或出租车从酒店直达「${venue}」。`,
+            '使用当地叫车 App 或酒店代叫，核对车牌与订单后再上车。',
+            '散场高峰建议提前预约；多人同行可分摊费用。',
+          ],
+    });
+  }
+
+  if (caps.urbanRail.available) {
+    options.push({
+      label: caps.urbanRail.label,
       lines: [
         `曼谷活动日可乘 BTS（天铁）或 MRT（地铁）至最近站点，再步行或短途 Grab 至「${venue}」。`,
         '高峰时段天铁可能限流，备 Grab 作为散场备选；注意末班车时间。',
         input.transportHints.find((h) => /BTS|MRT|天铁|地铁/.test(h)) ??
-          '以 Google Maps 实时路线为准（泰国无国内高铁/地铁系统）。',
+          '以 Google Maps 实时路线为准。',
       ],
     });
-  } else if (profile.thailand) {
+  }
+
+  if (caps.localMinibus.available) {
     options.push({
-      label: '双条车 / 当地小巴 / 出租车',
+      label: caps.localMinibus.label,
       lines: [
-        `普吉/芭提雅等无城市地铁，可搭双条车（Songthaew）、酒店班车或打表出租车至「${venue}」。`,
-        '偏远场馆建议提前与酒店确认 Shuttle 时刻，或包车往返更省心。',
+        profile.phuket
+          ? `普吉岛无城市地铁/高铁，可搭双条车（Songthaew）、酒店班车或打表出租车至「${venue}」。`
+          : `当地无城市轨道交通，可搭双条车/当地小巴或打表出租车至「${venue}」。`,
+        airportHint ??
+          '偏远场馆建议提前与酒店确认 Shuttle 时刻，或包车往返更省心。',
         '谈价前先问清是否打表；Grab 在多数旅游区覆盖更好。',
       ],
     });
   }
 
-  if (input.selfDrive) {
+  if (caps.selfDrive) {
     options.push({
       label: '租车自驾',
       lines: input.route
@@ -281,9 +549,9 @@ function buildOverseasVenueOptions(
               : '活动日建议提早抵达。',
           ],
     });
-  } else {
+  } else if (caps.taxiShuttle.available) {
     options.push({
-      label: '出租车 / 酒店 Shuttle',
+      label: caps.taxiShuttle.label,
       lines: [
         `酒店前台可代叫正规出租车，或咨询是否提供往返「${venue}」的 Shuttle。`,
         profile.thailand
@@ -294,69 +562,91 @@ function buildOverseasVenueOptions(
     });
   }
 
-  return dedupeVenueOptions(options).slice(0, 4);
+  return sanitizeVenueTransportOptions(
+    profile,
+    dedupeVenueOptions(options).slice(0, 4),
+  );
 }
 
 function buildHmtVenueOptions(
   input: TravelGuideTransportBuildInput,
   profile: DestinationTransportProfile,
 ): TravelGuideVenueTransportOption[] {
+  const caps = resolveVenueTransportCapabilities(profile, input);
   const dest = profile.destinationCity;
   const options: TravelGuideVenueTransportOption[] = [];
+  const hubHint = input.transportHints.find((h) =>
+    /机场|高铁|枢纽|站|接驳/.test(h),
+  );
 
-  if (input.interCity) {
+  if (caps.airportArrival) {
     options.push({
-      label: '高铁 / 航班 + 市内接驳',
+      label: '机场 / 高铁枢纽 → 会场',
       lines: [
-        `抵${dest}后在机场/高铁站换乘地铁、巴士或网约车前往「${input.venueTitle}」。`,
-        input.transportHints.find((h) => /机场|高铁|枢纽|站/.test(h)) ??
-          '香港可用八达通乘 MTR，澳门/台湾按当地公交或地铁换乘。',
+        `抵${dest}后从机场或高铁站换乘当地公交、${profile.hasUrbanRail ? '地铁' : '巴士'}或网约车前往「${input.venueTitle}」。`,
+        hubHint ??
+          (profile.hasUrbanRail
+            ? '香港可用八达通乘 MTR；台湾可用悠游卡/一卡通乘捷运。'
+            : '澳门等地以巴士、出租车或网约车为主。'),
         `${input.venueReadableAddress || '详见地图导航'}`,
       ],
     });
   }
 
-  if (profile.hasUrbanRail) {
+  if (caps.urbanRail.available) {
     options.push({
-      label: '地铁 / 轻轨 + 步行',
+      label: caps.urbanRail.label,
       lines: [
-        `在${dest}乘 MTR/地铁/轻轨至最近站点，步行或短途打车至「${input.venueTitle}」。`,
-        '散场高峰可能限流，留意末班车；备用网约车。',
+        `在${dest}乘${caps.urbanRail.label.replace(/ \+ 步行$/, '')}至最近站点，步行或短途打车至「${input.venueTitle}」。`,
+        input.transportHints.find((h) => /地铁|MTR|捷运|轻轨/.test(h)) ??
+          '散场高峰可能限流，留意末班车；备用网约车。',
         '以当地地铁 App 或 Google Maps 实时路线为准。',
       ],
     });
   }
 
-  options.push({
-    label: '网约车 / 出租车',
-    lines: [
-      `酒店或枢纽打车至「${input.venueTitle}」，高峰约需 30–90 分钟（视路况）。`,
-      '散场建议提前预约车辆，设置好上车点避开拥堵路段。',
-      '多人同行可分摊费用，注意核对车牌。',
-    ],
-  });
+  if (caps.rideHail.available) {
+    options.push({
+      label: caps.rideHail.label,
+      lines: [
+        `酒店或枢纽打车至「${input.venueTitle}」，高峰约需 30–90 分钟（视路况）。`,
+        '散场建议提前预约车辆，设置好上车点避开拥堵路段。',
+        '多人同行可分摊费用，注意核对车牌。',
+      ],
+    });
+  }
 
-  if (input.selfDrive) {
+  if (caps.selfDrive) {
     options.push(buildSelfDriveVenueOption(input));
   }
 
-  return dedupeVenueOptions(options).slice(0, 4);
+  return sanitizeVenueTransportOptions(
+    profile,
+    dedupeVenueOptions(options).slice(0, 4),
+  );
 }
 
 function buildDomesticVenueOptions(
   input: TravelGuideTransportBuildInput,
   profile: DestinationTransportProfile,
 ): TravelGuideVenueTransportOption[] {
+  const caps = resolveVenueTransportCapabilities(profile, input);
   const dest = profile.destinationCity;
   const options: TravelGuideVenueTransportOption[] = [];
+  const hubHint = input.transportHints.find((h) =>
+    /机场|北站|枢纽|站|接驳/.test(h),
+  );
 
-  if (input.interCity) {
+  if (caps.airportArrival) {
+    const hubModes = profile.hasUrbanRail ? '打车或地铁' : '打车或公交';
     options.push({
       label: '枢纽接驳（机场/火车站 → 会场）',
       lines: [
-        `抵${dest}后，从机场或火车站打车/地铁前往「${input.venueTitle}」。`,
-        input.transportHints.find((h) => /机场|北站|枢纽|站|接驳/.test(h)) ??
-          '枢纽出站层按指引乘地铁或网约车，高峰建议多预留 30–60 分钟。',
+        `抵${dest}后，从机场或火车站${hubModes}前往「${input.venueTitle}」。`,
+        hubHint ??
+          (profile.hasUrbanRail
+            ? '枢纽出站层按指引乘地铁或网约车，高峰建议多预留 30–60 分钟。'
+            : '枢纽出站层按指引乘公交或网约车，高峰建议多预留 30–60 分钟。'),
         input.route && input.route.distanceKm < 120
           ? `枢纽至会场约 ${input.route.distanceKm} km / ${input.route.durationMin} 分钟。`
           : `${input.venueReadableAddress || '详见高德地图导航'}`,
@@ -364,30 +654,47 @@ function buildDomesticVenueOptions(
     });
   }
 
-  options.push({
-    label: '地铁 / 公交 + 步行',
-    lines: [
-      `在${dest}乘地铁/公交至会场最近站点，步行或短途打车至「${input.venueTitle}」。`,
-      input.transportHints.find((h) => /地铁|公交|线/.test(h)) ??
-        '以高德/百度实时公交为准；散场高峰地铁可能限流。',
-      '备用网约车，提前查末班车时间。',
-    ],
-  });
+  if (caps.urbanRail.available) {
+    options.push({
+      label: caps.urbanRail.label,
+      lines: [
+        `在${dest}乘地铁/公交至会场最近站点，步行或短途打车至「${input.venueTitle}」。`,
+        input.transportHints.find((h) => /地铁|公交|线/.test(h)) ??
+          '以高德/百度实时公交为准；散场高峰地铁可能限流。',
+        '备用网约车，提前查末班车时间。',
+      ],
+    });
+  } else if (!input.interCity) {
+    options.push({
+      label: '公交 + 步行',
+      lines: [
+        `在${dest}乘公交至会场附近站点，步行或短途打车至「${input.venueTitle}」。`,
+        input.transportHints.find((h) => /公交|线/.test(h)) ??
+          '以高德/百度实时公交为准；散场高峰可能拥堵。',
+        '备用网约车，提前查末班车时间。',
+      ],
+    });
+  }
 
-  options.push({
-    label: '网约车 / 出租车',
-    lines: [
-      `从酒店或任意地点打车至「${input.venueTitle}」，高峰约需 40–90 分钟（视路况）。`,
-      '散场时段优先滴滴/高德预约，设置好上车点避开拥堵路段。',
-      '多人同行可分摊费用，注意核对车牌与平台订单。',
-    ],
-  });
+  if (caps.rideHail.available) {
+    options.push({
+      label: caps.rideHail.label,
+      lines: [
+        `从酒店或任意地点打车至「${input.venueTitle}」，高峰约需 40–90 分钟（视路况）。`,
+        '散场时段优先滴滴/高德预约，设置好上车点避开拥堵路段。',
+        '多人同行可分摊费用，注意核对车牌与平台订单。',
+      ],
+    });
+  }
 
-  if (input.selfDrive) {
+  if (caps.selfDrive) {
     options.push(buildSelfDriveVenueOption(input));
   }
 
-  return dedupeVenueOptions(options).slice(0, 4);
+  return sanitizeVenueTransportOptions(
+    profile,
+    dedupeVenueOptions(options).slice(0, 4),
+  );
 }
 
 function buildSelfDriveVenueOption(

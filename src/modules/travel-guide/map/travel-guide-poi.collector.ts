@@ -3,6 +3,8 @@ import type { Activity } from '../../../database/schemas/activity.schema';
 import type { GenerateTravelGuideDto } from '../dto/generate-travel-guide.dto';
 import { TravelGuideGeoCacheService } from './travel-guide-geo-cache.service';
 import { getAllHotPathFallbackPois } from './travel-guide-hot-path-pois.data';
+import { isTravelGuideAbroad } from '../domain/travel-guide-international.util';
+import { filterDomesticTransportHints } from '../domain/travel-guide-departure-airport.util';
 import { destinationCityFromActivityLocation } from './travel-guide-intercity.util';
 import {
   AFTERPARTY_SEARCH_KEYWORD,
@@ -56,12 +58,17 @@ export class TravelGuidePoiCollector {
       activity,
     });
 
-    const transportHints: string[] = [...(transport.hintLines ?? [])];
-    if (transport.hotHubLabel) {
-      transportHints.push(`推荐枢纽：${transport.hotHubLabel}`);
-    }
-    if (transport.transitHint) {
-      transportHints.push(transport.transitHint);
+    const abroad = isTravelGuideAbroad(activity);
+    const transportHints: string[] = abroad
+      ? filterDomesticTransportHints([...(transport.hintLines ?? [])])
+      : [...(transport.hintLines ?? [])];
+    if (!abroad) {
+      if (transport.hotHubLabel) {
+        transportHints.push(`推荐枢纽：${transport.hotHubLabel}`);
+      }
+      if (transport.transitHint) {
+        transportHints.push(transport.transitHint);
+      }
     }
 
     const poiSearchTasks = buildPoiSearchTasks(Boolean(dto.selfDrive));

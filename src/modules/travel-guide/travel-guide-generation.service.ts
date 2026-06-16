@@ -42,6 +42,7 @@ import {
   mergeAccommodationSchemesWithLlmPolish,
   mergeRankedHotelsWithLlmPolish,
 } from './map/travel-guide-map-plan.builder';
+import { mergeVenueTransportWithLlmPolish } from './domain/travel-guide-transport.util';
 import type { TravelGuideMapLlmInput } from './map/travel-guide-map.types';
 import type { TravelGuideMapContext } from './map/travel-guide-map.types';
 import type { TravelGuideRankedCandidates } from './map/travel-guide-map.types';
@@ -60,8 +61,8 @@ const TRAVEL_GUIDE_MAP_JSON_SYSTEM = [
   '- 酒店 note 写明预算区间、距会场距离、评分（若有）、拼房/晚数提示；价格落在 hotelPriceBand 内。',
   '- 散场 nightlife 仅来自「夜宵」检索候选，优先 lateNightFriendly=true，避免普通午市餐厅。',
   '- transportLines 必须是字符串数组（每项为一句完整中文），禁止输出对象；须结合 route、transportHints、venueReadableAddress。',
-  '- transportLines 仅写城际/国际段（从出发地到目的地城市）：国内跨城写高铁/航班，境外写国际航班与入境准备；勿写机场/酒店到会场的细节。',
-  '- venueTransportOptions 仅写目的地市内最后一段（机场/酒店/车站 → 会场），按目的地真实交通方式：泰国无高铁与国内地铁，普吉等用 Grab、Shuttle、双条车/出租车；曼谷可用 BTS/MRT。',
+  '- transportLines 仅写城际/国际段（从出发地到目的地城市）：国内跨城写高铁/航班，境外写国际航班与入境准备；境外须从用户出发地对应机场出发（如深圳→深圳宝安 SZX），禁止写高铁/深圳北站等国内枢纽；勿写机场/酒店到会场的细节。',
+  '- venueTransportOptions 仅写目的地市内最后一段（机场/酒店/车站 → 会场）；方式与 label 须符合目的地真实交通（普吉无地铁/高铁/BTS，曼谷可用 BTS/MRT，无地铁城市勿写地铁）；禁止编造具体线路号；不得增删条目，仅润色 lines。',
   '- transportLines 与 venueTransportOptions 内容禁止重复；城际段与接驳段分开写。',
   '- venueTransportOptions 给出 3–4 种抵达会场方式，每项含 label 与 lines 数组。',
   '- ticketChannels 列出官方与常用购票渠道（含 externalUrl 若有）；每项含 name 与 note。',
@@ -223,6 +224,7 @@ export class TravelGuideGenerationService {
 
     const mapPayload = mapCandidatesToLlmFallback(mapCtx, ranked, {
       departure: dto.departure.trim(),
+      departureCity: dto.departureCity?.trim(),
       selfDrive: Boolean(dto.selfDrive),
       accommodationNights,
       headcount: dto.headcount,
@@ -246,9 +248,21 @@ export class TravelGuideGenerationService {
         ? polishedOrMap.ticketChannels
         : mapPayload.ticketChannels,
       essentials: polishedOrMap.essentials ?? mapPayload.essentials,
-      venueTransportOptions: polishedOrMap.venueTransportOptions?.length
-        ? polishedOrMap.venueTransportOptions
-        : mapPayload.venueTransportOptions,
+      venueTransportOptions: mergeVenueTransportWithLlmPolish(
+        mapPayload.venueTransportOptions ?? [],
+        polishedOrMap.venueTransportOptions,
+        {
+          departure: dto.departure.trim(),
+          venueTitle: mapCtx.venue.title,
+          venueReadableAddress: mapCtx.venueReadableAddress,
+          selfDrive: Boolean(dto.selfDrive),
+          interCity: Boolean(mapCtx.interCity),
+          route: mapCtx.drivingRoute ?? mapCtx.transitRoute,
+          transportHints: mapCtx.transportHints,
+          departureCity: dto.departureCity?.trim(),
+          activity,
+        },
+      ),
       budgetItems: polishedOrMap.budgetItems?.length
         ? polishedOrMap.budgetItems
         : mapPayload.budgetItems,

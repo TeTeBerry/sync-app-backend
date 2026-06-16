@@ -39,6 +39,7 @@ export function buildTransportLinesFromMap(
   hints: string[] = [],
   interCity = false,
   activity?: Activity,
+  departureCity?: string,
 ): string[] {
   return buildInterCityTransportLines({
     departure,
@@ -51,6 +52,7 @@ export function buildTransportLinesFromMap(
     destinationCity: activity
       ? destinationCityFromActivityLocation(activity.location)
       : undefined,
+    departureCity,
     activity,
   });
 }
@@ -235,6 +237,7 @@ export function mapCandidatesToLlmFallback(
   ranked: TravelGuideRankedCandidates,
   input: {
     departure: string;
+    departureCity?: string;
     selfDrive: boolean;
     accommodationNights: number;
     headcount: number;
@@ -295,6 +298,7 @@ export function mapCandidatesToLlmFallback(
       ctx.transportHints,
       interCity,
       input.activity,
+      input.departureCity,
     ),
     hotels: schemes.map((s) => ({
       name: s.name,
@@ -323,6 +327,7 @@ export function mapCandidatesToLlmFallback(
       route: ctx.drivingRoute ?? ctx.transitRoute,
       transportHints: ctx.transportHints,
       destinationCity: destCity,
+      departureCity: input.departureCity,
       activity: input.activity,
     }),
     budgetItems: buildTravelGuideBudgetItems({

@@ -21,6 +21,7 @@ import {
   buildGenericInterCityHints,
   isInterCityByDistance,
 } from './travel-guide-intercity.util';
+import { isTravelGuideAbroad } from '../domain/travel-guide-international.util';
 import { getHotPathFallbackPois } from './travel-guide-hot-path-pois.data';
 import {
   findDepartureCityAnchor,
@@ -128,7 +129,9 @@ export class TravelGuideGeoCacheService {
     >;
   }): Promise<ResolvedTransport> {
     const hot = findHotActivityProfile(input.activityLegacyId);
-    if (hot) {
+    const abroadActivity =
+      input.activity != null && isTravelGuideAbroad(input.activity);
+    if (hot && !abroadActivity) {
       const interCity = matchHotInterCityRoute(hot, input.departureText);
       if (interCity) {
         return {
