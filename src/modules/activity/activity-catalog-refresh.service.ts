@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { KNOWLEDGE_DOCUMENTS } from '../../infra/chroma/knowledge.seed';
 import { LlmService } from '../../infra/llm/llm.service';
 import { RedisService } from '../../redis/redis.service';
@@ -28,7 +28,7 @@ function knowledgeForCode(code: string): string {
 }
 
 @Injectable()
-export class ActivityCatalogRefreshService implements OnModuleInit {
+export class ActivityCatalogRefreshService implements OnApplicationBootstrap {
   private readonly logger = new Logger(ActivityCatalogRefreshService.name);
   private lastRefreshAt = 0;
   private refreshInFlight = false;
@@ -39,7 +39,7 @@ export class ActivityCatalogRefreshService implements OnModuleInit {
     private readonly redisService: RedisService,
   ) {}
 
-  async onModuleInit() {
+  async onApplicationBootstrap() {
     await this.loadLastRefreshAt();
     void this.refreshIfDue();
     setInterval(() => void this.refreshIfDue(), DAILY_CHECK_MS);

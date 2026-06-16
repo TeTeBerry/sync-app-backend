@@ -71,10 +71,15 @@ export type RecommendDjLineupResult = {
   challenge: DjRecommendation[];
 };
 
+export type SpiritConnection = {
+  role: 'soul' | 'aligned';
+  djName: string;
+};
+
 export type PersonalityNarrative = {
   tagline: string;
   aiAnalysis: string;
-  spiritConnections: string[];
+  spiritConnections: SpiritConnection[];
 };
 
 export type PersonalityEventRecommendation = {

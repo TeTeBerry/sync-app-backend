@@ -63,10 +63,18 @@ export function buildPersonalityNarrative(
     .filter(Boolean)
     .join('\n');
 
+  const soulNameKey = soulName.trim().toLowerCase();
+  const alignedDjs = recommendations.mustSee
+    .filter((item) => item.djName.trim().toLowerCase() !== soulNameKey)
+    .slice(0, 2);
+
   const spiritConnections = [
-    recommendations.soulMatch.djName,
-    ...recommendations.mustSee.slice(0, 2).map((item) => item.djName),
-  ].filter((name, index, list) => list.indexOf(name) === index);
+    { role: 'soul' as const, djName: soulName },
+    ...alignedDjs.map((item) => ({
+      role: 'aligned' as const,
+      djName: item.djName,
+    })),
+  ];
 
   return {
     tagline,

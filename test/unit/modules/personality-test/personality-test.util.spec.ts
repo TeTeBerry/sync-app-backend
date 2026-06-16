@@ -78,6 +78,13 @@ describe('personality-test scoring', () => {
     expect(narrative.aiAnalysis.length).toBeGreaterThan(20);
     expect(narrative.aiAnalysis).toContain('阵容已官宣');
     expect(narrative.spiritConnections.length).toBeGreaterThan(0);
+    expect(narrative.spiritConnections[0]?.role).toBe('soul');
+    expect(narrative.spiritConnections[0]?.djName).toBe(
+      recommendations.soulMatch.djName,
+    );
+    for (const entry of narrative.spiritConnections.slice(1)) {
+      expect(entry.role).toBe('aligned');
+    }
   });
 
   it('recommends events from DJ performances', async () => {
