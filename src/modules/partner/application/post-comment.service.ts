@@ -8,16 +8,14 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import type { RequestActor } from '../../../common/auth/request-actor.types';
-import {
-  isResourceOwnedByActor,
-  toRequestActor,
-} from '../../../common/auth/actor-query.util';
+import { isPostOwnedByActor } from '../../../common/auth/actor-query.util';
 import {
   PostComment,
   PostCommentDocument,
 } from '../../../database/schemas/post-comment.schema';
 import { matchRiskRules } from '../../../ai/risk/risk-rules.util';
 import { AccountRiskService } from '../../account-risk/account-risk.service';
+import { UserService } from '../../user/user.service';
 import {
   clampCommentPageLimit,
   commentCursorFilter,
@@ -31,6 +29,7 @@ import {
 } from '../interfaces/post.repository.interface';
 import { WechatContentSecurityService } from '../../auth/wechat-content-security.service';
 import { assertPostHasNoContactInfo } from '../utils/post-contact.util';
+import { isCommentByPostOwner } from '../utils/comment-ownership.util';
 
 @Injectable()
 export class PostCommentService {
@@ -40,6 +39,7 @@ export class PostCommentService {
     @InjectModel(PostComment.name)
     private readonly commentModel: Model<PostCommentDocument>,
     private readonly accountRisk: AccountRiskService,
+    private readonly userService: UserService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
   ) {}
 
@@ -165,23 +165,11 @@ export class PostCommentService {
       if (!parentComment || parentComment.postId !== id) {
         throw new BadRequestException('回复的评论不存在');
       }
-      if (
-        !isResourceOwnedByActor(
-          { userId: post.userId, authorName: post.authorName },
-          actor,
-        )
-      ) {
+      const profile = await this.userService.resolveProfile(actor);
+      if (!isPostOwnedByActor(post, actor, profile?.name)) {
         throw new ForbiddenException('仅发帖人可以回复评论');
       }
-      if (
-        isResourceOwnedByActor(
-          {
-            userId: parentComment.userId,
-            authorName: parentComment.authorName,
-          },
-          toRequestActor(post.userId, post.authorName),
-        )
-      ) {
+      if (isCommentByPostOwner(parentComment, post)) {
         throw new BadRequestException('不能回复自己的评论');
       }
     }
