@@ -1,0 +1,96 @@
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { DjService } from '../dj/dj.service';
+import { ItineraryScheduleService } from '../itinerary/itinerary-schedule.service';
+import {
+  ACTIVITY_LOOKUP_PORT,
+  type IActivityLookupPort,
+} from '../activity/ports/activity-lookup.port';
+import { DEFAULT_DJ_SOUL_PROFILE } from './data/personality-lineup';
+import { PERSONALITY_TEST_DRAW_COUNT } from './data/personality-question-slots';
+import { PERSONALITY_TEST_CATALOG_VERSION } from './data/personality-test-catalog.seed';
+import { PersonalityTestCatalogService } from './personality-test-catalog.service';
+import type { PersonalityTestResult } from './personality-test.types';
+import { buildPersonalityNarrative } from './utils/build-narrative.util';
+import { recommendDjLineupFromCatalog } from './utils/recommend-dj-catalog.util';
+import { recommendEventsForPersonality } from './utils/recommend-events.util';
+import {
+  isPersonalityTestComplete,
+  scorePersonality,
+} from './utils/score-personality.util';
+import type { SubmitPersonalityTestDto } from './dto/submit-personality-test.dto';
+
+@Injectable()
+export class PersonalityTestService {
+  constructor(
+    @Inject(ACTIVITY_LOOKUP_PORT)
+    private readonly activityLookup: IActivityLookupPort,
+    private readonly djService: DjService,
+    private readonly scheduleService: ItineraryScheduleService,
+    private readonly catalog: PersonalityTestCatalogService,
+  ) {}
+
+  async getQuestions() {
+    const questions = await this.catalog.selectQuestions();
+    return {
+      version: 1,
+      questionCount: questions.length,
+      questions,
+      questionIds: questions.map((question) => question.id),
+    };
+  }
+
+  async getCatalog() {
+    const runtime = await this.catalog.getRuntimeCatalog();
+    return {
+      version: PERSONALITY_TEST_CATALOG_VERSION,
+      types: Object.values(runtime.typeMeta),
+      fallbackLineup: runtime.fallbackLineup,
+      soulProfiles: runtime.soulProfiles,
+      defaultSoulProfile: DEFAULT_DJ_SOUL_PROFILE,
+    };
+  }
+
+  async submit(dto: SubmitPersonalityTestDto): Promise<PersonalityTestResult> {
+    if (dto.questionIds.length !== PERSONALITY_TEST_DRAW_COUNT) {
+      throw new BadRequestException('题目信息无效，请重新开始测试');
+    }
+
+    const questions = await this.catalog.resolveByIds(dto.questionIds);
+    if (questions.length !== PERSONALITY_TEST_DRAW_COUNT) {
+      throw new BadRequestException('题目信息无效，请重新开始测试');
+    }
+
+    if (!isPersonalityTestComplete(dto.answers, questions)) {
+      throw new BadRequestException('请完成全部题目后再提交');
+    }
+
+    const score = scorePersonality(dto.answers, questions);
+    const runtimeCatalog = await this.catalog.getRuntimeCatalog();
+    const recommendations = await recommendDjLineupFromCatalog(
+      score,
+      this.djService,
+      runtimeCatalog,
+    );
+    const recommendedEvents = await recommendEventsForPersonality(
+      recommendations,
+      this.activityLookup,
+      this.scheduleService,
+    );
+    const narrative = buildPersonalityNarrative(
+      score,
+      recommendations,
+      recommendedEvents,
+      runtimeCatalog.typeMeta,
+    );
+
+    return {
+      version: 1,
+      completedAt: new Date().toISOString(),
+      answers: dto.answers,
+      score,
+      recommendations,
+      recommendedEvents,
+      narrative,
+    };
+  }
+}
