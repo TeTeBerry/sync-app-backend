@@ -54,6 +54,9 @@ export class Post {
    */
   @Prop({ default: true })
   listedInFeed: boolean;
+
+  @Prop({ default: 0 })
+  comments: number;
 }
 
 export const PostSchema = SchemaFactory.createForClass(Post);

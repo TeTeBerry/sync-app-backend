@@ -44,8 +44,36 @@ export class PostMapper {
       body: post.body,
       tags: post.tags ?? [],
       contentTypes: post.contentTypes ?? [],
+      comments: post.comments ?? 0,
       avatar: post.authorAvatar ?? '',
       images: resolvePostImages(post),
+    };
+  }
+
+  static toCommentItem(comment: {
+    _id?: unknown;
+    userId: string;
+    authorName?: string;
+    body: string;
+    createdAt?: Date | string;
+    authorAvatar?: string;
+    replies?: Array<{
+      id: string;
+      userId: string;
+      authorName: string;
+      avatar: string;
+      body: string;
+      time: string;
+    }>;
+  }) {
+    return {
+      id: String(comment._id),
+      userId: comment.userId,
+      authorName: comment.authorName ?? '用户',
+      avatar: comment.authorAvatar ?? '',
+      body: comment.body,
+      time: formatRelativeTime(comment.createdAt),
+      ...(comment.replies?.length ? { replies: comment.replies } : {}),
     };
   }
 

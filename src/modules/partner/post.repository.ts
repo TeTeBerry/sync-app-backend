@@ -232,4 +232,10 @@ export class PostRepository implements IPostRepository {
   ): Promise<number> {
     return this.model.countDocuments({ userId, activityLegacyId });
   }
+
+  async incrementCommentCount(id: string): Promise<PostRecord | null> {
+    return this.model
+      .findByIdAndUpdate(id, { $inc: { comments: 1 } }, { new: true })
+      .lean();
+  }
 }

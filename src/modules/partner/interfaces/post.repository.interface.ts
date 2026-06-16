@@ -65,6 +65,7 @@ export interface IPostRepository {
     userId: string,
     activityLegacyId: number,
   ): Promise<number>;
+  incrementCommentCount(id: string): Promise<PostRecord | null>;
 }
 
 export const POST_REPOSITORY = Symbol('POST_REPOSITORY');

@@ -24,6 +24,7 @@ import {
 } from './interfaces/post.repository.interface';
 import { PostWriteService } from './application/post-write.service';
 import { PostQueryService } from './application/post-query.service';
+import { PostCommentService } from './application/post-comment.service';
 
 @Injectable()
 export class PostService implements OnModuleInit {
@@ -38,6 +39,7 @@ export class PostService implements OnModuleInit {
     private readonly activityLookup: IActivityLookupPort,
     private readonly postWrite: PostWriteService,
     private readonly postQuery: PostQueryService,
+    private readonly postComments: PostCommentService,
     private readonly userService: UserService,
   ) {}
 
@@ -152,7 +154,21 @@ export class PostService implements OnModuleInit {
     if (!deleted) {
       throw new NotFoundException('帖子不存在');
     }
+    await this.postComments.deleteCommentsForPost(id);
     return { ok: true as const };
+  }
+
+  listComments(id: string, options?: { limit?: number; cursor?: string }) {
+    return this.postComments.listComments(id, options);
+  }
+
+  addComment(
+    id: string,
+    body: string,
+    actor: RequestActor,
+    parentCommentId?: string,
+  ) {
+    return this.postComments.addComment(id, body, actor, parentCommentId);
   }
 
   private async isOwnedPost(
@@ -182,12 +198,12 @@ export class PostService implements OnModuleInit {
 
   private async migrateRemoveLegacyPostCounters(): Promise<void> {
     const result = await this.postModel.updateMany(
-      { $or: [{ likes: { $exists: true } }, { comments: { $exists: true } }] },
-      { $unset: { likes: '', comments: '' } },
+      { likes: { $exists: true } },
+      { $unset: { likes: '' } },
     );
     if (result.modifiedCount > 0) {
       this.logger.log(
-        `Removed likes/comments from ${result.modifiedCount} legacy posts`,
+        `Removed likes from ${result.modifiedCount} legacy posts`,
       );
     }
 
@@ -207,7 +223,6 @@ export class PostService implements OnModuleInit {
       'postapplications',
       'postapplicationmessages',
       'postlikes',
-      'postcomments',
     ];
 
     for (const name of legacyCollections) {

@@ -11,6 +11,7 @@ import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import { Public } from '../../common/auth/public.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { CreatePostDto } from './dto/create-post.dto';
+import { CreatePostCommentDto } from './dto/create-post-comment.dto';
 import { PostService } from './post.service';
 
 @Controller('posts')
@@ -72,5 +73,33 @@ export class PostController {
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentActor() actor: RequestActor) {
     return this.postService.deleteOwnedPost(id, actor);
+  }
+
+  @Public()
+  @Get(':id/comments')
+  listComments(
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('cursor') cursor?: string,
+  ) {
+    const parsed = limit ? Number(limit) : undefined;
+    return this.postService.listComments(id, {
+      limit: parsed != null && !Number.isNaN(parsed) ? parsed : undefined,
+      cursor,
+    });
+  }
+
+  @Post(':id/comments')
+  addComment(
+    @Param('id') id: string,
+    @Body() body: CreatePostCommentDto,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.postService.addComment(
+      id,
+      body.body,
+      actor,
+      body.parentCommentId,
+    );
   }
 }
