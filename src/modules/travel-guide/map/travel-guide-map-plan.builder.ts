@@ -1,14 +1,30 @@
+import type { Activity } from '../../../database/schemas/activity.schema';
 import type {
   LlmTravelGuidePayload,
+  TravelGuideAccommodationScheme,
   TravelGuideHotelItem,
   TravelGuideSpotItem,
+  TravelGuideTicketChannel,
+  TravelGuideVenueTransportOption,
 } from '../domain/travel-guide.types';
+import { buildTravelGuideBudgetItems } from '../domain/travel-guide-budget-estimate.util';
+import {
+  buildTravelGuideDocumentItems,
+  buildTravelGuideEssentials,
+  travelGuideRegionKind,
+} from '../domain/travel-guide-international.util';
+import { destinationCityFromActivityLocation } from './travel-guide-intercity.util';
 import type {
   DrivingRouteSummary,
   RankedMapPoi,
   TravelGuideMapContext,
   TravelGuideRankedCandidates,
 } from './travel-guide-map.types';
+
+const NEARBY_SCHEME_REASON =
+  '距会场最近，散场后回程最短，适合连刷多日、不想早起赶路或想最大化在场时间的 Raver。';
+const CITY_CENTER_SCHEME_REASON =
+  '市中心/商圈配套更全，餐饮购物与次日出行方便，适合首次到访、想兼顾城市体验的玩家。';
 
 export function buildTransportLinesFromMap(
   departure: string,
@@ -30,7 +46,7 @@ export function buildTransportLinesFromMap(
     const lastMile = route && route.distanceKm > 0 && route.distanceKm < 120;
     if (lastMile && !selfDrive) {
       lines.push(
-        `抵深后接驳参考：枢纽至场馆约 ${route.distanceKm} km / ${route.durationMin} 分钟（打车或地铁，高峰多预留）。`,
+        `抵目的地后接驳参考：枢纽至场馆约 ${route.distanceKm} km / ${route.durationMin} 分钟（打车或地铁，高峰多预留）。`,
       );
     } else if (selfDrive && route && route.distanceKm >= 120) {
       lines.push(
@@ -65,6 +81,109 @@ export function buildTransportLinesFromMap(
     if (hint && !lines.includes(hint)) lines.push(hint);
   }
   return lines;
+}
+
+export function buildVenueTransportOptions(input: {
+  departure: string;
+  venueTitle: string;
+  venueReadableAddress: string;
+  selfDrive: boolean;
+  interCity: boolean;
+  route?: DrivingRouteSummary;
+  transportHints: string[];
+  destinationCity?: string;
+}): TravelGuideVenueTransportOption[] {
+  const dest = input.destinationCity?.trim() || '目的地';
+  const options: TravelGuideVenueTransportOption[] = [];
+
+  if (input.interCity && !input.selfDrive) {
+    options.push({
+      label: '高铁/动车 + 市内接驳',
+      lines: [
+        `从「${input.departure}」乘高铁/动车至${dest}枢纽站，再地铁或打车前往「${input.venueTitle}」。`,
+        input.route && input.route.distanceKm < 120
+          ? `枢纽至场馆约 ${input.route.distanceKm} km / ${input.route.durationMin} 分钟，高峰建议多预留 30 分钟。`
+          : '抵站后优先地铁（避堵），深夜或行李多建议网约车。',
+        '返程票建议与去程同时购买，音乐节前后票量紧张。',
+      ],
+    });
+    options.push({
+      label: '飞机 + 机场接驳',
+      lines: [
+        `从「${input.departure}」飞抵${dest}机场，机场大巴/地铁/网约车前往酒店或场馆。`,
+        input.transportHints.find((h) => /机场|枢纽/.test(h)) ??
+          '提前查好末班地铁与机场快线时刻，深夜到达建议预约接机。',
+        `活动日再前往「${input.venueTitle}」，${input.venueReadableAddress || '详见地图导航'}。`,
+      ],
+    });
+  }
+
+  if (input.selfDrive) {
+    options.push({
+      label: '自驾直达',
+      lines: input.route
+        ? [
+            `导航「${input.venueTitle}」，全程约 ${input.route.distanceKm} km / ${input.route.durationMin} 分钟。`,
+            '出发前检查胎压与油量；活动日停车场可能紧张，建议提早抵达。',
+            '散场后周边拥堵，可先在车内休息或约夜宵点汇合再离场。',
+          ]
+        : [
+            `导航「${input.venueTitle}」，出发前在高德查看实时路况。`,
+            '活动日停车场可能紧张，建议提早 1–2 小时抵达。',
+          ],
+    });
+  }
+
+  options.push({
+    label: '地铁/公交 + 步行',
+    lines: [
+      `抵达${dest}后，地铁/公交至会场最近站点，步行或短途打车至「${input.venueTitle}」。`,
+      '散场高峰地铁可能限流，可提前查末班车；备用网约车。',
+      input.transportHints.find((h) => /地铁|公交|站/.test(h)) ??
+        '以高德/百度实时公交为准。',
+    ],
+  });
+
+  options.push({
+    label: '网约车/出租车',
+    lines: [
+      `酒店或枢纽直接打车至「${input.venueTitle}」，高峰约需 40–90 分钟（视路况）。`,
+      '散场时段优先预约网约车，设置好上车点避开拥堵路段。',
+      '多人同行可分摊费用，注意核对车牌与平台订单。',
+    ],
+  });
+
+  return options.slice(0, 4);
+}
+
+export function buildTicketChannels(
+  activity: Pick<Activity, 'name' | 'externalUrl'>,
+): TravelGuideTicketChannel[] {
+  const channels: TravelGuideTicketChannel[] = [];
+
+  if (activity.externalUrl?.trim()) {
+    channels.push({
+      name: '官方购票链接',
+      note: activity.externalUrl.trim(),
+    });
+  }
+
+  channels.push(
+    {
+      name: '大麦 / 猫眼',
+      note: '国内大型电音节常用官方授权渠道，支持电子票与实名制。',
+    },
+    {
+      name: '活动官方小程序 / 公众号',
+      note: '搜索活动全名，认准官方认证；早鸟与组合票通常最先释出。',
+    },
+    {
+      name: 'Klook / Trip.com（境外场）',
+      note: 'EDC Thailand、Tomorrowland 等境外场常用，含 Shuttle 套票选项。',
+    },
+  );
+
+  return channels.slice(0, 4);
 }
 
 export function buildParkingLinesFromMap(
@@ -106,6 +225,52 @@ export function hotelsFromRanked(
   });
 }
 
+export function accommodationSchemesFromRanked(
+  picks: { nearby: RankedMapPoi; cityCenter: RankedMapPoi },
+  nightLabel: string,
+  roomHint: string,
+  priceBands: [string, string],
+): TravelGuideAccommodationScheme[] {
+  return [
+    schemeFromPoi(
+      picks.nearby,
+      '就近方案',
+      NEARBY_SCHEME_REASON,
+      nightLabel,
+      roomHint,
+      priceBands[0],
+    ),
+    schemeFromPoi(
+      picks.cityCenter,
+      '市中心方案',
+      CITY_CENTER_SCHEME_REASON,
+      nightLabel,
+      roomHint,
+      priceBands[1],
+    ),
+  ];
+}
+
+function schemeFromPoi(
+  p: RankedMapPoi,
+  label: string,
+  reason: string,
+  nightLabel: string,
+  roomHint: string,
+  priceBand: string,
+): TravelGuideAccommodationScheme {
+  const ratingText = p.rating != null ? ` · 评分 ${p.rating}` : '';
+  const distanceText =
+    p.distanceLabel?.trim() || `距会场约 ${formatKm(p.distanceM)}`;
+  return {
+    label,
+    name: p.name,
+    note: `起步约 ¥${p.avgPrice ?? priceBand}/晚 · ${distanceText}${ratingText} · ${nightLabel} · ${roomHint}`,
+    reason,
+    bookingHint: '携程 / 美团 / Booking',
+  };
+}
+
 export function nightlifeFromRanked(
   ranked: RankedMapPoi[],
 ): TravelGuideSpotItem[] {
@@ -133,6 +298,26 @@ export function mergeRankedHotelsWithLlmPolish(
   });
 }
 
+export function mergeAccommodationSchemesWithLlmPolish(
+  ranked: TravelGuideAccommodationScheme[],
+  llmSchemes: TravelGuideAccommodationScheme[] | undefined,
+): TravelGuideAccommodationScheme[] {
+  if (!llmSchemes?.length) return ranked;
+  const llmByLabel = new Map(llmSchemes.map((s) => [s.label, s]));
+  const llmByName = new Map(llmSchemes.map((s) => [s.name, s]));
+  return ranked.map((scheme) => {
+    const polished = llmByLabel.get(scheme.label) ?? llmByName.get(scheme.name);
+    if (!polished) return scheme;
+    return {
+      label: scheme.label,
+      name: scheme.name,
+      note: polished.note?.trim() ? polished.note : scheme.note,
+      reason: polished.reason?.trim() ? polished.reason : scheme.reason,
+      bookingHint: polished.bookingHint?.trim() || scheme.bookingHint,
+    };
+  });
+}
+
 export function mapCandidatesToLlmFallback(
   ctx: TravelGuideMapContext,
   ranked: TravelGuideRankedCandidates,
@@ -141,6 +326,7 @@ export function mapCandidatesToLlmFallback(
     selfDrive: boolean;
     accommodationNights: number;
     headcount: number;
+    activity: Activity;
   },
 ): LlmTravelGuidePayload {
   const room =
@@ -150,6 +336,40 @@ export function mapCandidatesToLlmFallback(
         ? '双床/大床房即可'
         : `建议 ${Math.ceil(input.headcount / 2)} 间房`;
   const nightLabel = `${input.accommodationNights} 晚`;
+  const destCity = destinationCityFromActivityLocation(input.activity.location);
+  const regionKind = travelGuideRegionKind(input.activity);
+  const interCity = Boolean(ctx.interCity);
+
+  const schemes = ranked.accommodationPicks
+    ? accommodationSchemesFromRanked(
+        ranked.accommodationPicks,
+        nightLabel,
+        room,
+        ranked.hotelPriceBand,
+      )
+    : accommodationSchemesFromRanked(
+        {
+          nearby: ranked.hotels[0]!,
+          cityCenter: ranked.hotels[1] ?? ranked.hotels[0]!,
+        },
+        nightLabel,
+        room,
+        ranked.hotelPriceBand,
+      );
+
+  const documentItems =
+    regionKind !== 'domestic'
+      ? buildTravelGuideDocumentItems({
+          activity: input.activity,
+          destinationCity: destCity,
+        })
+      : undefined;
+
+  const essentials = buildTravelGuideEssentials({
+    activity: input.activity,
+    destinationCity: destCity,
+    interCity,
+  });
 
   return {
     transportLines: buildTransportLinesFromMap(
@@ -159,14 +379,14 @@ export function mapCandidatesToLlmFallback(
       input.selfDrive,
       ctx.drivingRoute ?? ctx.transitRoute,
       ctx.transportHints,
-      Boolean(ctx.interCity),
+      interCity,
     ),
-    hotels: hotelsFromRanked(
-      ranked.hotels,
-      nightLabel,
-      room,
-      ranked.hotelPriceBand,
-    ),
+    hotels: schemes.map((s) => ({
+      name: s.name,
+      note: s.note,
+      bookingHint: s.bookingHint,
+    })),
+    accommodationSchemes: schemes,
     parkingLines: input.selfDrive
       ? buildParkingLinesFromMap(ranked.parking, ctx.venue.title)
       : undefined,
@@ -176,6 +396,27 @@ export function mapCandidatesToLlmFallback(
       '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
       '酒店与餐厅评分以地图平台展示为准，下单前建议在 OTA 再确认价格与房态。',
     ],
+    documentItems,
+    ticketChannels: buildTicketChannels(input.activity),
+    essentials,
+    venueTransportOptions: buildVenueTransportOptions({
+      departure: input.departure,
+      venueTitle: ctx.venue.title,
+      venueReadableAddress: ctx.venueReadableAddress,
+      selfDrive: input.selfDrive,
+      interCity,
+      route: ctx.drivingRoute ?? ctx.transitRoute,
+      transportHints: ctx.transportHints,
+      destinationCity: destCity,
+    }),
+    budgetItems: buildTravelGuideBudgetItems({
+      budgetTier: ranked.budgetTier,
+      headcount: input.headcount,
+      accommodationNights: input.accommodationNights,
+      interCity,
+      regionKind,
+      selfDrive: input.selfDrive,
+    }),
   };
 }
 

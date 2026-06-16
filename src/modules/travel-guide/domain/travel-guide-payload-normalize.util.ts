@@ -1,7 +1,11 @@
 import type {
   LlmTravelGuidePayload,
+  TravelGuideAccommodationScheme,
+  TravelGuideBudgetItem,
   TravelGuideHotelItem,
   TravelGuideSpotItem,
+  TravelGuideTicketChannel,
+  TravelGuideVenueTransportOption,
 } from './travel-guide.types';
 
 /** Coerce LLM / JSON drift into a single display line. */
@@ -95,6 +99,45 @@ function normalizeHotel(item: unknown): TravelGuideHotelItem | null {
   };
 }
 
+function normalizeAccommodationScheme(
+  item: unknown,
+): TravelGuideAccommodationScheme | null {
+  if (!item || typeof item !== 'object') return null;
+  const record = item as Record<string, unknown>;
+  const label =
+    typeof record.label === 'string'
+      ? record.label.trim()
+      : typeof record.scheme === 'string'
+        ? record.scheme.trim()
+        : '';
+  const name =
+    typeof record.name === 'string'
+      ? record.name.trim()
+      : typeof record.title === 'string'
+        ? record.title.trim()
+        : '';
+  const note =
+    typeof record.note === 'string'
+      ? record.note.trim()
+      : (coerceGuideLine(record.description) ?? '');
+  const reason =
+    typeof record.reason === 'string'
+      ? record.reason.trim()
+      : (coerceGuideLine(record.rationale) ?? '');
+  if (!name) return null;
+  const bookingHint =
+    typeof record.bookingHint === 'string'
+      ? record.bookingHint.trim()
+      : undefined;
+  return {
+    label: label || '住宿方案',
+    name,
+    note: note || '详见地图平台',
+    reason: reason || '综合距离、预算与配套选择。',
+    bookingHint: bookingHint || undefined,
+  };
+}
+
 function normalizeSpot(item: unknown): TravelGuideSpotItem | null {
   if (!item || typeof item !== 'object') return null;
   const record = item as Record<string, unknown>;
@@ -112,6 +155,73 @@ function normalizeSpot(item: unknown): TravelGuideSpotItem | null {
   return { name, note: note || '详见地图平台' };
 }
 
+function normalizeTicketChannel(
+  item: unknown,
+): TravelGuideTicketChannel | null {
+  if (!item || typeof item !== 'object') return null;
+  const record = item as Record<string, unknown>;
+  const name =
+    typeof record.name === 'string'
+      ? record.name.trim()
+      : typeof record.channel === 'string'
+        ? record.channel.trim()
+        : '';
+  const note =
+    typeof record.note === 'string'
+      ? record.note.trim()
+      : (coerceGuideLine(record.description) ?? '');
+  if (!name) return null;
+  return { name, note: note || '以官方信息为准' };
+}
+
+function normalizeVenueTransportOption(
+  item: unknown,
+): TravelGuideVenueTransportOption | null {
+  if (!item || typeof item !== 'object') return null;
+  const record = item as Record<string, unknown>;
+  const label =
+    typeof record.label === 'string'
+      ? record.label.trim()
+      : typeof record.mode === 'string'
+        ? record.mode.trim()
+        : '';
+  const lines = normalizeGuideLines(record.lines ?? record.items);
+  if (!label || !lines.length) return null;
+  return { label, lines };
+}
+
+function normalizeBudgetItem(item: unknown): TravelGuideBudgetItem | null {
+  if (!item || typeof item !== 'object') return null;
+  const record = item as Record<string, unknown>;
+  const label =
+    typeof record.label === 'string'
+      ? record.label.trim()
+      : typeof record.name === 'string'
+        ? record.name.trim()
+        : '';
+  const range =
+    typeof record.range === 'string'
+      ? record.range.trim()
+      : typeof record.amount === 'string'
+        ? record.amount.trim()
+        : '';
+  if (!label || !range) return null;
+  const note = typeof record.note === 'string' ? record.note.trim() : undefined;
+  return { label, range, note: note || undefined };
+}
+
+function normalizeEssentials(
+  raw: unknown,
+): LlmTravelGuidePayload['essentials'] {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const record = raw as Record<string, unknown>;
+  const network = normalizeGuideLines(record.network);
+  const payment = normalizeGuideLines(record.payment);
+  const apps = normalizeGuideLines(record.apps);
+  if (!network.length && !payment.length && !apps.length) return undefined;
+  return { network, payment, apps };
+}
+
 /** Normalize LLM JSON so UI never sees `[object Object]`. */
 export function sanitizeLlmTravelGuidePayload(
   raw: LlmTravelGuidePayload | null | undefined,
@@ -124,6 +234,11 @@ export function sanitizeLlmTravelGuidePayload(
         .map((item) => normalizeHotel(item))
         .filter((item): item is TravelGuideHotelItem => item != null)
     : [];
+  const accommodationSchemes = Array.isArray(raw.accommodationSchemes)
+    ? raw.accommodationSchemes
+        .map((item) => normalizeAccommodationScheme(item))
+        .filter((item): item is TravelGuideAccommodationScheme => item != null)
+    : undefined;
   const parkingLines = raw.parkingLines
     ? normalizeGuideLines(raw.parkingLines)
     : undefined;
@@ -133,12 +248,37 @@ export function sanitizeLlmTravelGuidePayload(
         .filter((item): item is TravelGuideSpotItem => item != null)
     : [];
   const tipItems = normalizeGuideLines(raw.tipItems);
+  const documentItems = raw.documentItems
+    ? normalizeGuideLines(raw.documentItems)
+    : undefined;
+  const ticketChannels = Array.isArray(raw.ticketChannels)
+    ? raw.ticketChannels
+        .map((item) => normalizeTicketChannel(item))
+        .filter((item): item is TravelGuideTicketChannel => item != null)
+    : undefined;
+  const essentials = normalizeEssentials(raw.essentials);
+  const venueTransportOptions = Array.isArray(raw.venueTransportOptions)
+    ? raw.venueTransportOptions
+        .map((item) => normalizeVenueTransportOption(item))
+        .filter((item): item is TravelGuideVenueTransportOption => item != null)
+    : undefined;
+  const budgetItems = Array.isArray(raw.budgetItems)
+    ? raw.budgetItems
+        .map((item) => normalizeBudgetItem(item))
+        .filter((item): item is TravelGuideBudgetItem => item != null)
+    : undefined;
 
   return {
     transportLines,
     hotels,
+    accommodationSchemes,
     parkingLines,
     nightlifeSpots,
     tipItems,
+    documentItems,
+    ticketChannels,
+    essentials,
+    venueTransportOptions,
+    budgetItems,
   };
 }

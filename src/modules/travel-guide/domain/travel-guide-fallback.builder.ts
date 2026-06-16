@@ -10,6 +10,15 @@ import {
   parseActivityDayCount,
 } from './parse-activity-days.util';
 import { normalizeGuideLines } from './travel-guide-payload-normalize.util';
+import { buildTravelGuideBudgetItems } from './travel-guide-budget-estimate.util';
+import {
+  buildTravelGuideDocumentItems,
+  buildTravelGuideEssentials,
+  isTravelGuideAbroad,
+  travelGuideRegionKind,
+} from './travel-guide-international.util';
+import { buildTicketChannels } from '../map/travel-guide-map-plan.builder';
+import { destinationCityFromActivityLocation } from '../map/travel-guide-intercity.util';
 
 function venueCity(location?: string): string {
   const loc = location?.trim() ?? '';
@@ -115,6 +124,33 @@ function buildHotels(
   return tiers[budgetTier];
 }
 
+function buildAccommodationSchemes(
+  location: string,
+  budgetTier: TravelGuideBudgetTier,
+  headcount: number,
+  nights: number,
+): TravelGuidePlan['accommodation']['schemes'] {
+  const hotels = buildHotels(location, budgetTier, headcount, nights);
+  return [
+    {
+      label: '就近方案',
+      name: hotels[0]?.name ?? '场馆周边酒店',
+      note: hotels[0]?.note ?? '',
+      reason:
+        '距会场最近，散场后回程最短，适合连刷多日、不想早起赶路或想最大化在场时间的 Raver。',
+      bookingHint: hotels[0]?.bookingHint,
+    },
+    {
+      label: '市中心方案',
+      name: hotels[1]?.name ?? '市中心商圈酒店',
+      note: hotels[1]?.note ?? '',
+      reason:
+        '市中心/商圈配套更全，餐饮购物与次日出行方便，适合首次到访、想兼顾城市体验的玩家。',
+      bookingHint: hotels[1]?.bookingHint,
+    },
+  ];
+}
+
 function buildNightlife(
   location: string,
 ): TravelGuidePlan['nightlife']['spots'] {
@@ -144,6 +180,83 @@ function buildTips(selfDrive: boolean): string[] {
   return items;
 }
 
+function buildExtendedSections(
+  activity: Activity,
+  llm: LlmTravelGuidePayload | null | undefined,
+  input: {
+    budgetTier: TravelGuideBudgetTier;
+    headcount: number;
+    accommodationNights: number;
+    selfDrive: boolean;
+    interCity?: boolean;
+  },
+): Pick<
+  TravelGuidePlan,
+  'documents' | 'tickets' | 'essentials' | 'venueTransport' | 'budget'
+> {
+  const destCity = destinationCityFromActivityLocation(activity.location);
+  const regionKind = travelGuideRegionKind(activity);
+  const interCity = Boolean(input.interCity);
+
+  const documentItems = llm?.documentItems?.length
+    ? normalizeGuideLines(llm.documentItems)
+    : isTravelGuideAbroad(activity)
+      ? buildTravelGuideDocumentItems({
+          activity,
+          destinationCity: destCity,
+        })
+      : undefined;
+
+  const ticketChannels = llm?.ticketChannels?.length
+    ? llm.ticketChannels
+    : buildTicketChannels(activity);
+
+  const essentialsRaw =
+    llm?.essentials ??
+    buildTravelGuideEssentials({
+      activity,
+      destinationCity: destCity,
+      interCity,
+    });
+
+  const venueTransportOptions = llm?.venueTransportOptions?.length
+    ? llm.venueTransportOptions
+    : undefined;
+
+  const budgetItems = llm?.budgetItems?.length
+    ? llm.budgetItems
+    : buildTravelGuideBudgetItems({
+        budgetTier: input.budgetTier,
+        headcount: input.headcount,
+        accommodationNights: input.accommodationNights,
+        interCity,
+        regionKind,
+        selfDrive: input.selfDrive,
+      });
+
+  return {
+    ...(documentItems?.length
+      ? { documents: { title: '证件 · 入境必备', items: documentItems } }
+      : {}),
+    tickets: { title: '门票渠道', channels: ticketChannels },
+    essentials: {
+      title: '网络 · 支付 · 必备 App',
+      network: essentialsRaw.network,
+      payment: essentialsRaw.payment,
+      apps: essentialsRaw.apps,
+    },
+    ...(venueTransportOptions?.length
+      ? {
+          venueTransport: {
+            title: '会场交通全方案',
+            options: venueTransportOptions,
+          },
+        }
+      : {}),
+    budget: { title: '预算参考（全程）', items: budgetItems },
+  };
+}
+
 export function buildTravelGuidePlan(input: {
   activity: Activity;
   departure: string;
@@ -154,6 +267,7 @@ export function buildTravelGuidePlan(input: {
   llm?: LlmTravelGuidePayload | null;
   /** 为 true 时禁止回退到静态模板（仅接受地图/地图+AI 链路产出） */
   mapSourcedOnly?: boolean;
+  interCity?: boolean;
 }): TravelGuidePlan {
   const { activity, departure, headcount, budgetTier } = input;
   const selfDrive = Boolean(input.selfDrive);
@@ -181,16 +295,33 @@ export function buildTravelGuidePlan(input: {
           selfDrive,
         );
 
-  const hotels = input.llm?.hotels?.length
-    ? input.llm.hotels
+  const schemes = input.llm?.accommodationSchemes?.length
+    ? input.llm.accommodationSchemes
     : mapSourcedOnly
-      ? []
-      : buildHotels(
+      ? undefined
+      : buildAccommodationSchemes(
           activity.location ?? '',
           budgetTier,
           headcount,
           accommodationNights,
         );
+
+  const hotels = input.llm?.hotels?.length
+    ? input.llm.hotels
+    : schemes
+      ? schemes.map((s) => ({
+          name: s.name,
+          note: s.note,
+          bookingHint: s.bookingHint,
+        }))
+      : mapSourcedOnly
+        ? []
+        : buildHotels(
+            activity.location ?? '',
+            budgetTier,
+            headcount,
+            accommodationNights,
+          );
 
   const parkingLines =
     selfDrive && input.llm?.parkingLines?.length
@@ -211,6 +342,14 @@ export function buildTravelGuidePlan(input: {
       ? []
       : buildTips(selfDrive);
 
+  const extended = buildExtendedSections(activity, input.llm, {
+    budgetTier,
+    headcount,
+    accommodationNights,
+    selfDrive,
+    interCity: input.interCity,
+  });
+
   return {
     activityName: activity.name,
     venue,
@@ -221,11 +360,16 @@ export function buildTravelGuidePlan(input: {
     accommodationNights,
     selfDrive,
     transport: { title: '交通方案', lines: transportLines },
-    accommodation: { title: '住宿推荐', hotels },
+    accommodation: {
+      title: '住宿推荐',
+      hotels,
+      ...(schemes?.length ? { schemes } : {}),
+    },
     ...(parkingLines?.length
       ? { parking: { title: '停车指引', lines: parkingLines } }
       : {}),
     nightlife: { title: '散场 AP · 夜宵', spots: nightlifeSpots },
     tips: { title: '小贴士', items: tipItems },
+    ...extended,
   };
 }

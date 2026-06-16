@@ -28,6 +28,7 @@ import type {
   LlmTravelGuidePayload,
   TravelGuidePlan,
 } from './domain/travel-guide.types';
+import { isTravelGuideAbroad } from './domain/travel-guide-international.util';
 import { sanitizeLlmTravelGuidePayload } from './domain/travel-guide-payload-normalize.util';
 import { TravelGuidePoiCollector } from './map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from './map/travel-guide-poi.ranker';
@@ -38,6 +39,7 @@ import {
 } from './domain/travel-guide-generation-cache.util';
 import {
   mapCandidatesToLlmFallback,
+  mergeAccommodationSchemesWithLlmPolish,
   mergeRankedHotelsWithLlmPolish,
 } from './map/travel-guide-map-plan.builder';
 import type { TravelGuideMapLlmInput } from './map/travel-guide-map.types';
@@ -48,12 +50,21 @@ import type { TravelGuideRankedCandidates } from './map/travel-guide-map.types';
 const TRAVEL_GUIDE_MAP_JSON_SYSTEM = [
   '你是电音节出行攻略助手。交通/酒店/散场候选均来自高德地图周边检索。',
   '请完成：1) 按预算与距离筛选；2) 按推荐分选取最优；3) 将数据润色为生动中文攻略。',
-  '输出 JSON（不要 markdown），字段：transportLines, hotels, parkingLines(仅自驾), nightlifeSpots, tipItems。',
+  '输出 JSON（不要 markdown），字段：',
+  'transportLines, accommodationSchemes, hotels, parkingLines(仅自驾), nightlifeSpots, tipItems,',
+  'documentItems(仅出国/港澳台), ticketChannels, essentials{network,payment,apps}, venueTransportOptions, budgetItems。',
   '硬性规则：',
   '- 酒店/店铺名称必须来自 candidates，禁止编造列表外商户。',
+  '- accommodationSchemes 必须恰好 2 项：label 分别为「就近方案」「市中心方案」，各含 name/note/reason/bookingHint；reason 说明为何选该方案。',
+  '- hotels 与 accommodationSchemes 的 name 一一对应，便于展示。',
   '- 酒店 note 写明预算区间、距会场距离、评分（若有）、拼房/晚数提示；价格落在 hotelPriceBand 内。',
   '- 散场 nightlife 仅来自「夜宵」检索候选，优先 lateNightFriendly=true，避免普通午市餐厅。',
   '- transportLines 必须是字符串数组（每项为一句完整中文），禁止输出对象；须结合 route、transportHints、venueReadableAddress。',
+  '- venueTransportOptions 给出 3–4 种抵达会场方式（如高铁+接驳、飞机+接驳、地铁/公交、网约车/自驾），每项含 label 与 lines 数组。',
+  '- ticketChannels 列出官方与常用购票渠道（含 externalUrl 若有）；每项含 name 与 note。',
+  '- essentials 分 network/payment/apps 三组，出国场须写 eSIM/签证区货币/当地叫车 App。',
+  '- documentItems 仅当 isAbroad=true 时输出，含护照、签证/签注、返程票、保险等入境必备。',
+  '- budgetItems 须含：机票/城际交通(若跨城)、门票、住宿(按用户 budgetTier 与晚数)、市内/会场交通、餐饮、现金/杂费、合计参考；range 用「约 ¥X–Y」格式。',
   '- interCity 为 true 时：先写高铁/航班等城际交通，再写抵目的地后的打车/地铁接驳；禁止把市内地铁写成从上海出发的全程方案。',
   '不要输出天气。',
 ].join('');
@@ -152,6 +163,7 @@ export class TravelGuideGenerationService {
       selfDrive: dto.selfDrive,
       llm: llmPayload,
       mapSourcedOnly: true,
+      interCity: Boolean(mapCtx.interCity),
     });
 
     await this.generationCache.savePlan(
@@ -211,6 +223,7 @@ export class TravelGuideGenerationService {
       selfDrive: Boolean(dto.selfDrive),
       accommodationNights,
       headcount: dto.headcount,
+      activity,
     });
     const polishedOrMap = polished ?? mapPayload;
     const payload = {
@@ -219,6 +232,23 @@ export class TravelGuideGenerationService {
         mapPayload.hotels,
         polishedOrMap.hotels,
       ),
+      accommodationSchemes: mergeAccommodationSchemesWithLlmPolish(
+        mapPayload.accommodationSchemes ?? [],
+        polishedOrMap.accommodationSchemes,
+      ),
+      documentItems: polishedOrMap.documentItems?.length
+        ? polishedOrMap.documentItems
+        : mapPayload.documentItems,
+      ticketChannels: polishedOrMap.ticketChannels?.length
+        ? polishedOrMap.ticketChannels
+        : mapPayload.ticketChannels,
+      essentials: polishedOrMap.essentials ?? mapPayload.essentials,
+      venueTransportOptions: polishedOrMap.venueTransportOptions?.length
+        ? polishedOrMap.venueTransportOptions
+        : mapPayload.venueTransportOptions,
+      budgetItems: polishedOrMap.budgetItems?.length
+        ? polishedOrMap.budgetItems
+        : mapPayload.budgetItems,
     };
 
     if (!this.isValidMapSourcedPayload(payload, Boolean(dto.selfDrive))) {
@@ -273,6 +303,9 @@ export class TravelGuideGenerationService {
       hotelPriceBands: [hotelRanges.primary, hotelRanges.secondary],
       minHotelRating: ranked.minHotelRating,
       preferAfterparty: true,
+      isAbroad: isTravelGuideAbroad(activity),
+      activityRegion: activity.region ?? 'domestic',
+      externalUrl: activity.externalUrl ?? null,
     });
 
     try {
@@ -297,10 +330,14 @@ export class TravelGuideGenerationService {
     result: LlmTravelGuidePayload | null,
     selfDrive?: boolean,
   ): result is LlmTravelGuidePayload {
-    if (!result?.transportLines?.length || !result.hotels?.length) {
-      return false;
-    }
+    if (!result?.transportLines?.length) return false;
+    const hasHotels =
+      result.accommodationSchemes?.length === 2 || result.hotels?.length >= 2;
+    if (!hasHotels) return false;
     if (!result.nightlifeSpots?.length) return false;
+    if (!result.ticketChannels?.length) return false;
+    if (!result.budgetItems?.length) return false;
+    if (!result.venueTransportOptions?.length) return false;
     if (selfDrive && !result.parkingLines?.length) {
       return false;
     }

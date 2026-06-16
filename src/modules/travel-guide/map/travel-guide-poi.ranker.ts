@@ -63,8 +63,12 @@ export class TravelGuidePoiRanker {
       isHotel: false,
     }).slice(0, 8);
 
+    const accommodationPicks =
+      hotels.length > 0 ? pickAccommodationSchemes(hotels) : undefined;
+
     return {
       hotels,
+      accommodationPicks,
       parking,
       nightlife,
       minHotelRating,
@@ -204,6 +208,25 @@ function estimateHotelPrice(
   if (/三星|商务/.test(cat)) return 380;
   if (/快捷|经济|连锁/.test(cat)) return 220;
   return TIER_PRICE_MID[tier];
+}
+
+/** 双方案：就近（距会场最近的高分酒店）+ 市中心（距会场较远但仍在候选内的商圈酒店） */
+export function pickAccommodationSchemes(hotels: RankedMapPoi[]): {
+  nearby: RankedMapPoi;
+  cityCenter: RankedMapPoi;
+} {
+  if (!hotels.length) {
+    throw new Error('pickAccommodationSchemes requires at least one hotel');
+  }
+  const nearby = hotels[0]!;
+  const distant =
+    hotels.find((h) => h.distanceM >= 1500 && h.name !== nearby.name) ??
+    hotels.find(
+      (h) => h.distanceM > nearby.distanceM && h.name !== nearby.name,
+    ) ??
+    hotels[Math.min(1, hotels.length - 1)]!;
+  const cityCenter = distant.name === nearby.name ? nearby : distant;
+  return { nearby, cityCenter };
 }
 
 function lateNightScore(poi: RawMapPoi, eventEndHour: number): number {

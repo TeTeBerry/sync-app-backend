@@ -20,8 +20,8 @@ describe('buildTravelGuidePlan hotels', () => {
       accommodationNights: 2,
     });
 
-    expect(plan.accommodation.hotels[0]?.note).toContain('¥600-800');
-    expect(plan.accommodation.hotels[1]?.note).toContain('¥800-1200');
+    expect(plan.accommodation.schemes?.[0]?.note).toContain('¥600-800');
+    expect(plan.accommodation.schemes?.[1]?.note).toContain('¥800-1200');
   });
 
   it('maps standard tier within ¥300-600', () => {
@@ -32,8 +32,8 @@ describe('buildTravelGuidePlan hotels', () => {
       budgetTier: 'standard',
     });
 
-    expect(plan.accommodation.hotels[0]?.note).toContain('¥300-450');
-    expect(plan.accommodation.hotels[1]?.note).toContain('¥450-600');
+    expect(plan.accommodation.schemes?.[0]?.note).toContain('¥300-450');
+    expect(plan.accommodation.schemes?.[1]?.note).toContain('¥450-600');
   });
 
   it('maps economy tier within ¥150-300', () => {
@@ -44,7 +44,30 @@ describe('buildTravelGuidePlan hotels', () => {
       budgetTier: 'economy',
     });
 
-    expect(plan.accommodation.hotels[0]?.note).toContain('¥150-250');
-    expect(plan.accommodation.hotels[1]?.note).toContain('¥250-300');
+    expect(plan.accommodation.schemes?.[0]?.note).toContain('¥150-250');
+    expect(plan.accommodation.schemes?.[1]?.note).toContain('¥250-300');
+  });
+
+  it('includes budget and ticket sections in static fallback', () => {
+    const plan = buildTravelGuidePlan({
+      activity: mockActivity(),
+      departure: '上海',
+      headcount: 2,
+      budgetTier: 'standard',
+      interCity: true,
+    });
+    expect(plan.tickets?.channels.length).toBeGreaterThan(0);
+    expect(plan.budget?.items.some((b) => b.label === '门票')).toBe(true);
+    expect(plan.essentials?.apps.length).toBeGreaterThan(0);
+  });
+
+  it('includes documents for overseas activity', () => {
+    const plan = buildTravelGuidePlan({
+      activity: mockActivity({ region: 'overseas', location: '泰国·普吉岛' }),
+      departure: '上海',
+      headcount: 2,
+      budgetTier: 'standard',
+    });
+    expect(plan.documents?.items.some((d) => d.includes('护照'))).toBe(true);
   });
 });

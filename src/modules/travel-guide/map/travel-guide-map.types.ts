@@ -86,8 +86,14 @@ export interface RankedMapPoi extends RawMapPoi {
   };
 }
 
+export interface TravelGuideAccommodationPicks {
+  nearby: RankedMapPoi;
+  cityCenter: RankedMapPoi;
+}
+
 export interface TravelGuideRankedCandidates {
   hotels: RankedMapPoi[];
+  accommodationPicks?: TravelGuideAccommodationPicks;
   parking: RankedMapPoi[];
   nightlife: RankedMapPoi[];
   minHotelRating: number;
