@@ -67,14 +67,17 @@ AppModule
   → AiService：校验、限流、会话合并
   → AiTurnPipeline.runTurn
        → IntentRouterService.resolve（规则快路径 + 可选 LLM JSON）
-       → create_post：PostingTurnOrchestrator（聊天发帖，需显式组队意图）
-       → quick_reply / activity_enter：DeterministicReply（音乐节快捷、活动咨询、出行攻略引导）
-       → dj_info：DjInfoTurnHandler
-  → AiStreamEventBuilder：delta / activity_recommendation / conversation_patch / suggested_replies / post_created 等
+       → AgentTurnHandler.tryRun（默认：ChatAgent 工具循环）
+       → LegacyTurnHandler（agent 关闭或 miss）
+            → create_post：PostingTurnOrchestrator
+            → activity_enter：活动卡片
+            → isDjInfoIntent：DjInfoTurnHandler
+            → 其余：DeterministicReplyService（音乐节快捷等）
+  → AiStreamEventBuilder：delta / client_action / post_created / travel_guide_ready 等
   → AiService：message_complete、ChatService.saveTurn、done
 ```
 
-**前端对齐能力**：活动绑定与快捷芯片、DJ 信息、出行攻略引导（生成走 REST）、聊天组队发帖（`POST /posts` 模板帖走 Partner REST）、帖子 AI 搜索。
+**前端对齐能力**：活动绑定与快捷芯片、DJ 信息、出行攻略（agent 工具 + REST 表单）、聊天组队发帖、行程/性格测试/报名/评论等 agent 工具与 stream 事件。
 
 ### 会话状态机（ConversationState）
 

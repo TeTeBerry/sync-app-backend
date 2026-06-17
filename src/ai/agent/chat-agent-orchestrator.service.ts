@@ -33,12 +33,14 @@ export class ChatAgentOrchestratorService {
     dto: ChatRequestDto,
     input: string,
     conversationState: ConversationState,
+    routedKind?: string,
   ): boolean {
     return shouldRunAgentFirst({
       agentEnabled: this.isEnabled(),
       dto,
       input,
       conversationState,
+      routedKind,
     });
   }
 
@@ -122,6 +124,16 @@ export class ChatAgentOrchestratorService {
             error: result.error,
           }),
         });
+
+        if (result.terminal) {
+          return {
+            replyText: result.replyOverride ?? result.content,
+            toolsUsed,
+            toolCalls,
+            streamEvents: result.streamEvents ?? [],
+            steps: step + 1,
+          };
+        }
       }
     }
 

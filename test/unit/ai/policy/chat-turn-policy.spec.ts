@@ -1,5 +1,4 @@
 import {
-  isReadOnlyTurn,
   mustForceCreatePostIntent,
   shouldBlockAgentForActivityInput,
   shouldRunAgentFirst,
@@ -24,13 +23,6 @@ describe('chat-turn-policy', () => {
         [],
       ),
     ).toBe(true);
-  });
-
-  it('detects read-only turns', () => {
-    expect(isReadOnlyTurn('Marshmello 是什么风格', 5)).toBe(true);
-    expect(isReadOnlyTurn('风暴电音节', undefined)).toBe(true);
-    expect(isReadOnlyTurn('这场几点开始', 5)).toBe(true);
-    expect(isReadOnlyTurn('13号 A区 缺1人', 4)).toBe(false);
   });
 
   it('allows agent on homepage and read-only activity turns', () => {
@@ -82,5 +74,45 @@ describe('chat-turn-policy', () => {
     expect(shouldBlockAgentForActivityInput('Marshmello 是什么风格', 5)).toBe(
       false,
     );
+  });
+
+  it('allows agent during travel guide activeTask collection', () => {
+    expect(
+      shouldRunAgentFirst({
+        agentEnabled: true,
+        dto: { ...baseDto, activityLegacyId: 4 },
+        input: '舒适',
+        conversationState: {
+          version: 1,
+          flow: 'idle',
+          activeTask: {
+            kind: 'travel_guide',
+            travelGuide: { departure: '上海', headcount: 2 },
+          },
+        },
+      }),
+    ).toBe(true);
+  });
+
+  it('blocks agent for posting and activity-enter routed turns', () => {
+    expect(
+      shouldRunAgentFirst({
+        agentEnabled: true,
+        dto: { ...baseDto, activityLegacyId: 4 },
+        input: 'Marshmello 是什么风格',
+        conversationState: { version: 1, flow: 'idle' },
+        routedKind: 'activity_enter',
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldRunAgentFirst({
+        agentEnabled: true,
+        dto: { ...baseDto, activityLegacyId: 4 },
+        input: '随便聊聊',
+        conversationState: { version: 1, flow: 'idle' },
+        routedKind: 'quick_reply',
+      }),
+    ).toBe(true);
   });
 });

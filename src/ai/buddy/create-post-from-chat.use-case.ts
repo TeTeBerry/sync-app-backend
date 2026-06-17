@@ -41,6 +41,7 @@ export interface CreatePostFromChatParams {
   activityLegacyId?: number;
   conversationState?: ConversationState | null;
   onStateChange?: (state: ConversationState) => void;
+  fromAgentTool?: boolean;
 }
 
 @Injectable()
@@ -66,6 +67,7 @@ export class CreatePostFromChatUseCase {
       activityLegacyId,
       conversationState,
       onStateChange,
+      fromAgentTool,
     } = params;
     const trimmedInput = input.trim();
 
@@ -75,6 +77,7 @@ export class CreatePostFromChatUseCase {
         trimmedInput,
         activityLegacyId,
         conversationState,
+        { fromAgentTool },
       )
     ) {
       return null;

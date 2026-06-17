@@ -14,6 +14,7 @@ import type {
   RecommendedActivityCard,
   RecommendedPostCard,
 } from '../../shared/chat';
+import type { ClientActionSheet } from '../../shared/chat/client-action.types';
 
 export interface ReplySink {
   setReply: (text: string) => void;
@@ -41,6 +42,13 @@ export class AiStreamEventBuilder {
 
   conversationPatchEvent(sink: ReplySink): AiStreamEvent {
     return { type: 'conversation_patch', state: sink.getState() };
+  }
+
+  openSheetPromptAction(sheet: ClientActionSheet): AiStreamEvent {
+    return {
+      type: 'client_action',
+      action: { kind: 'open_sheet', sheet, mode: 'prompt' },
+    };
   }
 
   publishConfirmSuggestedRepliesEvent(): AiStreamEvent {
@@ -94,6 +102,7 @@ export class AiStreamEventBuilder {
         type: 'suggested_replies',
         replies: [...REQUIRE_BUDDY_POST_SUGGESTED_REPLIES],
       },
+      this.openSheetPromptAction('buddy_post'),
       this.conversationPatchEvent(sink),
     ];
   }
@@ -155,6 +164,7 @@ export class AiStreamEventBuilder {
           type: 'suggested_replies',
           replies: [...COLLECT_POST_BODY_SUGGESTED_REPLIES],
         });
+        events.push(this.openSheetPromptAction('buddy_post'));
       }
       if (postAttempt.kind === 'pending_confirmation') {
         events.push(this.publishConfirmSuggestedRepliesEvent());

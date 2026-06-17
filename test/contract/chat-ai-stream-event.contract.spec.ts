@@ -11,6 +11,12 @@ const STREAM_EVENT_TYPES: AiStreamEvent['type'][] = [
   'activity_recommendation',
   'suggested_replies',
   'conversation_patch',
+  'travel_guide_ready',
+  'itinerary_ready',
+  'personality_result_ready',
+  'activity_registered',
+  'comment_added',
+  'client_action',
   'error',
 ];
 
@@ -47,6 +53,46 @@ describe('chat AiStreamEvent contract', () => {
       {
         type: 'conversation_patch',
         state: { version: CONVERSATION_STATE_VERSION, flow: 'idle' },
+      },
+      {
+        type: 'travel_guide_ready',
+        guideId: 'g1',
+        plan: { activityName: 'EDC' },
+        form: {
+          departure: '上海',
+          headcount: 2,
+          budgetTier: 'standard',
+          selfDrive: false,
+          accommodationNights: 2,
+        },
+      },
+      {
+        type: 'itinerary_ready',
+        itineraryId: 'i1',
+        activityLegacyId: 4,
+        selectedDjIds: ['dj-1'],
+        eventMeta: 'EDC Thailand',
+        days: [],
+        conflicts: [],
+      },
+      {
+        type: 'personality_result_ready',
+        resultId: 'p1',
+        tagline: '派对野兽',
+        primaryType: 'rager',
+        soulMatchDjName: 'Marshmello',
+        result: { version: 1 },
+      },
+      {
+        type: 'activity_registered',
+        activityLegacyId: 4,
+        title: 'EDC Thailand',
+        attendees: 120,
+      },
+      { type: 'comment_added', postId: 'p1', body: '同路' },
+      {
+        type: 'client_action',
+        action: { kind: 'open_sheet', sheet: 'buddy_post', mode: 'prompt' },
       },
       { type: 'error', message: 'quota' },
     ];

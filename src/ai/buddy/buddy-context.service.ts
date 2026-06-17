@@ -276,7 +276,20 @@ export class BuddyContextService {
     input: string,
     activityLegacyId?: number,
     state?: import('../conversation').ConversationState | null,
+    options?: { fromAgentTool?: boolean },
   ): boolean {
+    if (options?.fromAgentTool && activityLegacyId != null) {
+      if (
+        state?.flow === 'collect_post_body' ||
+        state?.flow === 'publish_confirm'
+      ) {
+        return Boolean(input.trim()) || isPublishConfirmIntent(input);
+      }
+      if (Boolean(input.trim())) {
+        return true;
+      }
+    }
+
     if (isBuddyPostEntryIntent(input) && activityLegacyId != null) {
       return true;
     }

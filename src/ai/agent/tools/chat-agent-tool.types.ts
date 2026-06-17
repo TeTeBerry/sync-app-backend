@@ -1,4 +1,5 @@
 import type { ChatAgentTurnInput } from '../agent.types';
+import type { AiStreamEvent } from '../../../shared/chat';
 
 export interface ChatAgentToolDefinition {
   name: string;
@@ -11,6 +12,10 @@ export interface ChatAgentToolExecutionResult {
   content: string;
   data?: Record<string, unknown>;
   error?: string;
+  /** Stop the agent loop and emit stream events directly to the client. */
+  terminal?: boolean;
+  replyOverride?: string;
+  streamEvents?: AiStreamEvent[];
 }
 
 export interface ChatAgentTool {

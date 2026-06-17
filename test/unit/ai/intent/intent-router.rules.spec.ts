@@ -62,14 +62,21 @@ describe('intent-router.rules', () => {
     ).toBeNull();
   });
 
-  it('routes similar-style DJ follow-up to dj_info via rule', () => {
+  it('does not rule-route DJ queries (agent-first)', () => {
     expect(
       resolveChatIntentFastPath('帮我找类似风格的DJ', {
         messages: [],
         input: '帮我找类似风格的DJ',
         activityLegacyId: 4,
       }),
-    ).toEqual({ kind: 'dj_info', source: 'rule' });
+    ).toBeNull();
+    expect(
+      resolveChatIntentFastPath('Marshmello 是什么风格', {
+        messages: [],
+        input: 'Marshmello 是什么风格',
+        activityLegacyId: 5,
+      }),
+    ).toBeNull();
   });
 
   it('returns null for zone-only inquiry (no auto post)', () => {
@@ -98,40 +105,27 @@ describe('intent-router.rules', () => {
     expect(hit).toBeNull();
   });
 
-  it('routes AI攻略 to quick_reply with bound activity', () => {
-    const hit = resolveChatIntentFastPath('AI攻略', {
-      messages: [],
-      input: 'AI攻略',
-      activityLegacyId: 4,
-    });
-    expect(hit?.kind).toBe('quick_reply');
-    expect(hit?.source).toBe('rule');
-  });
-
-  it('does not route AI攻略 to quick_reply on homepage without activity', () => {
-    const hit = resolveChatIntentFastPath('AI攻略', {
-      messages: [],
-      input: 'AI攻略',
-    });
-    expect(hit).toBeNull();
-  });
-
-  it('routes 帮我规划行程 to quick_reply with bound activity', () => {
-    const hit = resolveChatIntentFastPath('帮我规划行程', {
-      messages: [],
-      input: '帮我规划行程',
-      activityLegacyId: 4,
-    });
-    expect(hit?.kind).toBe('quick_reply');
-    expect(hit?.source).toBe('rule');
-  });
-
-  it('does not route travel guide phrases on homepage without activity', () => {
-    const hit = resolveChatIntentFastPath('帮我规划行程', {
-      messages: [],
-      input: '帮我规划行程',
-    });
-    expect(hit).toBeNull();
+  it('does not rule-route travel guide phrases (agent-first)', () => {
+    expect(
+      resolveChatIntentFastPath('AI攻略', {
+        messages: [],
+        input: 'AI攻略',
+        activityLegacyId: 4,
+      }),
+    ).toBeNull();
+    expect(
+      resolveChatIntentFastPath('帮我规划行程', {
+        messages: [],
+        input: '帮我规划行程',
+        activityLegacyId: 4,
+      }),
+    ).toBeNull();
+    expect(
+      resolveChatIntentFastPath('帮我规划行程', {
+        messages: [],
+        input: '帮我规划行程',
+      }),
+    ).toBeNull();
   });
 
   it('routes homepage festival shortcut to quick_reply without binding activity', () => {
@@ -143,30 +137,13 @@ describe('intent-router.rules', () => {
     expect(hit?.source).toBe('rule');
   });
 
-  it('routes DJ questions to dj_info via rule fast path', () => {
-    expect(
-      resolveChatIntentFastPath('Marshmello 是什么风格', {
-        messages: [],
-        input: 'Marshmello 是什么风格',
-        activityLegacyId: 5,
-      }),
-    ).toEqual({ kind: 'dj_info', source: 'rule' });
-    expect(
-      resolveChatIntentFastPath('这场有哪些 Techno DJ', {
-        messages: [],
-        input: '这场有哪些 Techno DJ',
-        activityLegacyId: 5,
-      }),
-    ).toEqual({ kind: 'dj_info', source: 'rule' });
-  });
-
-  it('routes activity brief questions to quick_reply when activity is bound', () => {
+  it('does not rule-route activity brief questions (agent-first)', () => {
     const hit = resolveChatIntentFastPath('这场几点开始', {
       messages: [],
       input: '这场几点开始',
       activityLegacyId: 5,
     });
-    expect(hit).toEqual({ kind: 'quick_reply', source: 'rule' });
+    expect(hit).toBeNull();
   });
 
   it('routes activity name reply after enter prompt to activity_enter', () => {

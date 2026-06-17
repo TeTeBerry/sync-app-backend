@@ -1,4 +1,5 @@
 export * from './ai-stream-event.types';
+export * from './client-action.types';
 export * from './chat-cards.types';
 export * from './chat-message.dto';
 export * from './chat-message.types';

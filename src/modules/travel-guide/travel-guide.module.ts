@@ -56,5 +56,6 @@ import { TravelGuideGenerationService } from './travel-guide-generation.service'
     TravelGuideGenerationJobService,
     TravelGuideGenerationService,
   ],
+  exports: [TravelGuideGenerationService],
 })
 export class TravelGuideModule {}

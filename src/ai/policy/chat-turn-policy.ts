@@ -1,12 +1,13 @@
 import { isTicketResaleIntent } from '../buddy/activity-scope-guard.util';
 import { isBuddyPostEntryIntent } from '../publish/buddy-post-flow.util';
-import { isDjInfoIntent } from '../dj/dj-info-query.util';
 import type { ResolvedChatIntent } from '../intent/chat-intent.types';
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
-import { isActivityBriefIntent } from '../utils/activity-brief-intent.util';
-import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
 import { isAwaitingSelfPostBodyCollection } from '../publish/buddy-post-flow.util';
 import type { ConversationState } from '../conversation';
+import {
+  isActiveItineraryTask,
+  isActiveTravelGuideTask,
+} from '../conversation';
 import type { ChatMessageDto } from '../../shared/chat';
 import type { ChatRequestDto } from '../presentation/chat-request.dto';
 
@@ -24,27 +25,6 @@ export function mustForceCreatePostIntent(
     isAwaitingSelfPostBodyCollection(messages, state) ||
     isBuddyPostEntryIntent(input.trim())
   );
-}
-
-/** P0 只读场景：DJ / 首页音乐节 / 活动 FAQ */
-export function isReadOnlyTurn(
-  input: string,
-  activityLegacyId?: number,
-): boolean {
-  const trimmed = input.trim();
-  if (!trimmed) {
-    return false;
-  }
-  if (isDjInfoIntent(trimmed)) {
-    return true;
-  }
-  if (activityLegacyId == null && isHomeFestivalShortcutInput(trimmed)) {
-    return true;
-  }
-  if (activityLegacyId != null && isActivityBriefIntent(trimmed)) {
-    return true;
-  }
-  return false;
 }
 
 export function shouldBlockAgentForActivityInput(
@@ -70,6 +50,7 @@ export function shouldRunAgentFirst(params: {
   dto: ChatRequestDto;
   input: string;
   conversationState: ConversationState;
+  routedKind?: string;
 }): boolean {
   if (!params.agentEnabled) {
     return false;
@@ -79,12 +60,27 @@ export function shouldRunAgentFirst(params: {
     return false;
   }
 
-  if (isPostingFlowState(params.conversationState.flow)) {
-    return false;
+  if (isActiveTravelGuideTask(params.conversationState)) {
+    return true;
+  }
+
+  if (isActiveItineraryTask(params.conversationState)) {
+    return true;
   }
 
   const trimmed = params.input.trim();
   if (!trimmed) {
+    return false;
+  }
+
+  if (
+    params.routedKind === 'create_post' ||
+    params.routedKind === 'activity_enter'
+  ) {
+    return false;
+  }
+
+  if (isPostingFlowState(params.conversationState.flow)) {
     return false;
   }
 
@@ -94,10 +90,6 @@ export function shouldRunAgentFirst(params: {
 
   if (isBuddyPostEntryIntent(trimmed)) {
     return false;
-  }
-
-  if (isReadOnlyTurn(trimmed, params.dto.activityLegacyId)) {
-    return true;
   }
 
   if (

@@ -13,11 +13,38 @@ export interface PublishDraftState {
   fromSelfPost?: boolean;
 }
 
+export type TravelGuideBudgetTier = 'economy' | 'standard' | 'comfort';
+
+export interface TravelGuideTaskSlots {
+  departure?: string;
+  departureCity?: string;
+  headcount?: number;
+  budgetTier?: TravelGuideBudgetTier;
+  selfDrive?: boolean;
+  accommodationNights?: number;
+}
+
+export interface ItineraryTaskSlots {
+  selectedDjIds?: string[];
+  dateKey?: string;
+}
+
+export type ActiveTaskState =
+  | {
+      kind: 'travel_guide';
+      travelGuide: TravelGuideTaskSlots;
+    }
+  | {
+      kind: 'itinerary';
+      itinerary: ItineraryTaskSlots;
+    };
+
 /** Session-level structured state (persisted to MongoDB). */
 export interface ConversationState {
   version: number;
   flow: ConversationFlow;
   publishDraft?: PublishDraftState;
+  activeTask?: ActiveTaskState;
 }
 
 export function createIdleState(): ConversationState {
@@ -62,4 +89,82 @@ export function enterCollectPostBodyState(params: {
       fromSelfPost: params.fromSelfPost,
     },
   };
+}
+
+export function enterTravelGuideCollectState(
+  slots: TravelGuideTaskSlots = {},
+): ConversationState {
+  return {
+    version: CONVERSATION_STATE_VERSION,
+    flow: 'idle',
+    activeTask: {
+      kind: 'travel_guide',
+      travelGuide: { ...slots },
+    },
+  };
+}
+
+export function mergeTravelGuideActiveTask(
+  state: ConversationState,
+  slots: TravelGuideTaskSlots,
+): ConversationState {
+  const prev =
+    state.activeTask?.kind === 'travel_guide'
+      ? state.activeTask.travelGuide
+      : {};
+  return {
+    ...state,
+    activeTask: {
+      kind: 'travel_guide',
+      travelGuide: { ...prev, ...slots },
+    },
+  };
+}
+
+export function clearActiveTask(state: ConversationState): ConversationState {
+  if (!state.activeTask) {
+    return state;
+  }
+  const { activeTask: _removed, ...rest } = state;
+  return rest;
+}
+
+export function enterItineraryCollectState(
+  slots: ItineraryTaskSlots = {},
+): ConversationState {
+  return {
+    version: CONVERSATION_STATE_VERSION,
+    flow: 'idle',
+    activeTask: {
+      kind: 'itinerary',
+      itinerary: { ...slots },
+    },
+  };
+}
+
+export function mergeItineraryActiveTask(
+  state: ConversationState,
+  slots: ItineraryTaskSlots,
+): ConversationState {
+  const prev =
+    state.activeTask?.kind === 'itinerary' ? state.activeTask.itinerary : {};
+  return {
+    ...state,
+    activeTask: {
+      kind: 'itinerary',
+      itinerary: { ...prev, ...slots },
+    },
+  };
+}
+
+export function isActiveTravelGuideTask(
+  state?: ConversationState | null,
+): boolean {
+  return state?.activeTask?.kind === 'travel_guide';
+}
+
+export function isActiveItineraryTask(
+  state?: ConversationState | null,
+): boolean {
+  return state?.activeTask?.kind === 'itinerary';
 }

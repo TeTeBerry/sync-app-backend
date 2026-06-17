@@ -24,7 +24,10 @@ export interface TurnHandlerContext {
   sessionId: string;
 }
 
-export interface AgentFirstTurnResult {
+export interface AgentTurnResult {
   events: AiStreamEvent[];
   timingsPatch?: Pick<AiTurnTimings, 'ms_agent'>;
 }
+
+/** @deprecated Use AgentTurnResult */
+export type AgentFirstTurnResult = AgentTurnResult;

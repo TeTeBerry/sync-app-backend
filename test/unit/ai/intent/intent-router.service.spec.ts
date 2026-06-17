@@ -102,7 +102,11 @@ describe('IntentRouterService', () => {
     expect(result).toEqual({ kind: 'dj_info', source: 'llm' });
   });
 
-  it('uses rule fast path for similar-style DJ follow-up', async () => {
+  it('calls LLM for similar-style DJ follow-up when rules miss', async () => {
+    (llmService.invokeJson as jest.Mock).mockResolvedValue({
+      intent: 'dj_info',
+    });
+
     const result = await router.resolve({
       messages: [
         { role: 'user', content: 'Marshmello 什么风格' },
@@ -114,8 +118,8 @@ describe('IntentRouterService', () => {
       requestId: 'req-dj-follow',
     });
 
-    expect(llmService.invokeJson).not.toHaveBeenCalled();
-    expect(result).toEqual({ kind: 'dj_info', source: 'rule' });
+    expect(llmService.invokeJson).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ kind: 'dj_info', source: 'llm' });
   });
 
   it('delegates zone inquiry to LLM when activity is bound', async () => {
@@ -226,7 +230,11 @@ describe('IntentRouterService', () => {
     expect(result).toEqual({ kind: 'quick_reply', source: 'llm' });
   });
 
-  it('uses rule fast path for dj_info without calling LLM', async () => {
+  it('calls LLM for DJ queries when rules miss', async () => {
+    (llmService.invokeJson as jest.Mock).mockResolvedValue({
+      intent: 'dj_info',
+    });
+
     const result = await router.resolve({
       messages: [],
       input: 'Marshmello 是什么风格',
@@ -235,8 +243,8 @@ describe('IntentRouterService', () => {
       requestId: 'req-dj-rule',
     });
 
-    expect(result).toEqual({ kind: 'dj_info', source: 'rule' });
-    expect(llmService.invokeJson).not.toHaveBeenCalled();
+    expect(result).toEqual({ kind: 'dj_info', source: 'llm' });
+    expect(llmService.invokeJson).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to quick_reply when LLM is disabled', async () => {

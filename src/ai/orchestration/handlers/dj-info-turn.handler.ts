@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { isDjInfoIntent } from '../../dj/dj-info-query.util';
 import { DjInfoService } from '../../dj/dj-info.service';
 import { AiStreamEventBuilder } from '../../presentation/ai-stream-event.builder';
 import type { AiStreamEvent } from '../../../shared/chat';
@@ -12,7 +13,7 @@ export class DjInfoTurnHandler {
   ) {}
 
   supports(ctx: TurnHandlerContext): boolean {
-    return ctx.routed.kind === 'dj_info';
+    return ctx.routed.kind === 'dj_info' || isDjInfoIntent(ctx.input.trim());
   }
 
   async run(ctx: TurnHandlerContext): Promise<AiStreamEvent[]> {

@@ -24,6 +24,7 @@ export class PostIntentService {
     activityLegacyId?: number;
     conversationState?: ConversationState | null;
     onStateChange?: (state: ConversationState) => void;
+    fromAgentTool?: boolean;
   }): Promise<PostIntentCreateAttempt> {
     return this.createPostUseCase.execute(params);
   }

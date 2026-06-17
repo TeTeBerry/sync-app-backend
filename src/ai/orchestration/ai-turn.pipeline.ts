@@ -1,36 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ActivityService } from '../../modules/activity/activity.service';
 import { IntentRouterService } from '../intent/intent-router.service';
 import { DeterministicReplyService } from '../orchestration/deterministic-reply.service';
-import { PostIntentService } from '../post-intent.service';
 import {
   UserProfileAgent,
   type UserProfileSyncResult,
 } from '../agents/user-profile.agent';
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import { mustForceCreatePostIntent } from '../policy/chat-turn-policy';
-import { PostingTurnOrchestrator } from './posting-turn.orchestrator';
-import { AgentFirstTurnHandler } from './handlers/agent-first-turn.handler';
-import { DjInfoTurnHandler } from './handlers/dj-info-turn.handler';
+import { AgentTurnHandler } from './handlers/agent-turn.handler';
+import { LegacyTurnHandler } from './handlers/legacy-turn.handler';
 import type {
   AiTurnTimings,
   TurnHandlerContext,
 } from './handlers/turn-handler.types';
-import {
-  isActivityEnterNameInput,
-  isAwaitingActivityEnterSelection,
-  toRecommendedActivityCard,
-} from '../utils/activity-enter.util';
-import { resolveActivityId } from '../utils/activity-id.util';
-import { resolveHomeFestivalShortcutCode } from '../utils/festival-shortcut.util';
 import { logAiTurn } from '../utils/log-ai-turn.util';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
 import { ChatMessageDto } from '../../shared/chat';
 import type { AiStreamEvent } from '../../shared/chat';
-import {
-  AiStreamEventBuilder,
-  type ReplySink,
-} from '../presentation/ai-stream-event.builder';
+import { type ReplySink } from '../presentation/ai-stream-event.builder';
 import type { ConversationState } from '../conversation';
 
 export type { AiTurnTimings } from './handlers/turn-handler.types';
@@ -49,15 +36,10 @@ export class AiTurnPipeline {
   private readonly logger = new Logger(AiTurnPipeline.name);
 
   constructor(
-    private readonly agenticReplyService: DeterministicReplyService,
-    private readonly postIntentService: PostIntentService,
     private readonly userProfileAgent: UserProfileAgent,
     private readonly intentRouter: IntentRouterService,
-    private readonly sseBuilder: AiStreamEventBuilder,
-    private readonly activityService: ActivityService,
-    private readonly agentFirstTurnHandler: AgentFirstTurnHandler,
-    private readonly djInfoTurnHandler: DjInfoTurnHandler,
-    private readonly postingTurnOrchestrator: PostingTurnOrchestrator,
+    private readonly agentTurnHandler: AgentTurnHandler,
+    private readonly legacyTurnHandler: LegacyTurnHandler,
   ) {}
 
   async runTurn(
@@ -124,13 +106,13 @@ export class AiTurnPipeline {
       sessionId,
     };
 
-    const agentFirst = await this.agentFirstTurnHandler.tryRun(handlerCtx);
-    if (agentFirst) {
-      if (agentFirst.timingsPatch?.ms_agent != null) {
-        timings.ms_agent = agentFirst.timingsPatch.ms_agent;
+    const agentTurn = await this.agentTurnHandler.tryRun(handlerCtx);
+    if (agentTurn) {
+      if (agentTurn.timingsPatch?.ms_agent != null) {
+        timings.ms_agent = agentTurn.timingsPatch.ms_agent;
       }
       return {
-        events: agentFirst.events,
+        events: agentTurn.events,
         assistantReply: sink.getReply(),
         conversationState: sink.getState(),
         intent: routed.kind,
@@ -148,53 +130,9 @@ export class AiTurnPipeline {
     timings.ms_profile = Date.now() - profileStartedAt;
     handlerCtx.profileSync = profileSync;
 
-    let events: AiStreamEvent[] = [];
-    const buddyStartedAt = Date.now();
-
-    switch (routed.kind) {
-      case 'create_post':
-        events = await this.postingTurnOrchestrator.run({
-          dto,
-          messages: fullMessages,
-          input: lastInput,
-          sink,
-          profileSync,
-          timings,
-        });
-        break;
-      case 'quick_reply':
-        events = await this.collectDeterministicOnly(
-          dto,
-          fullMessages,
-          lastInput,
-          sink,
-        );
-        break;
-      case 'activity_enter':
-        events = await this.collectActivityEnter(fullMessages, lastInput, sink);
-        if (events.length === 0) {
-          events = await this.collectDeterministicOnly(
-            dto,
-            fullMessages,
-            lastInput,
-            sink,
-          );
-        }
-        break;
-      case 'dj_info':
-        events = await this.djInfoTurnHandler.run(handlerCtx);
-        break;
-      default:
-        events = await this.collectDeterministicOnly(
-          dto,
-          fullMessages,
-          lastInput,
-          sink,
-        );
-        break;
-    }
-
-    timings.ms_buddy = Date.now() - buddyStartedAt;
+    const legacyStartedAt = Date.now();
+    const events = await this.legacyTurnHandler.run(handlerCtx);
+    timings.ms_buddy = Date.now() - legacyStartedAt;
 
     return {
       events,
@@ -224,71 +162,5 @@ export class AiTurnPipeline {
       input,
       actor,
     });
-  }
-
-  private async collectActivityEnter(
-    messages: ChatMessageDto[],
-    input: string,
-    sink: ReplySink,
-  ): Promise<AiStreamEvent[]> {
-    if (
-      !isAwaitingActivityEnterSelection(messages) ||
-      !isActivityEnterNameInput(input)
-    ) {
-      return [];
-    }
-
-    const activity = await this.resolveActivityForEnter(input.trim());
-    if (!activity?.legacyId) {
-      return [];
-    }
-
-    const card = toRecommendedActivityCard(activity);
-    return this.sseBuilder.buildActivityEnterEvents(sink, card);
-  }
-
-  private async resolveActivityForEnter(input: string) {
-    const festivalCode = resolveHomeFestivalShortcutCode(input);
-    if (festivalCode) {
-      return this.activityService.findByCode(festivalCode).exec();
-    }
-
-    const activityCode = resolveActivityId(input);
-    if (activityCode) {
-      return this.activityService.findByCode(activityCode).exec();
-    }
-
-    return this.activityService.resolveActivityByKeyword(input);
-  }
-
-  private async collectDeterministicOnly(
-    dto: ChatRequestDto,
-    fullMessages: ChatMessageDto[],
-    lastInput: string,
-    sink: ReplySink,
-  ): Promise<AiStreamEvent[]> {
-    const reply = await this.agenticReplyService.resolve(
-      fullMessages,
-      lastInput,
-      {
-        actor: dto.actor,
-        userPhone: dto.userPhone,
-        image: dto.image,
-        activityLegacyId: dto.activityLegacyId,
-      },
-      sink.getState(),
-    );
-
-    sink.setReply(reply.text);
-    sink.setState(reply.nextState);
-
-    const events: AiStreamEvent[] = [];
-    if (reply.text) {
-      events.push({ type: 'delta', content: reply.text });
-    }
-    if (reply.nextState.flow !== 'idle') {
-      events.push(this.sseBuilder.conversationPatchEvent(sink));
-    }
-    return events;
   }
 }

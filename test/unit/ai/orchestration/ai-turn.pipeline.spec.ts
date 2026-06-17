@@ -17,8 +17,9 @@ jest.mock('@src/infra/llm/llm.service', () => ({
 import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { AiTurnPipeline } from '@src/ai/orchestration/ai-turn.pipeline';
 import { PostingTurnOrchestrator } from '@src/ai/orchestration/posting-turn.orchestrator';
-import { AgentFirstTurnHandler } from '@src/ai/orchestration/handlers/agent-first-turn.handler';
+import { AgentTurnHandler } from '@src/ai/orchestration/handlers/agent-turn.handler';
 import { DjInfoTurnHandler } from '@src/ai/orchestration/handlers/dj-info-turn.handler';
+import { LegacyTurnHandler } from '@src/ai/orchestration/handlers/legacy-turn.handler';
 import { AiStreamEventBuilder } from '@src/ai/presentation/ai-stream-event.builder';
 import { REQUIRE_BUDDY_POST_MARKER } from '@src/ai/publish/buddy-post-flow.util';
 
@@ -85,7 +86,7 @@ describe('AiTurnPipeline homepage activity gating', () => {
     sseBuilder,
     agenticReplyService as never,
   );
-  const agentFirstTurnHandler = new AgentFirstTurnHandler(
+  const agentTurnHandler = new AgentTurnHandler(
     chatAgentOrchestrator as never,
     djInfoResolver as never,
     sseBuilder,
@@ -94,17 +95,19 @@ describe('AiTurnPipeline homepage activity gating', () => {
     djInfoService as never,
     sseBuilder,
   );
-
-  const pipeline = new AiTurnPipeline(
+  const legacyTurnHandler = new LegacyTurnHandler(
+    postingTurnOrchestrator,
+    djInfoTurnHandler,
     agenticReplyService as never,
-    postIntentService as never,
-    userProfileAgent as never,
-    intentRouter as never,
     sseBuilder,
     activityService as never,
-    agentFirstTurnHandler,
-    djInfoTurnHandler,
-    postingTurnOrchestrator,
+  );
+
+  const pipeline = new AiTurnPipeline(
+    userProfileAgent as never,
+    intentRouter as never,
+    agentTurnHandler,
+    legacyTurnHandler,
   );
 
   const baseDto = {
@@ -303,8 +306,11 @@ describe('AiTurnPipeline homepage activity gating', () => {
     expect(result.assistantReply).toContain('风暴电音节');
   });
 
-  it('routes dj_info intent to DjInfoService', async () => {
-    intentRouter.resolve.mockResolvedValue({ kind: 'dj_info', source: 'rule' });
+  it('falls back to DjInfoService when agent is off and input is DJ query', async () => {
+    intentRouter.resolve.mockResolvedValue({
+      kind: 'quick_reply',
+      source: 'default',
+    });
     djInfoService.answerFromChat.mockResolvedValue({
       replyText: 'Marshmello\n🎧 风格：Future Bass',
       query: {
@@ -334,7 +340,7 @@ describe('AiTurnPipeline homepage activity gating', () => {
       5,
       { messages: [{ role: 'user', content: 'Marshmello 是什么风格' }] },
     );
-    expect(result.intent).toBe('dj_info');
+    expect(result.intent).toBe('quick_reply');
     expect(result.assistantReply).toContain('Marshmello');
     expect(result.events[0]).toEqual({
       type: 'delta',

@@ -5,9 +5,6 @@ import {
   isAwaitingActivityEnterSelection,
 } from '../utils/activity-enter.util';
 import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
-import { isTravelGuideIntent } from '../utils/activity-guide.util';
-import { isActivityBriefIntent } from '../utils/activity-brief-intent.util';
-import { isDjInfoIntent } from '../dj/dj-info-query.util';
 import { resolveActivityScopedFastPath } from '../policy/chat-turn-policy';
 import type { IntentRouterInput } from './intent-router.service';
 import type { ResolvedChatIntent } from './chat-intent.types';
@@ -24,18 +21,6 @@ export function resolveChatIntentFastPath(
     if (isActivityEnterNameInput(trimmed)) {
       return { kind: 'activity_enter', source: 'rule' };
     }
-  }
-
-  if (isTravelGuideIntent(trimmed)) {
-    return { kind: 'quick_reply', source: 'rule' };
-  }
-
-  if (isDjInfoIntent(trimmed)) {
-    return { kind: 'dj_info', source: 'rule' };
-  }
-
-  if (params.activityLegacyId != null && isActivityBriefIntent(trimmed)) {
-    return { kind: 'quick_reply', source: 'rule' };
   }
 
   if (params.activityLegacyId == null && isHomeFestivalShortcutInput(trimmed)) {
