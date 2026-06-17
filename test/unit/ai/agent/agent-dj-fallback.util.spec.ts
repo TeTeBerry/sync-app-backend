@@ -23,7 +23,7 @@ describe('agent-dj-fallback.util', () => {
     ).toBe(true);
   });
 
-  it('rejects empty lineup overview', () => {
+  it('rejects empty lineup overview without activity scope', () => {
     expect(
       isActionableDjQuery({
         intent: 'lineup_overview',
@@ -31,5 +31,18 @@ describe('agent-dj-fallback.util', () => {
         scope: 'catalog',
       }),
     ).toBe(false);
+  });
+
+  it('treats lineup overview as actionable when activity is bound', () => {
+    expect(
+      isActionableDjQuery(
+        {
+          intent: 'lineup_overview',
+          styles: [],
+          scope: 'lineup',
+        },
+        1,
+      ),
+    ).toBe(true);
   });
 });

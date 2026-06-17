@@ -61,11 +61,10 @@ export const HOME_FESTIVAL_SHORTCUTS: readonly HomeFestivalShortcutDef[] = [
     artists: [
       'Swedish House Mafia',
       'Martin Garrix',
+      'Dimitri Vegas & Like Mike',
       'Afrojack',
+      'Nervo',
       'Lost Frequencies',
-      'NERVO',
-      'Alok',
-      'Dimitri Vegas',
     ],
   },
   {

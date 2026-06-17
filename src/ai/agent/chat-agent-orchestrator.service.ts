@@ -148,7 +148,7 @@ export class ChatAgentOrchestratorService {
       input: input.input,
       activityLegacyId: input.dto.activityLegacyId,
     });
-    if (!isActionableDjQuery(query)) {
+    if (!isActionableDjQuery(query, input.dto.activityLegacyId)) {
       return null;
     }
 

@@ -11,6 +11,7 @@ import {
   LINEUP_MANUAL_DJ_PROFILES,
   loadEdcThailandFallbackNames,
   loadEdcKoreaFallbackNames,
+  loadTomorrowlandThailandFallbackNames,
   normalizeArtistNameKey,
 } from './festival-lineup-fallback.mjs';
 
@@ -69,6 +70,9 @@ export function getCrawlConfig() {
     ),
     edcKoreaActivityLegacyId: Number(
       process.env.DISCOGS_EDC_KOREA_ACTIVITY_LEGACY_ID ?? 8,
+    ),
+    tomorrowlandThailandActivityLegacyId: Number(
+      process.env.DISCOGS_TOMORROWLAND_THAILAND_ACTIVITY_LEGACY_ID ?? 1,
     ),
     requestDelayMs: Number(process.env.DISCOGS_REQUEST_DELAY_MS ?? 1100),
     representativeWorksLimit: Math.min(
@@ -321,8 +325,19 @@ export async function loadFestivalLineupArtistNames(db, config) {
     loadEdcKoreaFallbackNames(),
     'EDC Korea',
   );
+  const tomorrowland = await loadLineupArtistNames(
+    db,
+    config.tomorrowlandThailandActivityLegacyId,
+    loadTomorrowlandThailandFallbackNames(),
+    'Tomorrowland Thailand',
+  );
 
-  return expandFestivalArtistNames([...storm, ...edc, ...edcKorea]);
+  return expandFestivalArtistNames([
+    ...storm,
+    ...edc,
+    ...edcKorea,
+    ...tomorrowland,
+  ]);
 }
 
 export function isLineupArtistCovered(lineupName, djs) {

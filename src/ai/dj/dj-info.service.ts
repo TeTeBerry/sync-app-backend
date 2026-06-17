@@ -7,6 +7,7 @@ import {
   formatArtistPerformancesReply,
   formatDjListReply,
   formatDjProfileReply,
+  formatLineupNotAnnouncedReply,
   lineupDjStyleLabel,
 } from './dj-info-reply.util';
 import { parseDjInfoQuery } from './dj-info-query.util';
@@ -287,6 +288,19 @@ export class DjInfoService {
     }
 
     const activityLabel = schedule.eventMeta?.trim() || '本场活动';
+
+    if (schedule.djs.length === 0) {
+      return {
+        replyText: formatLineupNotAnnouncedReply(activityLabel),
+      };
+    }
+
+    if (query.styles.length > 0 && lineup.length === 0) {
+      return {
+        replyText: `🎤 ${activityLabel} · ${query.styles.join(' / ')}\n本场阵容里暂未找到该曲风 DJ，可以换个风格试试。`,
+      };
+    }
+
     return {
       replyText: formatDjListReply({
         title:

@@ -42,6 +42,9 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   'CASEPEAT X PURPLE RABBIT': 'Casepeat',
   'CHEEZ & YUKA': 'Cheez',
   'ALY & FILA': 'Aly & Fila',
+  'DIMITRI VEGAS & LIKE MIKE': 'Dimitri Vegas & Like Mike',
+  'SWEDISH HOUSE MAFIA': 'Swedish House Mafia',
+  NERVO: 'Nervo',
 };
 
 export const LINEUP_COVERAGE_NAME_KEYS: Record<string, string[]> = {
@@ -59,6 +62,7 @@ export const LINEUP_COVERAGE_NAME_KEYS: Record<string, string[]> = {
   'SVDDEN DEATH': ['suddendeath', 'svddendeath'],
   'HOHO ONE': ['erickwok', 'hohoone'],
   'PAUL EUN': ['pauleun'],
+  'DIMITRI VEGAS & LIKE MIKE': ['dimitrivegas', 'likemike'],
 };
 
 export function expandFestivalArtistName(lineupName: string): string[] {

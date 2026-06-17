@@ -80,4 +80,23 @@ describe('DjInfoService', () => {
 
     expect(replyText).toContain('没在艺人库里找到');
   });
+
+  it('returns lineup-not-announced when bound activity has no lineup', async () => {
+    scheduleService.getSchedule.mockResolvedValue({
+      eventMeta: 'Tomorrowland Thailand 2026',
+      djs: [],
+    });
+
+    const { replyText } = await service.answerFromStructured(
+      {
+        intent: 'lineup_overview',
+        styles: [],
+        scope: 'lineup',
+      },
+      1,
+    );
+
+    expect(replyText).toContain('Tomorrowland Thailand 2026');
+    expect(replyText).toContain('阵容未公布');
+  });
 });

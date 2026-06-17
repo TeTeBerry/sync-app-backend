@@ -86,7 +86,7 @@ export function buildAgentSystemPrompt(): string {
     '- DJ/艺人/曲风/阵容/演出问题 → 调用 query_dj_info（服务端会结合多轮对话再解析）',
     '  - 上文刚聊某位艺人，用户说「近期演出」「代表作」「类似风格」等简短跟进 → 必须调工具，artistName 从上文取',
     '  - 不要把用户整句中文指令当作 artistName',
-    '- 用户问音乐节档期/地点/阵容（风暴、EDC Thailand、Tomorrowland）→ get_festival_info',
+    '- 用户问电音节档期/地点/阵容（风暴、EDC Thailand、Tomorrowland）→ get_festival_info',
     '- 用户已绑定活动且问「这场活动是什么」→ get_activity_brief',
     '- 用户想发组队帖（已绑定活动）→ post_start_collect；用户给出正文后 → post_submit；确认发布 → post_confirm_publish',
     '- 用户要出行攻略/规划行程/说出发地人数预算 → travel_guide_collect_slots（解析并合并参数；齐全则自动生成）',

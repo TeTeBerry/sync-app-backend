@@ -218,9 +218,9 @@ describe('ItineraryScheduleService discogs styles', () => {
   it('returns empty when upcoming activities have no announced lineup', async () => {
     activityService.findAll.mockResolvedValue([
       {
-        legacyId: 1,
-        name: 'Tomorrowland Thailand 2026',
-        date: '12/11-13',
+        legacyId: 999,
+        name: 'Unannounced Festival 2027',
+        date: '01/01-02',
       },
     ]);
     performanceModel.find.mockReturnValue({
@@ -231,9 +231,47 @@ describe('ItineraryScheduleService discogs styles', () => {
       }),
     });
 
-    const artists = await service.listLineupArtistsForActivities([1]);
+    const artists = await service.listLineupArtistsForActivities([999]);
 
     expect(artists).toEqual([]);
+  });
+
+  it('serves Tomorrowland Thailand partial lineup from seed', async () => {
+    activityService.findByLegacyId.mockResolvedValue({
+      legacyId: 1,
+      name: 'Tomorrowland Thailand 2026',
+    });
+    sessionModel.find.mockReturnValue({
+      sort: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([
+            {
+              dateKey: 'dec11',
+              label: '12月11日',
+              bannerDateLabel: '12月11日',
+            },
+          ]),
+        }),
+      }),
+    });
+    performanceModel.find.mockReturnValue({
+      lean: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue([]),
+      }),
+    });
+    djService.lookupForLineupArtists.mockResolvedValue(new Map());
+
+    const schedule = await service.getSchedule(1, {});
+
+    expect(schedule.djs.map((dj) => dj.name)).toEqual([
+      'SWEDISH HOUSE MAFIA',
+      'MARTIN GARRIX',
+      'DIMITRI VEGAS & LIKE MIKE',
+      'AFROJACK',
+      'NERVO',
+      'LOST FREQUENCIES',
+    ]);
+    expect(schedule.schedulePublished).toBe(false);
   });
 
   it('ignores activity ids that are not in the activity catalog', async () => {

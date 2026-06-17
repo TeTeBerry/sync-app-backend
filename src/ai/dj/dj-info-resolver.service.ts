@@ -48,7 +48,11 @@ export class DjInfoResolverService {
     return {
       intent: 'lineup_overview',
       styles: [],
-      scope: 'catalog',
+      scope:
+        params.activityLegacyId != null &&
+        !Number.isNaN(params.activityLegacyId)
+          ? 'lineup'
+          : 'catalog',
     };
   }
 

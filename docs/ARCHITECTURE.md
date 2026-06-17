@@ -76,7 +76,7 @@ AppModule
             → create_post：PostingTurnOrchestrator
             → activity_enter：活动卡片
             → isDjInfoIntent：DjInfoTurnHandler
-            → 其余：DeterministicReplyService（音乐节快捷等）
+            → 其余：DeterministicReplyService（电音节快捷等）
   → AiStreamEventBuilder：delta / client_action / post_created / travel_guide_ready 等
   → AiService：message_complete、ChatService.saveTurn、done
 ```

@@ -162,7 +162,7 @@ export const TRAVEL_GUIDE_HOT_ACTIVITIES: HotActivityMapProfile[] = [
       lat: 7.96,
       lng: 98.35,
     },
-    readableAddress: '泰国普吉岛·Rhythm Park 音乐节场地',
+    readableAddress: '泰国普吉岛·Rhythm Park 电音节场地',
     hubRoutes: [
       hubRoute(
         'hkt-airport',

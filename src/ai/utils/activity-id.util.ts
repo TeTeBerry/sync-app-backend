@@ -25,7 +25,7 @@ function isVacActivityContext(text: string): boolean {
   return (
     /\bvac\b|vision|colour|color|soundscape/.test(compact + lower) ||
     (/珠海|zhuhai|希尔顿|hilton/.test(lower) &&
-      /vac|vision|colour|电音节|音乐节|soundscape/.test(compact + lower))
+      /vac|vision|colour|电音节|电音节|soundscape/.test(compact + lower))
   );
 }
 

@@ -89,6 +89,43 @@ export function loadEdcKoreaFallbackNames() {
   return ['TIËSTO', 'SUBTRONICS', 'FISHER', 'DJ SNAKE'];
 }
 
+/** Read `TOMORROWLAND_THAILAND_ARTISTS` names from seed when Mongo has no performances. */
+export function loadTomorrowlandThailandFallbackNames() {
+  const seedPath = join(
+    __dirname,
+    '..',
+    '..',
+    'src',
+    'modules',
+    'itinerary',
+    'tomorrowland-thailand-itinerary.seed.ts',
+  );
+
+  try {
+    const content = readFileSync(seedPath, 'utf8');
+    const block =
+      content.match(/const TOMORROWLAND_THAILAND_ARTISTS[\s\S]*?\];/)?.[0] ?? '';
+    const names = [
+      ...block.matchAll(/dj\(\s*'((?:\\'|[^'])*)'/g),
+    ].map((match) => match[1].replace(/\\'/g, "'"));
+
+    if (names.length) {
+      return names;
+    }
+  } catch {
+    // fall through
+  }
+
+  return [
+    'SWEDISH HOUSE MAFIA',
+    'MARTIN GARRIX',
+    'DIMITRI VEGAS & LIKE MIKE',
+    'AFROJACK',
+    'NERVO',
+    'LOST FREQUENCIES',
+  ];
+}
+
 const B2B_PATTERN = /\s+B2B\s+/i;
 
 /**
@@ -176,6 +213,9 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   'CASEPEAT X PURPLE RABBIT': 'Casepeat',
   'CHEEZ & YUKA': 'Cheez',
   'ALY & FILA': 'Aly & Fila',
+  'DIMITRI VEGAS & LIKE MIKE': 'Dimitri Vegas & Like Mike',
+  'SWEDISH HOUSE MAFIA': 'Swedish House Mafia',
+  NERVO: 'Nervo',
 };
 
 /** Lineup display name → normalized keys of acceptable `djs.name` matches. */
@@ -194,6 +234,7 @@ export const LINEUP_COVERAGE_NAME_KEYS = {
   'SVDDEN DEATH': ['suddendeath', 'svddendeath'],
   'HOHO ONE': ['erickwok', 'hohoone'],
   'PAUL EUN': ['pauleun'],
+  'DIMITRI VEGAS & LIKE MIKE': ['dimitrivegas', 'likemike'],
 };
 
 /**

@@ -195,7 +195,7 @@ describe('travel-guide-transport.util', () => {
       selfDrive: false,
       interCity: true,
       transportHints: [
-        '建议从昆明长水国际机场（KMG）搭乘国际航班飞往普吉国际机场（HKT）；往返机票建议提前 2-8 周关注，音乐节期间票量与房价波动大。',
+        '建议从昆明长水国际机场（KMG）搭乘国际航班飞往普吉国际机场（HKT）；往返机票建议提前 2-8 周关注，电音节期间票量与房价波动大。',
       ],
       destinationCity: '泰国',
       activity: thailandActivity,
@@ -212,7 +212,7 @@ describe('travel-guide-transport.util', () => {
       mapOptions.map((o) => ({
         label: o.label,
         lines: [
-          '建议从昆明长水国际机场（KMG）搭乘国际航班飞往普吉国际机场（HKT）；往返机票建议提前 2-8 周关注，音乐节期间票量与房价波动大。',
+          '建议从昆明长水国际机场（KMG）搭乘国际航班飞往普吉国际机场（HKT）；往返机票建议提前 2-8 周关注，电音节期间票量与房价波动大。',
         ],
       })),
       input,

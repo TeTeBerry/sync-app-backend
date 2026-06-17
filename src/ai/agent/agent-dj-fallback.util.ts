@@ -1,9 +1,19 @@
 import type { DjInfoStructuredQuery } from '../dj/dj-info-structured.types';
 
 /** Agent 未调工具时，判断 LLM 解析出的 DJ 查询是否值得自动查库 */
-export function isActionableDjQuery(query: DjInfoStructuredQuery): boolean {
+export function isActionableDjQuery(
+  query: DjInfoStructuredQuery,
+  activityLegacyId?: number,
+): boolean {
   const artist = query.artistName?.trim() || query.referenceArtist?.trim();
   if (!artist) {
+    if (
+      query.intent === 'lineup_overview' &&
+      activityLegacyId != null &&
+      !Number.isNaN(activityLegacyId)
+    ) {
+      return true;
+    }
     return false;
   }
 

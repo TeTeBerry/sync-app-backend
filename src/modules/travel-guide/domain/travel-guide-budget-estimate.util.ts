@@ -62,7 +62,7 @@ export function buildTravelGuideBudgetItems(input: {
       items.push({
         label: '机票/高铁（往返）',
         range: formatRange(min, max),
-        note: '含口岸接驳；节假日与音乐节前后票量紧张。',
+        note: '含口岸接驳；节假日与电音节前后票量紧张。',
       });
     } else {
       const min = 400 * headcount;

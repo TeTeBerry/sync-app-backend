@@ -654,7 +654,7 @@ export const PERSONALITY_QUESTION_POOLS_EXTRA: Record<
     },
     {
       id: 'memory-core-feeling',
-      prompt: '用一句话形容你理想的音乐节体验？',
+      prompt: '用一句话形容你理想的电音节体验？',
       weightMultiplier: 1.5,
       options: [
         {

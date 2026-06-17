@@ -44,6 +44,11 @@ export function lineupDjStyleLabel(dj: LineupDj): string {
   return dj.genreLabel?.trim() || dj.genre?.trim() || '风格待补充';
 }
 
+export function formatLineupNotAnnouncedReply(activityLabel: string): string {
+  const label = activityLabel.trim() || '本场活动';
+  return `🎤 ${label}\n阵容未公布，官宣后会第一时间同步～`;
+}
+
 export function formatArtistDiscographyReply(params: {
   artistName: string;
   works: DjRepresentativeWork[];
@@ -80,7 +85,7 @@ export function formatArtistPerformancesReply(params: {
 }): string {
   const title = `🎤 ${params.artistName} 近期演出安排`;
   if (!params.items.length) {
-    return `${title}\n暂未在平台收录的活动阵容中找到该艺人的场次。可以问「风暴电音节阵容」或指定音乐节。`;
+    return `${title}\n暂未在平台收录的活动阵容中找到该艺人的场次。可以问「风暴电音节阵容」或指定电音节。`;
   }
 
   const lines = params.items.map(

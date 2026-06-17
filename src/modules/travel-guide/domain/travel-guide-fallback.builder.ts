@@ -57,7 +57,7 @@ function buildParkingLines(venue: string, location: string): string[] {
   const city = venueCity(location);
   return [
     `场馆「${venue}」周边设有临时停车区，活动日车位紧张，建议 15:00 前抵达。`,
-    `可提前在地图 App 收藏「${city}国际会展中心 / 音乐节停车场」等关键词。`,
+    `可提前在地图 App 收藏「${city}国际会展中心 / 电音节停车场」等关键词。`,
     '散场后出车高峰约 30–60 分钟，可先在车内休息或约夜宵点汇合再离场。',
   ];
 }

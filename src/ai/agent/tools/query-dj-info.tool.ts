@@ -68,6 +68,7 @@ export class QueryDjInfoTool implements ChatAgentTool {
     return {
       ok: true,
       content: replyText,
+      terminal: true,
       data: { toolArgs: args, query },
     };
   }

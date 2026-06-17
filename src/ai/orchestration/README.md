@@ -20,7 +20,7 @@ When extending AI behavior, prefer new **ChatAgent tools** or `client_action` af
 
 - `create_post` — 确认发布、组队发帖入口、转票、活动内 `resolveActivityScopedFastPath`
 - `activity_enter` — 首页选活动名回复
-- `quick_reply` — 首页音乐节快捷（`DeterministicReplyService` 模板，agent 关闭时）
+- `quick_reply` — 首页电音节快捷（`DeterministicReplyService` 模板，agent 关闭时）
 - DJ / 攻略 / 行程 / 活动 FAQ — **不**规则路由，由 Agent 工具处理；agent 关闭时 DJ 由 `LegacyTurnHandler` + `isDjInfoIntent` 回退
 
 **Agent policy** (`shouldRunAgentFirst`):

@@ -431,7 +431,7 @@ const BASE_PERSONALITY_QUESTION_POOLS: Record<
   festival_peak: [
     {
       id: 'peak-main-hour',
-      prompt: '音乐节里你最容易进状态的时刻是？',
+      prompt: '电音节里你最容易进状态的时刻是？',
       options: [
         {
           id: 'peak-main-hour-a',
@@ -563,7 +563,7 @@ const BASE_PERSONALITY_QUESTION_POOLS: Record<
     },
     {
       id: 'after-next-day',
-      prompt: '音乐节第二天你的状态更像？',
+      prompt: '电音节第二天你的状态更像？',
       options: [
         {
           id: 'after-next-day-a',
@@ -623,7 +623,7 @@ const BASE_PERSONALITY_QUESTION_POOLS: Record<
     },
     {
       id: 'memory-festival',
-      prompt: '这场音乐节结束后，你最想记住的是？',
+      prompt: '这场电音节结束后，你最想记住的是？',
       weightMultiplier: 1.5,
       options: [
         {

@@ -396,7 +396,7 @@ export function buildInterCityTransportLines(
 
     lines.push(
       `从「${departure}」前往${dest}为国际出行，建议提前 1–2 天飞抵，留出入境、取卡与休整时间。`,
-      `建议从${depAirport}搭乘国际航班飞往${destAirport}；往返机票建议提前 2–8 周关注，音乐节期间票量与房价波动大。`,
+      `建议从${depAirport}搭乘国际航班飞往${destAirport}；往返机票建议提前 2–8 周关注，电音节期间票量与房价波动大。`,
     );
     if (profile.thailand) {
       lines.push(
@@ -451,7 +451,7 @@ export function buildInterCityTransportLines(
   }
 
   if (!lines.some((l) => l.includes('返程'))) {
-    lines.push('返程城际票尤其注意音乐节前后票量紧张，建议与去程同时购买。');
+    lines.push('返程城际票尤其注意电音节前后票量紧张，建议与去程同时购买。');
   }
 
   return lines;
@@ -605,7 +605,7 @@ function buildOverseasVenueOptions(
       lines: [
         `酒店前台可代叫正规出租车，或咨询是否提供往返「${venue}」的 Shuttle。`,
         profile.thailand
-          ? '大型音乐节官网/购票页常公布官方 Shuttle 站点与时刻，建议优先参考。'
+          ? '大型电音节官网/购票页常公布官方 Shuttle 站点与时刻，建议优先参考。'
           : '以活动官方公布的接驳信息为准。',
         '散场时段路面拥堵，返程同样建议提前预约车辆。',
       ],
