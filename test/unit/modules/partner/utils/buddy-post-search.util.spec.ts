@@ -36,7 +36,12 @@ describe('buddy-post-search.util', () => {
       '比如：喜欢 Techno，白天在场，找 2 个同逛舞台的搭子',
     );
 
-    expect(buddyPostMatchesSearchTerms(samplePost(), terms)).toBe(true);
+    expect(
+      buddyPostMatchesSearchTerms(
+        samplePost({ body: '10.3 EDC 白天在场，喜欢 Techno，找 2 人同逛舞台' }),
+        terms,
+      ),
+    ).toBe(true);
   });
 
   it('filters posts without changing createdAt order', () => {
@@ -79,6 +84,25 @@ describe('buddy-post-search.util', () => {
     expect(fuzzyTextMatches('上海出发组队', '上组')).toBe(true);
   });
 
+  it('does not match every post under the same activity event title', () => {
+    const sharedEventTitle = 'EDC Thailand 2026';
+    const rows = [
+      samplePost({
+        _id: 'match',
+        eventTitle: sharedEventTitle,
+        body: 'Nova 分享 EDC Thailand 现场攻略',
+      }),
+      samplePost({
+        _id: 'miss',
+        eventTitle: sharedEventTitle,
+        body: '组队，12.18-12.20，上海，2 人',
+      }),
+    ];
+
+    const filtered = filterBuddyPostsBySearchTerms(rows, ['EDC']);
+    expect(filtered.map((row) => String(row._id))).toEqual(['match']);
+  });
+
   it('parses natural language into search fields without LLM', () => {
     const parsed = parseBuddyPostSearchQuery(
       '10.3 EDC 韩国，喜欢 Techno，白天在场，找 2 个同逛舞台的搭子',
@@ -92,7 +116,10 @@ describe('buddy-post-search.util', () => {
     );
 
     const terms = resolveBuddyPostSearchTerms(parsed, '');
-    const post = samplePost({ eventTitle: 'EDC 韩国' });
+    const post = samplePost({
+      eventTitle: 'EDC 韩国',
+      body: '10.3 EDC 韩国 白天在场，喜欢 Techno，找 2 人同逛舞台',
+    });
     expect(buddyPostMatchesSearchTerms(post, terms)).toBe(true);
   });
 });

@@ -60,13 +60,7 @@ export function fuzzyTextMatches(text: string, query: string): boolean {
 }
 
 export function buildBuddyPostSearchText(post: PostRecord): string {
-  return [
-    post.body,
-    post.location,
-    post.departureCity,
-    post.eventTitle,
-    ...(post.tags ?? []),
-  ]
+  return [post.body, post.location, post.departureCity, ...(post.tags ?? [])]
     .filter((part) => typeof part === 'string' && part.trim())
     .join(' ');
 }
