@@ -44,6 +44,7 @@ AppModule
 | Itinerary | `itinerary/` | 电音时间表生成/保存 |
 | Live info | `live-info/` | 现场认证、UGC 实况 |
 | Travel guide | `travel-guide/` | 高德 POI + 出行攻略生成 |
+| Festival plan | `festival-plan-progress` | AI 本场计划进度 BFF |
 
 详见 [`modules/activity-experience/README.md`](../src/modules/activity-experience/README.md)。
 
@@ -58,7 +59,10 @@ AppModule
 
 ---
 
-## AI 对话流程
+## AI 对话上下文（Strategy A）
+
+- 前端每轮 WS `send` 携带最近 **6 轮**（`CHAT_LLM_CONTEXT_TURNS`）user/assistant 文本，见 `buildLlmChatHistory`。
+- 后端 `ChatService.mergeChatHistory(stored.history, dto.messages)` 与 Mongo 持久化合并后，`truncateToRecentTurns(N)` 再送入 `AiTurnPipeline` / Agent。
 
 `ws://<host>/api/ai/chat/ws`（`AiChatWsServer`）将每轮 `send` 交给 `AiService.streamChat`；单轮逻辑在 `AiTurnPipeline`：
 

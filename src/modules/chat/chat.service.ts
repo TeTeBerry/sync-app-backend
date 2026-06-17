@@ -148,12 +148,36 @@ export class ChatService {
       .filter((item): item is ChatMessageDto => Boolean(item));
   }
 
-  /** Stateless chat: only the current request messages are used (stored history ignored). */
+  /** Merge persisted transcript with client window (suffix/prefix overlap). */
   mergeChatHistory(
-    _stored: ChatMessageDto[],
+    stored: ChatMessageDto[],
     incoming: ChatMessageDto[],
   ): ChatMessageDto[] {
-    return this.normalizeHistory(incoming);
+    const normalizedStored = this.normalizeHistory(stored);
+    const normalizedIncoming = this.normalizeHistory(incoming);
+    if (!normalizedStored.length) return normalizedIncoming;
+    if (!normalizedIncoming.length) return normalizedStored;
+
+    let overlap = 0;
+    const maxOverlap = Math.min(
+      normalizedStored.length,
+      normalizedIncoming.length,
+    );
+    for (let size = maxOverlap; size > 0; size -= 1) {
+      const suffix = normalizedStored.slice(-size);
+      const prefix = normalizedIncoming.slice(0, size);
+      const matches = suffix.every(
+        (message, index) =>
+          message.role === prefix[index]?.role &&
+          message.content === prefix[index]?.content,
+      );
+      if (matches) {
+        overlap = size;
+        break;
+      }
+    }
+
+    return [...normalizedStored, ...normalizedIncoming.slice(overlap)];
   }
 
   truncateToRecentTurns(
@@ -209,10 +233,20 @@ export class ChatService {
   }
 
   async getSession(sessionId: string): Promise<ChatSessionDto> {
+    const doc = await this.chatModel.findOne({ sessionId }).lean();
+    if (!doc) {
+      return {
+        sessionId,
+        history: [],
+        conversationState: createIdleState(),
+      };
+    }
+
     return {
       sessionId,
-      history: [],
-      conversationState: createIdleState(),
+      userId: doc.userId,
+      history: this.normalizeHistory(doc.history),
+      conversationState: this.normalizeConversationState(doc.conversationState),
     };
   }
 
@@ -236,8 +270,7 @@ export class ChatService {
     );
   }
 
-  /** Stateless: assign message id only; do not persist transcript or flow state. */
-  async saveTurn(_params: {
+  async saveTurn(params: {
     sessionId: string;
     userId?: string;
     messages: ChatMessageDto[];
@@ -245,6 +278,41 @@ export class ChatService {
     conversationState?: ConversationState;
     assistantMetadata?: Omit<ChatMessageRichMetadata, 'imageContext'>;
   }): Promise<string> {
+    const stored = await this.getSession(params.sessionId);
+    let history = this.mergeChatHistory(stored.history, params.messages);
+
+    const assistantContent = params.assistantReply?.trim() ?? '';
+    if (assistantContent) {
+      const assistantMessage = this.normalizeMessage({
+        role: 'assistant',
+        content: assistantContent,
+        ...(params.assistantMetadata ?? {}),
+      });
+      if (assistantMessage) {
+        const last = history[history.length - 1];
+        const duplicateAssistant =
+          last?.role === 'assistant' &&
+          last.content === assistantMessage.content;
+        if (!duplicateAssistant) {
+          history = [...history, assistantMessage];
+        }
+      }
+    }
+
+    await this.chatModel.findOneAndUpdate(
+      { sessionId: params.sessionId },
+      {
+        sessionId: params.sessionId,
+        userId: params.userId ?? stored.userId,
+        history,
+        conversationState:
+          params.conversationState ??
+          stored.conversationState ??
+          createIdleState(),
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+
     return uuidv4();
   }
 }

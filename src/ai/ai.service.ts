@@ -1,5 +1,8 @@
 import { HttpException, Injectable, Logger } from '@nestjs/common';
-import { ChatService } from '../modules/chat/chat.service';
+import {
+  ChatService,
+  CHAT_LLM_CONTEXT_TURNS,
+} from '../modules/chat/chat.service';
 import { AiStreamEvent } from '../shared/chat';
 import { ChatRequestDto } from './presentation/chat-request.dto';
 import { DeterministicReplyService } from './orchestration/deterministic-reply.service';
@@ -61,8 +64,8 @@ export class AiService {
     const sessionId = this.chatService.resolveSessionId(dto.sessionId);
     const stored = await this.chatService.getSession(sessionId);
     const contextMessages = this.chatService.truncateToRecentTurns(
-      this.chatService.mergeChatHistory([], dto.messages ?? []),
-      1,
+      this.chatService.mergeChatHistory(stored.history, dto.messages ?? []),
+      CHAT_LLM_CONTEXT_TURNS,
     );
 
     if (!contextMessages.length) {
