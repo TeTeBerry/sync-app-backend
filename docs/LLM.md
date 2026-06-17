@@ -27,7 +27,7 @@ QWEN_VL_MODEL=qwen-vl-plus          # 可省略，默认 qwen-vl-plus
 | 能力 | 实现 | 环境变量 |
 |------|------|----------|
 | 文本 JSON（意图、解析、风控、画像等） | 混元 OpenAI 兼容 API | `HUNYUAN_*` |
-| Agent 工具循环（`AI_AGENT_MODE=on`） | 混元 | `HUNYUAN_*` / `AI_AGENT_MODEL` |
+| Agent 工具循环（聊天默认） | 混元 | `HUNYUAN_*` / `AI_AGENT_MODEL` |
 | 视觉 JSON（手环、截图、票据） | DashScope 多模态 | `QWEN_API_KEY` + `QWEN_VL_MODEL` |
 
 `QWEN_API_KEY` **仅**用于 `LlmService.invokeVisionJson`，不会参与文本生成。

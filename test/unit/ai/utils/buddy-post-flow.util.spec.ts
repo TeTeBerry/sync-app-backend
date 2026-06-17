@@ -10,6 +10,7 @@ describe('buddy-post-flow.util', () => {
   it('detects buddy post entry shortcuts', () => {
     expect(isBuddyPostEntryIntent('自己发帖')).toBe(false);
     expect(isBuddyPostEntryIntent('没有合适的')).toBe(true);
+    expect(isBuddyPostEntryIntent('组队发帖')).toBe(true);
     expect(isBuddyPostEntryIntent('帮我dd')).toBe(false);
   });
 

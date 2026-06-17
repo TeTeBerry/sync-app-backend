@@ -53,6 +53,17 @@ describe('chat-turn-policy', () => {
     ).toBe(true);
   });
 
+  it('blocks agent for buddy post entry shortcuts', () => {
+    expect(
+      shouldRunAgentFirst({
+        agentEnabled: true,
+        dto: { ...baseDto, activityLegacyId: 4 },
+        input: '组队发帖',
+        conversationState: { version: 1, flow: 'idle' },
+      }),
+    ).toBe(false);
+  });
+
   it('blocks agent during publish_confirm flow', () => {
     expect(
       shouldRunAgentFirst({

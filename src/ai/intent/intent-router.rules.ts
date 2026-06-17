@@ -26,7 +26,7 @@ export function resolveChatIntentFastPath(
     }
   }
 
-  if (isTravelGuideIntent(trimmed) && params.activityLegacyId != null) {
+  if (isTravelGuideIntent(trimmed)) {
     return { kind: 'quick_reply', source: 'rule' };
   }
 

@@ -21,20 +21,8 @@ export class AgentFirstTurnHandler {
     private readonly sseBuilder: AiStreamEventBuilder,
   ) {}
 
-  scheduleShadowComparison(ctx: TurnHandlerContext): void {
-    this.chatAgentOrchestrator.scheduleShadowComparison({
-      dto: ctx.dto,
-      messages: ctx.messages,
-      input: ctx.input,
-      conversationState: ctx.sink.getState(),
-      requestId: ctx.requestId,
-      sessionId: ctx.sessionId,
-      legacyIntent: ctx.routed,
-    });
-  }
-
   async tryRun(ctx: TurnHandlerContext): Promise<AgentFirstTurnResult | null> {
-    if (this.chatAgentOrchestrator.getMode() !== 'on') {
+    if (ctx.routed.kind === 'create_post') {
       return null;
     }
     if (

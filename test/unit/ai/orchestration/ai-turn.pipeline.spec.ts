@@ -73,9 +73,8 @@ describe('AiTurnPipeline homepage activity gating', () => {
     }),
   };
   const chatAgentOrchestrator = {
-    getMode: jest.fn().mockReturnValue('off'),
+    isEnabled: jest.fn().mockReturnValue(false),
     shouldRunAgentFirst: jest.fn().mockReturnValue(false),
-    scheduleShadowComparison: jest.fn(),
     runTurn: jest.fn().mockResolvedValue(null),
   };
 
@@ -123,7 +122,6 @@ describe('AiTurnPipeline homepage activity gating', () => {
     buddyContext.maybeRequireBuddyPostBeforeTeamSearch.mockResolvedValue({
       required: false,
     });
-    chatAgentOrchestrator.getMode.mockReturnValue('off');
     chatAgentOrchestrator.shouldRunAgentFirst.mockReturnValue(false);
     chatAgentOrchestrator.runTurn.mockResolvedValue(null);
   });
@@ -206,8 +204,9 @@ describe('AiTurnPipeline homepage activity gating', () => {
     expect(result.assistantReply).toContain('点下方卡片');
   });
 
-  it('uses agent reply when AI_AGENT_MODE=on', async () => {
-    chatAgentOrchestrator.getMode.mockReturnValue('on');
+  it('uses agent reply when agent is enabled', async () => {
+    intentRouter.resolve.mockResolvedValue({ kind: 'dj_info', source: 'rule' });
+    chatAgentOrchestrator.isEnabled.mockReturnValue(true);
     chatAgentOrchestrator.shouldRunAgentFirst.mockReturnValue(true);
     chatAgentOrchestrator.runTurn.mockResolvedValue({
       replyText: 'Agent 回复：Marshmello 是 Future Bass',
@@ -242,8 +241,8 @@ describe('AiTurnPipeline homepage activity gating', () => {
     expect(result.assistantReply).toContain('Agent 回复');
   });
 
-  it('uses agent for home festival shortcut when AI_AGENT_MODE=on', async () => {
-    chatAgentOrchestrator.getMode.mockReturnValue('on');
+  it('uses agent for home festival shortcut when agent is enabled', async () => {
+    chatAgentOrchestrator.isEnabled.mockReturnValue(true);
     chatAgentOrchestrator.shouldRunAgentFirst.mockReturnValue(true);
     chatAgentOrchestrator.runTurn.mockResolvedValue({
       replyText: '风暴电音节 2025 深圳站…',
@@ -272,8 +271,8 @@ describe('AiTurnPipeline homepage activity gating', () => {
     expect(result.assistantReply).toContain('风暴电音节');
   });
 
-  it('uses agent for activity brief when AI_AGENT_MODE=on', async () => {
-    chatAgentOrchestrator.getMode.mockReturnValue('on');
+  it('uses agent for activity brief when agent is enabled', async () => {
+    chatAgentOrchestrator.isEnabled.mockReturnValue(true);
     chatAgentOrchestrator.shouldRunAgentFirst.mockReturnValue(true);
     chatAgentOrchestrator.runTurn.mockResolvedValue({
       replyText: '🎧 风暴电音节\n📅 档期：06/13-14',

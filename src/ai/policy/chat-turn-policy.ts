@@ -92,6 +92,10 @@ export function shouldRunAgentFirst(params: {
     return false;
   }
 
+  if (isBuddyPostEntryIntent(trimmed)) {
+    return false;
+  }
+
   if (isReadOnlyTurn(trimmed, params.dto.activityLegacyId)) {
     return true;
   }

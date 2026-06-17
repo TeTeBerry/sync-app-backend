@@ -3,8 +3,6 @@ import type { ConversationState } from '../conversation';
 import type { ChatRequestDto } from '../presentation/chat-request.dto';
 import type { ResolvedChatIntent } from '../intent/chat-intent.types';
 
-export type ChatAgentMode = 'off' | 'shadow' | 'on';
-
 export interface ChatAgentTurnInput {
   dto: ChatRequestDto;
   messages: ChatMessageDto[];
@@ -25,14 +23,4 @@ export interface ChatAgentTurnResult {
   toolsUsed: string[];
   toolCalls: ChatAgentToolCallRecord[];
   steps: number;
-}
-
-export interface ChatAgentShadowComparison {
-  legacyIntent: string;
-  legacyIntentSource: string;
-  agentToolsUsed: string[];
-  expectedTools: string[];
-  intentToolMatch: boolean;
-  agentReplyPreview: string;
-  ms_agent: number;
 }

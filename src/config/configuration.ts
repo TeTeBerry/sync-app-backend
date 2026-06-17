@@ -93,8 +93,6 @@ export default () => ({
       ),
     },
     agent: {
-      /** off | shadow (log compare) | on (agent-first for chat/DJ/festival) */
-      mode: cleanEnv(process.env.AI_AGENT_MODE, 'off'),
       /** 空 → hunyuan.textModel（见 AgentLlmService） */
       model: cleanEnv(process.env.AI_AGENT_MODEL, ''),
     },

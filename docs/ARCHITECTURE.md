@@ -1,8 +1,7 @@
 # 后端架构（当前实现）
 
 > 目标架构：Gateway → User / Activity / AiAssistant → MongoDB / Chroma / Redis  
-> **现状**：NestJS **单体**，逻辑分层已对齐目标，**未**拆微服务；REST 使用全局 **JWT Guard** + `RequestActor`（见 [AUTH.md](./AUTH.md)）。  
-> **2026-06**：组队帖子（Partner 模块、发帖 Agent、`POST /posts`）已移除；AI 以活动咨询、出行攻略、DJ 信息为主。
+> **现状**：NestJS **单体**，逻辑分层已对齐目标，**未**拆微服务；REST 使用全局 **JWT Guard** + `RequestActor`（见 [AUTH.md](./AUTH.md)）。
 
 ---
 
@@ -26,7 +25,7 @@ AppModule
     ├── AgentsModule         # NoticeAgent（活动更新等系统通知）
     ├── OrchestrationModule  # AiTurnPipeline + DeterministicReply
     ├── RagModule / InfraChromaModule
-    └── agent/               # ChatAgentOrchestrator（可选 shadow 对比）
+    └── agent/               # ChatAgentOrchestrator（默认 agent-first）
 ```
 
 | 模块 | 代码路径 | 说明 |
@@ -68,16 +67,26 @@ AppModule
   → AiService：校验、限流、会话合并
   → AiTurnPipeline.runTurn
        → IntentRouterService.resolve（规则快路径 + 可选 LLM JSON）
-       → quick_reply / activity_enter / dj_info：DeterministicReply 或专用 Handler
-  → AiStreamEventBuilder：delta / activity_recommendation / conversation_patch / suggested_replies 等
+       → create_post：PostingTurnOrchestrator（聊天发帖，需显式组队意图）
+       → quick_reply / activity_enter：DeterministicReply（音乐节快捷、活动咨询、出行攻略引导）
+       → dj_info：DjInfoTurnHandler
+  → AiStreamEventBuilder：delta / activity_recommendation / conversation_patch / suggested_replies / post_created 等
   → AiService：message_complete、ChatService.saveTurn、done
 ```
 
-**已移除**：Partner 模块、发帖编排、`post_created` 流式帧、帖子向量检索、推荐门控、`AiMatchQuota`。
+**前端对齐能力**：活动绑定与快捷芯片、DJ 信息、出行攻略引导（生成走 REST）、聊天组队发帖（`POST /posts` 模板帖走 Partner REST）、帖子 AI 搜索。
 
 ### 会话状态机（ConversationState）
 
-持久化在 MongoDB `chat.conversationState`；当前生产路径仅 `flow: 'idle'`。历史发帖相关 flow 在读取时归一为 `idle`。
+持久化在 MongoDB `chat.conversationState`。生产路径：
+
+| flow | 场景 |
+|------|------|
+| `idle` | 默认：活动咨询、DJ 问答、攻略引导 |
+| `collect_post_body` | 用户点「组队发帖」等后填写帖子正文 |
+| `publish_confirm` | 草稿待「确认发布」 |
+
+读取时仅将历史 `recommend_gate` 归一为 `idle`。
 
 ### 性能与成本
 
@@ -92,7 +101,10 @@ AppModule
 
 | Agent | 说明 |
 |-------|------|
-| NoticeAgent | 活动更新等系统通知（`ActivityService` 可选注入） |
+| TextParseAgent | 从聊天提取组队帖草稿 |
+| RiskAgent | 发帖文本/图片风控 |
+| UserProfileAgent | 发帖时同步城市/风格等画像 |
+| NoticeAgent | 活动更新、发帖拒绝等通知 |
 
 ---
 

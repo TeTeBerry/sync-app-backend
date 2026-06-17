@@ -124,8 +124,6 @@ export class AiTurnPipeline {
       sessionId,
     };
 
-    this.agentFirstTurnHandler.scheduleShadowComparison(handlerCtx);
-
     const agentFirst = await this.agentFirstTurnHandler.tryRun(handlerCtx);
     if (agentFirst) {
       if (agentFirst.timingsPatch?.ms_agent != null) {
@@ -187,14 +185,12 @@ export class AiTurnPipeline {
         events = await this.djInfoTurnHandler.run(handlerCtx);
         break;
       default:
-        events = await this.postingTurnOrchestrator.run({
+        events = await this.collectDeterministicOnly(
           dto,
-          messages: fullMessages,
-          input: lastInput,
+          fullMessages,
+          lastInput,
           sink,
-          profileSync,
-          timings,
-        });
+        );
         break;
     }
 

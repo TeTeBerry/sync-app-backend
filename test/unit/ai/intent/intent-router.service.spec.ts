@@ -239,7 +239,7 @@ describe('IntentRouterService', () => {
     expect(llmService.invokeJson).not.toHaveBeenCalled();
   });
 
-  it('falls back to create_post when LLM is disabled', async () => {
+  it('falls back to quick_reply when LLM is disabled', async () => {
     (llmService as { enabled: boolean }).enabled = false;
 
     const result = await router.resolve({
@@ -249,7 +249,7 @@ describe('IntentRouterService', () => {
       requestId: 'req-3',
     });
 
-    expect(result).toEqual({ kind: 'create_post', source: 'default' });
+    expect(result).toEqual({ kind: 'quick_reply', source: 'default' });
     expect(llmService.invokeJson).not.toHaveBeenCalled();
 
     (llmService as { enabled: boolean }).enabled = true;

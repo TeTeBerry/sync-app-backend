@@ -79,7 +79,7 @@ export class IntentRouterService {
     }
 
     const fallback: ResolvedChatIntent = {
-      kind: 'create_post',
+      kind: 'quick_reply',
       source: 'default',
     };
     await this.intentCache.set(cacheKey, fallback);
@@ -160,6 +160,6 @@ export class IntentRouterService {
       return { kind: 'dj_info', source: 'llm' };
     }
 
-    return { kind: 'create_post', source: 'llm' };
+    return { kind: 'quick_reply', source: 'llm' };
   }
 }
