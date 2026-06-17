@@ -147,7 +147,7 @@ describe('personality-test scoring', () => {
       djService,
     );
     expect(lineupDjs[0]?.name).toBe('WUJACKERS');
-    expect(lineupDjs[0]?.id).toBe('wukong');
+    expect(lineupDjs[0]?.id).toBe('wujackers');
   });
 
   it('recommends only from upcoming lineups when available', async () => {

@@ -17,7 +17,7 @@ function catalogItemToLineupDj(
 ): PersonalityLineupDj {
   const works = item.representativeWorks?.length ?? 0;
   return {
-    id: lineupDjId(item.name),
+    id: lineupDjId(lineupArtistName),
     name: lineupArtistName,
     genre: item.genres[0] ?? 'Electronic',
     genreLabel: formatDiscogsStyleLabel(item),
