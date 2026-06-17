@@ -43,6 +43,7 @@ function performanceToLineupDj(entry: {
   };
 }
 
+/** Lineup pool from all requested activities (including ended festivals). */
 export async function buildUpcomingLineupDjPool(
   activityLegacyIds: number[],
   scheduleService: Pick<

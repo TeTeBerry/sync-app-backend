@@ -388,6 +388,107 @@ describe('personality-test scoring', () => {
     expect(events[0]?.matchedDjs).toContain('CARTA');
   });
 
+  it('builds dj pool from expired activity lineups', async () => {
+    const djService = {
+      lookupForLineupArtists: async () => new Map(),
+    } as unknown as DjService;
+    const scheduleService = {
+      listLineupArtistsForActivities: async (ids: number[]) =>
+        ids.includes(1)
+          ? [{ artistName: 'Past Headliner', genreLabel: 'Techno' }]
+          : [],
+    } as unknown as ItineraryScheduleService;
+
+    const lineupDjs = await buildUpcomingLineupDjPool(
+      [1],
+      scheduleService,
+      djService,
+    );
+
+    expect(lineupDjs).toHaveLength(1);
+    expect(lineupDjs[0]?.name).toBe('Past Headliner');
+  });
+
+  it('shows upcoming events when soul dj also appears in expired festivals', async () => {
+    const recommendations = {
+      soulMatch: {
+        djId: 'shared-dj',
+        djName: 'Shared DJ',
+        genreLabel: 'Techno',
+        matchScore: 90,
+        soulSimilarity: 85,
+        tier: 'must_see' as const,
+        dimensionBreakdown: { E: 1, M: 1, S: 1, C: 1 },
+      },
+      mustSee: [],
+      recommended: [],
+      challenge: [],
+    };
+    const activityLookup = {
+      findAll: async () => [
+        {
+          legacyId: 1,
+          code: 'past-fest',
+          alias: 'past-fest',
+          name: 'Past Festival 2024',
+          date: '06/13-14',
+          location: 'Shanghai',
+        },
+        {
+          legacyId: 8,
+          code: 'edc-korea',
+          alias: 'edc-korea',
+          name: 'EDC Korea 2026',
+          date: '2026.05',
+          location: 'Seoul',
+        },
+      ],
+      findByLegacyId: async () => null,
+    } as unknown as IActivityLookupPort;
+    const scheduleService = {
+      findArtistPerformances: async () => [],
+      findArtistLineupMemberships: async ({
+        artistName,
+      }: {
+        artistName: string;
+      }) =>
+        artistName === 'Shared DJ'
+          ? [
+              {
+                activityLegacyId: 1,
+                activityName: 'Past Festival 2024',
+                artistName: 'Shared DJ',
+                dateLabel: '06/13-14',
+                stageLabel: 'Main',
+                startTime: '',
+                endTime: '',
+                genreLabel: 'Techno',
+              },
+              {
+                activityLegacyId: 8,
+                activityName: 'EDC Korea 2026',
+                artistName: 'Shared DJ',
+                dateLabel: '2026.05',
+                stageLabel: '官宣阵容',
+                startTime: '',
+                endTime: '',
+                genreLabel: 'Techno',
+              },
+            ]
+          : [],
+    } as unknown as ItineraryScheduleService;
+
+    const events = await recommendEventsForPersonality(
+      recommendations,
+      activityLookup,
+      scheduleService,
+    );
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.activityLegacyId).toBe(8);
+    expect(events[0]?.matchedDjs).toContain('Shared DJ');
+  });
+
   it('does not recommend expired events', async () => {
     const questions = selectPersonalityQuestions(() => 0);
     const score = scorePersonality(

@@ -6,10 +6,6 @@ import {
   type UserPersonalityTestResultDocument,
 } from '@src/database/schemas/user-personality-test-result.schema';
 import { CloudStorageService } from '@src/infra/cloud/cloud-storage.service';
-import {
-  extractYearFromText,
-  isActivityEnded,
-} from '@src/common/utils/activity-date.util';
 import { DjService } from '../dj/dj.service';
 import { ItineraryScheduleService } from '../itinerary/itinerary-schedule.service';
 import {
@@ -156,14 +152,7 @@ export class PersonalityTestService {
     const score = scorePersonality(dto.answers, questions);
     const runtimeCatalog = await this.catalog.getRuntimeCatalog();
     const activities = await this.activityLookup.findAll();
-    const activityLegacyIds = activities
-      .filter((activity) => {
-        const dateLabel = activity.date?.trim() ?? '';
-        const yearHint =
-          extractYearFromText(activity.name) ?? extractYearFromText(dateLabel);
-        return !isActivityEnded(dateLabel, { yearHint });
-      })
-      .map((activity) => activity.legacyId);
+    const activityLegacyIds = activities.map((activity) => activity.legacyId);
     let recommendations;
     try {
       recommendations = await recommendDjLineupFromCatalog(
