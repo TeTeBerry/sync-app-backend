@@ -209,7 +209,7 @@ describe('ItineraryScheduleService discogs styles', () => {
       }),
     });
 
-    const artists = await service.listUpcomingLineupArtists();
+    const artists = await service.listLineupArtistsForActivities([8]);
 
     expect(artists.length).toBeGreaterThan(0);
     expect(artists.some((item) => item.artistName === 'DJ SNAKE')).toBe(true);
@@ -231,7 +231,7 @@ describe('ItineraryScheduleService discogs styles', () => {
       }),
     });
 
-    const artists = await service.listUpcomingLineupArtists();
+    const artists = await service.listLineupArtistsForActivities([1]);
 
     expect(artists).toEqual([]);
   });

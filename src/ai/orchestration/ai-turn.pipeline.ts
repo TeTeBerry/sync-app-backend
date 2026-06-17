@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { IntentRouterService } from '../intent/intent-router.service';
-import { DeterministicReplyService } from '../orchestration/deterministic-reply.service';
 import {
   UserProfileAgent,
   type UserProfileSyncResult,
@@ -28,7 +27,6 @@ export interface AiTurnResult {
   conversationState: ConversationState;
   intent?: string;
   timings: AiTurnTimings;
-  earlyComplete?: boolean;
 }
 
 @Injectable()

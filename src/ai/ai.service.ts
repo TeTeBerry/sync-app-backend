@@ -141,7 +141,7 @@ export class AiService {
       const assistantReply = turnResult.assistantReply;
       conversationState = turnResult.conversationState;
 
-      if (assistantReply.trim() && !turnResult.earlyComplete) {
+      if (assistantReply.trim()) {
         yield {
           type: 'message_complete',
           content: assistantReply,
@@ -172,7 +172,6 @@ export class AiService {
         ms_intent: turnResult.timings.ms_intent,
         ms_profile: turnResult.timings.ms_profile,
         ms_buddy: turnResult.timings.ms_buddy,
-        ms_match: turnResult.timings.ms_match,
         ms_total: Date.now() - turnStartedAt,
       });
     } catch (error) {

@@ -5,13 +5,7 @@ import type { ConversationState } from './conversation';
 import { CreatePostFromChatUseCase } from './buddy/create-post-from-chat.use-case';
 import type { PostIntentCreateAttempt } from './buddy/buddy.types';
 
-export type {
-  PostIntentCreateAttempt,
-  PostIntentCreateResult,
-  PostIntentExistingPostResult,
-  PostIntentPendingConfirmationResult,
-  PostIntentRejectedResult,
-} from './buddy/buddy.types';
+export type { PostIntentCreateAttempt } from './buddy/buddy.types';
 
 @Injectable()
 export class PostIntentService {

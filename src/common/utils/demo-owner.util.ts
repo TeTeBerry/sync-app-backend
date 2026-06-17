@@ -72,8 +72,3 @@ export function isResourceOwnedByClient(
 export function isAiShortcutTag(_input: string): boolean {
   return false;
 }
-
-export function isCanonicalAiShortcutTag(input: string): boolean {
-  const text = input.trim();
-  return (AI_SHORTCUT_TAGS as readonly string[]).includes(text);
-}

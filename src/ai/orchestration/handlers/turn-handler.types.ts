@@ -8,7 +8,6 @@ export interface AiTurnTimings {
   ms_intent?: number;
   ms_profile?: number;
   ms_buddy?: number;
-  ms_match?: number;
   ms_agent?: number;
 }
 
@@ -28,6 +27,3 @@ export interface AgentTurnResult {
   events: AiStreamEvent[];
   timingsPatch?: Pick<AiTurnTimings, 'ms_agent'>;
 }
-
-/** @deprecated Use AgentTurnResult */
-export type AgentFirstTurnResult = AgentTurnResult;

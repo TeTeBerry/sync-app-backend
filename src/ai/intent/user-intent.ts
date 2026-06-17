@@ -30,15 +30,3 @@ export function isQuickReplyIntent(input: string): boolean {
   if (isExactQuickReply(input)) return true;
   return detectUserIntent(input) === 'near_events';
 }
-
-export function buildIntentGuidance(intent: UserIntent): string {
-  switch (intent) {
-    case 'near_events':
-      return [
-        '【当前意图：查活动】',
-        '列出平台近期/热门活动；简要介绍后询问用户感兴趣的活动。',
-      ].join('\n');
-    default:
-      return '根据用户最新一条消息判断意图；切换话题时不要重复上一轮相同格式的追问。';
-  }
-}

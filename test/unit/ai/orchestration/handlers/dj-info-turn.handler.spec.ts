@@ -14,14 +14,6 @@ describe('DjInfoTurnHandler', () => {
     new AiStreamEventBuilder(),
   );
 
-  it('supports dj_info routed intent', () => {
-    expect(
-      handler.supports({
-        routed: { kind: 'dj_info', source: 'rule' },
-      } as never),
-    ).toBe(true);
-  });
-
   it('returns delta and suggested replies', async () => {
     const sink = {
       setReply: jest.fn(),

@@ -2,10 +2,6 @@ import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
-  extractYearFromText,
-  isActivityEnded,
-} from '../../common/utils/activity-date.util';
-import {
   ArtistPerformance,
   ArtistPerformanceDocument,
 } from '../../database/schemas/artist-performance.schema';
@@ -522,23 +518,6 @@ export class ItineraryScheduleService implements OnModuleInit {
     }
 
     return [...byName.values()];
-  }
-
-  /** @deprecated Use {@link listLineupArtistsForActivities} with explicit activity ids. */
-  async listUpcomingLineupArtists(): Promise<
-    Array<{ artistName: string; genreLabel: string }>
-  > {
-    const activities = await this.activityService.findAll();
-    const upcomingIds = activities
-      .filter((activity) => {
-        const dateLabel = activity.date?.trim() ?? '';
-        const yearHint =
-          extractYearFromText(activity.name) ?? extractYearFromText(dateLabel);
-        return !isActivityEnded(dateLabel, { yearHint });
-      })
-      .map((activity) => activity.legacyId);
-
-    return this.listLineupArtistsForActivities(upcomingIds);
   }
 
   async findArtistPerformances(params: {
