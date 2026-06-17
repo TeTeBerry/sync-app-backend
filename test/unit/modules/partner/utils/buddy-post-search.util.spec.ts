@@ -17,7 +17,6 @@ function samplePost(overrides: Partial<PostRecord> = {}): PostRecord {
     body: '10.3 白天在场，喜欢 Techno，找 2 人同逛舞台',
     location: '主舞台',
     tags: ['#组队'],
-    contentTypes: ['team'],
     status: 'active',
     createdAt: new Date('2026-10-01T10:00:00Z'),
     ...overrides,

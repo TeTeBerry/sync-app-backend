@@ -1,8 +1,4 @@
 import type { PostRecord } from '../interfaces/post.repository.interface';
-import {
-  getContentTypeLabel,
-  type PostContentType,
-} from './post-content-type.util';
 
 export type BuddyPostSearchParsed = {
   eventName?: string;
@@ -63,17 +59,6 @@ export function fuzzyTextMatches(text: string, query: string): boolean {
   return tokens.every((token) => tokenMatchesHaystack(haystack, token));
 }
 
-function contentTypeSearchLabels(types: string[] | undefined): string[] {
-  if (!types?.length) return [];
-  const labels = new Set<string>();
-  for (const raw of types) {
-    const label = getContentTypeLabel(raw as PostContentType);
-    if (label) labels.add(label);
-    labels.add(raw);
-  }
-  return [...labels];
-}
-
 export function buildBuddyPostSearchText(post: PostRecord): string {
   return [
     post.body,
@@ -81,7 +66,6 @@ export function buildBuddyPostSearchText(post: PostRecord): string {
     post.departureCity,
     post.eventTitle,
     ...(post.tags ?? []),
-    ...contentTypeSearchLabels(post.contentTypes),
   ]
     .filter((part) => typeof part === 'string' && part.trim())
     .join(' ');

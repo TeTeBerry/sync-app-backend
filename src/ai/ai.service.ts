@@ -3,17 +3,11 @@ import { ChatService } from '../modules/chat/chat.service';
 import { AiStreamEvent } from '../shared/chat';
 import { ChatRequestDto } from './presentation/chat-request.dto';
 import { DeterministicReplyService } from './orchestration/deterministic-reply.service';
-import {
-  ImageTooLargeError,
-  validateImageRefSync,
-} from './utils/image-ref.util';
 import { AiRateLimitService } from './ai-rate-limit.service';
 import { logAiTurn } from './utils/log-ai-turn.util';
 import { AiTurnPipeline } from './orchestration/ai-turn.pipeline';
-import { assertUserUgcImages } from '../common/media/user-ugc-image.util';
 import { collectChatMessageUgcTexts } from '../common/media/user-ugc-text.util';
 import { WechatContentSecurityService } from '../modules/auth/wechat-content-security.service';
-import { MediaSecurityCheckService } from '../modules/media-security/media-security-check.service';
 import { extractAssistantMessageMetadata } from './presentation/chat-message-metadata.util';
 
 export interface AiChatTurnContext {
@@ -56,7 +50,6 @@ export class AiService {
     private readonly turnPipeline: AiTurnPipeline,
     private readonly rateLimit: AiRateLimitService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
-    private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
 
   async *streamChat(
@@ -86,48 +79,16 @@ export class AiService {
     const lastInput = lastMessage.content ?? '';
     const hasImages =
       Boolean(dto.image?.trim()) || (dto.images?.length ?? 0) > 0;
-    if (!lastInput.trim() && !hasImages) {
-      yield { type: 'error', message: 'messages 不能为空' };
+    if (hasImages) {
+      yield {
+        type: 'error',
+        message: '帖子不支持发图片，请用文字描述组队需求。',
+      };
       return;
     }
-
-    const imagesToValidate = [
-      ...(dto.image?.trim() ? [dto.image] : []),
-      ...(dto.images ?? []),
-    ];
-    for (const img of imagesToValidate) {
-      try {
-        validateImageRefSync(img);
-      } catch (error) {
-        yield {
-          type: 'error',
-          message:
-            error instanceof ImageTooLargeError
-              ? error.message
-              : error instanceof Error
-                ? error.message
-                : '图片格式无效',
-        };
-        return;
-      }
-    }
-
-    if (imagesToValidate.length > 0) {
-      const userId = dto.actor.clientUserId.trim();
-      try {
-        await assertUserUgcImages(
-          this.wechatContentSecurity,
-          this.mediaChecks,
-          imagesToValidate,
-          userId,
-        );
-      } catch (error) {
-        yield {
-          type: 'error',
-          message: error instanceof Error ? error.message : '图片安全检测失败',
-        };
-        return;
-      }
+    if (!lastInput.trim()) {
+      yield { type: 'error', message: 'messages 不能为空' };
+      return;
     }
 
     try {

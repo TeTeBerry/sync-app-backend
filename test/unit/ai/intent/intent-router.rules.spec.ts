@@ -1,17 +1,6 @@
 import { resolveChatIntentFastPath } from '@src/ai/intent/intent-router.rules';
 
 describe('intent-router.rules', () => {
-  it('routes image upload to create_post', () => {
-    const hit = resolveChatIntentFastPath('13号A', {
-      messages: [],
-      input: '13号A',
-      activityLegacyId: 1,
-      image: 'data:image/png;base64,abc',
-    });
-    expect(hit?.kind).toBe('create_post');
-    expect(hit?.source).toBe('rule');
-  });
-
   it('routes recommendation decline to create_post when activity is bound', () => {
     const hit = resolveChatIntentFastPath('没有合适的', {
       messages: [],

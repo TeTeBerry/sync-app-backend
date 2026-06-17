@@ -276,12 +276,7 @@ export class BuddyContextService {
     input: string,
     activityLegacyId?: number,
     state?: import('../conversation').ConversationState | null,
-    image?: string,
   ): boolean {
-    if (image?.trim()) {
-      return true;
-    }
-
     if (isBuddyPostEntryIntent(input) && activityLegacyId != null) {
       return true;
     }

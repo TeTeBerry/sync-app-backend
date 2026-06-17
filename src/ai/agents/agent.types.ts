@@ -1,7 +1,7 @@
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { ChatMessageDto } from '../../shared/chat';
 
-/** TextParseAgent / ImageParseAgent 结构化输出 */
+/** TextParseAgent 结构化输出 */
 export interface ParsedPostDraft {
   /** 发帖正文 */
   body: string;

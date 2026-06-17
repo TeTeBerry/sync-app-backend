@@ -3,7 +3,6 @@
  * 与 WS create-post-from-chat 共用写帖服务，payload 由前端 publishBuddyPost 组装。
  */
 import { toRequestActor } from '@src/common/auth/actor-query.util';
-import type { PostContentType } from '@src/modules/partner/utils/post-content-type.util';
 import { PostWriteService } from '@src/modules/partner/application/post-write.service';
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { UserService } from '@src/modules/user/user.service';
@@ -21,14 +20,13 @@ jest.mock('@langchain/core/documents', () =>
 );
 
 function buddySheetPayload() {
-  const body = '组队、拼房，6.13-6.14，上海，2人，希望女生优先';
+  const body = '组队，6.13-6.14，上海，2人，希望女生优先';
   return {
-    body: `${body}\n\n#组队 #拼房`,
+    body: `${body}\n\n#组队`,
     activityLegacyId: 9,
     eventTitle: '风暴电音节 深圳站',
     location: '上海',
-    tags: ['#组队', '#拼房'],
-    contentTypes: ['team', 'accommodation'] as PostContentType[],
+    tags: ['#组队'],
   };
 }
 
@@ -71,10 +69,6 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
     assertTextsSafe: jest.fn().mockResolvedValue(undefined),
   } as unknown as WechatContentSecurityService;
 
-  const mediaChecks = {
-    assertImagesApprovedForUser: jest.fn().mockResolvedValue(undefined),
-  } as unknown as import('@src/modules/media-security/media-security-check.service').MediaSecurityCheckService;
-
   let service: PostWriteService;
 
   beforeEach(() => {
@@ -91,7 +85,6 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
       postNotification,
       postModeration,
       wechatContentSecurity,
-      mediaChecks,
     );
     (userService.resolveProfile as jest.Mock).mockResolvedValue({
       name: 'Test User',
@@ -116,7 +109,7 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
     }));
   });
 
-  it('persists buddy sheet payload with location, tags and contentTypes', async () => {
+  it('persists buddy sheet payload with location and tags', async () => {
     const dto = buddySheetPayload();
     const result = await service.createPost(
       dto,
@@ -130,8 +123,7 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
         activityLegacyId: 9,
         eventTitle: '风暴电音节 深圳站',
         location: '上海',
-        tags: ['#组队', '#拼房'],
-        contentTypes: ['team', 'accommodation'],
+        tags: ['#组队'],
         status: 'active',
       }),
     );
@@ -149,7 +141,6 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
       eventTitle: '风暴电音节 深圳站',
       location: '上海',
       tags: ['#组队'],
-      contentTypes: ['team'] as PostContentType[],
     };
 
     await expect(

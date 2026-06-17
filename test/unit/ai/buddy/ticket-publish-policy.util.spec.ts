@@ -14,14 +14,9 @@ describe('ticket-publish-policy.util', () => {
     expect(isTicketPublishProhibited({ body: '专业票务代理' })).toBe(true);
   });
 
-  it('blocks ticket content type and resale phrasing', () => {
+  it('blocks ticket resale phrasing', () => {
     expect(isTicketResaleIntent(ASOT_HK_TICKET)).toBe(true);
-    expect(
-      isTicketPublishProhibited({
-        body: ASOT_HK_TICKET,
-        contentTypes: ['ticket'],
-      }),
-    ).toBe(true);
+    expect(isTicketPublishProhibited({ body: ASOT_HK_TICKET })).toBe(true);
   });
 
   it('allows buddy search without ticket trade', () => {
@@ -36,14 +31,6 @@ describe('ticket-publish-policy.util', () => {
       isTicketPublishProhibited({
         body: '找卡座，6.13-6.14，上海，1人',
         tags: ['#拼卡'],
-        contentTypes: ['carpool'],
-      }),
-    ).toBe(false);
-    expect(
-      isTicketPublishProhibited({
-        body: '找卡座，6.13-6.14，上海，1人',
-        tags: ['#拼卡'],
-        contentTypes: ['ticket'],
       }),
     ).toBe(false);
   });

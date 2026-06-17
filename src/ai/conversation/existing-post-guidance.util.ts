@@ -21,7 +21,7 @@ export function buildExistingPostGuidanceReply(params: {
       '',
       `当前帖子：${snippet}`,
       '',
-      '每位用户同类型只能发布一篇帖子。你可以编辑原帖补充信息：',
+      '每位用户只能发布一篇帖子。你可以编辑原帖补充信息：',
       '· 「我的」→ 我的帖子 → 编辑',
       '· 或在活动详情页查看你的帖子',
     );

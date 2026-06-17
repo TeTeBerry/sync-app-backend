@@ -33,16 +33,6 @@ export class CreatePostDto {
   @IsString({ each: true })
   tags?: string[];
 
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  contentTypes?: string[];
-
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  images?: string[];
-
   /** Default true. False = save post but hide from activity/popular feeds. */
   @IsOptional()
   @IsBoolean()

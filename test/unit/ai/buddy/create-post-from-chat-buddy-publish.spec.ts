@@ -44,7 +44,6 @@ describe('CreatePostFromChatUseCase buddy publish (WS chat)', () => {
           tags: ['#拼房'],
         }),
       } as never,
-      { parse: jest.fn() } as never,
       {
         assess: jest.fn().mockResolvedValue({ publishable: true }),
       } as never,
@@ -106,7 +105,6 @@ describe('CreatePostFromChatUseCase buddy publish (WS chat)', () => {
       {
         parse: jest.fn().mockResolvedValue({ ready: true, body: '违规内容' }),
       } as never,
-      { parse: jest.fn() } as never,
       {
         assess: jest.fn().mockResolvedValue({
           publishable: false,

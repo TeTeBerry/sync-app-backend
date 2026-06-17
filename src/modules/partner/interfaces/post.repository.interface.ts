@@ -57,10 +57,6 @@ export interface IPostRepository {
     filter: PostQueryFilter,
     activityLegacyId: number,
   ): Promise<PostRecord[]>;
-  existsOwnerActivePostByContentTypes(
-    userId: string,
-    contentTypes: string[],
-  ): Promise<{ exists: boolean; matchedType?: string }>;
   countByOwnerAndActivity(
     userId: string,
     activityLegacyId: number,

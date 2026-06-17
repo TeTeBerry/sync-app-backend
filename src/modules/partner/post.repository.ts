@@ -10,7 +10,6 @@ import {
 } from './interfaces/post.repository.interface';
 import type { PostPageCursor } from './domain/post-cursor.util';
 import { arePostBodiesSimilar } from './utils/post-body-similarity.util';
-import { TEAM_POST_FEED_FILTER } from './utils/post-content-type.util';
 
 function buildOwnerFilter(filter: PostQueryFilter) {
   const base = buildOwnerMongoFilter(filter.userId, filter.authorName);
@@ -34,7 +33,6 @@ export class PostRepository implements IPostRepository {
       .find({
         status: { $ne: 'hidden' },
         ...FEED_LISTED_FILTER,
-        ...TEAM_POST_FEED_FILTER,
       })
       .sort({ createdAt: -1 })
       .limit(limit)
@@ -49,7 +47,6 @@ export class PostRepository implements IPostRepository {
         activityLegacyId,
         status: { $ne: 'hidden' },
         ...FEED_LISTED_FILTER,
-        ...TEAM_POST_FEED_FILTER,
       })
       .sort({ createdAt: -1 })
       .lean();
@@ -63,7 +60,6 @@ export class PostRepository implements IPostRepository {
       activityLegacyId,
       status: { $ne: 'hidden' },
       ...FEED_LISTED_FILTER,
-      ...TEAM_POST_FEED_FILTER,
     };
     if (options.cursor) {
       filter.$or = [
@@ -83,7 +79,7 @@ export class PostRepository implements IPostRepository {
 
   async findByOwner(filter: PostQueryFilter): Promise<PostRecord[]> {
     return this.model
-      .find({ ...buildOwnerFilter(filter), ...TEAM_POST_FEED_FILTER })
+      .find(buildOwnerFilter(filter))
       .sort({ createdAt: -1 })
       .lean();
   }
@@ -95,13 +91,14 @@ export class PostRepository implements IPostRepository {
   async findByIds(ids: string[]): Promise<PostRecord[]> {
     if (!ids.length) return [];
     return this.model
-      .find({ _id: { $in: ids }, status: { $ne: 'hidden' } })
+      .find({ _id: { $in: ids } })
+      .sort({ createdAt: -1 })
       .lean();
   }
 
   async create(data: Partial<PostRecord>): Promise<PostRecord> {
-    const doc = await this.model.create(data);
-    return doc.toObject() as PostRecord;
+    const created = await this.model.create(data);
+    return created.toObject() as PostRecord;
   }
 
   async updateById(
@@ -120,40 +117,6 @@ export class PostRepository implements IPostRepository {
     return this.model.countDocuments(buildOwnerFilter(filter));
   }
 
-  async findOwnerSimilarActivePost(
-    userId: string,
-    body: string,
-    activityLegacyId?: number,
-    excludePostId?: string,
-  ): Promise<PostRecord | null> {
-    const trimmed = body.trim();
-    if (!trimmed) return null;
-
-    const query: Record<string, unknown> = {
-      userId,
-      status: 'active',
-    };
-    if (activityLegacyId != null) {
-      query.activityLegacyId = activityLegacyId;
-    }
-
-    const candidates = await this.model
-      .find(query)
-      .select('_id body status activityLegacyId')
-      .sort({ createdAt: -1 })
-      .limit(32)
-      .lean();
-
-    for (const row of candidates) {
-      if (excludePostId && String(row._id) === excludePostId) continue;
-      if (arePostBodiesSimilar(trimmed, row.body ?? '')) {
-        return row as PostRecord;
-      }
-    }
-
-    return null;
-  }
-
   async existsDuplicateBody(
     userId: string,
     body: string,
@@ -166,18 +129,45 @@ export class PostRepository implements IPostRepository {
       activityLegacyId,
       excludePostId,
     );
-    return Boolean(similar);
+    return similar != null;
+  }
+
+  async findOwnerSimilarActivePost(
+    userId: string,
+    body: string,
+    activityLegacyId?: number,
+    excludePostId?: string,
+  ): Promise<PostRecord | null> {
+    const filter: Record<string, unknown> = {
+      userId,
+      status: { $ne: 'hidden' },
+    };
+    if (activityLegacyId != null) {
+      filter.activityLegacyId = activityLegacyId;
+    }
+    if (excludePostId) {
+      filter._id = { $ne: excludePostId };
+    }
+
+    const rows = await this.model.find(filter).sort({ createdAt: -1 }).lean();
+    for (const row of rows) {
+      if (arePostBodiesSimilar(body, row.body ?? '')) {
+        return row;
+      }
+    }
+    return null;
   }
 
   async existsOwnerActivePostForActivity(
     userId: string,
     activityLegacyId: number,
   ): Promise<boolean> {
-    const existing = await this.model
-      .findOne({ userId, activityLegacyId, status: 'active' })
-      .select('_id')
-      .lean();
-    return Boolean(existing);
+    const count = await this.model.countDocuments({
+      userId,
+      activityLegacyId,
+      status: { $ne: 'hidden' },
+    });
+    return count > 0;
   }
 
   async findOwnerActivePostsForActivity(
@@ -188,7 +178,7 @@ export class PostRepository implements IPostRepository {
       .find({
         ...buildOwnerFilter(filter),
         activityLegacyId,
-        status: 'active',
+        status: { $ne: 'hidden' },
       })
       .sort({ createdAt: -1 })
       .lean();
@@ -203,27 +193,6 @@ export class PostRepository implements IPostRepository {
       activityLegacyId,
     );
     return rows[0] ?? null;
-  }
-
-  async existsOwnerActivePostByContentTypes(
-    userId: string,
-    contentTypes: string[],
-  ): Promise<{ exists: boolean; matchedType?: string }> {
-    const existing = await this.model
-      .findOne({
-        userId,
-        status: 'active',
-        contentTypes: { $in: contentTypes },
-      })
-      .select('_id contentTypes')
-      .lean();
-
-    if (!existing) return { exists: false };
-
-    const matched = contentTypes.find((t) =>
-      (existing.contentTypes ?? []).includes(t),
-    );
-    return { exists: true, matchedType: matched };
   }
 
   async countByOwnerAndActivity(

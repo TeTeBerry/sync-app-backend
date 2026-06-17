@@ -71,8 +71,7 @@ export class PostQueryService {
         anchorRecord &&
         anchorRecord.activityLegacyId === activityLegacyId &&
         anchorRecord.status !== 'hidden' &&
-        anchorRecord.listedInFeed !== false &&
-        !(anchorRecord.contentTypes ?? []).includes('share')
+        anchorRecord.listedInFeed !== false
       ) {
         const [anchorItem] = await this.mapPosts(
           [anchorRecord],

@@ -41,13 +41,6 @@ export class Post {
   @Prop({ default: 'active' })
   status: PostStatus;
 
-  /** 内容类型数组（team/accommodation/carpool/other），支持交集 */
-  @Prop({ type: [String], index: true, default: [] })
-  contentTypes: string[];
-
-  @Prop({ type: [String], default: [] })
-  images: string[];
-
   /**
    * When false, post is stored for owner/apply flows but omitted from public activity feeds.
    * Missing field is treated as true (legacy posts).

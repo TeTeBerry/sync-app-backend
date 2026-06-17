@@ -1,8 +1,5 @@
-import { inferIntentTagsFromText } from './infer-intent-tags.util';
-import { inferPostContentTypes } from '../../modules/partner/utils/post-content-type.util';
-
 export const TICKET_PUBLISH_FORBIDDEN_MESSAGE =
-  '平台禁止发布转票、出票、票务相关信息。如需结伴同行，请改为组队、同路或住宿类帖子。';
+  '平台禁止发布转票、出票、票务相关信息。如需结伴同行，请改为组队帖。';
 
 /** Explicit ticket-trade keywords — always block publish. */
 const TICKET_PUBLISH_KEYWORD_RE = /转票|出票|票务|倒票|黄牛/i;
@@ -24,7 +21,6 @@ function isBuddyPincardIntent(body: string, tags: string[]): boolean {
 export function isTicketPublishProhibited(params: {
   body?: string;
   tags?: string[];
-  contentTypes?: string[];
 }): boolean {
   const body = params.body?.trim() ?? '';
   const tags = params.tags ?? [];
@@ -38,14 +34,6 @@ export function isTicketPublishProhibited(params: {
     return true;
   }
 
-  const contentTypes = params.contentTypes?.length
-    ? params.contentTypes
-    : inferPostContentTypes({ tags, body });
-
-  if (contentTypes.includes('ticket')) {
-    return true;
-  }
-
   if (
     TICKET_RESALE_BODY_RE.test(body) &&
     /票|VIP|Stage|内场|看台/i.test(body)
@@ -56,13 +44,10 @@ export function isTicketPublishProhibited(params: {
   return false;
 }
 
-/** User is selling / transferring tickets (not buddy/carpool intent). */
+/** User is selling / transferring tickets (not buddy intent). */
 export function isTicketResaleIntent(input: string): boolean {
   const text = input.trim();
   if (!text) return false;
 
-  return isTicketPublishProhibited({
-    body: text,
-    tags: inferIntentTagsFromText(text),
-  });
+  return isTicketPublishProhibited({ body: text });
 }

@@ -124,10 +124,6 @@ export class TextParseAgent {
   constructor(private readonly llmService: LlmService) {}
 
   async parse(input: AgentParseInput): Promise<ParsedPostDraft | null> {
-    if (input.image?.trim()) {
-      return null;
-    }
-
     const trimmedInput = input.input.trim();
     const ctx = parseConversationContext(input.messages, trimmedInput);
     const knownFacts = buildKnownFactsSummary(ctx);

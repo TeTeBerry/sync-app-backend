@@ -35,18 +35,11 @@ import {
 import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { resolveDepartureCity } from '../utils/departure-city.util';
 import {
-  inferPostContentTypes,
-  MAX_POST_IMAGES,
-} from '../utils/post-content-type.util';
-import { normalizeUserImageUrls } from '../../../common/media/user-image-ref.util';
-import { assertUserUgcImages } from '../../../common/media/user-ugc-image.util';
-import {
   assertUserUgcTexts,
   collectPostWriteUgcTexts,
 } from '../../../common/media/user-ugc-text.util';
 import { assertPostHasNoContactInfo } from '../utils/post-contact.util';
 import { WechatContentSecurityService } from '../../auth/wechat-content-security.service';
-import { MediaSecurityCheckService } from '../../media-security/media-security-check.service';
 
 @Injectable()
 export class PostWriteService {
@@ -65,7 +58,6 @@ export class PostWriteService {
     @Inject(POST_MODERATION_PORT)
     private readonly postModeration: IPostModerationPort,
     private readonly wechatContentSecurity: WechatContentSecurityService,
-    private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
 
   private async toCreatedEventDetailItem(
@@ -111,7 +103,6 @@ export class PostWriteService {
       isTicketPublishProhibited({
         body: bodyToSave,
         tags: dto.tags,
-        contentTypes: dto.contentTypes,
       })
     ) {
       void this.accountRisk.recordTicketPolicyViolation(
@@ -121,10 +112,7 @@ export class PostWriteService {
       throw new BadRequestException(TICKET_PUBLISH_FORBIDDEN_MESSAGE);
     }
 
-    const structuredBuddyForm =
-      Boolean(dto.contentTypes?.length) && Boolean(dto.tags?.length);
-    const isMessageBoardPost =
-      dto.contentTypes?.length === 1 && dto.contentTypes[0] === 'other';
+    const structuredBuddyForm = Boolean(dto.tags?.length);
 
     if (!options?.skipRiskCheck) {
       const risk = await this.postModeration.assessPost(
@@ -133,9 +121,7 @@ export class PostWriteService {
           actor,
           activityLegacyId: dto.activityLegacyId ?? activity?.legacyId,
         },
-        structuredBuddyForm || isMessageBoardPost
-          ? { rulesOnly: true }
-          : undefined,
+        structuredBuddyForm ? { rulesOnly: true } : undefined,
       );
       if (!risk.publishable) {
         void this.accountRisk.recordPublishRiskViolation(actor, risk, {
@@ -156,54 +142,33 @@ export class PostWriteService {
       body: bodyToSave,
     });
 
-    // 推断内容类型（支持交集）
-    const contentTypes = dto.contentTypes?.length
-      ? dto.contentTypes
-      : inferPostContentTypes({ tags: dto.tags, body: bodyToSave });
+    const similarActive = await this.repository.findOwnerSimilarActivePost(
+      ownerUserId,
+      bodyToSave,
+      activityLegacyId,
+    );
+    if (similarActive) {
+      throw new ConflictException(
+        activityLegacyId != null
+          ? `您在「${eventTitle}」已有内容相近的帖子，请勿重复发布。可编辑原帖后再发新帖。`
+          : '您已有内容相近的帖子，请勿重复发布。可编辑原帖后再发新帖。',
+      );
+    }
 
-    const isSharePost = contentTypes.includes('share');
-
-    if (!isSharePost) {
-      const similarActive = await this.repository.findOwnerSimilarActivePost(
+    const MAX_POSTS_PER_ACTIVITY = 8;
+    if (activityLegacyId != null) {
+      const activityPostCount = await this.repository.countByOwnerAndActivity(
         ownerUserId,
-        bodyToSave,
         activityLegacyId,
       );
-      if (similarActive) {
+      if (activityPostCount >= MAX_POSTS_PER_ACTIVITY) {
         throw new ConflictException(
-          activityLegacyId != null
-            ? `您在「${eventTitle}」已有内容相近的帖子，请勿重复发布。可编辑原帖后再发新帖。`
-            : '您已有内容相近的帖子，请勿重复发布。可编辑原帖后再发新帖。',
+          `您在「${eventTitle}」已发布 ${MAX_POSTS_PER_ACTIVITY} 篇帖子，达到上限。请先删除或修改之前的帖子后再发布。`,
         );
-      }
-
-      // 同一活动帖子数量限制：最多 8 篇
-      const MAX_POSTS_PER_ACTIVITY = 8;
-      if (activityLegacyId != null) {
-        const activityPostCount = await this.repository.countByOwnerAndActivity(
-          ownerUserId,
-          activityLegacyId,
-        );
-        if (activityPostCount >= MAX_POSTS_PER_ACTIVITY) {
-          throw new ConflictException(
-            `您在「${eventTitle}」已发布 ${MAX_POSTS_PER_ACTIVITY} 篇帖子，达到上限。请先删除或修改之前的帖子后再发布。`,
-          );
-        }
       }
     }
 
     const listedInFeed = dto.listedInFeed !== false;
-    const normalizedImages = normalizeUserImageUrls(dto.images);
-    if (normalizedImages.length > MAX_POST_IMAGES) {
-      throw new BadRequestException(`最多上传 ${MAX_POST_IMAGES} 张图片`);
-    }
-    await assertUserUgcImages(
-      this.wechatContentSecurity,
-      this.mediaChecks,
-      normalizedImages,
-      ownerUserId,
-    );
-    const images = normalizedImages;
 
     assertPostHasNoContactInfo(bodyToSave);
     await assertUserUgcTexts(this.wechatContentSecurity, [
@@ -225,10 +190,8 @@ export class PostWriteService {
       departureCity,
       body: bodyToSave,
       tags: dto.tags ?? [],
-      contentTypes,
       status,
       listedInFeed,
-      images,
     });
 
     const postId = String(created._id);

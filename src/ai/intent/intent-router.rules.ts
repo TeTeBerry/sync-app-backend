@@ -17,10 +17,6 @@ export function resolveChatIntentFastPath(
   trimmed: string,
   params: IntentRouterInput,
 ): ResolvedChatIntent | null {
-  if (params.image?.trim()) {
-    return { kind: 'create_post', source: 'rule' };
-  }
-
   if (
     params.activityLegacyId == null &&
     isAwaitingActivityEnterSelection(params.messages)

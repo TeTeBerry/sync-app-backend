@@ -24,15 +24,4 @@ export class PostModerationAdapter implements IPostModerationPort {
       { rulesOnly: options?.rulesOnly },
     );
   }
-
-  assessPostImage(
-    input: PostModerationInput & { image: string },
-  ): Promise<PostModerationResult> {
-    return this.riskAgent.assessImage({
-      body: input.body,
-      image: input.image,
-      actor: input.actor,
-      activityLegacyId: input.activityLegacyId,
-    });
-  }
 }

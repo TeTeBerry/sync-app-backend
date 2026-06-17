@@ -4,7 +4,6 @@ export interface PostModerationInput {
   body: string;
   actor: RequestActor;
   activityLegacyId?: number;
-  image?: string;
 }
 
 export interface PostModerationResult {
@@ -22,9 +21,6 @@ export interface IPostModerationPort {
   assessPost(
     input: PostModerationInput,
     options?: PostModerationAssessOptions,
-  ): Promise<PostModerationResult>;
-  assessPostImage(
-    input: PostModerationInput & { image: string },
   ): Promise<PostModerationResult>;
 }
 

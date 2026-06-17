@@ -61,7 +61,6 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
           .fn()
           .mockResolvedValue(overrides?.textParseResult ?? { ready: false }),
       } as never,
-      { parse: jest.fn() } as never,
       {
         assess: jest.fn().mockResolvedValue({ publishable: true }),
         assessImage: jest.fn(),

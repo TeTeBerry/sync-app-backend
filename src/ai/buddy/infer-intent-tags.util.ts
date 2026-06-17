@@ -59,73 +59,6 @@ function inferZoneAndDayTags(text: string, tags: Set<string>): void {
   }
 }
 
-const TICKET_RESALE_CITIES = [
-  '香港',
-  '澳门',
-  '台湾',
-  '上海',
-  '北京',
-  '广州',
-  '深圳',
-  '成都',
-  '杭州',
-  '武汉',
-  '南京',
-  '重庆',
-  '西安',
-  '苏州',
-  '珠海',
-];
-
-/** Ticket transfer / resale: 折价出票, event name, city, date, tier. */
-function inferTicketResaleTags(text: string, tags: Set<string>): void {
-  const hasTicket = /票|内场|看台|舞台|VIP|Stage/i.test(text);
-  const hasResale =
-    /折价|出票|转票|转手|出一张|转让|临时有事|私我|需要的私|私聊/i.test(text);
-
-  if (!hasTicket && !hasResale) return;
-
-  if (/转票|转手/i.test(text)) {
-    addTag(tags, '#转票');
-  }
-  if (/出票|折价|出一张|转让/i.test(text)) {
-    addTag(tags, '#出票');
-  }
-  if (hasTicket && hasResale && !tags.has('#转票') && !tags.has('#出票')) {
-    addTag(tags, '#出票');
-  }
-
-  if (/折价/i.test(text)) {
-    addTag(tags, '#折价');
-  }
-  if (/\bVIP\b/i.test(text)) {
-    addTag(tags, '#VIP');
-  }
-  if (/\bStage\b/i.test(text)) {
-    addTag(tags, '#Stage');
-  }
-
-  if (/ASOT/i.test(text)) {
-    addTag(tags, '#ASOT');
-  }
-
-  for (const city of TICKET_RESALE_CITIES) {
-    if (text.includes(city)) {
-      addTag(tags, `#${city}`);
-    }
-  }
-
-  const dotDate = text.match(/(\d{1,2})\.(\d{1,2})(?!\d)/);
-  if (dotDate) {
-    addTag(tags, `#${dotDate[1]}.${dotDate[2]}`);
-  }
-
-  const cnDate = text.match(/(\d{1,2})月(\d{1,2})日?/);
-  if (cnDate) {
-    addTag(tags, `#${cnDate[1]}.${cnDate[2]}`);
-  }
-}
-
 /**
  * Infer display tags from post body / user message (MVP rule + synonym map).
  */
@@ -147,7 +80,6 @@ export function inferIntentTagsFromText(
   }
 
   inferZoneAndDayTags(haystack, tags);
-  inferTicketResaleTags(haystack, tags);
 
   if (/组队|缺\d|有姐妹/i.test(haystack)) {
     addTag(tags, '#组队');

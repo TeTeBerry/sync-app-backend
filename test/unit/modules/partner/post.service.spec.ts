@@ -20,8 +20,6 @@ function createPost(overrides: Partial<PostRecord> = {}): PostRecord {
     body: 'Looking for team',
     status: 'active',
     tags: [],
-    contentTypes: [],
-    images: [],
     createdAt: new Date('2025-01-01'),
     ...overrides,
   } as PostRecord;

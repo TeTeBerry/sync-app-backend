@@ -3,11 +3,6 @@ import {
   formatTimeAgo,
 } from '../../common/utils/day-time.util';
 import { PostRecord } from './interfaces/post.repository.interface';
-import { postAllowsImages } from './utils/post-content-type.util';
-
-function resolvePostImages(post: PostRecord): string[] {
-  return postAllowsImages(post.contentTypes) ? (post.images ?? []) : [];
-}
 
 export class PostMapper {
   static toHomeFeedItem(post: PostRecord) {
@@ -22,9 +17,7 @@ export class PostMapper {
       body: post.body,
       time: formatRelativeTime(post.createdAt),
       avatar: post.authorAvatar ?? '',
-      contentTypes: post.contentTypes ?? [],
       tags: post.tags ?? [],
-      images: resolvePostImages(post),
     };
   }
 
@@ -43,10 +36,8 @@ export class PostMapper {
       createdAt,
       body: post.body,
       tags: post.tags ?? [],
-      contentTypes: post.contentTypes ?? [],
       comments: post.comments ?? 0,
       avatar: post.authorAvatar ?? '',
-      images: resolvePostImages(post),
     };
   }
 
@@ -84,8 +75,6 @@ export class PostMapper {
       content: post.body,
       date: formatDateLabel(post.createdAt),
       activityLegacyId: post.activityLegacyId,
-      contentTypes: post.contentTypes ?? [],
-      images: resolvePostImages(post),
     };
   }
 }

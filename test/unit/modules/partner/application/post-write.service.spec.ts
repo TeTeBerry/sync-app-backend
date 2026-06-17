@@ -56,10 +56,6 @@ describe('PostWriteService', () => {
     isEnabled: jest.fn().mockReturnValue(true),
   } as unknown as WechatContentSecurityService;
 
-  const mediaChecks = {
-    assertImagesApprovedForUser: jest.fn().mockResolvedValue(undefined),
-  } as unknown as import('@src/modules/media-security/media-security-check.service').MediaSecurityCheckService;
-
   let service: PostWriteService;
 
   beforeEach(() => {
@@ -76,7 +72,6 @@ describe('PostWriteService', () => {
       postNotification,
       postModeration,
       wechatContentSecurity,
-      mediaChecks,
     );
   });
 
@@ -164,7 +159,6 @@ describe('PostWriteService', () => {
       tags: ['#组队'],
       activityLegacyId: 4,
       status: 'active',
-      contentTypes: ['team'],
     });
 
     await service.createPost(
@@ -172,7 +166,6 @@ describe('PostWriteService', () => {
         body: '组队，上海，2人',
         activityLegacyId: 4,
         tags: ['#组队'],
-        contentTypes: ['team'],
       },
       toRequestActor('demo-user', 'Zara Chen'),
     );
@@ -187,7 +180,7 @@ describe('PostWriteService', () => {
     );
   });
 
-  it('message board posts use rules-only moderation', async () => {
+  it('structured buddy posts with tags use rules-only moderation', async () => {
     (userService.resolveProfile as jest.Mock).mockResolvedValue({
       name: 'Zara Chen',
     });
@@ -207,16 +200,15 @@ describe('PostWriteService', () => {
       tags: [],
       activityLegacyId: 4,
       status: 'active',
-      contentTypes: ['other'],
     });
 
     await service.createPost(
-      { body: '特特', activityLegacyId: 4, contentTypes: ['other'] },
+      { body: '组队，上海，2人', activityLegacyId: 4, tags: ['#组队'] },
       toRequestActor('demo-user', 'Zara Chen'),
     );
 
     expect(postModeration.assessPost).toHaveBeenCalledWith(
-      expect.objectContaining({ body: '特特' }),
+      expect.objectContaining({ body: '组队，上海，2人' }),
       { rulesOnly: true },
     );
   });

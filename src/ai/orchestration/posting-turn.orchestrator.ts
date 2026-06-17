@@ -75,8 +75,6 @@ export class PostingTurnOrchestrator {
       input,
       actor: dto.actor,
       activityLegacyId: effectiveActivityLegacyId ?? dto.activityLegacyId,
-      image: dto.image,
-      images: dto.images,
       conversationState: sink.getState(),
       onStateChange: (state) => sink.setState(state),
     });

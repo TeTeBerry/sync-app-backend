@@ -6,7 +6,6 @@ import { UserModule } from '../../modules/user/user.module';
 import { PartnerRepositoryModule } from '../../modules/partner/partner-repository.module';
 import { NotificationModule } from '../../modules/notification/notification.module';
 import { InfraLlmModule } from '../../infra/llm/llm.module';
-import { ImageParseAgent } from './image-parse.agent';
 import { NoticeAgent } from './notice.agent';
 import { RiskAgent } from './risk.agent';
 import { TextParseAgent } from './text-parse.agent';
@@ -23,19 +22,7 @@ import { UserProfileAgent } from './user-profile.agent';
       { name: User.name, schema: UserSchema },
     ]),
   ],
-  providers: [
-    TextParseAgent,
-    ImageParseAgent,
-    RiskAgent,
-    UserProfileAgent,
-    NoticeAgent,
-  ],
-  exports: [
-    TextParseAgent,
-    ImageParseAgent,
-    RiskAgent,
-    UserProfileAgent,
-    NoticeAgent,
-  ],
+  providers: [TextParseAgent, RiskAgent, UserProfileAgent, NoticeAgent],
+  exports: [TextParseAgent, RiskAgent, UserProfileAgent, NoticeAgent],
 })
 export class AgentsModule {}

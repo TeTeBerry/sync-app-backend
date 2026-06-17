@@ -2,12 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { CreatePostDto } from '../../modules/partner/dto/create-post.dto';
 import { PostService } from '../../modules/partner/post.service';
-import {
-  ImageParseAgent,
-  NoticeAgent,
-  RiskAgent,
-  TextParseAgent,
-} from '../agents';
+import { NoticeAgent, RiskAgent, TextParseAgent } from '../agents';
 import type { ConversationState } from '../conversation';
 import {
   enterCollectPostBodyState,
@@ -37,7 +32,6 @@ import {
   TICKET_PUBLISH_FORBIDDEN_MESSAGE,
 } from './ticket-publish-policy.util';
 import type { PostIntentCreateAttempt } from './buddy.types';
-import { inferPostContentTypes } from '../../modules/partner/utils/post-content-type.util';
 import { TRAVEL_SAFETY_TIP } from '../risk/risk-sanitize.util';
 
 export interface CreatePostFromChatParams {
@@ -45,8 +39,6 @@ export interface CreatePostFromChatParams {
   input: string;
   actor: RequestActor;
   activityLegacyId?: number;
-  image?: string;
-  images?: string[];
   conversationState?: ConversationState | null;
   onStateChange?: (state: ConversationState) => void;
 }
@@ -57,7 +49,6 @@ export class CreatePostFromChatUseCase {
 
   constructor(
     private readonly textParseAgent: TextParseAgent,
-    private readonly imageParseAgent: ImageParseAgent,
     private readonly riskAgent: RiskAgent,
     private readonly noticeAgent: NoticeAgent,
     private readonly postService: PostService,
@@ -73,8 +64,6 @@ export class CreatePostFromChatUseCase {
       input,
       actor,
       activityLegacyId,
-      image,
-      images,
       conversationState,
       onStateChange,
     } = params;
@@ -86,7 +75,6 @@ export class CreatePostFromChatUseCase {
         trimmedInput,
         activityLegacyId,
         conversationState,
-        image,
       )
     ) {
       return null;
@@ -97,15 +85,11 @@ export class CreatePostFromChatUseCase {
       messages,
       input: trimmedInput,
       activityLegacyId,
-      image,
     };
 
     const parseStart = Date.now();
-    // Text/image parse and activity lookup (when legacyId known) are independent.
     const [parsed, resolvedFromRequest] = await Promise.all([
-      image?.trim()
-        ? this.imageParseAgent.parse(parseInput)
-        : this.textParseAgent.parse(parseInput),
+      this.textParseAgent.parse(parseInput),
       activityLegacyId != null
         ? this.buddyContext.resolveActivity(ctx, activityLegacyId)
         : Promise.resolve(null),
@@ -242,7 +226,6 @@ export class CreatePostFromChatUseCase {
     const canCreate =
       publishConfirmReady ||
       readyForDirectSelfPost ||
-      Boolean(image?.trim() && parsed?.body?.trim()) ||
       (!isBuddyPostEntryIntent(trimmedInput) &&
         !inSelfPostCollectFlow &&
         hasActivity &&
@@ -267,25 +250,17 @@ export class CreatePostFromChatUseCase {
 
     const riskStart = Date.now();
     const useRulesOnlyRisk =
-      !image?.trim() &&
-      (publishConfirmReady ||
-        readyForDirectSelfPost ||
-        conversationState?.publishDraft?.fromSelfPost === true);
-    const risk = image?.trim()
-      ? await this.riskAgent.assessImage({
-          body,
-          image: image.trim(),
-          actor,
-          activityLegacyId: resolvedActivity?.legacyId,
-        })
-      : await this.riskAgent.assess(
-          {
-            body,
-            actor,
-            activityLegacyId: resolvedActivity?.legacyId,
-          },
-          { rulesOnly: useRulesOnlyRisk },
-        );
+      publishConfirmReady ||
+      readyForDirectSelfPost ||
+      conversationState?.publishDraft?.fromSelfPost === true;
+    const risk = await this.riskAgent.assess(
+      {
+        body,
+        actor,
+        activityLegacyId: resolvedActivity?.legacyId,
+      },
+      { rulesOnly: useRulesOnlyRisk },
+    );
     const msRisk = Date.now() - riskStart;
 
     this.logger.log(
@@ -317,9 +292,7 @@ export class CreatePostFromChatUseCase {
     // Zone/area parsed from body (e.g. "A区") stays in body only.
     const departureCity = ctx.city?.trim();
 
-    const contentTypes = inferPostContentTypes({ tags, body: finalBody });
-
-    if (isTicketPublishProhibited({ body: finalBody, tags, contentTypes })) {
+    if (isTicketPublishProhibited({ body: finalBody, tags })) {
       void this.accountRisk.recordTicketPolicyViolation(
         actor,
         TICKET_PUBLISH_FORBIDDEN_MESSAGE,
@@ -336,8 +309,6 @@ export class CreatePostFromChatUseCase {
       eventTitle: resolvedActivity?.name ?? parsed?.eventName,
       ...(departureCity ? { location: departureCity, departureCity } : {}),
       tags,
-      contentTypes,
-      images: images?.length ? images : undefined,
     };
 
     const post = await this.postService.createPost(dto, actor, {
