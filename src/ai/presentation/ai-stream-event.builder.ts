@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { createIdleState, type ConversationState } from '../conversation';
 import {
   buildRequireBuddyPostFirstReply,
+  COLLECT_POST_BODY_SUGGESTED_REPLIES,
   REQUIRE_BUDDY_POST_SUGGESTED_REPLIES,
 } from '../publish/buddy-post-flow.util';
 import { enterCollectPostBodyState } from '../conversation';
@@ -146,6 +147,15 @@ export class AiStreamEventBuilder {
         { type: 'delta', content: postAttempt.replyText },
         ...patchIfNeeded(),
       ];
+      if (
+        postAttempt.kind === 'rejected' &&
+        sink.getState().flow === 'collect_post_body'
+      ) {
+        events.push({
+          type: 'suggested_replies',
+          replies: [...COLLECT_POST_BODY_SUGGESTED_REPLIES],
+        });
+      }
       if (postAttempt.kind === 'pending_confirmation') {
         events.push(this.publishConfirmSuggestedRepliesEvent());
       }

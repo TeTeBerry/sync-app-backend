@@ -117,7 +117,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
     expect(result).toEqual(
       expect.objectContaining({
         kind: 'rejected',
-        replyText: '想发什么直接说，我帮你发～',
+        replyText: expect.stringContaining(SELF_POST_COLLECT_BODY_MARKER),
       }),
     );
     expect(onStateChange).toHaveBeenCalledWith(
@@ -352,7 +352,7 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
     expect(result).toEqual(
       expect.objectContaining({
         kind: 'rejected',
-        replyText: '想发什么直接说，我帮你发～',
+        replyText: expect.stringContaining(SELF_POST_COLLECT_BODY_MARKER),
       }),
     );
     expect(onStateChange).toHaveBeenCalledWith(
