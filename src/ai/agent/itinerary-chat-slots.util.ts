@@ -51,9 +51,9 @@ export function resolveDjIdsFromNames(
 
 export function buildItineraryCollectPrompt(): string {
   return [
-    '好的，我来帮你生成专属演出行程。',
+    '好的，我来帮你生成专属行程。',
     '',
     '请告诉我你想看的 DJ（可多选），例如：「Marshmello、Martin Garrix」',
-    '也可以点下方「专属行程」进入选 DJ 页面。',
+    '也可以点下方「生成专属行程」进入选 DJ 页面。',
   ].join('\n');
 }
