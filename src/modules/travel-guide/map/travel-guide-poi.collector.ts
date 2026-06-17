@@ -10,6 +10,7 @@ import {
   AFTERPARTY_SEARCH_KEYWORD,
   isAfterpartyMapPoi,
 } from './travel-guide-afterparty.constants';
+import { hotelSearchKeywordsForBudgetTier } from './travel-guide-hotel-keywords.util';
 import type {
   MapPoiKind,
   RawMapPoi,
@@ -17,8 +18,6 @@ import type {
 } from './travel-guide-map.types';
 
 const PARKING_KEYWORDS = ['停车场', '停车'];
-const HOTEL_KEYWORDS = ['酒店', '宾馆'];
-
 const DEFAULT_EVENT_END_HOUR = 23.5;
 /** Align with default `AMAP_QPS` / `AMAP_MAX_CONCURRENT`. */
 const POI_SEARCH_BATCH_SIZE = 5;
@@ -43,22 +42,41 @@ export class TravelGuidePoiCollector {
 
     const { venue, readableAddress, source: venueSource } = resolvedVenue;
     const eventRegion = destinationCityFromActivityLocation(activity.location);
-    const departure = await this.geoCache.resolveDeparture(
-      dto.departure.trim(),
-      eventRegion || undefined,
-      dto.departureCity?.trim(),
+    const destinationCity = destinationCityFromActivityLocation(
+      activity.location,
+    );
+    const abroad = isTravelGuideAbroad(activity);
+    const poiSearchTasks = buildPoiSearchTasks(
+      Boolean(dto.selfDrive),
+      dto.budgetTier,
+      abroad,
     );
 
-    const transport = await this.geoCache.resolveTransport({
-      activityLegacyId: activity.legacyId,
-      departureText: dto.departure.trim(),
-      venue,
-      destinationCity: destinationCityFromActivityLocation(activity.location),
-      selfDrive: Boolean(dto.selfDrive),
-      activity,
-    });
+    const [departure, transport, poiBatches] = await Promise.all([
+      this.geoCache.resolveDeparture(
+        dto.departure.trim(),
+        eventRegion || undefined,
+        dto.departureCity?.trim(),
+      ),
+      this.geoCache.resolveTransport({
+        activityLegacyId: activity.legacyId,
+        departureText: dto.departure.trim(),
+        venue,
+        destinationCity,
+        selfDrive: Boolean(dto.selfDrive),
+        activity,
+        departureCity: dto.departureCity?.trim(),
+      }),
+      runInBatches(poiSearchTasks, POI_SEARCH_BATCH_SIZE, (task) =>
+        this.geoCache.searchPoisCached({
+          activityLegacyId: activity.legacyId,
+          venue,
+          keyword: task.keyword,
+          kind: task.kind,
+        }),
+      ),
+    ]);
 
-    const abroad = isTravelGuideAbroad(activity);
     const transportHints: string[] = abroad
       ? filterDomesticTransportHints([...(transport.hintLines ?? [])])
       : [...(transport.hintLines ?? [])];
@@ -70,19 +88,6 @@ export class TravelGuidePoiCollector {
         transportHints.push(transport.transitHint);
       }
     }
-
-    const poiSearchTasks = buildPoiSearchTasks(Boolean(dto.selfDrive));
-    const poiBatches = await runInBatches(
-      poiSearchTasks,
-      POI_SEARCH_BATCH_SIZE,
-      (task) =>
-        this.geoCache.searchPoisCached({
-          activityLegacyId: activity.legacyId,
-          venue,
-          keyword: task.keyword,
-          kind: task.kind,
-        }),
-    );
 
     let pois = dedupePois(poiBatches.flat());
     if (!pois.length) {
@@ -121,8 +126,15 @@ export class TravelGuidePoiCollector {
 
 type PoiSearchTask = { keyword: string; kind: MapPoiKind };
 
-function buildPoiSearchTasks(selfDrive: boolean): PoiSearchTask[] {
-  const tasks: PoiSearchTask[] = HOTEL_KEYWORDS.map((keyword) => ({
+function buildPoiSearchTasks(
+  selfDrive: boolean,
+  budgetTier: GenerateTravelGuideDto['budgetTier'],
+  abroad: boolean,
+): PoiSearchTask[] {
+  const hotelKeywords = hotelSearchKeywordsForBudgetTier(budgetTier, {
+    abroad,
+  });
+  const tasks: PoiSearchTask[] = hotelKeywords.map((keyword) => ({
     keyword,
     kind: 'hotel' as const,
   }));

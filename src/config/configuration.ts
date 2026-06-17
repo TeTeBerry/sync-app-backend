@@ -43,11 +43,18 @@ export default () => ({
     ),
     textModel: cleanEnv(process.env.HUNYUAN_TEXT_MODEL, 'hy3-preview'),
     reasoningEffort: cleanEnv(process.env.HUNYUAN_REASONING_EFFORT, 'no_think'),
-    /** AI 出行攻略润色专用；默认 high（深度思考），不影响意图/解析等快路径 */
+    /** AI 出行攻略润色：默认 low（快），需要更高质量可设 HUNYUAN_TRAVEL_GUIDE_REASONING_EFFORT=high */
     travelGuideReasoningEffort: cleanEnv(
       process.env.HUNYUAN_TRAVEL_GUIDE_REASONING_EFFORT,
       'high',
     ),
+    travelGuideLlmTimeoutMs: parseInt(
+      cleanEnv(process.env.HUNYUAN_TRAVEL_GUIDE_LLM_TIMEOUT_MS, '25000'),
+      10,
+    ),
+    /** 设为 false 可跳过 LLM，直接返回地图模板（最快） */
+    travelGuideLlmPolishEnabled:
+      cleanEnv(process.env.TRAVEL_GUIDE_LLM_POLISH_ENABLED, 'true') !== 'false',
   },
 
   chroma: {

@@ -1,4 +1,5 @@
 import { TravelGuidePoiRanker } from '../../../../src/modules/travel-guide/map/travel-guide-poi.ranker';
+import { getHotPathFallbackPois } from '../../../../src/modules/travel-guide/map/travel-guide-hot-path-pois.data';
 import type {
   RawMapPoi,
   TravelGuideMapContext,
@@ -177,5 +178,36 @@ describe('TravelGuidePoiRanker', () => {
     expect(ranked.nightlife).toHaveLength(2);
     expect(ranked.nightlife[0]?.name).toBe('深夜火锅');
     expect(ranked.nightlife.some((p) => p.name.includes('酒吧'))).toBe(false);
+  });
+
+  it('picks different featured hotels for economy vs comfort on Phuket fallback set', () => {
+    const phuketHotels = getHotPathFallbackPois(5, 'hotel');
+    expect(phuketHotels.length).toBeGreaterThanOrEqual(4);
+
+    const ctx = {
+      ...baseCtx,
+      pois: phuketHotels,
+    };
+
+    const economy = ranker.rank(ctx, {
+      departure: '上海',
+      headcount: 2,
+      budgetTier: 'economy',
+    });
+    const comfort = ranker.rank(ctx, {
+      departure: '上海',
+      headcount: 2,
+      budgetTier: 'comfort',
+    });
+
+    expect(economy.accommodationPicks?.nearby.name).not.toBe(
+      comfort.accommodationPicks?.nearby.name,
+    );
+    expect(economy.accommodationPicks?.nearby.name).toMatch(
+      /Lub d|Guesthouse/i,
+    );
+    expect(comfort.accommodationPicks?.nearby.name).toMatch(
+      /Hilton|InterContinental|Pullman/i,
+    );
   });
 });

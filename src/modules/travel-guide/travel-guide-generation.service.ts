@@ -44,6 +44,7 @@ import {
   mergeRankedHotelsWithLlmPolish,
 } from './map/travel-guide-map-plan.builder';
 import { mergeVenueTransportWithLlmPolish } from './domain/travel-guide-transport.util';
+import { compactCandidatesForLlm } from './domain/travel-guide-llm-candidates.util';
 import type { TravelGuideMapLlmInput } from './map/travel-guide-map.types';
 import type { TravelGuideMapContext } from './map/travel-guide-map.types';
 import type { TravelGuideRankedCandidates } from './map/travel-guide-map.types';
@@ -74,12 +75,14 @@ const TRAVEL_GUIDE_MAP_JSON_SYSTEM = [
   '不要输出天气。',
 ].join('');
 
-const TRAVEL_GUIDE_LLM_TIMEOUT_MS = 90_000;
+const TRAVEL_GUIDE_LLM_TIMEOUT_MS_DEFAULT = 25_000;
 
 @Injectable()
 export class TravelGuideGenerationService {
   private readonly logger = new Logger(TravelGuideGenerationService.name);
   private readonly travelGuideReasoningEffort: HunyuanReasoningEffort;
+  private readonly travelGuideLlmTimeoutMs: number;
+  private readonly travelGuideLlmPolishEnabled: boolean;
 
   constructor(
     private readonly config: ConfigService,
@@ -94,7 +97,12 @@ export class TravelGuideGenerationService {
   ) {
     this.travelGuideReasoningEffort = (this.config.get<string>(
       'hunyuan.travelGuideReasoningEffort',
-    ) ?? 'high') as HunyuanReasoningEffort;
+    ) ?? 'low') as HunyuanReasoningEffort;
+    this.travelGuideLlmTimeoutMs =
+      this.config.get<number>('hunyuan.travelGuideLlmTimeoutMs') ??
+      TRAVEL_GUIDE_LLM_TIMEOUT_MS_DEFAULT;
+    this.travelGuideLlmPolishEnabled =
+      this.config.get<boolean>('hunyuan.travelGuideLlmPolishEnabled') ?? true;
   }
 
   async generate(
@@ -215,14 +223,6 @@ export class TravelGuideGenerationService {
     mapCtx: TravelGuideMapContext,
     ranked: TravelGuideRankedCandidates,
   ): Promise<LlmTravelGuidePayload> {
-    const polished = await this.tryPolishWithAi(
-      activity,
-      dto,
-      accommodationNights,
-      mapCtx,
-      ranked,
-    );
-
     const mapPayload = mapCandidatesToLlmFallback(mapCtx, ranked, {
       departure: dto.departure.trim(),
       departureCity: dto.departureCity?.trim(),
@@ -231,6 +231,25 @@ export class TravelGuideGenerationService {
       headcount: dto.headcount,
       activity,
     });
+
+    if (
+      !this.travelGuideLlmPolishEnabled ||
+      !this.isValidMapSourcedPayload(mapPayload, Boolean(dto.selfDrive))
+    ) {
+      if (!this.isValidMapSourcedPayload(mapPayload, Boolean(dto.selfDrive))) {
+        throw new ServiceUnavailableException('攻略内容生成失败，请稍后重试');
+      }
+      return mapPayload;
+    }
+
+    const polished = await this.tryPolishWithAi(
+      activity,
+      dto,
+      accommodationNights,
+      mapCtx,
+      ranked,
+    );
+
     const polishedOrMap = polished ?? mapPayload;
     const payload = {
       ...polishedOrMap,
@@ -321,7 +340,21 @@ export class TravelGuideGenerationService {
     };
 
     const user = JSON.stringify({
-      ...payload,
+      activityName: payload.activityName,
+      venueLabel: payload.venueLabel,
+      venueReadableAddress: payload.venueReadableAddress,
+      eventDates: payload.eventDates,
+      departure: payload.departure,
+      headcount: payload.headcount,
+      budgetTier: payload.budgetTier,
+      budgetLabel: payload.budgetLabel,
+      accommodationNights: payload.accommodationNights,
+      selfDrive: payload.selfDrive,
+      eventEndHour: payload.eventEndHour,
+      transportHints: payload.transportHints,
+      interCity: payload.interCity,
+      route: payload.route,
+      candidates: compactCandidatesForLlm(ranked),
       hotelPriceBands: [hotelRanges.primary, hotelRanges.secondary],
       minHotelRating: ranked.minHotelRating,
       preferAfterparty: true,
@@ -334,7 +367,7 @@ export class TravelGuideGenerationService {
       const result = await this.llmService.invokeJson<LlmTravelGuidePayload>(
         TRAVEL_GUIDE_MAP_JSON_SYSTEM,
         user,
-        TRAVEL_GUIDE_LLM_TIMEOUT_MS,
+        this.travelGuideLlmTimeoutMs,
         { reasoningEffort: this.travelGuideReasoningEffort },
       );
       const sanitized = sanitizeLlmTravelGuidePayload(result);

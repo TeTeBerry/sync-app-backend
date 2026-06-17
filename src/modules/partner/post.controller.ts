@@ -79,11 +79,6 @@ export class PostController {
     return this.postService.createPost(body, actor);
   }
 
-  @Get(':id/navigation-target')
-  getNavigationTarget(@Param('id') id: string) {
-    return this.postService.getPostNavigationTarget(id);
-  }
-
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentActor() actor: RequestActor) {
     return this.postService.deleteOwnedPost(id, actor);

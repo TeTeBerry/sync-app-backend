@@ -21,4 +21,13 @@ describe('travel-guide-hot-path-pois', () => {
     const hotels = getHotPathFallbackPois(2, 'hotel', '酒店');
     expect(hotels.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('provides tier-diverse EDC thailand fallback hotels by keyword', () => {
+    const economy = getHotPathFallbackPois(5, 'hotel', 'hostel');
+    const comfort = getHotPathFallbackPois(5, 'hotel', '豪华酒店');
+    expect(economy.some((h) => /Lub d|Guesthouse/i.test(h.name))).toBe(true);
+    expect(
+      comfort.some((h) => /Hilton|InterContinental|Pullman/i.test(h.name)),
+    ).toBe(true);
+  });
 });

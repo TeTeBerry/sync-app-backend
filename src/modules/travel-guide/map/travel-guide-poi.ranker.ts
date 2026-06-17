@@ -64,7 +64,9 @@ export class TravelGuidePoiRanker {
     }).slice(0, 10);
 
     const accommodationPicks =
-      hotels.length > 0 ? pickAccommodationSchemes(hotels) : undefined;
+      hotels.length > 0
+        ? pickAccommodationSchemes(hotels, budgetTier)
+        : undefined;
 
     return {
       hotels,
@@ -210,22 +212,34 @@ function estimateHotelPrice(
   return TIER_PRICE_MID[tier];
 }
 
-/** 双方案：就近（距会场最近的高分酒店）+ 市中心（距会场较远但仍在候选内的商圈酒店） */
-export function pickAccommodationSchemes(hotels: RankedMapPoi[]): {
+/** 双方案：就近（预算档位内优先）+ 备选（同档或次档、距会场更远/商圈） */
+export function pickAccommodationSchemes(
+  hotels: RankedMapPoi[],
+  budgetTier: TravelGuideBudgetTier = 'standard',
+): {
   nearby: RankedMapPoi;
   cityCenter: RankedMapPoi;
 } {
   if (!hotels.length) {
     throw new Error('pickAccommodationSchemes requires at least one hotel');
   }
-  const nearby = hotels[0]!;
-  const distant =
-    hotels.find((h) => h.distanceM >= 1500 && h.name !== nearby.name) ??
-    hotels.find(
-      (h) => h.distanceM > nearby.distanceM && h.name !== nearby.name,
+
+  const [min, max] = TIER_PRICE_RANGE[budgetTier];
+  const inBand = hotels.filter((h) => {
+    const price = estimateHotelPrice(h, budgetTier);
+    return price >= min && price <= max;
+  });
+  const primaryPool = inBand.length >= 2 ? inBand : hotels;
+
+  const nearby = primaryPool[0]!;
+  const cityCenter =
+    primaryPool.find(
+      (h) => h.name !== nearby.name && h.distanceM >= nearby.distanceM,
     ) ??
-    hotels[Math.min(1, hotels.length - 1)]!;
-  const cityCenter = distant.name === nearby.name ? nearby : distant;
+    primaryPool.find((h) => h.name !== nearby.name) ??
+    hotels.find((h) => h.name !== nearby.name) ??
+    nearby;
+
   return { nearby, cityCenter };
 }
 

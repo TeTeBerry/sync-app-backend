@@ -53,14 +53,17 @@ describe('travel guide enhanced sections', () => {
       rankedPoi({ name: '近酒店', distanceM: 400 }),
       rankedPoi({ name: '远酒店', distanceM: 2200 }),
     ];
-    const picks = pickAccommodationSchemes(hotels);
+    const picks = pickAccommodationSchemes(hotels, 'standard');
     expect(picks.nearby.name).toBe('近酒店');
     expect(picks.cityCenter.name).toBe('远酒店');
 
-    const schemes = accommodationSchemesFromRanked(picks, '2 晚', '双床', [
-      '¥300-450',
-      '¥450-600',
-    ]);
+    const schemes = accommodationSchemesFromRanked(
+      picks,
+      '2 晚',
+      '双床',
+      ['¥300-450', '¥450-600'],
+      undefined,
+    );
     expect(schemes).toHaveLength(2);
     expect(schemes[0]?.label).toBe('就近方案');
     expect(schemes[1]?.label).toBe('市中心方案');

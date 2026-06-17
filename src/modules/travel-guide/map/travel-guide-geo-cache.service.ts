@@ -19,6 +19,7 @@ import {
 } from './travel-guide-hot-path.data';
 import {
   buildGenericInterCityHints,
+  destinationCityFromActivityLocation,
   isInterCityByDistance,
 } from './travel-guide-intercity.util';
 import { isTravelGuideAbroad } from '../domain/travel-guide-international.util';
@@ -123,6 +124,7 @@ export class TravelGuideGeoCacheService {
     venue: GeocodedPlace;
     destinationCity?: string;
     selfDrive: boolean;
+    departureCity?: string;
     activity?: Pick<
       import('../../../database/schemas/activity.schema').Activity,
       'name' | 'location' | 'region'
@@ -172,7 +174,13 @@ export class TravelGuideGeoCacheService {
       }
     }
 
-    const departure = await this.resolveDeparture(input.departureText);
+    const departure = await this.resolveDeparture(
+      input.departureText,
+      input.activity
+        ? destinationCityFromActivityLocation(input.activity.location)
+        : input.destinationCity,
+      input.departureCity,
+    );
     if (!departure) {
       return { source: 'none' };
     }
