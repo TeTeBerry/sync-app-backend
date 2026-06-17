@@ -1,99 +1,51 @@
-import { formatDiscogsStyleLabel } from '../../dj/discogs-style-label.util';
 import type { PersonalityTypeMeta } from '../data/personality-types';
 import type { PersonalityTestRuntimeCatalog } from '../personality-test-catalog.types';
-import type { DjCatalogItem } from '../../dj/dj.types';
 import { DjService } from '../../dj/dj.service';
 import type { ItineraryScheduleService } from '../../itinerary/itinerary-schedule.service';
-import {
-  EDC_KOREA_PERSONALITY_LINEUP,
-  lineupDjId,
-} from '../data/personality-lineup';
 import { PERSONALITY_TYPE_META } from '../data/personality-types';
 import type {
-  PersonalityLineupDj,
   PersonalityScoreResult,
   RecommendDjLineupResult,
 } from '../personality-test.types';
-import { buildUpcomingLineupDjPool } from './lineup-dj-pool.util';
+import {
+  buildUpcomingLineupDjPool,
+  LINEUP_POOL_EMPTY,
+} from './lineup-dj-pool.util';
 import { recommendDjLineup } from './recommend-dj-lineup.util';
 
-function catalogItemToLineupDj(item: DjCatalogItem): PersonalityLineupDj {
-  const works = item.representativeWorks?.length ?? 0;
-  return {
-    id: lineupDjId(item.name),
-    name: item.name,
-    genre: item.genres[0] ?? 'Electronic',
-    genreLabel: formatDiscogsStyleLabel(item),
-    stage: 'main',
-    popularity: Math.min(98, 68 + works * 4),
-    genreColor: '#7b61ff',
-  };
-}
-
-function uniqueLineup(pool: PersonalityLineupDj[]): PersonalityLineupDj[] {
-  const seen = new Set<string>();
-  const result: PersonalityLineupDj[] = [];
-  for (const dj of pool) {
-    const key = dj.id;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push(dj);
-  }
-  return result;
-}
+export { LINEUP_POOL_EMPTY };
 
 export async function recommendDjLineupFromCatalog(
   score: PersonalityScoreResult,
   djService: DjService,
+  activityLegacyIds: number[],
   runtimeCatalog?: Pick<
     PersonalityTestRuntimeCatalog,
-    'typeMeta' | 'fallbackLineup' | 'soulProfiles'
+    'typeMeta' | 'soulProfiles'
   >,
-  scheduleService?: Pick<ItineraryScheduleService, 'listUpcomingLineupArtists'>,
+  scheduleService?: Pick<
+    ItineraryScheduleService,
+    'listLineupArtistsForActivities'
+  >,
 ): Promise<RecommendDjLineupResult> {
   const typeMeta = runtimeCatalog?.typeMeta ?? PERSONALITY_TYPE_META;
-  const fallbackLineup =
-    runtimeCatalog?.fallbackLineup ?? EDC_KOREA_PERSONALITY_LINEUP;
   const soulProfiles = runtimeCatalog?.soulProfiles;
-  const primary = typeMeta[score.primaryType];
-  const secondary = score.secondaryType ? typeMeta[score.secondaryType] : null;
-  const styleTerms = [...primary.genreTags, ...(secondary?.genreTags ?? [])];
 
-  const searchResult = await djService.searchByStyles(styleTerms, {
-    limit: 40,
-  });
-  let pool = uniqueLineup(searchResult.items.map(catalogItemToLineupDj));
-
-  if (pool.length < 10) {
-    const catalog = await djService.loadCatalog();
-    const extra = catalog
-      .filter((item) =>
-        styleTerms.some((term) => {
-          const haystack =
-            `${item.genres.join(' ')} ${item.styles.join(' ')}`.toLowerCase();
-          return haystack.includes(term.toLowerCase());
-        }),
-      )
-      .map(catalogItemToLineupDj);
-    pool = uniqueLineup([...pool, ...extra]);
+  if (!scheduleService) {
+    throw new Error(LINEUP_POOL_EMPTY);
   }
 
-  if (!pool.length) {
-    pool = fallbackLineup;
+  const lineup = await buildUpcomingLineupDjPool(
+    activityLegacyIds,
+    scheduleService,
+    djService,
+  );
+  if (!lineup.length) {
+    throw new Error(LINEUP_POOL_EMPTY);
   }
 
-  let lineupDjNames: Set<string> | undefined;
-  if (scheduleService) {
-    const lineup = await buildUpcomingLineupDjPool(scheduleService, djService);
-    lineupDjNames = lineup.lineupDjNames;
-    if (lineup.lineupDjs.length) {
-      pool = uniqueLineup([...lineup.lineupDjs, ...pool]);
-    }
-  }
-
-  return recommendDjLineup(score, pool.slice(0, 48), {
+  return recommendDjLineup(score, lineup, {
     typeMeta,
     soulProfiles,
-    lineupDjNames,
   });
 }

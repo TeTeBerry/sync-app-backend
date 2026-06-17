@@ -4,6 +4,10 @@ import { scorePersonality } from '@src/modules/personality-test/utils/score-pers
 import { recommendDjLineup } from '@src/modules/personality-test/utils/recommend-dj-lineup.util';
 import { buildPersonalityNarrative } from '@src/modules/personality-test/utils/build-narrative.util';
 import { recommendEventsForPersonality } from '@src/modules/personality-test/utils/recommend-events.util';
+import { recommendDjLineupFromCatalog } from '@src/modules/personality-test/utils/recommend-dj-catalog.util';
+import { LINEUP_POOL_EMPTY } from '@src/modules/personality-test/utils/recommend-dj-catalog.util';
+import { buildUpcomingLineupDjPool } from '@src/modules/personality-test/utils/lineup-dj-pool.util';
+import type { DjService } from '@src/modules/dj/dj.service';
 import type {
   PersonalityLineupDj,
   PersonalityQuestion,
@@ -40,6 +44,18 @@ function buildConnoisseurAnswers(
   );
 }
 
+const sampleLineupPool: PersonalityLineupDj[] = [
+  {
+    id: 'dj-sample',
+    name: 'Sample Lineup DJ',
+    genre: 'Techno',
+    genreLabel: 'Techno',
+    stage: 'main',
+    popularity: 85,
+    genreColor: '#7b61ff',
+  },
+];
+
 describe('personality-test scoring', () => {
   it('draws different question sets across sessions', () => {
     const first = selectPersonalityQuestions(() => 0).map(
@@ -74,10 +90,12 @@ describe('personality-test scoring', () => {
     const questions = selectPersonalityQuestions(() => 0);
     const score = scorePersonality(buildRagerAnswers(questions), questions);
     expect(score.primaryType).toBe('rager');
-    expect(recommendDjLineup(score).soulMatch.djName).toBeTruthy();
+    expect(
+      recommendDjLineup(score, sampleLineupPool).soulMatch.djName,
+    ).toBeTruthy();
   });
 
-  it('prioritizes DJs on upcoming festival lineups', () => {
+  it('ranks soul match by personality fit within lineup pool', () => {
     const questions = selectPersonalityQuestions(() => 0);
     const score = scorePersonality(buildRagerAnswers(questions), questions);
     const offBill: PersonalityLineupDj = {
@@ -98,20 +116,109 @@ describe('personality-test scoring', () => {
       popularity: 82,
       genreColor: '#ff2d55',
     };
-    const plain = recommendDjLineup(score, [offBill, onBill]);
-    expect(plain.soulMatch.djName).toBe('Off Bill Artist');
+    const result = recommendDjLineup(score, [offBill, onBill]);
+    expect(result.soulMatch.djName).toBe('Off Bill Artist');
+  });
 
-    const boosted = recommendDjLineup(score, [offBill, onBill], {
-      lineupDjNames: new Set(['on bill artist']),
-    });
-    expect(boosted.soulMatch.djName).toBe('On Bill Artist');
+  it('keeps lineup artist names when catalog alias differs', async () => {
+    const djService = {
+      lookupForLineupArtists: async () =>
+        new Map([
+          [
+            'WUJACKERS',
+            {
+              name: 'Wukong',
+              genres: ['Bass'],
+              styles: ['Dubstep'],
+              representativeWorks: [],
+            },
+          ],
+        ]),
+    } as unknown as DjService;
+    const scheduleService = {
+      listLineupArtistsForActivities: async () => [
+        { artistName: 'WUJACKERS', genreLabel: 'Dubstep' },
+      ],
+    } as unknown as ItineraryScheduleService;
+
+    const lineupDjs = await buildUpcomingLineupDjPool(
+      [8],
+      scheduleService,
+      djService,
+    );
+    expect(lineupDjs[0]?.name).toBe('WUJACKERS');
+    expect(lineupDjs[0]?.id).toBe('wukong');
+  });
+
+  it('recommends only from upcoming lineups when available', async () => {
+    const questions = selectPersonalityQuestions(() => 0);
+    const score = scorePersonality(buildRagerAnswers(questions), questions);
+    const djService = {
+      searchByStyles: async () => ({
+        items: [
+          {
+            name: 'Catalog Only Artist',
+            genres: ['Techno'],
+            styles: ['Techno'],
+            representativeWorks: [],
+          },
+        ],
+        total: 1,
+        limit: 40,
+        skip: 0,
+      }),
+      loadCatalog: async () => [],
+      lookupForLineupArtists: async () => new Map(),
+    } as unknown as DjService;
+    const scheduleService = {
+      listLineupArtistsForActivities: async () => [
+        { artistName: 'On Bill Artist', genreLabel: 'Big Room' },
+      ],
+    } as unknown as ItineraryScheduleService;
+
+    const recommendations = await recommendDjLineupFromCatalog(
+      score,
+      djService,
+      [8],
+      undefined,
+      scheduleService,
+    );
+
+    expect(recommendations.soulMatch.djName).toBe('On Bill Artist');
+    expect([
+      recommendations.soulMatch.djName,
+      ...recommendations.mustSee.map((item) => item.djName),
+      ...recommendations.recommended.map((item) => item.djName),
+      ...recommendations.challenge.map((item) => item.djName),
+    ]).not.toContain('Catalog Only Artist');
+  });
+
+  it('rejects catalog fallback when no lineup artists exist', async () => {
+    const questions = selectPersonalityQuestions(() => 0);
+    const score = scorePersonality(buildRagerAnswers(questions), questions);
+    const djService = {
+      lookupForLineupArtists: async () => new Map(),
+    } as unknown as DjService;
+    const scheduleService = {
+      listLineupArtistsForActivities: async () => [],
+    } as unknown as ItineraryScheduleService;
+
+    await expect(
+      recommendDjLineupFromCatalog(
+        score,
+        djService,
+        [8],
+        undefined,
+        scheduleService,
+      ),
+    ).rejects.toThrow(LINEUP_POOL_EMPTY);
   });
 
   it('builds narrative without LLM', () => {
     const questions = selectPersonalityQuestions(() => 0);
     const answers = buildConnoisseurAnswers(questions);
     const score = scorePersonality(answers, questions);
-    const recommendations = recommendDjLineup(score);
+    const recommendations = recommendDjLineup(score, sampleLineupPool);
     const narrative = buildPersonalityNarrative(score, recommendations, [
       {
         activityLegacyId: 8,
@@ -141,7 +248,7 @@ describe('personality-test scoring', () => {
       buildConnoisseurAnswers(questions),
       questions,
     );
-    const recommendations = recommendDjLineup(score);
+    const recommendations = recommendDjLineup(score, sampleLineupPool);
     const activityLookup = {
       findAll: async () => [
         {
@@ -173,6 +280,7 @@ describe('personality-test scoring', () => {
               },
             ]
           : [],
+      findArtistLineupMemberships: async () => [],
     } as unknown as ItineraryScheduleService;
 
     const events = await recommendEventsForPersonality(
@@ -190,7 +298,7 @@ describe('personality-test scoring', () => {
       buildConnoisseurAnswers(questions),
       questions,
     );
-    const recommendations = recommendDjLineup(score);
+    const recommendations = recommendDjLineup(score, sampleLineupPool);
     const activityLookup = {
       findAll: async () => [
         {
@@ -208,6 +316,7 @@ describe('personality-test scoring', () => {
     } as unknown as IActivityLookupPort;
     const scheduleService = {
       findArtistPerformances: async () => [],
+      findArtistLineupMemberships: async () => [],
     } as unknown as ItineraryScheduleService;
 
     const events = await recommendEventsForPersonality(
@@ -216,6 +325,67 @@ describe('personality-test scoring', () => {
       scheduleService,
     );
     expect(events).toEqual([]);
+  });
+
+  it('recommends events from lineup seed when timetable is unpublished', async () => {
+    const recommendations = {
+      soulMatch: {
+        djId: 'carta',
+        djName: 'CARTA',
+        genreLabel: 'Big Room',
+        matchScore: 88,
+        soulSimilarity: 80,
+        tier: 'must_see' as const,
+        dimensionBreakdown: { E: 1, M: 1, S: 1, C: 1 },
+      },
+      mustSee: [],
+      recommended: [],
+      challenge: [],
+    };
+    const activityLookup = {
+      findAll: async () => [
+        {
+          legacyId: 5,
+          code: 'edc-thailand',
+          alias: 'edc-thailand',
+          name: 'EDC Thailand 2026',
+          date: '12/18-20',
+          location: 'Phuket',
+        },
+      ],
+      findByLegacyId: async () => null,
+    } as unknown as IActivityLookupPort;
+    const scheduleService = {
+      findArtistPerformances: async () => [],
+      findArtistLineupMemberships: async ({
+        artistName,
+      }: {
+        artistName: string;
+      }) =>
+        artistName === 'CARTA'
+          ? [
+              {
+                activityLegacyId: 5,
+                activityName: 'EDC Thailand 2026',
+                artistName: 'CARTA',
+                dateLabel: '12/18-20',
+                stageLabel: '官宣阵容',
+                startTime: '',
+                endTime: '',
+                genreLabel: 'Big Room',
+              },
+            ]
+          : [],
+    } as unknown as ItineraryScheduleService;
+
+    const events = await recommendEventsForPersonality(
+      recommendations,
+      activityLookup,
+      scheduleService,
+    );
+
+    expect(events[0]?.activityLegacyId).toBe(5);
+    expect(events[0]?.matchedDjs).toContain('CARTA');
   });
 
   it('does not recommend expired events', async () => {
@@ -254,10 +424,11 @@ describe('personality-test scoring', () => {
               },
             ]
           : [],
+      findArtistLineupMemberships: async () => [],
     } as unknown as ItineraryScheduleService;
 
     const events = await recommendEventsForPersonality(
-      recommendDjLineup(score),
+      recommendDjLineup(score, sampleLineupPool),
       activityLookup,
       scheduleService,
     );
@@ -346,6 +517,7 @@ describe('personality-test scoring', () => {
         }
         return [];
       },
+      findArtistLineupMemberships: async () => [],
     } as unknown as ItineraryScheduleService;
 
     const events = await recommendEventsForPersonality(
@@ -362,5 +534,5 @@ describe('personality-test scoring', () => {
 function recommendationsSoulName(
   score: ReturnType<typeof scorePersonality>,
 ): string {
-  return recommendDjLineup(score).soulMatch.djName;
+  return recommendDjLineup(score, sampleLineupPool).soulMatch.djName;
 }

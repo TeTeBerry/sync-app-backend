@@ -5,15 +5,20 @@ import { lineupDjId } from '../data/personality-lineup';
 import type { PersonalityLineupDj } from '../personality-test.types';
 import { formatDiscogsStyleLabel } from '../../dj/discogs-style-label.util';
 
+export const LINEUP_POOL_EMPTY = 'LINEUP_POOL_EMPTY';
+
 export function normalizeDjName(name: string): string {
   return name.trim().toLowerCase();
 }
 
-function catalogItemToLineupDj(item: DjCatalogItem): PersonalityLineupDj {
+function catalogItemToLineupDj(
+  item: DjCatalogItem,
+  lineupArtistName: string,
+): PersonalityLineupDj {
   const works = item.representativeWorks?.length ?? 0;
   return {
     id: lineupDjId(item.name),
-    name: item.name,
+    name: lineupArtistName,
     genre: item.genres[0] ?? 'Electronic',
     genreLabel: formatDiscogsStyleLabel(item),
     stage: 'main',
@@ -39,18 +44,20 @@ function performanceToLineupDj(entry: {
 }
 
 export async function buildUpcomingLineupDjPool(
-  scheduleService: Pick<ItineraryScheduleService, 'listUpcomingLineupArtists'>,
+  activityLegacyIds: number[],
+  scheduleService: Pick<
+    ItineraryScheduleService,
+    'listLineupArtistsForActivities'
+  >,
   djService: DjService,
-): Promise<{
-  lineupDjs: PersonalityLineupDj[];
-  lineupDjNames: Set<string>;
-}> {
-  const artists = await scheduleService.listUpcomingLineupArtists();
+): Promise<PersonalityLineupDj[]> {
+  const artists =
+    await scheduleService.listLineupArtistsForActivities(activityLegacyIds);
   if (!artists.length) {
-    return { lineupDjs: [], lineupDjNames: new Set() };
+    return [];
   }
 
-  const lineupDjNames = new Set(
+  const allowedNames = new Set(
     artists.map((artist) => normalizeDjName(artist.artistName)),
   );
   const catalogByLineupName = await djService.lookupForLineupArtists(
@@ -61,14 +68,22 @@ export async function buildUpcomingLineupDjPool(
   const seenIds = new Set<string>();
 
   for (const artist of artists) {
+    if (!allowedNames.has(normalizeDjName(artist.artistName))) {
+      continue;
+    }
+
     const catalog = catalogByLineupName.get(artist.artistName);
     const dj = catalog
-      ? catalogItemToLineupDj(catalog)
+      ? catalogItemToLineupDj(catalog, artist.artistName)
       : performanceToLineupDj(artist);
+
+    if (!allowedNames.has(normalizeDjName(dj.name))) {
+      continue;
+    }
     if (seenIds.has(dj.id)) continue;
     seenIds.add(dj.id);
     lineupDjs.push(dj);
   }
 
-  return { lineupDjs, lineupDjNames };
+  return lineupDjs;
 }

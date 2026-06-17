@@ -11,6 +11,7 @@ describe('ItineraryScheduleService discogs styles', () => {
     findOneAndUpdate: jest.fn(),
   };
   const activityService = {
+    findAll: jest.fn(),
     findByLegacyId: jest
       .fn()
       .mockResolvedValue({ legacyId: 5, name: 'EDC Thailand 2026' }),
@@ -190,5 +191,96 @@ describe('ItineraryScheduleService discogs styles', () => {
     expect(schedule.performances).toHaveLength(0);
     expect(schedule.djs.length).toBeGreaterThan(0);
     expect(schedule.djs.some((dj) => dj.name === 'MARTIN GARRIX')).toBe(true);
+  });
+
+  it('lists lineup seed artists when performances are not published', async () => {
+    activityService.findAll.mockResolvedValue([
+      {
+        legacyId: 8,
+        name: 'EDC Korea 2026',
+        date: '10/03-04',
+      },
+    ]);
+    performanceModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
+
+    const artists = await service.listUpcomingLineupArtists();
+
+    expect(artists.length).toBeGreaterThan(0);
+    expect(artists.some((item) => item.artistName === 'DJ SNAKE')).toBe(true);
+  });
+
+  it('returns empty when upcoming activities have no announced lineup', async () => {
+    activityService.findAll.mockResolvedValue([
+      {
+        legacyId: 1,
+        name: 'Tomorrowland Thailand 2026',
+        date: '12/11-13',
+      },
+    ]);
+    performanceModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
+
+    const artists = await service.listUpcomingLineupArtists();
+
+    expect(artists).toEqual([]);
+  });
+
+  it('ignores activity ids that are not in the activity catalog', async () => {
+    activityService.findAll.mockResolvedValue([
+      {
+        legacyId: 8,
+        name: 'EDC Korea 2026',
+        date: '10/03-04',
+      },
+    ]);
+    performanceModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
+
+    const artists = await service.listLineupArtistsForActivities([8, 999]);
+
+    expect(artists.some((item) => item.artistName === 'DJ SNAKE')).toBe(true);
+  });
+
+  it('includes djs from any existing activity with performances', async () => {
+    activityService.findAll.mockResolvedValue([
+      {
+        legacyId: 99,
+        name: 'New Fest 2026',
+        date: '12/01-02',
+      },
+    ]);
+    performanceModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([
+            {
+              activityLegacyId: 99,
+              artistName: 'NEW ACT',
+              genreLabel: 'Techno',
+            },
+          ]),
+        }),
+      }),
+    });
+
+    const artists = await service.listLineupArtistsForActivities([99]);
+
+    expect(artists.some((item) => item.artistName === 'NEW ACT')).toBe(true);
   });
 });

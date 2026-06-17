@@ -66,6 +66,26 @@ function isUpcomingActivity(name: string, dateLabel: string): boolean {
   return !isActivityEnded(dateLabel, { yearHint });
 }
 
+function hitKey(hit: { activityLegacyId: number; artistName: string }): string {
+  return `${hit.activityLegacyId}:${hit.artistName.trim().toLowerCase()}`;
+}
+
+function mergeArtistHits<
+  T extends { activityLegacyId: number; artistName: string },
+>(...groups: T[][]): T[] {
+  const seen = new Set<string>();
+  const merged: T[] = [];
+  for (const group of groups) {
+    for (const hit of group) {
+      const key = hitKey(hit);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(hit);
+    }
+  }
+  return merged;
+}
+
 export async function recommendEventsForPersonality(
   recommendations: RecommendDjLineupResult,
   activityLookup: IActivityLookupPort,
@@ -76,9 +96,13 @@ export async function recommendEventsForPersonality(
   const accumulators = new Map<number, ActivityAccumulator>();
 
   for (const matcher of djMatchers) {
-    const hits = await scheduleService.findArtistPerformances({
+    const performanceHits = await scheduleService.findArtistPerformances({
       artistName: matcher.name,
     });
+    const lineupHits = await scheduleService.findArtistLineupMemberships({
+      artistName: matcher.name,
+    });
+    const hits = mergeArtistHits(performanceHits, lineupHits);
     for (const hit of hits) {
       const existing = accumulators.get(hit.activityLegacyId);
       if (existing) {

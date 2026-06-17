@@ -6,6 +6,10 @@ import {
   type UserPersonalityTestResultDocument,
 } from '@src/database/schemas/user-personality-test-result.schema';
 import { CloudStorageService } from '@src/infra/cloud/cloud-storage.service';
+import {
+  extractYearFromText,
+  isActivityEnded,
+} from '@src/common/utils/activity-date.util';
 import { DjService } from '../dj/dj.service';
 import { ItineraryScheduleService } from '../itinerary/itinerary-schedule.service';
 import {
@@ -18,7 +22,10 @@ import { PERSONALITY_TEST_CATALOG_VERSION } from './data/personality-test-catalo
 import { PersonalityTestCatalogService } from './personality-test-catalog.service';
 import type { PersonalityTestResult } from './personality-test.types';
 import { buildPersonalityNarrative } from './utils/build-narrative.util';
-import { recommendDjLineupFromCatalog } from './utils/recommend-dj-catalog.util';
+import {
+  LINEUP_POOL_EMPTY,
+  recommendDjLineupFromCatalog,
+} from './utils/recommend-dj-catalog.util';
 import { recommendEventsForPersonality } from './utils/recommend-events.util';
 import {
   isPersonalityTestComplete,
@@ -148,12 +155,30 @@ export class PersonalityTestService {
 
     const score = scorePersonality(dto.answers, questions);
     const runtimeCatalog = await this.catalog.getRuntimeCatalog();
-    const recommendations = await recommendDjLineupFromCatalog(
-      score,
-      this.djService,
-      runtimeCatalog,
-      this.scheduleService,
-    );
+    const activities = await this.activityLookup.findAll();
+    const activityLegacyIds = activities
+      .filter((activity) => {
+        const dateLabel = activity.date?.trim() ?? '';
+        const yearHint =
+          extractYearFromText(activity.name) ?? extractYearFromText(dateLabel);
+        return !isActivityEnded(dateLabel, { yearHint });
+      })
+      .map((activity) => activity.legacyId);
+    let recommendations;
+    try {
+      recommendations = await recommendDjLineupFromCatalog(
+        score,
+        this.djService,
+        activityLegacyIds,
+        runtimeCatalog,
+        this.scheduleService,
+      );
+    } catch (error) {
+      if (error instanceof Error && error.message === LINEUP_POOL_EMPTY) {
+        throw new BadRequestException('当前暂无已官宣阵容的活动，请稍后再试');
+      }
+      throw error;
+    }
     const recommendedEvents = await recommendEventsForPersonality(
       recommendations,
       this.activityLookup,

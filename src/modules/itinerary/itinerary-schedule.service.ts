@@ -35,6 +35,7 @@ import {
 } from './itinerary.seed';
 import {
   hasItineraryCatalogSeed,
+  resolveItineraryCatalogSeed,
   resolveLineupDjs,
 } from './domain/itinerary-catalog.util';
 import { ItineraryCacheService } from './itinerary-cache.service';
@@ -356,7 +357,174 @@ export class ItineraryScheduleService implements OnModuleInit {
     return [...map.values()].sort((a, b) => b.popularity - a.popularity);
   }
 
-  /** Unique artists on lineups for festivals that have not ended yet. */
+  /**
+   * Unique artists on announced lineups for existing activities.
+   * Only `activityLegacyIds` present in the activity catalog are considered.
+   */
+  async listLineupArtistsForActivities(
+    activityLegacyIds: number[],
+  ): Promise<Array<{ artistName: string; genreLabel: string }>> {
+    const requested = [
+      ...new Set(activityLegacyIds.filter((id) => Number.isFinite(id))),
+    ];
+    if (!requested.length) {
+      return [];
+    }
+
+    const activities = await this.activityService.findAll();
+    const existingIds = new Set(
+      activities.map((activity) => activity.legacyId),
+    );
+    const targetActivities = activities.filter((activity) =>
+      requested.includes(activity.legacyId),
+    );
+    if (!targetActivities.length) {
+      return [];
+    }
+
+    const legacyIds = targetActivities
+      .map((activity) => activity.legacyId)
+      .filter((id) => existingIds.has(id));
+    const performances = await this.performanceModel
+      .find({ activityLegacyId: { $in: legacyIds } })
+      .select('activityLegacyId artistName genreLabel')
+      .lean()
+      .exec();
+
+    const byName = new Map<
+      string,
+      { artistName: string; genreLabel: string }
+    >();
+    const addArtist = (artistName: string, genreLabel: string) => {
+      const trimmed = artistName.trim();
+      if (!trimmed) return;
+      const key = trimmed.toLowerCase();
+      if (byName.has(key)) return;
+      byName.set(key, {
+        artistName: trimmed,
+        genreLabel: genreLabel.trim() || 'Electronic',
+      });
+    };
+
+    for (const activity of targetActivities) {
+      for (const artist of this.collectLineupArtistsForActivity(
+        activity.legacyId,
+        performances,
+      )) {
+        addArtist(artist.artistName, artist.genreLabel);
+      }
+    }
+
+    return [...byName.values()];
+  }
+
+  /** Find activities where an artist appears on the announced lineup (not timetable-only). */
+  async findArtistLineupMemberships(params: {
+    artistName: string;
+    activityLegacyId?: number;
+  }): Promise<ArtistPerformanceHit[]> {
+    const keyword = params.artistName.trim();
+    if (!keyword) {
+      return [];
+    }
+
+    const pattern = new RegExp(
+      keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+      'i',
+    );
+    const activities = await this.activityService.findAll();
+    const targets =
+      params.activityLegacyId != null && !Number.isNaN(params.activityLegacyId)
+        ? activities.filter(
+            (activity) => activity.legacyId === params.activityLegacyId,
+          )
+        : activities;
+
+    if (!targets.length) {
+      return [];
+    }
+
+    const legacyIds = targets.map((activity) => activity.legacyId);
+    const performances = await this.performanceModel
+      .find({ activityLegacyId: { $in: legacyIds } })
+      .select('activityLegacyId artistName genreLabel')
+      .lean()
+      .exec();
+
+    const hits: ArtistPerformanceHit[] = [];
+    for (const activity of targets) {
+      const artists = this.collectLineupArtistsForActivity(
+        activity.legacyId,
+        performances,
+      );
+      for (const artist of artists) {
+        if (!pattern.test(artist.artistName)) {
+          continue;
+        }
+        hits.push({
+          activityLegacyId: activity.legacyId,
+          activityName: activity.name?.trim() || `活动 ${activity.legacyId}`,
+          artistName: artist.artistName,
+          dateLabel: activity.date?.trim() || '',
+          stageLabel: '官宣阵容',
+          startTime: '',
+          endTime: '',
+          genreLabel: artist.genreLabel,
+        });
+      }
+    }
+
+    return hits;
+  }
+
+  private collectLineupArtistsForActivity(
+    activityLegacyId: number,
+    performances: Array<{
+      activityLegacyId: number;
+      artistName?: string;
+      genreLabel?: string;
+    }>,
+  ): Array<{ artistName: string; genreLabel: string }> {
+    const byName = new Map<
+      string,
+      { artistName: string; genreLabel: string }
+    >();
+    const addArtist = (artistName: string, genreLabel: string) => {
+      const trimmed = artistName.trim();
+      if (!trimmed) return;
+      const key = trimmed.toLowerCase();
+      if (byName.has(key)) return;
+      byName.set(key, {
+        artistName: trimmed,
+        genreLabel: genreLabel.trim() || 'Electronic',
+      });
+    };
+
+    const beforeCount = byName.size;
+
+    for (const perf of performances) {
+      if (perf.activityLegacyId !== activityLegacyId) {
+        continue;
+      }
+      addArtist(perf.artistName ?? '', perf.genreLabel ?? '');
+    }
+
+    for (const dj of resolveLineupDjs(activityLegacyId)) {
+      addArtist(dj.name, dj.genreLabel);
+    }
+
+    if (byName.size === beforeCount) {
+      const { performances: seedPerformances } =
+        resolveItineraryCatalogSeed(activityLegacyId);
+      for (const perf of seedPerformances) {
+        addArtist(perf.artistName, perf.genreLabel);
+      }
+    }
+
+    return [...byName.values()];
+  }
+
+  /** @deprecated Use {@link listLineupArtistsForActivities} with explicit activity ids. */
   async listUpcomingLineupArtists(): Promise<
     Array<{ artistName: string; genreLabel: string }>
   > {
@@ -370,32 +538,7 @@ export class ItineraryScheduleService implements OnModuleInit {
       })
       .map((activity) => activity.legacyId);
 
-    if (!upcomingIds.length) {
-      return [];
-    }
-
-    const performances = await this.performanceModel
-      .find({ activityLegacyId: { $in: upcomingIds } })
-      .select('artistName genreLabel')
-      .lean()
-      .exec();
-
-    const byName = new Map<
-      string,
-      { artistName: string; genreLabel: string }
-    >();
-    for (const perf of performances) {
-      const artistName = perf.artistName?.trim();
-      if (!artistName) continue;
-      const key = artistName.toLowerCase();
-      if (byName.has(key)) continue;
-      byName.set(key, {
-        artistName,
-        genreLabel: perf.genreLabel?.trim() || 'Electronic',
-      });
-    }
-
-    return [...byName.values()];
+    return this.listLineupArtistsForActivities(upcomingIds);
   }
 
   async findArtistPerformances(params: {

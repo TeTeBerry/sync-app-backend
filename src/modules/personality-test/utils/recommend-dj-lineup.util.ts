@@ -8,23 +8,15 @@ import type {
   RecommendDjLineupResult,
   RaverPersonalityType,
 } from '../personality-test.types';
-import {
-  DJ_SOUL_PROFILES,
-  EDC_KOREA_PERSONALITY_LINEUP,
-  lineupDjId,
-} from '../data/personality-lineup';
+import { DJ_SOUL_PROFILES, lineupDjId } from '../data/personality-lineup';
 import { PERSONALITY_TYPE_META } from '../data/personality-types';
 import type { DjSoulProfile } from '../data/personality-lineup';
-import { normalizeDjName } from './lineup-dj-pool.util';
+import { LINEUP_POOL_EMPTY } from './lineup-dj-pool.util';
 
 type RecommendDjLineupOptions = {
   typeMeta?: Record<RaverPersonalityType, PersonalityTypeMeta>;
   soulProfiles?: Record<string, DjSoulProfile>;
-  /** Normalized artist names on upcoming festival lineups — receive a score boost. */
-  lineupDjNames?: Set<string>;
 };
-
-const LINEUP_MATCH_BOOST = 12;
 
 const DIMENSIONS: MatchDimension[] = ['E', 'M', 'S', 'C'];
 
@@ -143,12 +135,15 @@ function toRecommendation(
 
 export function recommendDjLineup(
   score: PersonalityScoreResult,
-  lineup: PersonalityLineupDj[] = EDC_KOREA_PERSONALITY_LINEUP,
+  lineup: PersonalityLineupDj[],
   options: RecommendDjLineupOptions = {},
 ): RecommendDjLineupResult {
+  if (!lineup.length) {
+    throw new Error(LINEUP_POOL_EMPTY);
+  }
+
   const typeMeta = options.typeMeta ?? PERSONALITY_TYPE_META;
   const soulProfiles = options.soulProfiles ?? DJ_SOUL_PROFILES;
-  const lineupDjNames = options.lineupDjNames;
   const userVector = resolveUserVector(score, typeMeta);
   const ranked = lineup
     .map((dj) => {
@@ -161,22 +156,13 @@ export function recommendDjLineup(
         typeMeta,
       );
       const popularityBoost = Math.round((dj.popularity - 80) * 0.15);
-      const lineupBoost =
-        (lineupDjNames?.has(normalizeDjName(dj.name)) ?? false)
-          ? LINEUP_MATCH_BOOST
-          : 0;
       return {
         dj,
-        match: Math.min(99, match + Math.max(0, popularityBoost) + lineupBoost),
+        match: Math.min(99, match + Math.max(0, popularityBoost)),
         breakdown,
-        inLineup: lineupBoost > 0,
       };
     })
-    .sort((a, b) => {
-      if (b.match !== a.match) return b.match - a.match;
-      if (a.inLineup !== b.inLineup) return a.inLineup ? -1 : 1;
-      return 0;
-    });
+    .sort((a, b) => b.match - a.match);
 
   const soulMatch = toRecommendation(
     ranked[0].dj,
