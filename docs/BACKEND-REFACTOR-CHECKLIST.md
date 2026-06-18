@@ -29,7 +29,7 @@
 
 | 顺序 | 阶段 | 身份方式 |
 |------|------|----------|
-| 1–5 | P1–P5 业务 | Query `userId`（demo）或 Bearer |
+| 1–5 | P1–P5 业务 | Bearer JWT |
 | 6 | P0-H5 | Bearer JWT |
 | 7 | P0-Wx | Bearer JWT |
 
@@ -54,7 +54,6 @@
 
 ### 未实现 / 延后
 
-- 生产 `AUTH_ALLOW_DEMO=false` 运维验收
 - `ALL_AGENT_TOOLS` 注册进 `AgentRuntimeService`（可选）
 - 微服务拆分
 
@@ -146,7 +145,7 @@
 
 ### 前端对齐
 
-- [x] Bearer → `JwtAuthGuard`；`ownerQueryParams()` 有 token 时无 demo Query
+- [x] Bearer → `JwtAuthGuard`；前端 `ownerQueryParams()` 恒为 `{}`
 
 ### 架构（2026-06）
 
@@ -155,17 +154,12 @@
 
 ---
 
-## P0-H5 — 登录 ✅
+## P0 — 登录 ✅
 
-- [x] `POST /auth/dev` + JWT + `JwtAuthGuard`
+- [x] `POST /auth/wechat` + JWT + `JwtAuthGuard`
 - [x] `@CurrentActor()` / `RequestActor`
 - [x] `activity-context.middleware` — `X-Activity-Id`
-- [ ] 生产关闭 demo Query（`AUTH_ALLOW_DEMO=false`）
-
-## P0-Wx — 更晚
-
-- [ ] `POST /auth/wechat` 生产验收
-- [ ] 生产关闭 `/auth/dev`
+- [ ] `POST /auth/wechat` 生产真机验收
 
 ---
 
@@ -173,7 +167,6 @@
 
 | 方法 | 路径 | 状态 |
 |------|------|------|
-| POST | `/auth/dev` | ✅ |
 | POST | `/auth/wechat` | ✅（需微信 AppId/Secret） |
 | GET/PATCH | `/users/me` | ✅ |
 | GET | `/home` | ✅ |

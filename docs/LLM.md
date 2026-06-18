@@ -5,16 +5,16 @@
 ## 环境变量（仅需这些）
 
 ```env
-# 文本 — 混元 TokenHub（意图 / 解析 / 风控 / Agent）
+# 文本 — 混元（意图 / 解析 / 风控 / Agent）
 HUNYUAN_API_KEY=
-HUNYUAN_BASE_URL=https://tokenhub.tencentmaas.com/v1
-HUNYUAN_TEXT_MODEL=hy3-preview
-HUNYUAN_REASONING_EFFORT=no_think   # no_think | low | high（意图/解析/风控等默认）
-HUNYUAN_TRAVEL_GUIDE_REASONING_EFFORT=high   # AI 出行攻略润色，默认 high
+HUNYUAN_BASE_URL=https://tokenhub.tencentmaas.com/v1   # 云托管生产填 CloudBase 网关 URL
+# HUNYUAN_TEXT_MODEL=hy3-preview                       # 默认 hy3-preview
+# HUNYUAN_REASONING_EFFORT=no_think                    # 默认 no_think
+# HUNYUAN_TRAVEL_GUIDE_REASONING_EFFORT=high           # 出行攻略润色，默认 high
 
-# 视觉 — 千问 VL（手环 / 截图解析 / 票据识别）
+# 视觉 — 千问 VL（小票 OCR、风控识图等）
 QWEN_API_KEY=
-QWEN_VL_MODEL=qwen-vl-plus          # 可省略，默认 qwen-vl-plus
+# QWEN_VL_MODEL=qwen-vl-plus                           # 默认 qwen-vl-plus
 
 # Agent 专用模型（可选，默认 HUNYUAN_TEXT_MODEL）
 # AI_AGENT_MODEL=
@@ -28,7 +28,7 @@ QWEN_VL_MODEL=qwen-vl-plus          # 可省略，默认 qwen-vl-plus
 |------|------|----------|
 | 文本 JSON（意图、解析、风控、画像等） | 混元 OpenAI 兼容 API | `HUNYUAN_*` |
 | Agent 工具循环（聊天默认） | 混元 | `HUNYUAN_*` / `AI_AGENT_MODEL` |
-| 视觉 JSON（手环、截图、票据） | DashScope 多模态 | `QWEN_API_KEY` + `QWEN_VL_MODEL` |
+| 视觉 JSON（小票、截图、风控识图） | DashScope 多模态 | `QWEN_API_KEY` + `QWEN_VL_MODEL` |
 
 `QWEN_API_KEY` **仅**用于 `LlmService.invokeVisionJson`，不会参与文本生成。
 
@@ -56,10 +56,9 @@ QWEN_VL_MODEL=qwen-vl-plus          # 可省略，默认 qwen-vl-plus
 | 缺失 | 行为 |
 |------|------|
 | `HUNYUAN_API_KEY` | 文本 LLM 禁用；意图路由走规则快路径；Agent 降级 |
-| `QWEN_API_KEY` | 视觉禁用；手环审核不可用（本地可用 `WRISTBAND_AI_SKIP=true` 跳过） |
+| `QWEN_API_KEY` | 视觉禁用；小票 OCR、风控识图等 VL 能力不可用 |
 
 ## 相关文档
 
 - 环境变量表：[README.md](../README.md#环境变量)
 - 架构与 Agent 表：[ARCHITECTURE.md](./ARCHITECTURE.md)
-- 手环审核：[README.md#手环-ai-审核](../README.md#手环-ai-审核)

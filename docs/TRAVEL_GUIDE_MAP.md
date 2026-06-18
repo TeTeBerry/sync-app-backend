@@ -68,7 +68,7 @@
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/activities/:legacyId/travel-guide/generate` | 生成攻略（需登录/demo） |
+| POST | `/api/activities/:legacyId/travel-guide/generate` | 生成攻略（需登录） |
 | GET | `/api/travel-guide/place-suggestions?keyword=&region=` | 出发地输入提示（Public） |
 
 ## 配置

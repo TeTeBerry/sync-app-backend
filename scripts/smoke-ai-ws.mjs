@@ -1,57 +1,32 @@
 #!/usr/bin/env node
 /**
- * AI WebSocket smoke — JWT actor, invalid Bearer, demo body.
+ * AI WebSocket smoke — JWT actor, invalid Bearer, anonymous body.
  *
  * Usage (backend must be running):
  *   npm run smoke:ws
  *   SMOKE_API_BASE=http://127.0.0.1:3000/api npm run smoke:ws
+ *
+ * Env:
+ *   SMOKE_API_BASE   API root (default http://localhost:3000/api)
+ *   SMOKE_JWT        Optional preset Bearer token (skips Mongo mint)
+ *   SMOKE_USER_ID    Smoke user externalId (default smoke-ws-user)
+ *   SMOKE_USER_NAME  Display name when minting JWT (default Smoke WS)
+ *   JWT_SECRET       Must match backend (from .env)
+ *   MONGODB_URI      Used when minting JWT (upsert smoke user + tv)
  */
 
 import WebSocket from 'ws';
+import { resolveSmokeJwt } from './lib/smoke-jwt.mjs';
 
 const DEFAULT_BASE = 'http://localhost:3000/api';
 const SESSION_EXPIRED = '登录已过期，请重新登录';
 
 const baseUrl = (process.env.SMOKE_API_BASE || DEFAULT_BASE).replace(/\/$/, '');
 const wsUrl = `${baseUrl.replace(/^http/, 'ws')}/ai/chat/ws`;
-const demoUserId = process.env.SMOKE_USER_ID || 'smoke-ws-demo';
+const anonymousUserId = process.env.SMOKE_USER_ID || 'smoke-ws-user';
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function fetchJson(method, path, { body, headers } = {}) {
-  const url = `${baseUrl}/${path.replace(/^\//, '')}`;
-  const res = await fetch(url, {
-    method,
-    headers: {
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-      ...headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const text = await res.text();
-  let json;
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    throw new Error(`${method} ${url} non-JSON: ${text.slice(0, 200)}`);
-  }
-  return { status: res.status, json };
-}
-
-async function devLogin() {
-  const { status, json } = await fetchJson('POST', 'auth/dev', {
-    body: { displayName: 'Smoke WS' },
-  });
-  if (status !== 201 && status !== 200) {
-    throw new Error(`POST /auth/dev failed: ${status} ${JSON.stringify(json)}`);
-  }
-  const token = json?.data?.accessToken;
-  if (!token) {
-    throw new Error('POST /auth/dev missing accessToken (is AUTH_MODE=dev?)');
-  }
-  return token;
 }
 
 function isStreamTerminal(msg) {
@@ -162,20 +137,20 @@ async function caseInvalidJwt() {
   console.log('  OK Case B: invalid Bearer → session expired error');
 }
 
-async function caseDemo() {
+async function caseAnonymous() {
   await wsOnce(wsUrl, {}, {
-    label: 'Case C demo',
+    label: 'Case C anonymous',
     onMessage: (msg, ws, done) => {
       if (msg.type === 'connected') {
-        if (msg.auth !== 'demo') {
-          done(new Error(`expected auth=demo, got ${msg.auth}`));
+        if (msg.auth !== 'anonymous') {
+          done(new Error(`expected auth=anonymous, got ${msg.auth}`));
           return;
         }
         ws.send(
           JSON.stringify({
             type: 'send',
-            messages: [{ role: 'user', content: 'smoke demo' }],
-            userId: demoUserId,
+            messages: [{ role: 'user', content: 'smoke anonymous' }],
+            userId: anonymousUserId,
             userName: 'Smoke',
           }),
         );
@@ -190,17 +165,17 @@ async function caseDemo() {
       }
     },
   });
-  console.log('  OK Case C: demo body userId → connected.auth=demo');
+  console.log('  OK Case C: anonymous body userId → connected.auth=anonymous');
 }
 
 async function main() {
   console.log(`WS smoke → ${wsUrl}`);
-  const token = await devLogin();
+  const token = await resolveSmokeJwt();
   await caseValidJwt(token);
   await delay(300);
   await caseInvalidJwt();
   await delay(300);
-  await caseDemo();
+  await caseAnonymous();
   console.log('smoke-ai-ws: all cases passed');
 }
 

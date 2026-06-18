@@ -75,4 +75,13 @@ SMOKE_API_BASE=https://your-host/api SMOKE_ACTIVITY_ID=4 npm run smoke:api
 
 Script: `scripts/smoke-api.mjs` — health, home, activities, profile, user, register, itinerary, live-info, notifications, register cleanup.
 
+### AI WebSocket smoke
+
+```bash
+npm run smoke:ws
+npm run smoke:ws:wait    # wait for :3000, then smoke
+```
+
+Script: `scripts/smoke-ai-ws.mjs` — mints JWT via Mongo (`SMOKE_USER_ID` + `JWT_SECRET`) or uses `SMOKE_JWT`; covers valid JWT, invalid Bearer, anonymous WS body.
+
 Production code lives only under `src/`; specs are not co-located with sources.

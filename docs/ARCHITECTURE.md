@@ -129,8 +129,7 @@ AppModule
 
 详见 [AUTH.md](./AUTH.md)。
 
-- **REST**：`JwtAuthGuard` → `req.actor: RequestActor`
-- **Demo 开发**：`AUTH_ALLOW_DEMO=true` 时 Query `userId` 回退
+- **REST**：`JwtAuthGuard` → `req.actor: RequestActor`（受保护路由需 Bearer）
 - **AI WebSocket**：`resolveWsChatActor` → `ChatRequestDto.actor`
 - **活动上下文**：`ActivityContextMiddleware` / `X-Activity-Id`；与 body `activityLegacyId` 合并
 

@@ -100,7 +100,7 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
 |----|------|
 | Chroma | 未设置 `CHROMA_URL` 时活动知识库 RAG 禁用；不影响 AI 主流程 |
 | Redis | 不可用时自动 Mongo fallback；`/api/health` 报告 `redis: disabled` |
-| Demo 身份 | 仍使用 query `userId` / demo-owner，无 JWT（P0-H5 后置） |
+| 未登录 | 受保护 REST 返回 401；`@Public()` 路由 actor 为 anonymous |
 | LLM | 文本：`HUNYUAN_API_KEY`；视觉：`QWEN_API_KEY`；缺 Key 时 intent router 走 rules/default |
 | 前端 bundle | H5 `app.js` ~329 KiB，超出 webpack 推荐值（非阻塞） |
 | Activity Catalog | 外网 catalog refresh 失败时日志 warning，不影响本地 seed 数据 |
