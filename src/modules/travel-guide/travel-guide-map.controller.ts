@@ -1,5 +1,13 @@
-import { Controller, Get, Query, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  BadRequestException,
+  Req,
+} from '@nestjs/common';
+import type { Request } from 'express';
 import { Public } from '../../common/auth/public.decorator';
+import { PublicApiRateLimitService } from '../../common/rate-limit/public-api-rate-limit.service';
 import { AmapMapService } from './map/amap.service';
 import {
   findDepartureCityAnchor,
@@ -9,7 +17,10 @@ import {
 
 @Controller('travel-guide')
 export class TravelGuideMapController {
-  constructor(private readonly map: AmapMapService) {}
+  constructor(
+    private readonly map: AmapMapService,
+    private readonly publicRateLimit: PublicApiRateLimitService,
+  ) {}
 
   /**
    * 出发地输入提示：高德 inputtips + 本地城市库兜底
@@ -19,7 +30,10 @@ export class TravelGuideMapController {
   async placeSuggestions(
     @Query('keyword') keyword = '',
     @Query('region') region?: string,
+    @Req() req?: Request,
   ) {
+    await this.publicRateLimit.assertAllowedAsync('travel_guide_map', req!);
+
     const q = keyword.trim();
     if (!q) {
       return { data: mergePlaceSuggestions('', []) };
@@ -50,7 +64,10 @@ export class TravelGuideMapController {
   async reverseGeocode(
     @Query('lat') latRaw?: string,
     @Query('lng') lngRaw?: string,
+    @Req() req?: Request,
   ) {
+    await this.publicRateLimit.assertAllowedAsync('travel_guide_map', req!);
+
     const lat = Number(latRaw);
     const lng = Number(lngRaw);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {

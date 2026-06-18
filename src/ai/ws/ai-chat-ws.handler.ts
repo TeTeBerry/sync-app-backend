@@ -12,7 +12,7 @@ import {
   parseActivityLegacyIdHeader,
   resolveEffectiveActivityLegacyId,
 } from '../../common/activity/activity-context.util';
-import { AiService } from '../ai.service';
+import { AiService, mapAiErrorToUserMessage } from '../ai.service';
 import { resolveWsChatActor } from './ai-chat-ws-actor';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
 import type { AiStreamEvent } from '../../shared/chat';
@@ -222,11 +222,15 @@ export class AiChatWsHandler {
         return;
       }
 
-      const actorResult = resolveWsChatActor(jwtActor(), {
-        userId: sendPayload.userId,
-        userName: sendPayload.userName,
-        userPhone: sendPayload.userPhone,
-      });
+      const actorResult = resolveWsChatActor(
+        jwtActor(),
+        {
+          userId: sendPayload.userId,
+          userName: sendPayload.userName,
+          userPhone: sendPayload.userPhone,
+        },
+        { requireAuth: process.env.NODE_ENV === 'production' },
+      );
       if (!actorResult.ok) {
         send({ type: 'error', message: actorResult.message });
         return;
@@ -293,8 +297,7 @@ export class AiChatWsHandler {
         );
         send({
           type: 'error',
-          message:
-            error instanceof Error ? error.message : 'AI 对话失败，请稍后重试',
+          message: mapAiErrorToUserMessage(error),
         });
       } finally {
         busy = false;

@@ -17,7 +17,7 @@ export interface AiChatTurnContext {
   requestId: string;
 }
 
-function mapAiErrorToUserMessage(error: unknown): string {
+export function mapAiErrorToUserMessage(error: unknown): string {
   if (error instanceof HttpException) {
     const response = error.getResponse();
     if (typeof response === 'string') return response;

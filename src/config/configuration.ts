@@ -46,7 +46,7 @@ export default () => ({
     /** AI 出行攻略润色：默认 low（快），需要更高质量可设 HUNYUAN_TRAVEL_GUIDE_REASONING_EFFORT=high */
     travelGuideReasoningEffort: cleanEnv(
       process.env.HUNYUAN_TRAVEL_GUIDE_REASONING_EFFORT,
-      'high',
+      'low',
     ),
     travelGuideLlmTimeoutMs: parseInt(
       cleanEnv(process.env.HUNYUAN_TRAVEL_GUIDE_LLM_TIMEOUT_MS, '25000'),
@@ -134,6 +134,43 @@ export default () => ({
         10,
       ),
       messageToken: cleanEnv(process.env.WECHAT_MESSAGE_TOKEN, ''),
+    },
+  },
+
+  publicApi: {
+    rateLimit: {
+      windowMs: parseInt(
+        cleanEnv(process.env.PUBLIC_API_RATE_WINDOW_MS, String(60_000)),
+        10,
+      ),
+      travelGuideMapMax: parseInt(
+        cleanEnv(process.env.PUBLIC_API_TRAVEL_GUIDE_MAP_MAX, '30'),
+        10,
+      ),
+      postAiSearchMax: parseInt(
+        cleanEnv(process.env.PUBLIC_API_POST_AI_SEARCH_MAX, '20'),
+        10,
+      ),
+      chatSessionMax: parseInt(
+        cleanEnv(process.env.PUBLIC_API_CHAT_SESSION_MAX, '60'),
+        10,
+      ),
+    },
+  },
+
+  travelGuide: {
+    cache: {
+      lockTtlSec: parseInt(
+        cleanEnv(process.env.TRAVEL_GUIDE_GENERATE_LOCK_TTL_SEC, '45'),
+        10,
+      ),
+    },
+    rateLimit: {
+      max: parseInt(cleanEnv(process.env.TRAVEL_GUIDE_RATE_LIMIT_MAX, '6'), 10),
+      windowSec: parseInt(
+        cleanEnv(process.env.TRAVEL_GUIDE_RATE_LIMIT_WINDOW_SEC, '300'),
+        10,
+      ),
     },
   },
 

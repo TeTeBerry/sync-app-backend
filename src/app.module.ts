@@ -29,6 +29,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CloudModule } from './infra/cloud/cloud.module';
 import { ActivityContextMiddleware } from './common/middleware/activity-context.middleware';
 import { RequestActorMiddleware } from './common/middleware/request-actor.middleware';
+import { PublicApiRateLimitModule } from './common/rate-limit/public-api-rate-limit.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { RequestActorMiddleware } from './common/middleware/request-actor.middle
     }),
     CloudModule,
     RedisModule,
+    PublicApiRateLimitModule,
     CacheModule,
     ActivityModule,
     AuthModule,

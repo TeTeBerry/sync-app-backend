@@ -12,6 +12,7 @@ const STREAM_EVENT_TYPES: AiStreamEvent['type'][] = [
   'suggested_replies',
   'conversation_patch',
   'travel_guide_ready',
+  'travel_guide_job',
   'itinerary_ready',
   'personality_result_ready',
   'activity_registered',
@@ -53,6 +54,19 @@ describe('chat AiStreamEvent contract', () => {
       {
         type: 'conversation_patch',
         state: { version: CONVERSATION_STATE_VERSION, flow: 'idle' },
+      },
+      {
+        type: 'travel_guide_job',
+        jobId: 'job-1',
+        guideId: 'g1',
+        activityLegacyId: 4,
+        form: {
+          departure: '上海',
+          headcount: 2,
+          budgetTier: 'standard',
+          selfDrive: false,
+          accommodationNights: 2,
+        },
       },
       {
         type: 'travel_guide_ready',

@@ -3,7 +3,7 @@ import type { PostRecord } from '@src/modules/partner/interfaces/post.repository
 
 describe('PostSearchService', () => {
   const repository = {
-    findByActivityLegacyId: jest.fn(),
+    findByActivityLegacyIdPage: jest.fn(),
   };
   const parseService = {
     parse: jest.fn(),
@@ -40,7 +40,7 @@ describe('PostSearchService', () => {
       createdAt: new Date('2026-10-03T10:00:00Z'),
     } as PostRecord;
 
-    repository.findByActivityLegacyId.mockResolvedValue([
+    repository.findByActivityLegacyIdPage.mockResolvedValue([
       newer,
       older,
       unrelated,

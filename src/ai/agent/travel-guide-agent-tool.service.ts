@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ActivityService } from '../../modules/activity/activity.service';
-import { TravelGuideGenerationService } from '../../modules/travel-guide/travel-guide-generation.service';
+import { TravelGuideGenerationJobService } from '../../modules/travel-guide/travel-guide-generation-job.service';
 import { parseActivityDayCount } from '../../modules/travel-guide/domain/parse-activity-days.util';
 import {
   clearActiveTask,
@@ -40,7 +40,7 @@ export class TravelGuideAgentToolService {
 
   constructor(
     private readonly activityService: ActivityService,
-    private readonly generationService: TravelGuideGenerationService,
+    private readonly generationJobService: TravelGuideGenerationJobService,
     private readonly sseBuilder: AiStreamEventBuilder,
   ) {}
 
@@ -144,7 +144,17 @@ export class TravelGuideAgentToolService {
     }
 
     try {
-      const { plan } = await this.generationService.generate(
+      const guideId = input.requestId || randomUUID();
+      const chatForm: TravelGuideChatForm = {
+        departure: form.departure,
+        departureCity: form.departureCity,
+        headcount: form.headcount,
+        budgetTier: form.budgetTier,
+        selfDrive: form.selfDrive,
+        accommodationNights: form.accommodationNights,
+      };
+
+      const { jobId } = await this.generationJobService.createJob(
         legacyId,
         {
           departure: form.departure,
@@ -157,31 +167,23 @@ export class TravelGuideAgentToolService {
         input.dto.actor,
       );
 
-      const guideId = input.requestId || randomUUID();
-      const chatForm: TravelGuideChatForm = {
-        departure: form.departure,
-        departureCity: form.departureCity,
-        headcount: form.headcount,
-        budgetTier: form.budgetTier,
-        selfDrive: form.selfDrive,
-        accommodationNights: form.accommodationNights,
-      };
-      const reply = '已为你生成出行攻略，点击查看完整方案～';
+      const reply = '正在生成出行攻略，请稍候…';
       sink.setReply(reply);
       sink.setState(clearActiveTask(sink.getState()));
 
       return {
         ok: true,
-        content: 'travel_guide_generated',
-        data: { guideId },
+        content: 'travel_guide_job_started',
+        data: { guideId, jobId },
         terminal: true,
         replyOverride: reply,
         streamEvents: [
           { type: 'delta', content: reply },
           {
-            type: 'travel_guide_ready',
+            type: 'travel_guide_job',
+            jobId,
             guideId,
-            plan: plan as unknown as Record<string, unknown>,
+            activityLegacyId: legacyId,
             form: chatForm,
           },
           this.sseBuilder.conversationPatchEvent(sink),

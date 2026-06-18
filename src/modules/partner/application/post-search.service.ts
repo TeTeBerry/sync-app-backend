@@ -1,9 +1,11 @@
+import { Types } from 'mongoose';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../../common/auth/request-actor.types';
 import {
   IPostRepository,
   POST_REPOSITORY,
 } from '../interfaces/post.repository.interface';
+import type { PostPageCursor } from '../domain/post-cursor.util';
 import { BuddyPostSearchParseService } from './buddy-post-search-parse.service';
 import { PostQueryService } from './post-query.service';
 import {
@@ -12,6 +14,8 @@ import {
 } from '../utils/buddy-post-search.util';
 
 const MAX_AI_SEARCH_RESULTS = 100;
+
+const MAX_AI_SEARCH_SCAN = 500;
 
 @Injectable()
 export class PostSearchService {
@@ -38,7 +42,31 @@ export class PostSearchService {
     const parsed = this.parseService.parse(trimmed);
     const searchTerms = resolveBuddyPostSearchTerms(parsed, trimmed);
 
-    const rows = await this.repository.findByActivityLegacyId(activityLegacyId);
+    const rows: Awaited<
+      ReturnType<IPostRepository['findByActivityLegacyIdPage']>
+    > = [];
+    let cursor: PostPageCursor | null = null;
+    while (rows.length < MAX_AI_SEARCH_SCAN) {
+      const batch = await this.repository.findByActivityLegacyIdPage(
+        activityLegacyId,
+        {
+          limit: Math.min(100, MAX_AI_SEARCH_SCAN - rows.length),
+          cursor,
+        },
+      );
+      if (!batch.length) break;
+      rows.push(...batch);
+      if (batch.length < 100) break;
+      const last = batch[batch.length - 1];
+      cursor = {
+        createdAt:
+          last.createdAt instanceof Date
+            ? last.createdAt
+            : new Date(String(last.createdAt ?? 0)),
+        id: new Types.ObjectId(String(last._id)),
+      };
+    }
+
     const totalScanned = rows.length;
     const filtered = filterBuddyPostsBySearchTerms(rows, searchTerms).slice(
       0,

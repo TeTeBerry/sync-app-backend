@@ -15,11 +15,12 @@ export type ResolveWsChatActorResult =
 /**
  * REST uses RequestActorMiddleware on `req.actor`; WS uses upgrade Authorization + body.
  * - Valid Bearer: actor from JWT; body `userId` must match `sub` when present.
- * - No Bearer: anonymous session — require body `userId`.
+ * - No Bearer: allowed only outside production (dev/demo); production requires login.
  */
 export function resolveWsChatActor(
   jwtActor: JwtBearerActor | null,
   body: WsChatActorBody,
+  options?: { requireAuth?: boolean },
 ): ResolveWsChatActorResult {
   if (jwtActor) {
     const bodyUserId = body.userId?.trim();
@@ -36,6 +37,13 @@ export function resolveWsChatActor(
         resolvedUserId: jwtActor.userId,
       },
       userPhone: body.userPhone?.trim() || undefined,
+    };
+  }
+
+  if (options?.requireAuth) {
+    return {
+      ok: false,
+      message: '请先登录后再使用 AI 助手',
     };
   }
 

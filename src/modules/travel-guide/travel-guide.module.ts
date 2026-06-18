@@ -26,6 +26,7 @@ import { TravelGuideMapController } from './travel-guide-map.controller';
 import { TravelGuideGenerationCacheService } from './travel-guide-generation-cache.service';
 import { TravelGuideGenerationJobService } from './travel-guide-generation-job.service';
 import { TravelGuideGenerationService } from './travel-guide-generation.service';
+import { TravelGuideGuardService } from './travel-guide-guard.service';
 
 @Module({
   imports: [
@@ -55,7 +56,8 @@ import { TravelGuideGenerationService } from './travel-guide-generation.service'
     TravelGuideGenerationCacheService,
     TravelGuideGenerationJobService,
     TravelGuideGenerationService,
+    TravelGuideGuardService,
   ],
-  exports: [TravelGuideGenerationService],
+  exports: [TravelGuideGenerationService, TravelGuideGenerationJobService],
 })
 export class TravelGuideModule {}

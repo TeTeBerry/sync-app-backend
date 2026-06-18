@@ -61,6 +61,13 @@ export type AiStreamEvent =
       form: TravelGuideChatForm;
     }
   | {
+      type: 'travel_guide_job';
+      jobId: string;
+      guideId: string;
+      activityLegacyId: number;
+      form: TravelGuideChatForm;
+    }
+  | {
       type: 'itinerary_ready';
       itineraryId: string;
       activityLegacyId: number;

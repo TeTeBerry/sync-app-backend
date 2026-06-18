@@ -6,18 +6,26 @@ import {
   Param,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
-import { Public } from '../../common/auth/public.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
+import { PublicApiRateLimitService } from '../../common/rate-limit/public-api-rate-limit.service';
+import { Public } from '../../common/auth/public.decorator';
 import { CreatePostDto } from './dto/create-post.dto';
 import { AiSearchPostsDto } from './dto/ai-search-posts.dto';
 import { CreatePostCommentDto } from './dto/create-post-comment.dto';
 import { PostService } from './post.service';
 
+const MAX_POPULAR_POSTS = 50;
+
 @Controller('posts')
 export class PostController {
-  constructor(private readonly postService: PostService) {}
+  constructor(
+    private readonly postService: PostService,
+    private readonly publicRateLimit: PublicApiRateLimitService,
+  ) {}
 
   @Public()
   @Get('popular')
@@ -26,10 +34,10 @@ export class PostController {
     @Query('limit') limit?: string,
   ) {
     const parsed = limit ? Number(limit) : 20;
-    return this.postService.listPopular(
-      Number.isNaN(parsed) ? 20 : parsed,
-      actor,
-    );
+    const safeLimit = Number.isNaN(parsed)
+      ? 20
+      : Math.min(Math.max(parsed, 1), MAX_POPULAR_POSTS);
+    return this.postService.listPopular(safeLimit, actor);
   }
 
   @Get()
@@ -61,12 +69,17 @@ export class PostController {
     return this.postService.listByOwner(actor);
   }
 
-  @Public()
   @Post('ai-search')
-  aiSearch(
+  async aiSearch(
     @Body() body: AiSearchPostsDto,
     @CurrentActor() actor: RequestActor,
+    @Req() req: Request,
   ) {
+    await this.publicRateLimit.assertAllowedAsync(
+      'post_ai_search',
+      req,
+      actor.resolvedUserId,
+    );
     return this.postService.searchPostsByNaturalLanguage(
       body.query,
       body.activityLegacyId,

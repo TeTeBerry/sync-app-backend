@@ -33,6 +33,7 @@ import { sanitizeLlmTravelGuidePayload } from './domain/travel-guide-payload-nor
 import { TravelGuidePoiCollector } from './map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from './map/travel-guide-poi.ranker';
 import { TravelGuideGenerationCacheService } from './travel-guide-generation-cache.service';
+import { TravelGuideGuardService } from './travel-guide-guard.service';
 import {
   buildTravelGuideGenerationCacheKey,
   normalizeTravelGuideGenerationParams,
@@ -92,6 +93,7 @@ export class TravelGuideGenerationService {
     private readonly poiCollector: TravelGuidePoiCollector,
     private readonly poiRanker: TravelGuidePoiRanker,
     private readonly generationCache: TravelGuideGenerationCacheService,
+    private readonly travelGuideGuard: TravelGuideGuardService,
     private readonly userProfileSync: UserProfileSyncService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
   ) {
@@ -149,50 +151,80 @@ export class TravelGuideGenerationService {
       return { plan: cachedPlan };
     }
 
-    const mapCtx = await this.poiCollector.collect(activity, dto);
-    if (!mapCtx) {
+    await this.travelGuideGuard.assertCanGenerate(
+      actor.resolvedUserId,
+      activityLegacyId,
+    );
+
+    const lockAcquired = await this.travelGuideGuard.acquireGenerationLock(
+      actor.resolvedUserId,
+      activityLegacyId,
+      dto,
+      accommodationNights,
+    );
+    if (!lockAcquired) {
+      const racingPlan = await this.generationCache.findPlan(cacheKey);
+      if (racingPlan) {
+        return { plan: racingPlan };
+      }
       throw new ServiceUnavailableException(
-        '无法获取场馆周边推荐（酒店/散场/停车），请确认活动地址或明日再试；若使用高德 Key，请检查配额是否用尽',
+        '相同参数的攻略正在生成中，请稍后再试',
       );
     }
 
-    const ranked = this.poiRanker.rank(mapCtx, dto);
-    this.assertRankedCandidates(ranked, Boolean(dto.selfDrive));
+    try {
+      const mapCtx = await this.poiCollector.collect(activity, dto);
+      if (!mapCtx) {
+        throw new ServiceUnavailableException(
+          '无法获取场馆周边推荐（酒店/散场/停车），请确认活动地址或明日再试；若使用高德 Key，请检查配额是否用尽',
+        );
+      }
 
-    const llmPayload = await this.buildPayloadFromMap(
-      activity,
-      dto,
-      accommodationNights,
-      mapCtx,
-      ranked,
-    );
+      const ranked = this.poiRanker.rank(mapCtx, dto);
+      this.assertRankedCandidates(ranked, Boolean(dto.selfDrive));
 
-    const plan = buildTravelGuidePlan({
-      activity,
-      departure: dto.departure.trim(),
-      headcount: dto.headcount,
-      budgetTier: dto.budgetTier,
-      accommodationNights,
-      selfDrive: dto.selfDrive,
-      llm: llmPayload,
-      mapSourcedOnly: true,
-      interCity: Boolean(mapCtx.interCity),
-    });
+      const llmPayload = await this.buildPayloadFromMap(
+        activity,
+        dto,
+        accommodationNights,
+        mapCtx,
+        ranked,
+      );
 
-    await this.generationCache.savePlan(
-      cacheKey,
-      activityLegacyId,
-      cacheParams,
-      plan,
-    );
+      const plan = buildTravelGuidePlan({
+        activity,
+        departure: dto.departure.trim(),
+        headcount: dto.headcount,
+        budgetTier: dto.budgetTier,
+        accommodationNights,
+        selfDrive: dto.selfDrive,
+        llm: llmPayload,
+        mapSourcedOnly: true,
+        interCity: Boolean(mapCtx.interCity),
+      });
 
-    this.userProfileSync.applyTravelGuideHints(actor, {
-      departure: dto.departure,
-      departureCity: dto.departureCity,
-      budgetTier: dto.budgetTier,
-    });
+      await this.generationCache.savePlan(
+        cacheKey,
+        activityLegacyId,
+        cacheParams,
+        plan,
+      );
 
-    return { plan };
+      this.userProfileSync.applyTravelGuideHints(actor, {
+        departure: dto.departure,
+        departureCity: dto.departureCity,
+        budgetTier: dto.budgetTier,
+      });
+
+      return { plan };
+    } finally {
+      await this.travelGuideGuard.releaseGenerationLock(
+        actor.resolvedUserId,
+        activityLegacyId,
+        dto,
+        accommodationNights,
+      );
+    }
   }
 
   private assertRankedCandidates(

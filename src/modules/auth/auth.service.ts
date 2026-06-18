@@ -36,8 +36,15 @@ export type WechatProfileInput = {
   avatarUrl?: string;
 };
 
+const TOKEN_VERSION_CACHE_TTL_MS = 60_000;
+
 @Injectable()
 export class AuthService {
+  private readonly tokenVersionCache = new Map<
+    string,
+    { version: number; expiresAt: number }
+  >();
+
   constructor(
     private readonly config: ConfigService,
     private readonly jwtService: JwtService,
@@ -77,7 +84,7 @@ export class AuthService {
       return { kind: 'invalid' };
     }
 
-    const current = await this.users.getTokenVersion(payload.sub);
+    const current = await this.getCachedTokenVersion(payload.sub);
     const issued = payload.tv ?? 0;
     if (issued !== current) {
       return { kind: 'invalid' };
@@ -86,11 +93,27 @@ export class AuthService {
     return auth;
   }
 
+  private async getCachedTokenVersion(userId: string): Promise<number> {
+    const now = Date.now();
+    const cached = this.tokenVersionCache.get(userId);
+    if (cached && cached.expiresAt > now) {
+      return cached.version;
+    }
+
+    const version = await this.users.getTokenVersion(userId);
+    this.tokenVersionCache.set(userId, {
+      version,
+      expiresAt: now + TOKEN_VERSION_CACHE_TTL_MS,
+    });
+    return version;
+  }
+
   async logout(actor: { source: string; resolvedUserId: string }): Promise<{
     ok: true;
   }> {
     if (actor.source === 'jwt') {
       await this.users.incrementTokenVersion(actor.resolvedUserId);
+      this.tokenVersionCache.delete(actor.resolvedUserId);
     }
     return { ok: true };
   }

@@ -14,6 +14,8 @@ import {
   resolveCorsOptions,
 } from './common/cors/cors-config.util';
 import { isLegacyLocalUploadEnabled } from './common/media/local-upload.util';
+import { validateProductionConfig } from './config/validate-production-config';
+import { ConfigService } from '@nestjs/config';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
@@ -46,8 +48,11 @@ async function bootstrap() {
     new ValidationPipe({
       transform: true,
       whitelist: true,
+      forbidNonWhitelisted: true,
     }),
   );
+
+  validateProductionConfig(app.get(ConfigService));
 
   // 全局过滤器 & 拦截器（你原有的，保留！更规范）
   app.useGlobalFilters(new HttpExceptionFilter());
