@@ -155,10 +155,18 @@ export default () => ({
         cleanEnv(process.env.PUBLIC_API_CHAT_SESSION_MAX, '60'),
         10,
       ),
+      travelGuidePlanMax: parseInt(
+        cleanEnv(process.env.PUBLIC_API_TRAVEL_GUIDE_PLAN_MAX, '40'),
+        10,
+      ),
     },
   },
 
   travelGuide: {
+    savedPlanTtlSec: parseInt(
+      cleanEnv(process.env.TRAVEL_GUIDE_SAVED_PLAN_TTL_SEC, '2592000'),
+      10,
+    ),
     cache: {
       generationTtlSec: parseInt(
         cleanEnv(process.env.TRAVEL_GUIDE_GENERATION_CACHE_TTL_SEC, '604800'),

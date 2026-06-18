@@ -34,6 +34,7 @@ import { TravelGuidePoiCollector } from './map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from './map/travel-guide-poi.ranker';
 import { TravelGuideGenerationCacheService } from './travel-guide-generation-cache.service';
 import { TravelGuideGuardService } from './travel-guide-guard.service';
+import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
 import {
   buildTravelGuideGenerationCacheKey,
   normalizeTravelGuideGenerationParams,
@@ -94,6 +95,7 @@ export class TravelGuideGenerationService {
     private readonly poiRanker: TravelGuidePoiRanker,
     private readonly generationCache: TravelGuideGenerationCacheService,
     private readonly travelGuideGuard: TravelGuideGuardService,
+    private readonly savedPlanService: TravelGuideSavedPlanService,
     private readonly userProfileSync: UserProfileSyncService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
   ) {
@@ -111,7 +113,7 @@ export class TravelGuideGenerationService {
     activityLegacyId: number,
     dto: GenerateTravelGuideDto,
     actor: RequestActor,
-  ): Promise<{ plan: TravelGuidePlan }> {
+  ): Promise<{ plan: TravelGuidePlan; guideId?: string }> {
     if (!this.amap.enabled) {
       throw new ServiceUnavailableException(
         'AI 出行攻略依赖高德地图，请配置 AMAP_KEY 后重试',
@@ -148,7 +150,14 @@ export class TravelGuideGenerationService {
         departureCity: dto.departureCity,
         budgetTier: dto.budgetTier,
       });
-      return { plan: cachedPlan };
+      const guideId = await this.persistSavedPlanIfRequested(
+        dto,
+        accommodationNights,
+        actor.resolvedUserId,
+        activityLegacyId,
+        cachedPlan,
+      );
+      return guideId ? { plan: cachedPlan, guideId } : { plan: cachedPlan };
     }
 
     await this.travelGuideGuard.assertCanGenerate(
@@ -165,7 +174,14 @@ export class TravelGuideGenerationService {
     if (!lockAcquired) {
       const racingPlan = await this.generationCache.findPlan(cacheKey);
       if (racingPlan) {
-        return { plan: racingPlan };
+        const guideId = await this.persistSavedPlanIfRequested(
+          dto,
+          accommodationNights,
+          actor.resolvedUserId,
+          activityLegacyId,
+          racingPlan,
+        );
+        return guideId ? { plan: racingPlan, guideId } : { plan: racingPlan };
       }
       throw new ServiceUnavailableException(
         '相同参数的攻略正在生成中，请稍后再试',
@@ -216,7 +232,14 @@ export class TravelGuideGenerationService {
         budgetTier: dto.budgetTier,
       });
 
-      return { plan };
+      const guideId = await this.persistSavedPlanIfRequested(
+        dto,
+        accommodationNights,
+        actor.resolvedUserId,
+        activityLegacyId,
+        plan,
+      );
+      return guideId ? { plan, guideId } : { plan };
     } finally {
       await this.travelGuideGuard.releaseGenerationLock(
         actor.resolvedUserId,
@@ -225,6 +248,27 @@ export class TravelGuideGenerationService {
         accommodationNights,
       );
     }
+  }
+
+  private async persistSavedPlanIfRequested(
+    dto: GenerateTravelGuideDto,
+    accommodationNights: number,
+    ownerUserId: string,
+    activityLegacyId: number,
+    plan: TravelGuidePlan,
+  ): Promise<string | undefined> {
+    const guideId = dto.guideId?.trim();
+    if (!guideId) return undefined;
+
+    await this.savedPlanService.upsert(
+      guideId,
+      ownerUserId,
+      activityLegacyId,
+      dto,
+      accommodationNights,
+      plan,
+    );
+    return guideId;
   }
 
   private assertRankedCandidates(

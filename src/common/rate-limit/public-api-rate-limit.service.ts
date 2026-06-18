@@ -9,6 +9,7 @@ type MemoryBucket = { count: number; resetAt: number };
 
 export type PublicRateLimitScope =
   | 'travel_guide_map'
+  | 'travel_guide_plan'
   | 'post_ai_search'
   | 'chat_session';
 
@@ -31,6 +32,11 @@ export class PublicApiRateLimitService {
       travel_guide_map: {
         maxRequests:
           config.get<number>('publicApi.rateLimit.travelGuideMapMax') ?? 30,
+        windowMs,
+      },
+      travel_guide_plan: {
+        maxRequests:
+          config.get<number>('publicApi.rateLimit.travelGuidePlanMax') ?? 40,
         windowMs,
       },
       post_ai_search: {

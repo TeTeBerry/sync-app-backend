@@ -157,6 +157,7 @@ export class TravelGuideAgentToolService {
       const { jobId } = await this.generationJobService.createJob(
         legacyId,
         {
+          guideId,
           departure: form.departure,
           departureCity: form.departureCity,
           headcount: form.headcount,

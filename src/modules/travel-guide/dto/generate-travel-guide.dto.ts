@@ -5,11 +5,19 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
 
 export class GenerateTravelGuideDto {
+  /** 客户端生成的攻略 ID，用于分享冷启动与服务端只读拉取 */
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  guideId?: string;
+
   @IsString()
   @MinLength(1)
   departure!: string;

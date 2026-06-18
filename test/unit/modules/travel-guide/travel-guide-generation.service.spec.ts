@@ -8,6 +8,7 @@ import { TravelGuidePoiCollector } from '@src/modules/travel-guide/map/travel-gu
 import { TravelGuidePoiRanker } from '@src/modules/travel-guide/map/travel-guide-poi.ranker';
 import { TravelGuideGenerationCacheService } from '@src/modules/travel-guide/travel-guide-generation-cache.service';
 import { TravelGuideGuardService } from '@src/modules/travel-guide/travel-guide-guard.service';
+import { TravelGuideSavedPlanService } from '@src/modules/travel-guide/travel-guide-saved-plan.service';
 import { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
 import type { TravelGuidePlan } from '@src/modules/travel-guide/domain/travel-guide.types';
@@ -81,6 +82,10 @@ describe('TravelGuideGenerationService cache', () => {
         {
           provide: TravelGuideGenerationCacheService,
           useValue: { findPlan, savePlan },
+        },
+        {
+          provide: TravelGuideSavedPlanService,
+          useValue: { upsert: jest.fn().mockResolvedValue(undefined) },
         },
         {
           provide: TravelGuideGuardService,

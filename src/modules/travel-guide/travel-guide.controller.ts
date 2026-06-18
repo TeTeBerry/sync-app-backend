@@ -2,21 +2,29 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
+import { Public } from '../../common/auth/public.decorator';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
+import { PublicApiRateLimitService } from '../../common/rate-limit/public-api-rate-limit.service';
 import { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
 import { TravelGuideGenerationJobService } from './travel-guide-generation-job.service';
 import { TravelGuideGenerationService } from './travel-guide-generation.service';
+import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
 
 @Controller()
 export class TravelGuideController {
   constructor(
     private readonly generationService: TravelGuideGenerationService,
     private readonly generationJobService: TravelGuideGenerationJobService,
+    private readonly savedPlanService: TravelGuideSavedPlanService,
+    private readonly publicRateLimit: PublicApiRateLimitService,
   ) {}
 
   @Post('activities/:legacyId/travel-guide/generate')
@@ -44,5 +52,18 @@ export class TravelGuideController {
     @CurrentActor() actor: RequestActor,
   ) {
     return this.generationJobService.getJob(jobId, actor);
+  }
+
+  /** 分享冷启动只读拉取；guideId 即访问凭证。 */
+  @Public()
+  @Get('travel-guide/plans/:guideId')
+  async getSavedPlan(@Param('guideId') guideId: string, @Req() req: Request) {
+    await this.publicRateLimit.assertAllowedAsync('travel_guide_plan', req);
+
+    const plan = await this.savedPlanService.findByGuideId(guideId);
+    if (!plan) {
+      throw new NotFoundException('攻略不存在或已过期');
+    }
+    return plan;
   }
 }

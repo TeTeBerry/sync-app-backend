@@ -10,6 +10,10 @@ import {
   TravelGuideGenerationJobSchema,
 } from '../../database/schemas/travel-guide-generation-job.schema';
 import {
+  TravelGuideSavedPlan,
+  TravelGuideSavedPlanSchema,
+} from '../../database/schemas/travel-guide-saved-plan.schema';
+import {
   TravelGuideVenueCache,
   TravelGuideVenueCacheSchema,
 } from '../../database/schemas/travel-guide-venue-cache.schema';
@@ -27,6 +31,7 @@ import { TravelGuideGenerationCacheService } from './travel-guide-generation-cac
 import { TravelGuideGenerationJobService } from './travel-guide-generation-job.service';
 import { TravelGuideGenerationService } from './travel-guide-generation.service';
 import { TravelGuideGuardService } from './travel-guide-guard.service';
+import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
 
 @Module({
   imports: [
@@ -44,6 +49,10 @@ import { TravelGuideGuardService } from './travel-guide-guard.service';
         name: TravelGuideGenerationJob.name,
         schema: TravelGuideGenerationJobSchema,
       },
+      {
+        name: TravelGuideSavedPlan.name,
+        schema: TravelGuideSavedPlanSchema,
+      },
     ]),
   ],
   controllers: [TravelGuideController, TravelGuideMapController],
@@ -57,6 +66,7 @@ import { TravelGuideGuardService } from './travel-guide-guard.service';
     TravelGuideGenerationJobService,
     TravelGuideGenerationService,
     TravelGuideGuardService,
+    TravelGuideSavedPlanService,
   ],
   exports: [TravelGuideGenerationService, TravelGuideGenerationJobService],
 })
