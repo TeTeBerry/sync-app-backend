@@ -34,9 +34,15 @@ export function normalizeTravelGuideGenerationParams(
   };
 }
 
+/** Bump when map POI / venue resolution logic changes (invalidates cached plans). */
+const TRAVEL_GUIDE_MAP_DATA_VERSION = 2;
+
 export function buildTravelGuideGenerationCacheKey(
   params: TravelGuideGenerationCacheParams,
 ): string {
-  const canonical = JSON.stringify(params);
+  const canonical = JSON.stringify({
+    ...params,
+    mapDataVersion: TRAVEL_GUIDE_MAP_DATA_VERSION,
+  });
   return createHash('sha256').update(canonical).digest('hex');
 }

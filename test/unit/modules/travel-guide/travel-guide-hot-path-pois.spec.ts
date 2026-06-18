@@ -30,4 +30,15 @@ describe('travel-guide-hot-path-pois', () => {
       comfort.some((h) => /Hilton|InterContinental|Pullman/i.test(h.name)),
     ).toBe(true);
   });
+
+  it('provides Tomorrowland Thailand fallback hotels in Pattaya', () => {
+    const hotels = getHotPathFallbackPois(1, 'hotel', '酒店');
+    expect(hotels.length).toBeGreaterThanOrEqual(2);
+    expect(
+      hotels.some((h) =>
+        /Pattaya|Hilton|Avani/i.test(`${h.name} ${h.address}`),
+      ),
+    ).toBe(true);
+    expect(hotels.some((h) => /北京|北清路|合生汇/.test(h.name))).toBe(false);
+  });
 });

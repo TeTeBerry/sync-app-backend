@@ -29,6 +29,7 @@ import {
   resolveDepartureGeocodeTargets,
 } from './travel-guide-departure-suggestions.util';
 import { AmapMapService } from './amap.service';
+import { isVenueOutsideAmapPoiCoverage } from './travel-guide-amap-coverage.util';
 
 const GEO_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const POI_TTL_MS = 6 * 60 * 60 * 1000;
@@ -68,6 +69,30 @@ export class TravelGuideGeoCacheService {
         readableAddress: db.readableAddress,
         source: 'database',
       };
+    }
+
+    if (isTravelGuideAbroad(activity)) {
+      const lat = activity.latitude;
+      const lng = activity.longitude;
+      if (
+        lat != null &&
+        lng != null &&
+        Number.isFinite(lat) &&
+        Number.isFinite(lng)
+      ) {
+        const title =
+          activity.location?.trim() || activity.name?.trim() || '会场';
+        return {
+          venue: {
+            title,
+            address: activity.location?.trim() || title,
+            lat,
+            lng,
+          },
+          readableAddress: activity.location?.trim() || title,
+          source: 'database',
+        };
+      }
     }
 
     const query = activity.location?.trim() || activity.name?.trim();
@@ -236,19 +261,27 @@ export class TravelGuideGeoCacheService {
     venue: GeocodedPlace;
     keyword: string;
     kind: MapPoiKind;
+    /** 境外场馆：跳过高德周边搜索，仅用精选兜底 POI */
+    abroad?: boolean;
   }): Promise<RawMapPoi[]> {
-    const key = `poi:${input.activityLegacyId}:${input.kind}:${input.keyword}`;
+    const abroad =
+      input.abroad ??
+      isVenueOutsideAmapPoiCoverage(input.venue.lat, input.venue.lng);
+    const key = `poi:${input.activityLegacyId}:${input.kind}:${input.keyword}:${abroad ? 'abroad' : 'domestic'}`;
     const cached = this.getMem(this.poiMem, key);
     if (cached) return cached;
 
-    let pois = await this.map.searchNearbyPois({
-      lat: input.venue.lat,
-      lng: input.venue.lng,
-      keyword: input.keyword,
-      kind: input.kind,
-      radiusM: input.kind === 'hotel' ? 3000 : 1000,
-      pageSize: 15,
-    });
+    let pois: RawMapPoi[] = [];
+    if (!abroad) {
+      pois = await this.map.searchNearbyPois({
+        lat: input.venue.lat,
+        lng: input.venue.lng,
+        keyword: input.keyword,
+        kind: input.kind,
+        radiusM: input.kind === 'hotel' ? 3000 : 1000,
+        pageSize: 15,
+      });
+    }
     if (!pois.length) {
       pois = getHotPathFallbackPois(
         input.activityLegacyId,
@@ -257,7 +290,7 @@ export class TravelGuideGeoCacheService {
       );
       if (pois.length) {
         this.logger.warn(
-          `POI fallback for activity ${input.activityLegacyId} kind=${input.kind} keyword="${input.keyword}"`,
+          `POI fallback for activity ${input.activityLegacyId} kind=${input.kind} keyword="${input.keyword}"${abroad ? ' (abroad venue)' : ''}`,
         );
       }
     }

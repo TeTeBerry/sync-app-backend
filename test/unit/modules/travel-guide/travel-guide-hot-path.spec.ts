@@ -22,4 +22,11 @@ describe('travel-guide-hot-path', () => {
     const inter = matchHotInterCityRoute(profile, '上海');
     expect(inter?.origin.originLabel).toBe('上海');
   });
+
+  it('resolves Tomorrowland Thailand venue in Pattaya', () => {
+    const profile = findHotActivityProfile(1);
+    expect(profile?.venue.title).toContain('Wisdom Valley');
+    expect(profile?.venue.lat).toBeCloseTo(12.9367, 2);
+    expect(profile?.venue.lng).toBeCloseTo(100.8839, 2);
+  });
 });

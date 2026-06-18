@@ -73,6 +73,7 @@ export class TravelGuidePoiCollector {
           venue,
           keyword: task.keyword,
           kind: task.kind,
+          abroad,
         }),
       ),
     ]);

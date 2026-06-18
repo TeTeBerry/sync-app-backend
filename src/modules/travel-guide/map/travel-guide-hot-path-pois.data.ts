@@ -2,7 +2,7 @@ import type { MapPoiKind, RawMapPoi } from './travel-guide-map.types';
 import { findHotActivityProfile } from './travel-guide-hot-path.data';
 
 /**
- * Hot Path 兜底 POI：高德周边检索失败或配额用尽时，停车/夜宵仍可生成攻略（酒店须来自高德）。
+ * Hot Path 兜底 POI：境内酒店优先高德；境外场馆使用本地精选酒店（高德周边搜索不可用）。
  * 店名与坐标基于场馆周边真实 POI，距离为相对会场的估算值。
  */
 const STORM_FALLBACK_POIS: RawMapPoi[] = [
@@ -135,6 +135,119 @@ const EDC_CHINA_FALLBACK_POIS: RawMapPoi[] = [
   ),
 ];
 
+const TML_TH_FALLBACK_POIS: RawMapPoi[] = [
+  poi(
+    'tml-h1',
+    'Avani Pattaya Resort',
+    'Pattaya, Chonburi',
+    12.928,
+    100.877,
+    1200,
+    'hotel',
+    '酒店',
+    4.4,
+    520,
+  ),
+  poi(
+    'tml-h2',
+    'Hard Rock Hotel Pattaya',
+    'Pattaya Beach',
+    12.935,
+    100.865,
+    1800,
+    'hotel',
+    '酒店',
+    4.3,
+    680,
+  ),
+  poi(
+    'tml-h3',
+    'Hilton Pattaya',
+    'Pattaya Central',
+    12.934,
+    100.883,
+    900,
+    'hotel',
+    '商务酒店',
+    4.5,
+    750,
+  ),
+  poi(
+    'tml-h4',
+    'U Pattaya',
+    'Na Jomtien, Pattaya',
+    12.939,
+    100.891,
+    800,
+    'hotel',
+    'boutique',
+    4.4,
+    420,
+  ),
+  poi(
+    'tml-h5',
+    'Dusit Thani Pattaya',
+    'Pattaya North',
+    12.948,
+    100.868,
+    2200,
+    'hotel',
+    '四星级酒店',
+    4.5,
+    620,
+  ),
+  poi(
+    'tml-h6',
+    'Centara Grand Mirage Beach Resort',
+    'Pattaya Beach',
+    12.953,
+    100.888,
+    2500,
+    'hotel',
+    'resort',
+    4.6,
+    880,
+  ),
+  poi(
+    'tml-h7',
+    'Grandsotel Hotel Pattaya',
+    'Pattaya',
+    12.941,
+    100.875,
+    1500,
+    'hotel',
+    '豪华酒店',
+    4.2,
+    380,
+  ),
+  poi(
+    'tml-n1',
+    'Horizon Rooftop Restaurant & Bar',
+    'Hilton Pattaya',
+    12.934,
+    100.883,
+    950,
+    'nightlife_food',
+    '夜宵',
+    4.3,
+    350,
+    true,
+  ),
+  poi(
+    'tml-n2',
+    'Walking Street Night Market',
+    'Pattaya',
+    12.928,
+    100.872,
+    2100,
+    'nightlife_food',
+    '夜宵',
+    4.0,
+    undefined,
+    true,
+  ),
+];
+
 const EDC_TH_FALLBACK_POIS: RawMapPoi[] = [
   poi(
     'th-h1',
@@ -236,6 +349,7 @@ const EDC_TH_FALLBACK_POIS: RawMapPoi[] = [
 ];
 
 const FALLBACK_BY_ACTIVITY = new Map<number, RawMapPoi[]>([
+  [1, TML_TH_FALLBACK_POIS],
   [4, STORM_FALLBACK_POIS],
   [2, EDC_CHINA_FALLBACK_POIS],
   [5, EDC_TH_FALLBACK_POIS],

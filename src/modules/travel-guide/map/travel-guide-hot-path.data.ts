@@ -154,6 +154,55 @@ export const TRAVEL_GUIDE_HOT_ACTIVITIES: HotActivityMapProfile[] = [
     ],
   },
   {
+    activityLegacyId: 1,
+    activityCode: 'tomorrowland',
+    venue: {
+      title: 'Wisdom Valley Pattaya',
+      address: 'Pattaya, Chonburi, Thailand',
+      lat: 12.9367,
+      lng: 100.8839,
+    },
+    readableAddress: '泰国芭提雅·Wisdom Valley（Tomorrowland Thailand 主场馆）',
+    hubRoutes: [
+      hubRoute(
+        'utp-airport',
+        '乌塔保国际机场',
+        {
+          title: '乌塔保国际机场',
+          address: 'Rayong, Thailand',
+          lat: 12.679,
+          lng: 101.005,
+        },
+        ['乌塔保', '乌塔堡', 'UTP', 'U-Tapao', '乌塔保机场'],
+        {
+          distanceM: 45_000,
+          durationSec: 3_600,
+          distanceKm: 45,
+          durationMin: 60,
+        },
+        '出租车/包车约45–60分钟；活动日建议提前预约接驳',
+      ),
+      hubRoute(
+        'bkk-airport',
+        '曼谷素万那普机场',
+        {
+          title: '素万那普国际机场',
+          address: 'Bangkok, Thailand',
+          lat: 13.69,
+          lng: 100.75,
+        },
+        ['曼谷', '素万那普', 'BKK', '曼谷机场', '素万那普机场'],
+        {
+          distanceM: 120_000,
+          durationSec: 7_200,
+          distanceKm: 120,
+          durationMin: 120,
+        },
+        '机场大巴至芭提雅后转网约车，或包车约2小时',
+      ),
+    ],
+  },
+  {
     activityLegacyId: 5,
     activityCode: 'edc-thailand',
     venue: {
