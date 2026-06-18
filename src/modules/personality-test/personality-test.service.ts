@@ -27,6 +27,8 @@ import {
   isPersonalityTestComplete,
   scorePersonality,
 } from './utils/score-personality.util';
+import { ensurePersonalityResultIdentity } from './utils/personality-result-identity.util';
+import { isValidPersonalityRaverNicknameQuery } from './utils/personality-nickname.util';
 import type { SubmitPersonalityTestDto } from './dto/submit-personality-test.dto';
 import {
   assertPersonalityStaticCloudFileIdForEnv,
@@ -34,6 +36,11 @@ import {
   isPersonalityStaticAssetKey,
   resolveCloudStorageBucket,
 } from './utils/personality-media-ref.util';
+import {
+  assertRaverAvatarCloudFileIdForEnv,
+  isRaverAvatarAssetKey,
+  isRaverAvatarCloudFileId,
+} from './utils/personality-avatar-ref.util';
 
 @Injectable()
 export class PersonalityTestService {
@@ -73,7 +80,9 @@ export class PersonalityTestService {
     const envId = process.env.CLOUDBASE_ENV_ID?.trim() ?? '';
     const keys = assetKeys
       .map((key) => key.trim())
-      .filter((key) => isPersonalityStaticAssetKey(key));
+      .filter(
+        (key) => isPersonalityStaticAssetKey(key) || isRaverAvatarAssetKey(key),
+      );
     const uniqueKeys = [...new Set(keys)];
 
     if (!uniqueKeys.length) {
@@ -89,7 +98,13 @@ export class PersonalityTestService {
     );
     const downloads = await this.cloudStorage.fetchCloudFileDownloadUrls(
       fileIds,
-      assertPersonalityStaticCloudFileIdForEnv,
+      (fileId) => {
+        if (isRaverAvatarCloudFileId(fileId)) {
+          assertRaverAvatarCloudFileIdForEnv(fileId);
+          return;
+        }
+        assertPersonalityStaticCloudFileIdForEnv(fileId);
+      },
       '无法读取测试媒体，请稍后再试',
     );
 
@@ -103,6 +118,39 @@ export class PersonalityTestService {
     return { urls };
   }
 
+  async countRaverNicknameUsage(nickname: string): Promise<{
+    nickname: string;
+    userCount: number;
+  }> {
+    const trimmed = nickname.trim();
+    if (!isValidPersonalityRaverNicknameQuery(trimmed)) {
+      throw new BadRequestException('昵称格式无效');
+    }
+
+    const userCount = await this.resultModel.countDocuments({
+      'result.raverNickname': trimmed,
+    });
+
+    return { nickname: trimmed, userCount };
+  }
+
+  async saveResult(
+    userId: string,
+    result: PersonalityTestResult,
+  ): Promise<PersonalityTestResult> {
+    const trimmedUserId = userId.trim();
+    if (!trimmedUserId) {
+      throw new BadRequestException('请先登录');
+    }
+    if (result.version !== 1) {
+      throw new BadRequestException('无效的人格测试结果');
+    }
+
+    const saved = ensurePersonalityResultIdentity(result);
+    await this.persistResult(trimmedUserId, saved);
+    return saved;
+  }
+
   async getSavedResult(userId: string): Promise<PersonalityTestResult | null> {
     const trimmed = userId.trim();
     if (!trimmed) {
@@ -113,7 +161,15 @@ export class PersonalityTestService {
     if (!doc?.result || doc.result.version !== 1) {
       return null;
     }
-    return doc.result;
+    const upgraded = ensurePersonalityResultIdentity(doc.result);
+    if (
+      upgraded.raverNickname !== doc.result.raverNickname ||
+      upgraded.raverAvatarKey !== doc.result.raverAvatarKey ||
+      upgraded.raverIdentityVersion !== doc.result.raverIdentityVersion
+    ) {
+      await this.persistResult(trimmed, upgraded);
+    }
+    return upgraded;
   }
 
   private async persistResult(
@@ -180,7 +236,7 @@ export class PersonalityTestService {
       runtimeCatalog.typeMeta,
     );
 
-    const result: PersonalityTestResult = {
+    const result = ensurePersonalityResultIdentity({
       version: 1,
       completedAt: new Date().toISOString(),
       answers: dto.answers,
@@ -188,7 +244,7 @@ export class PersonalityTestService {
       recommendations,
       recommendedEvents,
       narrative,
-    };
+    });
 
     await this.persistResult(userId ?? '', result);
 

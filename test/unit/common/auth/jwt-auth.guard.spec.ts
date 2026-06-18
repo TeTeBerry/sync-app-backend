@@ -42,9 +42,31 @@ describe('JwtAuthGuard', () => {
     (reflector.getAllAndOverride as jest.Mock).mockImplementation((key) =>
       key === IS_PUBLIC_KEY ? true : false,
     );
+    (authService.resolveBearerAuth as jest.Mock).mockResolvedValue({
+      kind: 'absent',
+    });
 
     await expect(guard.canActivate(createContext())).resolves.toBe(true);
-    expect(authService.resolveBearerAuth).not.toHaveBeenCalled();
+    expect(authService.resolveBearerAuth).toHaveBeenCalled();
+  });
+
+  it('sets actor on @Public routes when Bearer is valid', async () => {
+    (reflector.getAllAndOverride as jest.Mock).mockImplementation((key) =>
+      key === IS_PUBLIC_KEY ? true : false,
+    );
+    (authService.resolveBearerAuth as jest.Mock).mockResolvedValue({
+      kind: 'valid',
+      actor: { userId: 'user-jwt', userName: 'JWT User' },
+    });
+
+    const ctx = createContext({ authorization: 'Bearer valid-token' });
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(ctx.switchToHttp().getRequest().actor).toEqual({
+      source: 'jwt',
+      clientUserId: 'user-jwt',
+      displayName: 'JWT User',
+      resolvedUserId: 'user-jwt',
+    });
   });
 
   it('sets actor from valid Bearer token', async () => {

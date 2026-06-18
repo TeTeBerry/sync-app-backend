@@ -11,7 +11,8 @@ export type PublicRateLimitScope =
   | 'travel_guide_map'
   | 'travel_guide_plan'
   | 'post_ai_search'
-  | 'chat_session';
+  | 'chat_session'
+  | 'personality_nickname_usage';
 
 @Injectable()
 export class PublicApiRateLimitService {
@@ -47,6 +48,13 @@ export class PublicApiRateLimitService {
       chat_session: {
         maxRequests:
           config.get<number>('publicApi.rateLimit.chatSessionMax') ?? 60,
+        windowMs,
+      },
+      personality_nickname_usage: {
+        maxRequests:
+          config.get<number>(
+            'publicApi.rateLimit.personalityNicknameUsageMax',
+          ) ?? 30,
         windowMs,
       },
     };

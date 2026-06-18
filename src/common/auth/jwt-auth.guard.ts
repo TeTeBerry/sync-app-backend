@@ -25,14 +25,17 @@ export class JwtAuthGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (isPublic) {
-      return true;
-    }
-
     const request = context.switchToHttp().getRequest<Request>();
     const auth = await this.authService.resolveBearerAuth(
       request.headers.authorization,
     );
+
+    if (isPublic) {
+      if (auth.kind === 'valid') {
+        request.actor = jwtBearerToRequestActor(auth.actor);
+      }
+      return true;
+    }
 
     if (auth.kind === 'invalid') {
       throw new UnauthorizedException(AUTH_SESSION_EXPIRED_MESSAGE);

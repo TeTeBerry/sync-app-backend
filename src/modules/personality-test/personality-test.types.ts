@@ -102,4 +102,10 @@ export type PersonalityTestResult = {
   recommendations: RecommendDjLineupResult;
   recommendedEvents: PersonalityEventRecommendation[];
   narrative: PersonalityNarrative;
+  /** 按人格类型随机生成的 Raver 昵称 */
+  raverNickname?: string;
+  /** 云存储 avatar/ 目录下的随机头像 object key */
+  raverAvatarKey?: string;
+  /** Raver 昵称/头像身份标识版本，用于老结果迁移 */
+  raverIdentityVersion?: number;
 };

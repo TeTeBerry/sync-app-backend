@@ -159,6 +159,10 @@ export default () => ({
         cleanEnv(process.env.PUBLIC_API_TRAVEL_GUIDE_PLAN_MAX, '40'),
         10,
       ),
+      personalityNicknameUsageMax: parseInt(
+        cleanEnv(process.env.PUBLIC_API_PERSONALITY_NICKNAME_USAGE_MAX, '30'),
+        10,
+      ),
     },
   },
 
