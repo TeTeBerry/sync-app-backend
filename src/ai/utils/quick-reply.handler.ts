@@ -1,7 +1,7 @@
 import { ActivityService } from '../../modules/activity/activity.service';
 import { detectUserIntent } from '../intent/user-intent';
+import { buildNearEventsReply } from './activity-reply.util';
 import { buildHomeFestivalShortcutReplyFromCatalog } from './festival-shortcut.util';
-import { composeReply } from './reply-text.util';
 
 export async function buildQuickReplyResponse(
   input: string,
@@ -23,11 +23,8 @@ export async function buildQuickReplyResponse(
 
   switch (intent) {
     case 'near_events': {
-      return composeReply([
-        '这些是平台近期热门活动 📅',
-        '',
-        '你对哪个活动感兴趣？直接回复活动名，我可以帮你查更多信息。',
-      ]);
+      const activities = await activityService.findAll();
+      return buildNearEventsReply(activities);
     }
 
     default:

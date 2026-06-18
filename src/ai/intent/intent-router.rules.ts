@@ -4,7 +4,7 @@ import {
   isActivityEnterNameInput,
   isAwaitingActivityEnterSelection,
 } from '../utils/activity-enter.util';
-import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
+import { isQuickReplyIntent } from '../intent/user-intent';
 import { resolveActivityScopedFastPath } from '../policy/chat-turn-policy';
 import { resolveReadOnlyActivityFastPath } from '../policy/read-only-fast-path.util';
 import type { IntentRouterInput } from './intent-router.service';
@@ -24,7 +24,7 @@ export function resolveChatIntentFastPath(
     }
   }
 
-  if (params.activityLegacyId == null && isHomeFestivalShortcutInput(trimmed)) {
+  if (params.activityLegacyId == null && isQuickReplyIntent(trimmed)) {
     return { kind: 'quick_reply', source: 'rule' };
   }
 

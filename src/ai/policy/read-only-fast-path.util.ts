@@ -111,5 +111,8 @@ export function shouldBypassAgentForReadOnlyFastPath(
   if (routed?.readOnlyFastPath) {
     return true;
   }
+  if (routed?.kind === 'quick_reply' && routed.source === 'rule') {
+    return true;
+  }
   return routed?.kind === 'dj_info' && routed.source === 'rule';
 }

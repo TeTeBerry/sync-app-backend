@@ -1,4 +1,10 @@
 import { ChatMessageDto } from '../../shared/chat';
+import {
+  compareActivityDateAsc,
+  extractYearFromText,
+  isActivityEnded,
+} from '../../common/utils/activity-date.util';
+import { composeReply } from './reply-text.util';
 
 export const ACTIVITY_PICKER_PROMPT = '你想参加哪个活动？';
 
@@ -67,4 +73,46 @@ export function formatActivityPickerLines(
       return `${index + 1}. ${row.name ?? '活动'}${meta ? ` — ${meta}` : ''}${hot}`;
     })
     .join('\n');
+}
+
+export function filterUpcomingActivities<
+  T extends { name?: string; date?: string },
+>(activities: T[], now?: Date): T[] {
+  return activities.filter((activity) => {
+    const yearHint =
+      extractYearFromText(activity.name) ?? extractYearFromText(activity.date);
+    return !isActivityEnded(activity.date, { yearHint, now });
+  });
+}
+
+export function buildNearEventsReply(
+  rows: Array<{
+    name?: string;
+    date?: string;
+    location?: string;
+    hot?: boolean;
+  }>,
+  now?: Date,
+): string {
+  const upcoming = filterUpcomingActivities(rows, now).sort(
+    compareActivityDateAsc,
+  );
+
+  if (!upcoming.length) {
+    return composeReply([
+      '暂时没有进行中的活动档期 📅',
+      '',
+      '有新活动官宣后我会第一时间更新，也可以关注首页活动列表。',
+    ]);
+  }
+
+  return composeReply([
+    '这些是平台近期热门活动 📅',
+    '',
+    formatActivityPickerLines(upcoming),
+    '',
+    ACTIVITY_PICKER_PROMPT,
+    '',
+    '直接回复活动名或编号即可；我不会自动绑定活动，等你确认后再帮你了解活动。',
+  ]);
 }
