@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Param } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Query } from '@nestjs/common';
 import { Public } from '../../common/auth/public.decorator';
 import { ChatService } from './chat.service';
 
@@ -17,6 +17,21 @@ export class ChatController {
   @Get('sessions/:sessionId')
   getSession(@Param('sessionId') sessionId: string) {
     return this.chatService.getSession(sessionId);
+  }
+
+  @Public()
+  @Get('sessions/:sessionId/messages')
+  getSessionMessages(
+    @Param('sessionId') sessionId: string,
+    @Query('limit') limitRaw?: string,
+    @Query('before') beforeRaw?: string,
+  ) {
+    const limit = limitRaw != null ? Number(limitRaw) : undefined;
+    const before = beforeRaw != null ? Number(beforeRaw) : undefined;
+    return this.chatService.getSessionMessages(sessionId, {
+      limit: Number.isFinite(limit) ? limit : undefined,
+      before: Number.isFinite(before) ? before : undefined,
+    });
   }
 
   @Delete('sessions/:sessionId')

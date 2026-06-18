@@ -21,6 +21,7 @@ export class ProfileAgentToolService {
     return {
       ok: true,
       content: lines.join('\n'),
+      terminal: true,
       data: {
         events: summary.stats.events,
         posts: summary.stats.posts,
@@ -38,6 +39,7 @@ export class ProfileAgentToolService {
       return {
         ok: true,
         content: '你还没有报名任何活动，可以在活动详情页点击「加入」。',
+        terminal: true,
       };
     }
 
@@ -49,6 +51,7 @@ export class ProfileAgentToolService {
     return {
       ok: true,
       content: ['你报名的活动：', '', ...lines].join('\n'),
+      terminal: true,
       data: { count: activities.length },
     };
   }

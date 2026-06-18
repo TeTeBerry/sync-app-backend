@@ -16,7 +16,7 @@ export async function buildQuickReplyResponse(
   if (activityLegacyId == null) {
     const festivalReply = await buildHomeFestivalShortcutReplyFromCatalog(
       input,
-      (code) => activityService.findByCode(code).exec(),
+      (code) => activityService.findByCode(code),
     );
     if (festivalReply) return festivalReply;
   }

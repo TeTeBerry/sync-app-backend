@@ -11,14 +11,17 @@ describe('ItineraryScheduleService discogs styles', () => {
     findOneAndUpdate: jest.fn(),
   };
   const activityService = {
-    findAll: jest.fn(),
     findByLegacyId: jest
       .fn()
       .mockResolvedValue({ legacyId: 5, name: 'EDC Thailand 2026' }),
   };
+  const activityLookup = {
+    findAll: jest.fn(),
+  };
   const cache = {
     getScheduleCache: jest.fn().mockResolvedValue(null),
     setScheduleCache: jest.fn(),
+    invalidateSchedule: jest.fn(),
   };
   const catalog = [
     {
@@ -97,6 +100,7 @@ describe('ItineraryScheduleService discogs styles', () => {
       performanceModel as never,
       sessionModel as never,
       activityService as never,
+      activityLookup as never,
       cache as never,
       djService as never,
     );
@@ -194,7 +198,7 @@ describe('ItineraryScheduleService discogs styles', () => {
   });
 
   it('lists lineup seed artists when performances are not published', async () => {
-    activityService.findAll.mockResolvedValue([
+    activityLookup.findAll.mockResolvedValue([
       {
         legacyId: 8,
         name: 'EDC Korea 2026',
@@ -216,7 +220,7 @@ describe('ItineraryScheduleService discogs styles', () => {
   });
 
   it('returns empty when upcoming activities have no announced lineup', async () => {
-    activityService.findAll.mockResolvedValue([
+    activityLookup.findAll.mockResolvedValue([
       {
         legacyId: 999,
         name: 'Unannounced Festival 2027',
@@ -275,7 +279,7 @@ describe('ItineraryScheduleService discogs styles', () => {
   });
 
   it('ignores activity ids that are not in the activity catalog', async () => {
-    activityService.findAll.mockResolvedValue([
+    activityLookup.findAll.mockResolvedValue([
       {
         legacyId: 8,
         name: 'EDC Korea 2026',
@@ -296,7 +300,7 @@ describe('ItineraryScheduleService discogs styles', () => {
   });
 
   it('includes djs from any existing activity with performances', async () => {
-    activityService.findAll.mockResolvedValue([
+    activityLookup.findAll.mockResolvedValue([
       {
         legacyId: 99,
         name: 'New Fest 2026',

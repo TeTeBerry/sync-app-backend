@@ -27,6 +27,7 @@ import {
   ActivityRegistrationDocument,
 } from '../../database/schemas/activity-registration.schema';
 import { ACTIVITY_SEED } from './activity.seed';
+import { ActivityLookupService } from './activity-lookup.service';
 
 export interface CreateActivityInput {
   name: string;
@@ -95,6 +96,7 @@ export class ActivityService implements OnModuleInit {
     @InjectModel(Activity.name) private model: Model<ActivityDocument>,
     @InjectModel(ActivityRegistration.name)
     private registrationModel: Model<ActivityRegistrationDocument>,
+    private readonly activityLookup: ActivityLookupService,
     @Optional() private readonly chromaService?: ChromaService,
     @Optional() private readonly noticeAgent?: NoticeAgent,
     @Optional()
@@ -135,6 +137,7 @@ export class ActivityService implements OnModuleInit {
     }
 
     await this.syncAttendeeCounts();
+    await this.refreshLookupCache();
   }
 
   /** Persist registration totals on each activity's `attendees` field. */
@@ -168,6 +171,8 @@ export class ActivityService implements OnModuleInit {
         ),
       ),
     );
+
+    await this.refreshLookupCache();
   }
 
   /** Drop retired festivals still present from older seeds (e.g. S2O). */
@@ -188,6 +193,7 @@ export class ActivityService implements OnModuleInit {
     await this.registrationModel.deleteMany({
       activityLegacyId: { $in: [2, 6] },
     });
+    await this.refreshLookupCache();
   }
 
   health() {
@@ -195,15 +201,15 @@ export class ActivityService implements OnModuleInit {
   }
 
   findAll() {
-    return this.model.find().sort({ legacyId: 1 }).lean();
+    return this.activityLookup.findAll();
   }
 
   findByLegacyId(legacyId: number) {
-    return this.model.findOne({ legacyId }).lean();
+    return this.activityLookup.findByLegacyId(legacyId);
   }
 
   findByCode(code: string) {
-    return this.model.findOne({ code: code.toLowerCase().trim() }).lean();
+    return this.activityLookup.findByCode(code);
   }
 
   resolveActivityRef(activityRef?: string | number) {
@@ -263,7 +269,7 @@ export class ActivityService implements OnModuleInit {
     }
 
     const compact = kw.replace(/[\s.\-_/]/g, '');
-    const all = await this.model.find().limit(100).lean();
+    const all = await this.findAll();
 
     for (const activity of all) {
       const code = activity.code?.toLowerCase() ?? '';
@@ -369,6 +375,7 @@ export class ActivityService implements OnModuleInit {
       })
       .catch(() => undefined);
 
+    await this.refreshLookupCache();
     return activity;
   }
 
@@ -416,7 +423,11 @@ export class ActivityService implements OnModuleInit {
     });
   }
 
-  async updateActivity(legacyId: number, dto: UpdateActivityDto) {
+  async updateActivity(
+    legacyId: number,
+    dto: UpdateActivityDto,
+    options?: { refreshCache?: boolean },
+  ) {
     const activity = await this.model.findOne({ legacyId }).lean();
     if (!activity) {
       throw new NotFoundException(`Activity ${legacyId} not found`);
@@ -476,7 +487,18 @@ export class ActivityService implements OnModuleInit {
       })
       .catch(() => undefined);
 
+    if (options?.refreshCache !== false) {
+      await this.refreshLookupCache();
+    }
     return updated;
+  }
+
+  async refreshActivityLookupCache(): Promise<void> {
+    await this.refreshLookupCache();
+  }
+
+  private async refreshLookupCache(): Promise<void> {
+    await this.activityLookup.refreshCache();
   }
 
   private async notifyActivityUpdate(

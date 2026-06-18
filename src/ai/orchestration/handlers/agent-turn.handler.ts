@@ -31,7 +31,7 @@ export class AgentTurnHandler {
         ctx.dto,
         ctx.input,
         ctx.sink.getState(),
-        ctx.routed.kind,
+        ctx.routed,
       )
     ) {
       return null;

@@ -21,6 +21,17 @@ export interface ChatSessionDto {
   conversationState: ConversationState;
 }
 
+export interface ChatSessionMessagesPage {
+  items: ChatMessageDto[];
+  total: number;
+  hasMore: boolean;
+  nextBefore?: number;
+  conversationState: ConversationState;
+}
+
+const DEFAULT_HISTORY_PAGE_SIZE = 30;
+const MAX_HISTORY_PAGE_SIZE = 100;
+
 @Injectable()
 export class ChatService {
   constructor(
@@ -247,6 +258,33 @@ export class ChatService {
       userId: doc.userId,
       history: this.normalizeHistory(doc.history),
       conversationState: this.normalizeConversationState(doc.conversationState),
+    };
+  }
+
+  async getSessionMessages(
+    sessionId: string,
+    options?: { limit?: number; before?: number },
+  ): Promise<ChatSessionMessagesPage> {
+    const session = await this.getSession(sessionId);
+    const history = session.history;
+    const limit = Math.min(
+      Math.max(options?.limit ?? DEFAULT_HISTORY_PAGE_SIZE, 1),
+      MAX_HISTORY_PAGE_SIZE,
+    );
+    const end =
+      options?.before != null && Number.isFinite(options.before)
+        ? Math.min(Math.max(0, Math.floor(options.before)), history.length)
+        : history.length;
+    const start = Math.max(0, end - limit);
+    const items = history.slice(start, end);
+    const hasMore = start > 0;
+
+    return {
+      items,
+      total: history.length,
+      hasMore,
+      nextBefore: hasMore ? start : undefined,
+      conversationState: session.conversationState,
     };
   }
 

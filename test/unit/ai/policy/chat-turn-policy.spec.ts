@@ -94,6 +94,22 @@ describe('chat-turn-policy', () => {
     ).toBe(true);
   });
 
+  it('blocks agent for read-only rule fast paths', () => {
+    expect(
+      shouldRunAgentFirst({
+        agentEnabled: true,
+        dto: { ...baseDto, activityLegacyId: 1 },
+        input: '查阵容',
+        conversationState: { version: 1, flow: 'idle' },
+        routed: {
+          kind: 'dj_info',
+          source: 'rule',
+          readOnlyFastPath: 'lineup',
+        },
+      }),
+    ).toBe(false);
+  });
+
   it('blocks agent for posting and activity-enter routed turns', () => {
     expect(
       shouldRunAgentFirst({
@@ -101,7 +117,7 @@ describe('chat-turn-policy', () => {
         dto: { ...baseDto, activityLegacyId: 4 },
         input: 'Marshmello 是什么风格',
         conversationState: { version: 1, flow: 'idle' },
-        routedKind: 'activity_enter',
+        routed: { kind: 'activity_enter', source: 'rule' },
       }),
     ).toBe(false);
 
@@ -111,7 +127,7 @@ describe('chat-turn-policy', () => {
         dto: { ...baseDto, activityLegacyId: 4 },
         input: '随便聊聊',
         conversationState: { version: 1, flow: 'idle' },
-        routedKind: 'quick_reply',
+        routed: { kind: 'quick_reply', source: 'rule' },
       }),
     ).toBe(true);
   });

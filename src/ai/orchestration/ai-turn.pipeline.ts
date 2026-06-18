@@ -7,6 +7,7 @@ import {
 import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import { mustForceCreatePostIntent } from '../policy/chat-turn-policy';
 import { AgentTurnHandler } from './handlers/agent-turn.handler';
+import { ReadOnlyTurnHandler } from './handlers/read-only-turn.handler';
 import { LegacyTurnHandler } from './handlers/legacy-turn.handler';
 import type {
   AiTurnTimings,
@@ -37,6 +38,7 @@ export class AiTurnPipeline {
     private readonly userProfileAgent: UserProfileAgent,
     private readonly intentRouter: IntentRouterService,
     private readonly agentTurnHandler: AgentTurnHandler,
+    private readonly readOnlyTurnHandler: ReadOnlyTurnHandler,
     private readonly legacyTurnHandler: LegacyTurnHandler,
   ) {}
 
@@ -80,6 +82,7 @@ export class AiTurnPipeline {
           image: dto.image,
           sessionId,
           requestId,
+          conversationState: initialState,
         });
     timings.ms_intent = Date.now() - intentStartedAt;
 
@@ -103,6 +106,20 @@ export class AiTurnPipeline {
       requestId,
       sessionId,
     };
+
+    const readOnlyTurn = await this.readOnlyTurnHandler.tryRun(handlerCtx);
+    if (readOnlyTurn) {
+      if (readOnlyTurn.timingsPatch?.ms_read_only != null) {
+        timings.ms_read_only = readOnlyTurn.timingsPatch.ms_read_only;
+      }
+      return {
+        events: readOnlyTurn.events,
+        assistantReply: sink.getReply(),
+        conversationState: sink.getState(),
+        intent: routed.kind,
+        timings,
+      };
+    }
 
     const agentTurn = await this.agentTurnHandler.tryRun(handlerCtx);
     if (agentTurn) {

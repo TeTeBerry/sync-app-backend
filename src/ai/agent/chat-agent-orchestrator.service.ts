@@ -12,6 +12,7 @@ import { buildAgentLlmMessages } from './agent-context.builder';
 import type { ChatAgentTurnInput, ChatAgentTurnResult } from './agent.types';
 import { ChatAgentToolRegistry } from './chat-agent-tool.registry';
 import type { ConversationState } from '../conversation';
+import type { ResolvedChatIntent } from '../intent/chat-intent.types';
 import type { ChatRequestDto } from '../presentation/chat-request.dto';
 
 const MAX_AGENT_STEPS = 4;
@@ -33,14 +34,14 @@ export class ChatAgentOrchestratorService {
     dto: ChatRequestDto,
     input: string,
     conversationState: ConversationState,
-    routedKind?: string,
+    routed?: ResolvedChatIntent,
   ): boolean {
     return shouldRunAgentFirst({
       agentEnabled: this.isEnabled(),
       dto,
       input,
       conversationState,
-      routedKind,
+      routed,
     });
   }
 

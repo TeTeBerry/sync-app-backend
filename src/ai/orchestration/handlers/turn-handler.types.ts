@@ -9,6 +9,7 @@ export interface AiTurnTimings {
   ms_profile?: number;
   ms_buddy?: number;
   ms_agent?: number;
+  ms_read_only?: number;
 }
 
 export interface TurnHandlerContext {
@@ -25,5 +26,5 @@ export interface TurnHandlerContext {
 
 export interface AgentTurnResult {
   events: AiStreamEvent[];
-  timingsPatch?: Pick<AiTurnTimings, 'ms_agent'>;
+  timingsPatch?: Pick<AiTurnTimings, 'ms_agent' | 'ms_read_only'>;
 }

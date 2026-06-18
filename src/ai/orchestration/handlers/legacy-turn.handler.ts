@@ -88,12 +88,12 @@ export class LegacyTurnHandler {
   private async resolveActivityForEnter(input: string) {
     const festivalCode = resolveHomeFestivalShortcutCode(input);
     if (festivalCode) {
-      return this.activityService.findByCode(festivalCode).exec();
+      return this.activityService.findByCode(festivalCode);
     }
 
     const activityCode = resolveActivityId(input);
     if (activityCode) {
-      return this.activityService.findByCode(activityCode).exec();
+      return this.activityService.findByCode(activityCode);
     }
 
     return this.activityService.resolveActivityByKeyword(input);

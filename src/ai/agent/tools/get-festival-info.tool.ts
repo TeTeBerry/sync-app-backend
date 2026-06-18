@@ -39,7 +39,7 @@ export class GetFestivalInfoTool implements ChatAgentTool {
 
     const reply = await buildHomeFestivalShortcutReplyFromCatalog(
       festivalName,
-      (code) => this.activityService.findByCode(code).exec(),
+      (code) => this.activityService.findByCode(code),
     );
 
     if (!reply) {
@@ -53,6 +53,7 @@ export class GetFestivalInfoTool implements ChatAgentTool {
     return {
       ok: true,
       content: reply,
+      terminal: true,
       data: { festivalName },
     };
   }

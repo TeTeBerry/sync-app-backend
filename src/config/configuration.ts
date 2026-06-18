@@ -192,4 +192,20 @@ export default () => ({
       ),
     },
   },
+
+  catalog: {
+    activity: {
+      dataKey: 'catalog:activity:v1',
+      versionKey: 'catalog:activity:version',
+      ttlSec: parseInt(
+        cleanEnv(process.env.CATALOG_ACTIVITY_TTL_SEC, '86400'),
+        10,
+      ),
+    },
+    dj: {
+      dataKey: 'catalog:dj:v1',
+      versionKey: 'catalog:dj:version',
+      ttlSec: parseInt(cleanEnv(process.env.CATALOG_DJ_TTL_SEC, '86400'), 10),
+    },
+  },
 });

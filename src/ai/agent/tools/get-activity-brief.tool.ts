@@ -52,6 +52,7 @@ export class GetActivityBriefTool implements ChatAgentTool {
     return {
       ok: true,
       content: lines.join('\n'),
+      terminal: true,
       data: {
         activityLegacyId: legacyId,
         name: activity.name,

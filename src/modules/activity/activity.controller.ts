@@ -15,11 +15,13 @@ import type { RequestActor } from '../../common/auth/request-actor.types';
 import { ActivityRegistrationService } from './registration/activity-registration.service';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ActivityService } from './activity.service';
+import { ActivityLookupService } from './activity-lookup.service';
 
 @Controller('activities')
 export class ActivityController {
   constructor(
     private readonly activityService: ActivityService,
+    private readonly activityLookup: ActivityLookupService,
     private readonly registrationService: ActivityRegistrationService,
   ) {}
 
@@ -31,8 +33,16 @@ export class ActivityController {
 
   @Public()
   @Get()
-  list() {
-    return this.activityService.findAll();
+  list(@Query('skip') skipRaw?: string, @Query('limit') limitRaw?: string) {
+    if (skipRaw != null || limitRaw != null) {
+      const skip = Number(skipRaw);
+      const limit = Number(limitRaw);
+      return this.activityLookup.findPage({
+        skip: Number.isFinite(skip) ? skip : 0,
+        limit: Number.isFinite(limit) ? limit : undefined,
+      });
+    }
+    return this.activityLookup.findAll();
   }
 
   @Public()

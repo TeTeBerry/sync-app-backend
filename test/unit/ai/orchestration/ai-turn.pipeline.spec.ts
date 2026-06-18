@@ -18,6 +18,7 @@ import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { AiTurnPipeline } from '@src/ai/orchestration/ai-turn.pipeline';
 import { PostingTurnOrchestrator } from '@src/ai/orchestration/posting-turn.orchestrator';
 import { AgentTurnHandler } from '@src/ai/orchestration/handlers/agent-turn.handler';
+import { ReadOnlyTurnHandler } from '@src/ai/orchestration/handlers/read-only-turn.handler';
 import { DjInfoTurnHandler } from '@src/ai/orchestration/handlers/dj-info-turn.handler';
 import { LegacyTurnHandler } from '@src/ai/orchestration/handlers/legacy-turn.handler';
 import { AiStreamEventBuilder } from '@src/ai/presentation/ai-stream-event.builder';
@@ -48,9 +49,7 @@ describe('AiTurnPipeline homepage activity gating', () => {
       .mockResolvedValue({ required: false }),
   };
   const activityService = {
-    findByCode: jest
-      .fn()
-      .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+    findByCode: jest.fn().mockResolvedValue(null),
     resolveActivityByKeyword: jest.fn().mockResolvedValue(null),
   };
   const djInfoService = {
@@ -63,6 +62,17 @@ describe('AiTurnPipeline homepage activity gating', () => {
         scope: 'catalog',
       },
       suggestedReplies: ['Marshmello 近期演出', '找类似风格的 DJ'],
+    }),
+    answerFromStructured: jest.fn().mockResolvedValue({
+      replyText: '阵容：Swedish House Mafia、Martin Garrix',
+    }),
+  };
+  const itineraryService = {
+    getSchedule: jest.fn().mockResolvedValue({
+      eventMeta: 'Tomorrowland Thailand',
+      djs: [{ id: '1', name: 'Martin Garrix' }],
+      performances: [],
+      schedulePublished: false,
     }),
   };
   const djInfoResolver = {
@@ -95,6 +105,11 @@ describe('AiTurnPipeline homepage activity gating', () => {
     djInfoService as never,
     sseBuilder,
   );
+  const readOnlyTurnHandler = new ReadOnlyTurnHandler(
+    djInfoService as never,
+    itineraryService as never,
+    sseBuilder,
+  );
   const legacyTurnHandler = new LegacyTurnHandler(
     postingTurnOrchestrator,
     djInfoTurnHandler,
@@ -107,6 +122,7 @@ describe('AiTurnPipeline homepage activity gating', () => {
     userProfileAgent as never,
     intentRouter as never,
     agentTurnHandler,
+    readOnlyTurnHandler,
     legacyTurnHandler,
   );
 
@@ -165,14 +181,12 @@ describe('AiTurnPipeline homepage activity gating', () => {
       kind: 'activity_enter',
       source: 'rule',
     });
-    activityService.findByCode.mockReturnValue({
-      exec: jest.fn().mockResolvedValue({
-        legacyId: 4,
-        name: '风暴电音节 深圳站',
-        date: '06/13-14',
-        location: '深圳国际会展中心',
-        code: 'storm',
-      }),
+    activityService.findByCode.mockResolvedValue({
+      legacyId: 4,
+      name: '风暴电音节 深圳站',
+      date: '06/13-14',
+      location: '深圳国际会展中心',
+      code: 'storm',
     });
 
     const messages = [
@@ -205,6 +219,65 @@ describe('AiTurnPipeline homepage activity gating', () => {
       title: '风暴电音节 深圳站',
     });
     expect(result.assistantReply).toContain('点下方卡片');
+  });
+
+  it('uses read-only fast path for lineup without agent', async () => {
+    intentRouter.resolve.mockResolvedValue({
+      kind: 'dj_info',
+      source: 'rule',
+      readOnlyFastPath: 'lineup',
+    });
+    chatAgentOrchestrator.isEnabled.mockReturnValue(true);
+    chatAgentOrchestrator.shouldRunAgentFirst.mockReturnValue(false);
+
+    const result = await pipeline.runTurn(
+      {
+        ...baseDto,
+        activityLegacyId: 1,
+        messages: [{ role: 'user', content: '查阵容' }],
+      },
+      [{ role: 'user', content: '查阵容' }],
+      '查阵容',
+      { version: 1, flow: 'idle' },
+      'req-lineup-fast',
+      'lineup-session',
+    );
+
+    expect(djInfoService.answerFromStructured).toHaveBeenCalledWith(
+      expect.objectContaining({ intent: 'lineup_overview', scope: 'lineup' }),
+      1,
+    );
+    expect(chatAgentOrchestrator.runTurn).not.toHaveBeenCalled();
+    expect(result.assistantReply).toContain('阵容');
+    expect(result.timings.ms_read_only).toBeDefined();
+  });
+
+  it('uses read-only fast path for schedule without agent', async () => {
+    intentRouter.resolve.mockResolvedValue({
+      kind: 'dj_info',
+      source: 'rule',
+      readOnlyFastPath: 'schedule',
+    });
+    chatAgentOrchestrator.isEnabled.mockReturnValue(true);
+    chatAgentOrchestrator.shouldRunAgentFirst.mockReturnValue(false);
+
+    const result = await pipeline.runTurn(
+      {
+        ...baseDto,
+        activityLegacyId: 1,
+        messages: [{ role: 'user', content: '查演出表' }],
+      },
+      [{ role: 'user', content: '查演出表' }],
+      '查演出表',
+      { version: 1, flow: 'idle' },
+      'req-schedule-fast',
+      'schedule-session',
+    );
+
+    expect(itineraryService.getSchedule).toHaveBeenCalledWith(1, {});
+    expect(chatAgentOrchestrator.runTurn).not.toHaveBeenCalled();
+    expect(result.assistantReply).toContain('Tomorrowland Thailand');
+    expect(result.timings.ms_read_only).toBeDefined();
   });
 
   it('uses agent reply when agent is enabled', async () => {

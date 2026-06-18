@@ -26,6 +26,7 @@ export class PostCommentAgentToolService {
       return {
         ok: true,
         content: '该帖暂无评论。',
+        terminal: true,
       };
     }
 
@@ -36,6 +37,7 @@ export class PostCommentAgentToolService {
     return {
       ok: true,
       content: ['最近评论：', '', ...lines].join('\n'),
+      terminal: true,
       data: { count: items.length },
     };
   }

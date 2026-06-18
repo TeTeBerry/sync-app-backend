@@ -197,6 +197,18 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async deleteCacheValue(key: string): Promise<void> {
+    if (!this.client || !this.enabled) return;
+
+    try {
+      await this.client.del(key);
+    } catch (error) {
+      this.logger.warn(
+        `Redis del failed (${key}): ${(error as Error).message}`,
+      );
+    }
+  }
+
   /** Fixed-window counter; returns null when Redis unavailable (caller should fallback). */
   async incrementRateLimit(
     key: string,

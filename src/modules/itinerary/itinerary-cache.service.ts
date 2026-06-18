@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { RedisMemoryJsonCacheService } from '../../infra/cache/redis-memory-json-cache.service';
 import { RedisService } from '../../redis/redis.service';
 import { createHash } from 'crypto';
 
@@ -12,10 +13,6 @@ export class ItineraryCacheService {
   private readonly rateMax: number;
   private readonly rateWindowSec: number;
 
-  private readonly memoryCache = new Map<
-    string,
-    { value: string; expiresAt: number }
-  >();
   private readonly memoryLocks = new Map<string, number>();
   private readonly memoryRate = new Map<
     string,
@@ -24,6 +21,7 @@ export class ItineraryCacheService {
 
   constructor(
     private readonly redis: RedisService,
+    private readonly jsonCache: RedisMemoryJsonCacheService,
     config: ConfigService,
   ) {
     this.scheduleTtlSec =
@@ -62,18 +60,22 @@ export class ItineraryCacheService {
   }
 
   async getJson<T>(key: string): Promise<T | null> {
-    const raw = await this.getRaw(key);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw) as T;
-    } catch {
-      return null;
-    }
+    return this.jsonCache.getJson<T>(key);
   }
 
   async setJson(key: string, value: unknown, ttlSec: number): Promise<void> {
-    const payload = JSON.stringify(value);
-    await this.setRaw(key, payload, ttlSec);
+    await this.jsonCache.setJson(key, value, ttlSec);
+  }
+
+  async invalidateSchedule(
+    activityLegacyId: number,
+    dateKey?: string,
+  ): Promise<void> {
+    await this.jsonCache.delete(this.scheduleKey(activityLegacyId, dateKey));
+    if (!dateKey) {
+      return;
+    }
+    await this.jsonCache.delete(this.scheduleKey(activityLegacyId));
   }
 
   async getScheduleCache<T>(
@@ -145,7 +147,7 @@ export class ItineraryCacheService {
     const key = this.generateLockKey(userId, activityLegacyId);
     this.memoryLocks.delete(key);
     if (this.redis.isEnabled()) {
-      await this.redis.setCacheValue(key, '');
+      await this.redis.deleteCacheValue(key);
     }
   }
 
@@ -174,30 +176,5 @@ export class ItineraryCacheService {
     }
     entry.count += 1;
     return entry.count <= this.rateMax;
-  }
-
-  private async getRaw(key: string): Promise<string | null> {
-    const redisVal = await this.redis.getCacheValue(key);
-    if (redisVal) return redisVal;
-
-    const mem = this.memoryCache.get(key);
-    if (!mem) return null;
-    if (mem.expiresAt <= Date.now()) {
-      this.memoryCache.delete(key);
-      return null;
-    }
-    return mem.value;
-  }
-
-  private async setRaw(
-    key: string,
-    value: string,
-    ttlSec: number,
-  ): Promise<void> {
-    await this.redis.setCacheValueEx(key, value, ttlSec);
-    this.memoryCache.set(key, {
-      value,
-      expiresAt: Date.now() + ttlSec * 1000,
-    });
   }
 }

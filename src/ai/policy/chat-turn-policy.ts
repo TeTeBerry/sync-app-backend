@@ -1,6 +1,7 @@
 import { isTicketResaleIntent } from '../buddy/activity-scope-guard.util';
 import { isBuddyPostEntryIntent } from '../publish/buddy-post-flow.util';
 import type { ResolvedChatIntent } from '../intent/chat-intent.types';
+import { shouldBypassAgentForReadOnlyFastPath } from './read-only-fast-path.util';
 import { isPublishConfirmIntent } from '../publish/publish-confirm.util';
 import { isAwaitingSelfPostBodyCollection } from '../publish/buddy-post-flow.util';
 import type { ConversationState } from '../conversation';
@@ -50,6 +51,8 @@ export function shouldRunAgentFirst(params: {
   dto: ChatRequestDto;
   input: string;
   conversationState: ConversationState;
+  routed?: ResolvedChatIntent;
+  /** @deprecated Prefer `routed` */
   routedKind?: string;
 }): boolean {
   if (!params.agentEnabled) {
@@ -73,10 +76,12 @@ export function shouldRunAgentFirst(params: {
     return false;
   }
 
-  if (
-    params.routedKind === 'create_post' ||
-    params.routedKind === 'activity_enter'
-  ) {
+  if (shouldBypassAgentForReadOnlyFastPath(params.routed)) {
+    return false;
+  }
+
+  const routedKind = params.routed?.kind ?? params.routedKind;
+  if (routedKind === 'create_post' || routedKind === 'activity_enter') {
     return false;
   }
 

@@ -1,12 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { RedisMemoryJsonCacheService } from '../../infra/cache/redis-memory-json-cache.service';
 import { Dj, DjDocument } from '../../database/schemas/dj.schema';
 import type { DjCatalogItem, DjSearchResult } from './dj.types';
 import { matchLineupArtistToCatalog } from './lineup-name-match.util';
 
 const DEFAULT_LIMIT = 8;
 const MAX_LIMIT = 30;
+
+type DjCatalogPayload = {
+  items: DjCatalogItem[];
+};
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -27,10 +33,42 @@ function toCatalogItem(doc: DjDocument | Dj): DjCatalogItem {
 }
 
 @Injectable()
-export class DjService {
+export class DjService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(DjService.name);
+  private catalogCache: DjCatalogItem[] | null = null;
+  private localVersion = '';
+  private readonly dataKey: string;
+  private readonly versionKey: string;
+  private readonly ttlSec: number;
+
   constructor(
     @InjectModel(Dj.name) private readonly djModel: Model<DjDocument>,
-  ) {}
+    private readonly jsonCache: RedisMemoryJsonCacheService,
+    config: ConfigService,
+  ) {
+    this.dataKey = config.get<string>('catalog.dj.dataKey') ?? 'catalog:dj:v1';
+    this.versionKey =
+      config.get<string>('catalog.dj.versionKey') ?? 'catalog:dj:version';
+    this.ttlSec = config.get<number>('catalog.dj.ttlSec') ?? 86_400;
+  }
+
+  async onApplicationBootstrap() {
+    await this.refreshCatalogCache();
+    this.logger.log(
+      `DJ catalog cache warmed (${this.catalogCache?.length ?? 0} records)`,
+    );
+  }
+
+  async refreshCatalogCache(): Promise<void> {
+    const docs = await this.djModel.find({}).lean().exec();
+    this.catalogCache = docs.map((doc) => toCatalogItem(doc));
+    await this.jsonCache.setJson(
+      this.dataKey,
+      { items: this.catalogCache } satisfies DjCatalogPayload,
+      this.ttlSec,
+    );
+    this.localVersion = await this.jsonCache.bumpVersion(this.versionKey);
+  }
 
   async findByDiscogsId(discogsId: number): Promise<DjCatalogItem | null> {
     if (!Number.isFinite(discogsId) || discogsId <= 0) {
@@ -79,8 +117,8 @@ export class DjService {
   }
 
   async loadCatalog(): Promise<DjCatalogItem[]> {
-    const docs = await this.djModel.find({}).lean().exec();
-    return docs.map((doc) => toCatalogItem(doc));
+    await this.syncIfStale();
+    return this.catalogCache ?? [];
   }
 
   /** Map lineup `artistName` → Discogs catalog item (B2B / alias aware). */
@@ -148,5 +186,31 @@ export class DjService {
       limit,
       skip,
     };
+  }
+
+  private async syncIfStale(): Promise<void> {
+    const remoteVersion = await this.jsonCache.getVersion(this.versionKey);
+    if (
+      remoteVersion &&
+      remoteVersion === this.localVersion &&
+      this.catalogCache
+    ) {
+      return;
+    }
+
+    const payload = await this.jsonCache.getJson<DjCatalogPayload>(
+      this.dataKey,
+    );
+    if (payload?.items) {
+      this.catalogCache = payload.items;
+      this.localVersion = remoteVersion ?? this.localVersion;
+      return;
+    }
+
+    if (this.catalogCache && !remoteVersion) {
+      return;
+    }
+
+    await this.refreshCatalogCache();
   }
 }

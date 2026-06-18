@@ -128,6 +128,44 @@ describe('intent-router.rules', () => {
     ).toBeNull();
   });
 
+  it('routes lineup and travel guide chip labels via read-only fast path', () => {
+    expect(
+      resolveChatIntentFastPath('查阵容', {
+        messages: [],
+        input: '查阵容',
+        activityLegacyId: 1,
+      }),
+    ).toEqual({
+      kind: 'dj_info',
+      source: 'rule',
+      readOnlyFastPath: 'lineup',
+    });
+
+    expect(
+      resolveChatIntentFastPath('生成出行攻略', {
+        messages: [],
+        input: '生成出行攻略',
+        activityLegacyId: 1,
+      }),
+    ).toEqual({
+      kind: 'dj_info',
+      source: 'rule',
+      readOnlyFastPath: 'travel_guide_sheet',
+    });
+
+    expect(
+      resolveChatIntentFastPath('查演出表', {
+        messages: [],
+        input: '查演出表',
+        activityLegacyId: 1,
+      }),
+    ).toEqual({
+      kind: 'dj_info',
+      source: 'rule',
+      readOnlyFastPath: 'schedule',
+    });
+  });
+
   it('routes homepage festival shortcut to quick_reply without binding activity', () => {
     const hit = resolveChatIntentFastPath('风暴电音节', {
       messages: [],

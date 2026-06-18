@@ -55,6 +55,7 @@ import { ACTIVITY_REGISTRATION_REPOSITORY } from './registration/interfaces/acti
     ActivityService,
     ActivityRegistrationService,
     ACTIVITY_REGISTRATION_REPOSITORY,
+    ActivityLookupModule,
   ],
 })
 export class ActivityModule {}

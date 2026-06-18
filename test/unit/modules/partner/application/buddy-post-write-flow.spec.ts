@@ -6,7 +6,7 @@ import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { PostWriteService } from '@src/modules/partner/application/post-write.service';
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { UserService } from '@src/modules/user/user.service';
-import type { ActivityService } from '@src/modules/activity/activity.service';
+import type { IActivityLookupPort } from '@src/modules/activity/ports/activity-lookup.port';
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
 import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
@@ -41,9 +41,9 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
     resolveProfile: jest.fn(),
   } as unknown as UserService;
 
-  const activityService = {
+  const activityLookup = {
     findByLegacyId: jest.fn(),
-  } as unknown as ActivityService;
+  } as unknown as IActivityLookupPort;
 
   const postNotification = {
     notifyPostHidden: jest.fn(),
@@ -81,7 +81,7 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
       userService,
       userProfileSync,
       accountRisk,
-      activityService,
+      activityLookup,
       postNotification,
       postModeration,
       wechatContentSecurity,
@@ -92,7 +92,7 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
       avatar: 'a.png',
       location: '深圳',
     });
-    (activityService.findByLegacyId as jest.Mock).mockResolvedValue({
+    (activityLookup.findByLegacyId as jest.Mock).mockResolvedValue({
       legacyId: 9,
       name: '风暴电音节 深圳站',
       code: 'storm',

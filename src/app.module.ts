@@ -7,6 +7,7 @@ import {
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import configuration from './config/configuration';
+import { CacheModule } from './infra/cache/cache.module';
 import { RedisModule } from './redis/redis.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { UserModule } from './modules/user/user.module';
@@ -52,6 +53,7 @@ import { RequestActorMiddleware } from './common/middleware/request-actor.middle
     }),
     CloudModule,
     RedisModule,
+    CacheModule,
     ActivityModule,
     AuthModule,
     AuthCoreModule,

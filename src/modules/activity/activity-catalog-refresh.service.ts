@@ -123,8 +123,14 @@ export class ActivityCatalogRefreshService implements OnApplicationBootstrap {
 
       if (Object.keys(dto).length === 0) continue;
 
-      await this.activityService.updateActivity(activity.legacyId, dto);
+      await this.activityService.updateActivity(activity.legacyId, dto, {
+        refreshCache: false,
+      });
       updated += 1;
+    }
+
+    if (updated > 0) {
+      await this.activityService.refreshActivityLookupCache();
     }
 
     return updated;

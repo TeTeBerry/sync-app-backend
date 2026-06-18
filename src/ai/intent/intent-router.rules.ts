@@ -6,6 +6,7 @@ import {
 } from '../utils/activity-enter.util';
 import { isHomeFestivalShortcutInput } from '../utils/festival-shortcut.util';
 import { resolveActivityScopedFastPath } from '../policy/chat-turn-policy';
+import { resolveReadOnlyActivityFastPath } from '../policy/read-only-fast-path.util';
 import type { IntentRouterInput } from './intent-router.service';
 import type { ResolvedChatIntent } from './chat-intent.types';
 
@@ -36,6 +37,15 @@ export function resolveChatIntentFastPath(
   }
 
   if (params.activityLegacyId != null && trimmed) {
+    const readOnly = resolveReadOnlyActivityFastPath(
+      trimmed,
+      params.activityLegacyId,
+      params.conversationState ?? { version: 1, flow: 'idle' },
+    );
+    if (readOnly) {
+      return readOnly;
+    }
+
     const activityScoped = resolveActivityScopedFastPath(
       trimmed,
       params.activityLegacyId,

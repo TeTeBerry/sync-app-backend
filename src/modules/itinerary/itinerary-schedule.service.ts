@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
@@ -10,6 +15,10 @@ import {
   FestivalSessionDocument,
 } from '../../database/schemas/festival-session.schema';
 import { ActivityService } from '../activity/activity.service';
+import {
+  ACTIVITY_LOOKUP_PORT,
+  type IActivityLookupPort,
+} from '../activity/ports/activity-lookup.port';
 import {
   formatDiscogsStyleLabel,
   mergeDiscogsStyleLabels,
@@ -110,6 +119,8 @@ export class ItineraryScheduleService implements OnModuleInit {
     @InjectModel(FestivalSession.name)
     private readonly sessionModel: Model<FestivalSessionDocument>,
     private readonly activityService: ActivityService,
+    @Inject(ACTIVITY_LOOKUP_PORT)
+    private readonly activityLookup: IActivityLookupPort,
     private readonly cache: ItineraryCacheService,
     private readonly djService: DjService,
   ) {}
@@ -157,6 +168,16 @@ export class ItineraryScheduleService implements OnModuleInit {
       ALL_ARTIST_PERFORMANCE_SEED.filter(
         (p) => p.activityLegacyId === ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
       ),
+    );
+
+    const activityIds = [
+      ...new Set([
+        ...ALL_FESTIVAL_SESSION_SEED_COMBINED.map((s) => s.activityLegacyId),
+        ...ALL_ARTIST_PERFORMANCE_SEED.map((p) => p.activityLegacyId),
+      ]),
+    ];
+    await Promise.all(
+      activityIds.map((legacyId) => this.cache.invalidateSchedule(legacyId)),
     );
   }
 
@@ -369,7 +390,7 @@ export class ItineraryScheduleService implements OnModuleInit {
       return [];
     }
 
-    const activities = await this.activityService.findAll();
+    const activities = await this.activityLookup.findAll();
     const existingIds = new Set(
       activities.map((activity) => activity.legacyId),
     );
@@ -430,7 +451,7 @@ export class ItineraryScheduleService implements OnModuleInit {
       keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
       'i',
     );
-    const activities = await this.activityService.findAll();
+    const activities = await this.activityLookup.findAll();
     const targets =
       params.activityLegacyId != null && !Number.isNaN(params.activityLegacyId)
         ? activities.filter(
