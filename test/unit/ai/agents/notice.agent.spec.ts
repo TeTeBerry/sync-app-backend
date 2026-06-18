@@ -81,4 +81,63 @@ describe('NoticeAgent', () => {
     );
     expect(notificationService.createFromTemplate).not.toHaveBeenCalled();
   });
+
+  it('notifies post owner on new comment', async () => {
+    await agent.notifyComment({
+      recipientUserId: 'owner-1',
+      postId: 'post-1',
+      activityLegacyId: 4,
+      actorUserId: 'user-2',
+      actorUserName: '小红',
+      commentPreview: '我也想去，可以一起吗',
+    });
+
+    expect(notificationService.createFromTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'owner-1',
+        templateKey: 'comment',
+        meta: expect.objectContaining({
+          type: 'comment',
+          postId: 'post-1',
+          activityLegacyId: 4,
+          actorUserId: 'user-2',
+        }),
+      }),
+    );
+  });
+
+  it('skips comment notification when actor is post owner', async () => {
+    await agent.notifyComment({
+      recipientUserId: 'owner-1',
+      postId: 'post-1',
+      activityLegacyId: 4,
+      actorUserId: 'owner-1',
+      commentPreview: '自己评论',
+    });
+
+    expect(notificationService.createFromTemplate).not.toHaveBeenCalled();
+  });
+
+  it('notifies comment author on post owner reply', async () => {
+    await agent.notifyCommentReply({
+      recipientUserId: 'commenter-1',
+      postId: 'post-1',
+      activityLegacyId: 4,
+      actorUserId: 'owner-1',
+      actorUserName: '楼主',
+      commentPreview: '可以的，我们活动见',
+      parentCommentId: 'comment-1',
+    });
+
+    expect(notificationService.createFromTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'commenter-1',
+        templateKey: 'commentReply',
+        meta: expect.objectContaining({
+          type: 'comment_reply',
+          parentCommentId: 'comment-1',
+        }),
+      }),
+    );
+  });
 });

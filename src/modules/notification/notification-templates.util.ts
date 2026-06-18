@@ -7,7 +7,9 @@ import type {
 export type NotificationTemplateKey =
   | 'postRejected'
   | 'postHidden'
-  | 'activityUpdate';
+  | 'activityUpdate'
+  | 'comment'
+  | 'commentReply';
 
 export const NOTIFICATION_CATEGORY_BY_TEMPLATE: Record<
   NotificationTemplateKey,
@@ -16,6 +18,8 @@ export const NOTIFICATION_CATEGORY_BY_TEMPLATE: Record<
   postRejected: 'system',
   postHidden: 'system',
   activityUpdate: 'system',
+  comment: 'general',
+  commentReply: 'general',
 };
 
 const TEMPLATE_DEFAULTS: Record<
@@ -36,6 +40,16 @@ const TEMPLATE_DEFAULTS: Record<
     type: 'system',
     title: '活动信息变更',
     body: '「{{activityName}}」{{changeSummary}}',
+  },
+  comment: {
+    type: 'interaction',
+    title: '收到新评论',
+    body: '{{actor}} 评论了你的帖子：{{preview}}',
+  },
+  commentReply: {
+    type: 'interaction',
+    title: '收到新回复',
+    body: '{{actor}} 回复了你的评论：{{preview}}',
   },
 };
 

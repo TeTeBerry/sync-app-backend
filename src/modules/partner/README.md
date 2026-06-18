@@ -15,7 +15,7 @@ REST 路径仍为 `/api/posts`（资源名不变）。
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/posts/popular` | 热门帖 |
+| GET | `/posts/popular` | 热门帖（BFF 可选；前端首页无帖流） |
 | GET | `/posts?activityLegacyId=` | 活动帖分页 |
 | GET | `/posts` | 当前用户帖子（owner） |
 | POST | `/posts` | 创建 |

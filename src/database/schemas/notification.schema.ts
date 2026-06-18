@@ -6,22 +6,21 @@ export type NotificationType = 'general' | 'interaction' | 'system';
 /** High-level push category for NoticeAgent routing and client grouping. */
 export type NotificationCategory = 'system' | 'general';
 
-/** @deprecated Post like/comment interactions removed — kept for stored meta parsing only. */
-export type DeprecatedNotificationInteractionType =
-  | 'like'
-  | 'comment'
-  | 'comment_reply';
+/** @deprecated Post like interactions removed — kept for stored meta parsing only. */
+export type DeprecatedNotificationInteractionType = 'like';
 
 /** Deep-link hint for notifications. */
 export type NotificationInteractionType =
   | DeprecatedNotificationInteractionType
+  | 'comment'
+  | 'comment_reply'
   | 'activity'
   | 'activity_update'
   | 'post_rejected'
   | 'post_hidden';
 
 export interface NotificationMeta {
-  /** UI grouping (system / general). Legacy like/comment values are filtered from inbox. */
+  /** UI grouping (system / general). Legacy like values are filtered from inbox when present. */
   category?: NotificationCategory;
   /** Target activity for event-detail navigation. */
   activityLegacyId?: number;

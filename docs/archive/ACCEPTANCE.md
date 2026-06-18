@@ -1,5 +1,7 @@
 # P0–P3 全栈验收报告
 
+> **历史快照（2026-05）**：本文档已归档，勿作为当前实现依据。组队帖、PartnerModule 等后续已恢复/调整，见 `sync-app/docs/API.md`。
+
 > 验收日期：2026-05-27（复验）；**2026-06 更新**：组队帖子功能已移除；Recommend Gate / `post_recommendations` 已移除  
 > 范围：后端 P0–P3 + 前端 AI/活动页/性能优化 + 契约对齐
 
@@ -121,6 +123,6 @@ npm run build:h5    # exit 0，2 条 AssetsOverSizeLimitWarning
 
 ## 参考文档
 
-- 后端改造清单：`docs/BACKEND-REFACTOR-CHECKLIST.md`
+- 后端改造清单：`docs/archive/BACKEND-REFACTOR-CHECKLIST.md`
 - 前端改造清单：`sync-app/docs/FRONTEND-REFACTOR-CHECKLIST.md`
 - API 契约：`sync-app/docs/API.md`

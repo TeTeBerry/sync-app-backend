@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { NoticeAgent } from '../agents/notice.agent';
-import type { IPostNotificationPort } from '../../modules/partner/ports/post-notification.port';
+import type {
+  CommentNotificationInput,
+  IPostNotificationPort,
+} from '../../modules/partner/ports/post-notification.port';
 
 @Injectable()
 export class PostNotificationAdapter implements IPostNotificationPort {
@@ -18,5 +21,15 @@ export class PostNotificationAdapter implements IPostNotificationPort {
       activityLegacyId,
       reason,
     );
+  }
+
+  notifyComment(input: CommentNotificationInput): void {
+    void this.noticeAgent.notifyComment(input);
+  }
+
+  notifyCommentReply(
+    input: CommentNotificationInput & { parentCommentId: string },
+  ): void {
+    void this.noticeAgent.notifyCommentReply(input);
   }
 }

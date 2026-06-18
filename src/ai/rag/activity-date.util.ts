@@ -19,16 +19,3 @@ export function catalogDateToIso(
   const [, month, day] = range;
   return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
-
-export function extractIsoDateFromText(text: string): string | undefined {
-  const iso = text.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
-  if (iso) return iso[0];
-
-  const cn = text.match(/(20\d{2})[.\-/年](\d{1,2})[.\-/月](\d{1,2})/);
-  if (cn) {
-    const [, y, m, d] = cn;
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-  }
-
-  return undefined;
-}

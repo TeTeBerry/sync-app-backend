@@ -13,18 +13,18 @@ AppModule
 ├── RedisModule              # 热度缓存（可选）
 ├── infra/llm, infra/chroma  # LLM / 活动知识向量检索
 ├── ActivityModule           # 活动 + registration/
-├── ActivityExperienceModule # travel-plan / itinerary / live-info / travel-guide
+├── ActivityExperienceModule # travel-plan / itinerary / travel-guide / festival-plan
 ├── UserModule               # 用户资料、画像同步
 ├── ProfileModule            # 个人页 BFF（摘要 / 报名活动）
 ├── HomeModule               # 首页 BFF
 ├── NotificationModule
 ├── ChatModule               # AI 会话持久化
 ├── AccountRiskModule        # 账号风控与限制
-├── shared/                  # 前后端契约（chat、travel-plan、itinerary、live-info）
+├── shared/                  # 前后端契约（chat、travel-plan、itinerary）
 └── AiModule                 # WebSocket 对话 + 单轮编排（AiTurnPipeline）
     ├── AgentsModule         # NoticeAgent（活动更新等系统通知）
     ├── OrchestrationModule  # AiTurnPipeline + DeterministicReply
-    ├── RagModule / InfraChromaModule
+    ├── InfraChromaModule（活动 RAG，经 ActivityModule）
     └── agent/               # ChatAgentOrchestrator（默认 agent-first）
 ```
 
@@ -34,7 +34,7 @@ AppModule
 | Activity | `modules/activity/` | 列表 / 关键词解析 / 详情 / 报名 |
 | AiAssistant | `ai/` + `modules/chat/` | WebSocket + 意图路由 + 确定性回复 |
 | BFF | `home/`、`profile/` | 聚合读 |
-| ActivityExperience | `modules/activity-experience/` | 四域 API 聚合 |
+| ActivityExperience | `modules/activity-experience/` | 活动域 API 聚合（行程 / 攻略 / 计划） |
 
 ### 活动域 API（`activities/:legacyId/*`）
 
@@ -42,7 +42,6 @@ AppModule
 |------|------|------|
 | Travel plan | `travel-plan/` | 行程计划保存、票据识别 |
 | Itinerary | `itinerary/` | 电音时间表生成/保存 |
-| Live info | `live-info/` | 现场认证、UGC 实况 |
 | Travel guide | `travel-guide/` | 高德 POI + 出行攻略生成 |
 | Festival plan | `festival-plan-progress` | AI 本场计划进度 BFF |
 
@@ -119,7 +118,7 @@ AppModule
 
 | 存储 | 用途 |
 |------|------|
-| **MongoDB** | user, activity, activity-registration, chat, notification, account-risk-event, live-info, travel-guide jobs… |
+| **MongoDB** | user, activity, activity-registration, chat, notification, account-risk-event, posts, travel-guide jobs… |
 | **Redis** | `heat:global`、`heat:activity:{legacyId}`（不可用则降级） |
 | **Chroma** | `sync_knowledge`（活动 RAG，可选） |
 
@@ -145,4 +144,4 @@ AppModule
 
 单元测试：`test/unit/`；`npm test`。说明见 `test/README.md`。
 
-对照清单：`docs/BACKEND-REFACTOR-CHECKLIST.md`
+对照清单（历史）：`docs/archive/BACKEND-REFACTOR-CHECKLIST.md`

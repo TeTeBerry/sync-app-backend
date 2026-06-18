@@ -27,6 +27,10 @@ import {
   IPostRepository,
   POST_REPOSITORY,
 } from '../interfaces/post.repository.interface';
+import {
+  IPostNotificationPort,
+  POST_NOTIFICATION_PORT,
+} from '../ports/post-notification.port';
 import { WechatContentSecurityService } from '../../auth/wechat-content-security.service';
 import { assertPostHasNoContactInfo } from '../utils/post-contact.util';
 import { isCommentByPostOwner } from '../utils/comment-ownership.util';
@@ -38,6 +42,8 @@ export class PostCommentService {
     private readonly repository: IPostRepository,
     @InjectModel(PostComment.name)
     private readonly commentModel: Model<PostCommentDocument>,
+    @Inject(POST_NOTIFICATION_PORT)
+    private readonly postNotification: IPostNotificationPort,
     private readonly accountRisk: AccountRiskService,
     private readonly userService: UserService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
@@ -182,6 +188,16 @@ export class PostCommentService {
       body: trimmed,
     });
 
+    this.dispatchCommentNotification({
+      post,
+      postId: id,
+      actorUserId,
+      actorUserName: actor.displayName?.trim(),
+      commentPreview: trimmed,
+      parentComment,
+      parentCommentId: trimmedParentId,
+    });
+
     const updated = (await this.repository.incrementCommentCount(id)) ?? post;
 
     return {
@@ -192,5 +208,51 @@ export class PostCommentService {
 
   async deleteCommentsForPost(postId: string): Promise<void> {
     await this.commentModel.deleteMany({ postId });
+  }
+
+  private dispatchCommentNotification(params: {
+    post: { userId?: string; activityLegacyId?: number };
+    postId: string;
+    actorUserId: string;
+    actorUserName?: string;
+    commentPreview: string;
+    parentComment: { userId: string } | null;
+    parentCommentId?: string;
+  }): void {
+    const {
+      post,
+      postId,
+      actorUserId,
+      actorUserName,
+      commentPreview,
+      parentComment,
+      parentCommentId,
+    } = params;
+
+    const base = {
+      postId,
+      activityLegacyId: post.activityLegacyId,
+      actorUserId,
+      actorUserName,
+      commentPreview,
+    };
+
+    if (parentCommentId && parentComment) {
+      const recipientUserId = parentComment.userId?.trim();
+      if (!recipientUserId) return;
+      this.postNotification.notifyCommentReply({
+        ...base,
+        recipientUserId,
+        parentCommentId,
+      });
+      return;
+    }
+
+    const recipientUserId = post.userId?.trim();
+    if (!recipientUserId || recipientUserId === actorUserId) return;
+    this.postNotification.notifyComment({
+      ...base,
+      recipientUserId,
+    });
   }
 }

@@ -56,7 +56,6 @@ export type FormatTimeAgoOptions = {
 
 /**
  * Relative time in Chinese for API responses.
- * Matches legacy post/live-info mapper behavior.
  */
 export function formatTimeAgo(
   value?: Date | string,

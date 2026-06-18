@@ -120,6 +120,68 @@ export class NoticeAgent {
     );
   }
 
+  async notifyComment(params: {
+    recipientUserId: string;
+    postId: string;
+    activityLegacyId?: number;
+    actorUserId: string;
+    actorUserName?: string;
+    commentPreview?: string;
+  }): Promise<void> {
+    const recipient = params.recipientUserId?.trim();
+    const actorUserId = params.actorUserId?.trim();
+    if (!recipient || !actorUserId || recipient === actorUserId) return;
+
+    const actor = params.actorUserName?.trim() || '有人';
+    const preview = this.truncateCommentPreview(params.commentPreview);
+
+    await this.dispatch({
+      userId: recipient,
+      category: 'general',
+      templateKey: 'comment',
+      templateParams: { actor, preview },
+      meta: {
+        type: 'comment',
+        postId: params.postId,
+        activityLegacyId: params.activityLegacyId,
+        actorUserId,
+        actorUserName: actor,
+      },
+    });
+  }
+
+  async notifyCommentReply(params: {
+    recipientUserId: string;
+    postId: string;
+    activityLegacyId?: number;
+    actorUserId: string;
+    actorUserName?: string;
+    commentPreview?: string;
+    parentCommentId: string;
+  }): Promise<void> {
+    const recipient = params.recipientUserId?.trim();
+    const actorUserId = params.actorUserId?.trim();
+    if (!recipient || !actorUserId || recipient === actorUserId) return;
+
+    const actor = params.actorUserName?.trim() || '有人';
+    const preview = this.truncateCommentPreview(params.commentPreview);
+
+    await this.dispatch({
+      userId: recipient,
+      category: 'general',
+      templateKey: 'commentReply',
+      templateParams: { actor, preview },
+      meta: {
+        type: 'comment_reply',
+        postId: params.postId,
+        activityLegacyId: params.activityLegacyId,
+        actorUserId,
+        actorUserName: actor,
+        parentCommentId: params.parentCommentId,
+      },
+    });
+  }
+
   /**
    * Central entry for all push notifications.
    * Respects user notification settings and optional deduplication.
@@ -197,5 +259,12 @@ export class NoticeAgent {
       reasonHints[normalized] ??
       (normalized || '内容违反社区规范，帖子已自动隐藏')
     );
+  }
+
+  private truncateCommentPreview(body?: string): string {
+    const normalized = body?.replace(/\s+/g, ' ').trim() ?? '';
+    if (!normalized) return '…';
+    if (normalized.length <= 40) return normalized;
+    return `${normalized.slice(0, 40)}…`;
   }
 }

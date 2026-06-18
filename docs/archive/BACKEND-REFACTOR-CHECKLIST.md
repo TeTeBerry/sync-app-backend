@@ -1,5 +1,7 @@
 # 后端改造 Checklist
 
+> **历史快照（2026-05～06）**：本文档已归档。其中 `live-info` 等条目反映改造期状态，**非**当前代码真源；现状见 `docs/ARCHITECTURE.md` 与 `sync-app/docs/API.md`。
+
 > 目标：Gateway + User / Activity / AiAssistant + MongoDB / Chroma / Redis  
 > 前端对照：`sync-app/docs/FRONTEND-REFACTOR-CHECKLIST.md`  
 > 架构快照：`docs/ARCHITECTURE.md`  

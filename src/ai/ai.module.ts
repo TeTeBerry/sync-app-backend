@@ -5,8 +5,6 @@ import { MediaSecurityModule } from '../modules/media-security/media-security.mo
 import { ActivityModule } from '../modules/activity/activity.module';
 import { ChatModule } from '../modules/chat/chat.module';
 import { PartnerModule } from '../modules/partner/partner.module';
-import { InfraChromaModule } from '../infra/chroma/chroma.module';
-import { RagModule } from './rag/rag.module';
 import { HandlerModule } from './handlers/handler.module';
 import { OrchestrationModule } from './orchestration/orchestration.module';
 import { InfraLlmModule } from '../infra/llm/llm.module';
@@ -35,8 +33,6 @@ import { AiChatWsServer } from './ws/ai-chat-ws.server';
     ActivityModule,
     ChatModule,
     PartnerModule,
-    InfraChromaModule,
-    RagModule,
     HandlerModule,
     OrchestrationModule,
     InfraLlmModule,

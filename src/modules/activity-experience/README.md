@@ -6,7 +6,6 @@ Activity-scoped features under `/api/activities/:legacyId/*`.
 |-----------|--------|--------|
 | Travel plan | `travel-plan/` | `travel-plan/saved`, `save`, `recognize-receipt` |
 | Performance itinerary | `itinerary/` | `itinerary/schedule`, `generate`, `save`, `saved` |
-| Live info | `live-info/` | `live-info`, wristband, updates |
 | Travel guide | `travel-guide/` | `travel-guide` generation |
 | Festival plan | `festival-plan/` | `festival-plan-progress` BFF for AI tab checklist |
 

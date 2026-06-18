@@ -24,4 +24,17 @@ describe('notification-templates.util', () => {
     expect(built.meta.category).toBe('system');
     expect(built.meta.templateKey).toBe('notifications.types.postRejected');
   });
+
+  it('renders comment notification as general interaction', () => {
+    const built = buildNotificationFromTemplate(
+      'comment',
+      { actor: '小红', preview: '我也想去' },
+      { type: 'comment', postId: 'p1', activityLegacyId: 4 },
+    );
+
+    expect(built.type).toBe('interaction');
+    expect(built.title).toContain('评论');
+    expect(built.body).toContain('小红');
+    expect(built.meta.category).toBe('general');
+  });
 });

@@ -1,6 +1,6 @@
 # Sync App Backend
 
-NestJS 后端：电音节活动、AI 对话 WebSocket、出行攻略 / 现场资讯、MongoDB、Redis 热度。
+NestJS 后端：电音节活动、组队帖、AI 对话 WebSocket、出行攻略 / 专属行程、MongoDB、Redis 热度。
 
 ## 技术栈
 
@@ -16,8 +16,9 @@ NestJS 后端：电音节活动、AI 对话 WebSocket、出行攻略 / 现场资
 
 架构说明：[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)  
 LLM 配置：[docs/LLM.md](./docs/LLM.md)（混元文本 + 千问 VL）  
-改造清单：[docs/BACKEND-REFACTOR-CHECKLIST.md](./docs/BACKEND-REFACTOR-CHECKLIST.md)  
-Nest/Mongoose 升级：[docs/UPGRADE-NEST-MONGOOSE.md](./docs/UPGRADE-NEST-MONGOOSE.md)
+鉴权：[docs/AUTH.md](./docs/AUTH.md)  
+完整 REST 契约：[sync-app/docs/API.md](../sync-app/docs/API.md)  
+历史迁移记录：[docs/archive/](./docs/archive/)
 
 ## 快速开始
 
@@ -164,44 +165,7 @@ npm run db:reset
 | users (demo profile) | `UserService` |
 | Chroma 知识库 | `ChromaService.seedIfEmpty` |
 
-## 活动实时资讯 `live-info`
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/activities/:legacyId/live-info` | 快照：`zones` / `viewer` / `summary` / `certCount` / `feed`；Query 可选 `zoneTag`、`categoryId`、`certifiedOnly=true`（按区域/类目/作者当日仍「我在现场」筛选） |
-
-UGC 图片：小程序 `wx.cloud.uploadFile` → 客户端提交 **`cloud://` fileID**（路径 `ugc/…`）；后端校验并落库，展示由客户端 `getTempFileURL` 完成。
-
-UGC 文本（现场资讯 / AI 用户消息 / 资料 / 举报说明等）落库前走微信 `msg_sec_check`（同 `WECHAT_CONTENT_SECURITY_ENABLED` 开关）。
-
-| POST | `.../live-info/wristband` | 提交 `{ imageUrl }`（`cloud://` fileID 或本地 dev `/uploads/` URL）；`cloud://` 跳过服务端拉图与 VL 审核；本地 URL 先查重复再 **Qwen-VL**；通过则当日认证 |
-| DELETE | `.../live-info/wristband` | 清除当日认证 |
-| POST | `.../live-info/updates` | 发布 `{ zoneTag, ratings: [{ categoryId, score }], remark? }`（`zoneTag` 须为活动 `liveInfoZones` 中的 id；5 分钟冷却、每小时 8 条上限、24h 内同用户同内容指纹不可重复） |
-| POST | `.../live-info/updates/:updateId/like` | 点赞切换 |
-
-举报 `GET /api/reports/status` 响应含 `reviewStatus`：`pending` | `acknowledged`（对方账号被风控限制时自动视为已受理）。
-
-Query：`userId`、`authorName`（与其它活动 API 一致）。评分类目含 `entry_crowd` / `toilet_queue` / `water_queue` / `smoke_drink` / `sound_level`（音量听感）/ `stage_view`（视野）。报告约 90 分钟过期；发布需当日已认证手环。`feed` 条目含 `zoneTag`、`zoneLabel`、`authorOnSiteVerified`（快照时刻作者仍认证则为 true）。`feed` 按新鲜度 + 点赞 + 备注加权排序（非纯 `createdAt`）。Demo 活动 `legacyId=4` 配置 A/B/卡座区域并种子现场报告。
-
-## 专属电音行程 `itinerary`
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/activities/:legacyId/itinerary/schedule` | 演出表 + DJ 列表；Query `dateKey?`、`selectedDjIds?`（逗号分隔）返回 `conflicts` |
-| POST | `/api/activities/:legacyId/itinerary/generate` | Body `{ selectedDjIds, dateKey? }` → `{ itinerary, conflicts, cached }`（按 Mongo 官方排期规则生成） |
-| POST | `/api/activities/:legacyId/itinerary/save` | 持久化用户行程 |
-| GET | `/api/activities/:legacyId/itinerary/saved` | 读取已保存行程 |
-
-Demo：`legacyId=4`（风暴电音节）启动时 seed **2026-06-13/14 深圳站完整阵容**（`itinerary.seed.ts`）；重启后端可 upsert 并剔除旧 demo 艺人。Redis 缓存排期/生成结果、生成锁与频率限制（`REDIS_URL` 空则内存兜底）。生成逻辑见 `buildFallbackItinerary`（所选 DJ 官方时段 + 出发提醒，不调大模型）。
-
-## AI 出行攻略 `travel-guide`
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/activities/:legacyId/travel-guide/generate` | 生成攻略（出发地、人数、预算档、是否自驾等） |
-| GET | `/api/travel-guide/place-suggestions` | 出发地输入提示（高德 inputtips + 本地城市库） |
-
-酒店、停车、夜宵均来自 **高德周边检索**（`place/around`），不再使用运营维护酒店清单。详见 [docs/TRAVEL_GUIDE_MAP.md](./docs/TRAVEL_GUIDE_MAP.md)。
+活动域 REST（专属行程、出行攻略、组队帖等）见 [sync-app/docs/API.md](../sync-app/docs/API.md)。
 
 ## 前端对接
 
