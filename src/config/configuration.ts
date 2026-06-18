@@ -102,11 +102,6 @@ export default () => ({
     url: cleanEnv(process.env.REDIS_URL, ''),
   },
 
-  wechatPay: {
-    mchId: cleanEnv(process.env.WECHAT_PAY_MCH_ID, ''),
-    apiKey: cleanEnv(process.env.WECHAT_PAY_API_KEY, ''),
-  },
-
   auth: {
     jwtSecret: cleanEnv(
       process.env.JWT_SECRET,
