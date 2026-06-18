@@ -16,6 +16,9 @@ export class TravelGuideGenerationCache {
   /** 与请求参数一致，便于运维核对 */
   @Prop({ type: Object, required: true })
   requestParams!: Record<string, unknown>;
+
+  @Prop({ required: true, index: true })
+  expiresAt!: Date;
 }
 
 export type TravelGuideGenerationCacheDocument =
@@ -23,4 +26,9 @@ export type TravelGuideGenerationCacheDocument =
 
 export const TravelGuideGenerationCacheSchema = SchemaFactory.createForClass(
   TravelGuideGenerationCache,
+);
+
+TravelGuideGenerationCacheSchema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: 0 },
 );

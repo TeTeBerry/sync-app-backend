@@ -14,11 +14,21 @@ import {
   TravelGuideGenerationJobDocument,
   type TravelGuideGenerationJobStatus,
 } from '../../database/schemas/travel-guide-generation-job.schema';
+import { ActivityService } from '../activity/activity.service';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
 import type { TravelGuidePlan } from './domain/travel-guide.types';
+import { parseActivityDayCount } from './domain/parse-activity-days.util';
+import {
+  buildTravelGuideGenerationCacheKey,
+  normalizeTravelGuideGenerationParams,
+} from './domain/travel-guide-generation-cache.util';
 import { TravelGuideGenerationService } from './travel-guide-generation.service';
 
 const JOB_TTL_MS = 60 * 60 * 1000;
+const ACTIVE_JOB_STATUSES: TravelGuideGenerationJobStatus[] = [
+  'pending',
+  'running',
+];
 
 export type TravelGuideGenerationJobView = {
   jobId: string;
@@ -35,6 +45,7 @@ export class TravelGuideGenerationJobService {
     @InjectModel(TravelGuideGenerationJob.name)
     private readonly model: Model<TravelGuideGenerationJobDocument>,
     private readonly generationService: TravelGuideGenerationService,
+    private readonly activityService: ActivityService,
   ) {}
 
   async createJob(
@@ -42,6 +53,23 @@ export class TravelGuideGenerationJobService {
     dto: GenerateTravelGuideDto,
     actor: RequestActor,
   ): Promise<{ jobId: string }> {
+    const dedupeKey = await this.buildDedupeKey(activityLegacyId, dto);
+    const existing = await this.model
+      .findOne({
+        ownerUserId: actor.resolvedUserId,
+        dedupeKey,
+        status: { $in: ACTIVE_JOB_STATUSES },
+      })
+      .lean()
+      .exec();
+
+    if (existing) {
+      this.logger.debug(
+        `travel guide job deduped activity=${activityLegacyId} job=${existing.jobId}`,
+      );
+      return { jobId: existing.jobId };
+    }
+
     const jobId = randomUUID();
     const expiresAt = new Date(Date.now() + JOB_TTL_MS);
 
@@ -49,6 +77,7 @@ export class TravelGuideGenerationJobService {
       jobId,
       activityLegacyId,
       ownerUserId: actor.resolvedUserId,
+      dedupeKey,
       status: 'pending',
       requestParams: dto,
       expiresAt,
@@ -85,12 +114,37 @@ export class TravelGuideGenerationJobService {
     };
   }
 
+  private async buildDedupeKey(
+    activityLegacyId: number,
+    dto: GenerateTravelGuideDto,
+  ): Promise<string> {
+    const activity =
+      await this.activityService.findByLegacyId(activityLegacyId);
+    const accommodationNights =
+      dto.accommodationNights ?? parseActivityDayCount(activity?.date);
+    return buildTravelGuideGenerationCacheKey(
+      normalizeTravelGuideGenerationParams(
+        activityLegacyId,
+        dto,
+        accommodationNights,
+      ),
+    );
+  }
+
   private async runJob(
     jobId: string,
     activityLegacyId: number,
     dto: GenerateTravelGuideDto,
     actor: RequestActor,
   ): Promise<void> {
+    const started = await this.model.updateOne(
+      { jobId, status: 'pending' },
+      { $set: { status: 'running' } },
+    );
+    if (started.modifiedCount === 0) {
+      return;
+    }
+
     try {
       const { plan } = await this.generationService.generate(
         activityLegacyId,

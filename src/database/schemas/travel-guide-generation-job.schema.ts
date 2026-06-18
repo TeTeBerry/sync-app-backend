@@ -2,7 +2,11 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import type { TravelGuidePlan } from '../../modules/travel-guide/domain/travel-guide.types';
 
-export type TravelGuideGenerationJobStatus = 'pending' | 'completed' | 'failed';
+export type TravelGuideGenerationJobStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'failed';
 
 @Schema({ collection: 'travel_guide_generation_jobs', timestamps: true })
 export class TravelGuideGenerationJob {
@@ -17,10 +21,14 @@ export class TravelGuideGenerationJob {
 
   @Prop({
     required: true,
-    enum: ['pending', 'completed', 'failed'],
+    enum: ['pending', 'running', 'completed', 'failed'],
     default: 'pending',
   })
   status!: TravelGuideGenerationJobStatus;
+
+  /** Same params hash as generation cache — dedupe in-flight jobs per user. */
+  @Prop({ required: true, index: true })
+  dedupeKey!: string;
 
   @Prop({ type: Object, required: true })
   requestParams!: Record<string, unknown>;

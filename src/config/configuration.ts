@@ -160,6 +160,10 @@ export default () => ({
 
   travelGuide: {
     cache: {
+      generationTtlSec: parseInt(
+        cleanEnv(process.env.TRAVEL_GUIDE_GENERATION_CACHE_TTL_SEC, '604800'),
+        10,
+      ),
       lockTtlSec: parseInt(
         cleanEnv(process.env.TRAVEL_GUIDE_GENERATE_LOCK_TTL_SEC, '45'),
         10,
