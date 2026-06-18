@@ -12,6 +12,10 @@ export function generatePersonalityRaverAvatarKey(
   return pickRandom(RAVER_AVATAR_ASSET_KEYS, random);
 }
 
+export function isRaverAvatarAssetKeyInCatalog(key: string): boolean {
+  return (RAVER_AVATAR_ASSET_KEYS as readonly string[]).includes(key);
+}
+
 export function ensurePersonalityResultAvatar(
   result: PersonalityTestResult,
 ): PersonalityTestResult {
@@ -26,8 +30,4 @@ export function ensurePersonalityResultAvatar(
     ...result,
     raverAvatarKey: generatePersonalityRaverAvatarKey(),
   };
-}
-
-function isRaverAvatarAssetKeyInCatalog(key: string): boolean {
-  return (RAVER_AVATAR_ASSET_KEYS as readonly string[]).includes(key);
 }

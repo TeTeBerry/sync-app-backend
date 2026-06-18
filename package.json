@@ -35,6 +35,7 @@
     "media:generate-personality-test": "node scripts/generate-personality-test-media-assets.mjs",
     "media:render-big-room-drop": "node scripts/render-big-room-drop-audio.mjs",
     "media:upload-personality-test": "node scripts/upload-personality-test-media.mjs",
+    "media:upload-raver-avatars": "node scripts/upload-raver-avatars.mjs",
     "db:crawl-discogs-djs": "node scripts/crawl-discogs-djs.mjs",
     "db:crawl-discogs-djs-gap": "node scripts/crawl-discogs-djs-gap.mjs",
     "db:translate-dj-locale": "node scripts/translate-dj-locale.mjs",

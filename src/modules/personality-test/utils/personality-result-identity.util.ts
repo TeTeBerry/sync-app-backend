@@ -2,6 +2,7 @@ import type { PersonalityTestResult } from '../personality-test.types';
 import {
   ensurePersonalityResultAvatar,
   generatePersonalityRaverAvatarKey,
+  isRaverAvatarAssetKeyInCatalog,
 } from './personality-raver-avatar.util';
 import { ensurePersonalityResultNickname } from './personality-nickname.util';
 
@@ -23,8 +24,14 @@ export function ensurePersonalityResultIdentity(
   result: PersonalityTestResult,
 ): PersonalityTestResult {
   const currentVersion = result.raverIdentityVersion ?? 1;
+  const needsAvatarRefresh =
+    !result.raverAvatarKey ||
+    !isRaverAvatarAssetKeyInCatalog(result.raverAvatarKey);
 
-  if (currentVersion >= PERSONALITY_RESULT_IDENTITY_VERSION) {
+  if (
+    currentVersion >= PERSONALITY_RESULT_IDENTITY_VERSION &&
+    !needsAvatarRefresh
+  ) {
     return stampIdentityVersion(
       ensurePersonalityResultAvatar(ensurePersonalityResultNickname(result)),
     );
@@ -33,6 +40,8 @@ export function ensurePersonalityResultIdentity(
   const withNickname = ensurePersonalityResultNickname(result);
   return stampIdentityVersion({
     ...withNickname,
-    raverAvatarKey: generatePersonalityRaverAvatarKey(),
+    raverAvatarKey: needsAvatarRefresh
+      ? generatePersonalityRaverAvatarKey()
+      : withNickname.raverAvatarKey,
   });
 }

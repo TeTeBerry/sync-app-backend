@@ -2,18 +2,15 @@
 export const RAVER_AVATAR_CLOUD_PREFIX = 'avatar/';
 
 export const RAVER_AVATAR_ASSET_KEYS = [
-  'avatar/01.webp',
-  'avatar/02.webp',
-  'avatar/03.webp',
-  'avatar/04.webp',
-  'avatar/05.webp',
-  'avatar/06.webp',
-  'avatar/07.webp',
-  'avatar/08.webp',
-  'avatar/09.webp',
-  'avatar/10.webp',
-  'avatar/11.webp',
-  'avatar/12.webp',
+  'avatar/cat-pink-headphones.png',
+  'avatar/rabbit-green-headphones.png',
+  'avatar/cat-cyan-headphones.png',
+  'avatar/bunny-pink-green.png',
+  'avatar/fox-rainbow-headphones.png',
+  'avatar/cat-neon-headphones.png',
+  'avatar/fox-peach-headphones.png',
+  'avatar/bunny-teal-headphones.png',
+  'avatar/cat-violet-headphones.png',
 ] as const;
 
 export type RaverAvatarAssetKey = (typeof RAVER_AVATAR_ASSET_KEYS)[number];

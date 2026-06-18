@@ -1,8 +1,5 @@
 import { RAVER_AVATAR_ASSET_KEYS } from '@src/modules/personality-test/data/personality-avatar-catalog';
-import {
-  ensurePersonalityResultIdentity,
-  PERSONALITY_RESULT_IDENTITY_VERSION,
-} from '@src/modules/personality-test/utils/personality-result-identity.util';
+import { ensurePersonalityResultIdentity } from '@src/modules/personality-test/utils/personality-result-identity.util';
 import type { PersonalityTestResult } from '@src/modules/personality-test/personality-test.types';
 
 const baseResult: PersonalityTestResult = {
@@ -52,7 +49,7 @@ describe('personality-result-identity.util', () => {
     const next = ensurePersonalityResultIdentity(legacy);
     expect(next.raverAvatarKey).not.toBe('avatar/03.webp');
     expect(RAVER_AVATAR_ASSET_KEYS).toContain(next.raverAvatarKey);
-    expect(next.raverIdentityVersion).toBe(PERSONALITY_RESULT_IDENTITY_VERSION);
+    expect(next.raverIdentityVersion).toBe(2);
     expect(next.raverNickname).toBe('小滤波酱A1B2');
   });
 
@@ -60,12 +57,12 @@ describe('personality-result-identity.util', () => {
     const current = {
       ...baseResult,
       raverNickname: '小滤波酱A1B2',
-      raverAvatarKey: 'avatar/03.webp',
-      raverIdentityVersion: PERSONALITY_RESULT_IDENTITY_VERSION,
+      raverAvatarKey: RAVER_AVATAR_ASSET_KEYS[0],
+      raverIdentityVersion: 2,
     };
 
     const next = ensurePersonalityResultIdentity(current);
-    expect(next.raverAvatarKey).toBe('avatar/03.webp');
+    expect(next.raverAvatarKey).toBe(RAVER_AVATAR_ASSET_KEYS[0]);
     expect(next.raverNickname).toBe('小滤波酱A1B2');
   });
 });

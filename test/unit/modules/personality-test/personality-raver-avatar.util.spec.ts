@@ -13,9 +13,11 @@ describe('personality-raver-avatar.util', () => {
   });
 
   it('validates avatar asset keys', () => {
-    expect(isRaverAvatarAssetKey('avatar/01.webp')).toBe(true);
+    expect(isRaverAvatarAssetKey('avatar/cat-pink-headphones.png')).toBe(true);
     expect(isRaverAvatarAssetKey('avatar/unknown.webp')).toBe(false);
-    expect(isRaverAvatarAssetKey('../avatar/01.webp')).toBe(false);
+    expect(isRaverAvatarAssetKey('../avatar/cat-pink-headphones.png')).toBe(
+      false,
+    );
   });
 
   it('assigns avatar on ensure', () => {

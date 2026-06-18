@@ -25,6 +25,9 @@ lerna-debug.log*
 assets/personality-test/audio/*
 !assets/personality-test/audio/.gitkeep
 
+# Raver avatars (upload to CloudBase avatar/, do not commit)
+assets/avatar/*.png
+
 # Tests
 /coverage
 /.nyc_output
