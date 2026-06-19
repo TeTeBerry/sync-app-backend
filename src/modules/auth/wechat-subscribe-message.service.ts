@@ -10,6 +10,8 @@ export type PostEngagementSubscribePayload = {
   actorName: string;
   preview: string;
   activityName?: string;
+  /** Defaults to send time when template includes a time field. */
+  occurredAt?: Date;
 };
 
 interface WechatSubscribeSendResponse {
@@ -125,32 +127,62 @@ export class WechatSubscribeMessageService {
     return `packageEvent/pages/event-detail/index?${params.toString()}`;
   }
 
-  private buildTemplateData(
+  buildTemplateData(
     payload: PostEngagementSubscribePayload,
   ): Record<string, { value: string }> {
-    const actorField =
-      this.config.get<string>('auth.wechatMini.subscribeFieldActor')?.trim() ||
-      'thing1';
-    const previewField =
-      this.config
-        .get<string>('auth.wechatMini.subscribeFieldPreview')
-        ?.trim() || 'thing2';
-    const activityField =
-      this.config
-        .get<string>('auth.wechatMini.subscribeFieldActivity')
-        ?.trim() || 'thing3';
+    const fields = this.resolveTemplateFields(payload.templateKey);
+
+    const actor = this.clampField(payload.actorName || '有人', 20);
+    const preview = payload.preview?.trim() || '…';
+    const previewValue = this.clampField(`${actor}：${preview}`, 20);
 
     const data: Record<string, { value: string }> = {
-      [actorField]: { value: this.clampField(payload.actorName || '有人', 20) },
-      [previewField]: { value: this.clampField(payload.preview || '…', 20) },
+      [fields.preview]: { value: previewValue },
     };
 
-    const activityName = payload.activityName?.trim();
-    if (activityField && activityName) {
-      data[activityField] = { value: this.clampField(activityName, 20) };
+    if (fields.time) {
+      data[fields.time] = {
+        value: this.formatSubscribeTime(payload.occurredAt ?? new Date()),
+      };
     }
 
     return data;
+  }
+
+  private resolveTemplateFields(templateKey: 'comment' | 'commentReply'): {
+    preview: string;
+    time: string;
+  } {
+    if (templateKey === 'commentReply') {
+      return {
+        preview:
+          this.fieldKey('auth.wechatMini.subscribeReplyFieldPreview') ||
+          this.fieldKey('auth.wechatMini.subscribeFieldPreview') ||
+          'thing2',
+        time:
+          this.fieldKey('auth.wechatMini.subscribeReplyFieldTime') ||
+          this.fieldKey('auth.wechatMini.subscribeFieldTime'),
+      };
+    }
+
+    return {
+      preview:
+        this.fieldKey('auth.wechatMini.subscribeFieldPreview') || 'thing2',
+      time: this.fieldKey('auth.wechatMini.subscribeFieldTime'),
+    };
+  }
+
+  private fieldKey(configKey: string): string {
+    const raw = this.config.get<string>(configKey)?.trim() ?? '';
+    if (!raw || raw === '-' || raw.toLowerCase() === 'none') {
+      return '';
+    }
+    return raw;
+  }
+
+  formatSubscribeTime(date: Date): string {
+    const pad = (value: number) => String(value).padStart(2, '0');
+    return `${date.getFullYear()}年${pad(date.getMonth() + 1)}月${pad(date.getDate())}日 ${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 
   private clampField(value: string, maxLen: number): string {

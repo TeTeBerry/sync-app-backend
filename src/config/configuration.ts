@@ -141,17 +141,22 @@ export default () => ({
       subscribeCommentReplyTemplateId: cleanEnv(
         process.env.WECHAT_SUBSCRIBE_COMMENT_REPLY_TEMPLATE_ID,
       ),
-      subscribeFieldActor: cleanEnv(
-        process.env.WECHAT_SUBSCRIBE_FIELD_ACTOR,
-        'thing1',
-      ),
       subscribeFieldPreview: cleanEnv(
         process.env.WECHAT_SUBSCRIBE_FIELD_PREVIEW,
         'thing2',
       ),
-      subscribeFieldActivity: cleanEnv(
-        process.env.WECHAT_SUBSCRIBE_FIELD_ACTIVITY,
-        'thing3',
+      subscribeFieldTime: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_FIELD_TIME,
+        'time3',
+      ),
+      /** Overrides for「评论回复通知」#25365 when fields differ from comment template. */
+      subscribeReplyFieldPreview: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_REPLY_FIELD_PREVIEW,
+        '',
+      ),
+      subscribeReplyFieldTime: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_REPLY_FIELD_TIME,
+        'time4',
       ),
     },
   },
