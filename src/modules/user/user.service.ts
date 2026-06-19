@@ -1,4 +1,14 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User, UserDocument } from '../../database/schemas/user.schema';
+import { normalizePrivacyLevel } from '../../common/utils/privacy.util';
 import {
   IUserRepository,
   UserRecord,
@@ -27,7 +37,7 @@ export interface UserMeDto {
   favorGenres?: string[];
   budgetLevel?: string;
   notificationsEnabled?: boolean;
-  privacyLevel?: 'public' | 'friends' | 'private';
+  privacyLevel?: 'public' | 'private';
   accountRisk?: AccountRiskPublicStatus;
 }
 
@@ -45,14 +55,36 @@ const EMPTY_PROFILE_DEFAULTS = {
 };
 
 @Injectable()
-export class UserService {
+export class UserService implements OnModuleInit {
+  private readonly logger = new Logger(UserService.name);
+
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly repository: IUserRepository,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
     private readonly accountRisk: AccountRiskService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly mediaChecks: MediaSecurityCheckService,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    try {
+      const result = await this.userModel.updateMany(
+        { privacyLevel: 'friends' },
+        { $set: { privacyLevel: 'private' } },
+      );
+      if (result.modifiedCount > 0) {
+        this.logger.log(
+          `Migrated ${result.modifiedCount} user privacyLevel friends → private`,
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `privacyLevel migration failed: ${(error as Error).message}`,
+      );
+    }
+  }
 
   ping() {
     return { ok: true, scope: 'user' };
@@ -82,23 +114,27 @@ export class UserService {
       notificationsEnabled:
         record.notificationsEnabled ??
         EMPTY_PROFILE_DEFAULTS.notificationsEnabled,
-      privacyLevel: record.privacyLevel ?? EMPTY_PROFILE_DEFAULTS.privacyLevel,
+      privacyLevel: normalizePrivacyLevel(
+        record.privacyLevel ?? EMPTY_PROFILE_DEFAULTS.privacyLevel,
+      ),
     };
   }
 
   async findPrivacyLevelsByExternalIds(
     externalIds: string[],
-  ): Promise<Map<string, 'public' | 'friends' | 'private'>> {
+  ): Promise<Map<string, 'public' | 'private'>> {
     const unique = [...new Set(externalIds.filter(Boolean))];
     if (!unique.length) return new Map();
 
     const rows = await this.repository.findByExternalIds(unique);
-    const map = new Map<string, 'public' | 'friends' | 'private'>();
+    const map = new Map<string, 'public' | 'private'>();
     for (const row of rows) {
       if (!row.externalId) continue;
       map.set(
         row.externalId,
-        row.privacyLevel ?? EMPTY_PROFILE_DEFAULTS.privacyLevel,
+        normalizePrivacyLevel(
+          row.privacyLevel ?? EMPTY_PROFILE_DEFAULTS.privacyLevel,
+        ),
       );
     }
     return map;

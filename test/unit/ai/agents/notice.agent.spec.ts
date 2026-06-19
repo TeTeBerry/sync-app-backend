@@ -21,7 +21,10 @@ describe('NoticeAgent', () => {
   let wechatSubscribe: jest.Mocked<
     Pick<
       WechatSubscribeMessageService,
-      'isEnabled' | 'sendPostEngagementNotice'
+      | 'isEnabled'
+      | 'isActivityUpdateEnabled'
+      | 'sendPostEngagementNotice'
+      | 'sendActivityUpdateNotice'
     >
   >;
 
@@ -38,7 +41,9 @@ describe('NoticeAgent', () => {
     };
     wechatSubscribe = {
       isEnabled: jest.fn().mockReturnValue(true),
+      isActivityUpdateEnabled: jest.fn().mockReturnValue(true),
       sendPostEngagementNotice: jest.fn().mockResolvedValue(undefined),
+      sendActivityUpdateNotice: jest.fn().mockResolvedValue(undefined),
     };
     agent = new NoticeAgent(
       notificationService as unknown as NotificationService,

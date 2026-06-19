@@ -7,6 +7,7 @@ import {
 import { ActivityModule } from '../activity/activity.module';
 import { ItineraryModule } from '../itinerary/itinerary.module';
 import { PartnerModule } from '../partner/partner.module';
+import { TravelGuideModule } from '../travel-guide/travel-guide.module';
 import { FestivalPlanController } from './festival-plan.controller';
 import { FestivalPlanProgressService } from './festival-plan-progress.service';
 
@@ -15,6 +16,7 @@ import { FestivalPlanProgressService } from './festival-plan-progress.service';
     ActivityModule,
     ItineraryModule,
     PartnerModule,
+    TravelGuideModule,
     MongooseModule.forFeature([
       {
         name: TravelGuideGenerationJob.name,

@@ -1,13 +1,23 @@
-export type PrivacyLevel = 'public' | 'friends' | 'private';
+export type PrivacyLevel = 'public' | 'private';
+
+/** Legacy DB rows may still read `friends` before migration — treat as private. */
+export function normalizePrivacyLevel(
+  privacyLevel: string | undefined,
+): PrivacyLevel {
+  if (privacyLevel === 'private' || privacyLevel === 'friends') {
+    return 'private';
+  }
+  return 'public';
+}
 
 export function canViewPersonalInfo(
-  privacyLevel: PrivacyLevel | undefined,
+  privacyLevel: PrivacyLevel | string | undefined,
   isOwner: boolean,
   isBuddy: boolean,
 ): boolean {
   if (isOwner) return true;
-  const level = privacyLevel ?? 'public';
+  const level = normalizePrivacyLevel(privacyLevel);
   if (level === 'public') return true;
-  if (level === 'friends') return isBuddy;
+  void isBuddy;
   return false;
 }

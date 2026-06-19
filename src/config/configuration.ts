@@ -158,6 +158,39 @@ export default () => ({
         process.env.WECHAT_SUBSCRIBE_REPLY_FIELD_TIME,
         'time4',
       ),
+      subscribeActivityUpdateTemplateId: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_ACTIVITY_UPDATE_TEMPLATE_ID,
+      ),
+      subscribeActivityFieldName: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_ACTIVITY_FIELD_NAME,
+        'thing2',
+      ),
+      subscribeActivityFieldSummary: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_ACTIVITY_FIELD_SUMMARY,
+        'thing10',
+      ),
+      subscribeActivityFieldLocation: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_ACTIVITY_FIELD_LOCATION ||
+          process.env.WECHAT_SUBSCRIBE_ACTIVITY_FIELD_SUMMARY,
+        'thing10',
+      ),
+      subscribeActivityFieldTime: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_ACTIVITY_FIELD_TIME,
+        'date3',
+      ),
+      subscribeActivityFieldDate: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_ACTIVITY_FIELD_DATE ||
+          process.env.WECHAT_SUBSCRIBE_ACTIVITY_FIELD_TIME,
+        'date3',
+      ),
+      subscribeActivityFieldAmount: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_ACTIVITY_FIELD_AMOUNT,
+        'amount21',
+      ),
+      subscribeActivityAmountPlaceholder: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_ACTIVITY_AMOUNT_PLACEHOLDER,
+        '详见活动页',
+      ),
     },
   },
 

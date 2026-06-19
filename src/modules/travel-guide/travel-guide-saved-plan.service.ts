@@ -60,6 +60,19 @@ export class TravelGuideSavedPlanService {
     );
   }
 
+  async findLatestByOwnerAndActivity(
+    ownerUserId: string,
+    activityLegacyId: number,
+  ): Promise<{ guideId: string } | null> {
+    const doc = await this.model
+      .findOne({ ownerUserId, activityLegacyId })
+      .sort({ updatedAt: -1 })
+      .lean()
+      .exec();
+    if (!doc?.guideId?.trim()) return null;
+    return { guideId: doc.guideId.trim() };
+  }
+
   async findByGuideId(
     guideId: string,
   ): Promise<TravelGuideSavedPlanView | null> {

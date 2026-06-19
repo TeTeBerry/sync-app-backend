@@ -24,14 +24,16 @@ describe('TravelGuideSavedPlanService', () => {
   let service: TravelGuideSavedPlanService;
   let updateOne: jest.Mock;
   let findOne: jest.Mock;
+  let sort: jest.Mock;
+  let lean: jest.Mock;
+  let exec: jest.Mock;
 
   beforeEach(async () => {
     updateOne = jest.fn().mockReturnValue({ exec: jest.fn() });
-    findOne = jest.fn().mockReturnValue({
-      lean: jest
-        .fn()
-        .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
-    });
+    exec = jest.fn().mockResolvedValue(null);
+    lean = jest.fn().mockReturnValue({ exec });
+    sort = jest.fn().mockReturnValue({ lean });
+    findOne = jest.fn().mockReturnValue({ sort, lean });
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -94,22 +96,34 @@ describe('TravelGuideSavedPlanService', () => {
     expect(findOne).not.toHaveBeenCalled();
   });
 
+  it('finds latest saved plan for owner and activity', async () => {
+    exec.mockResolvedValueOnce({ guideId: 'guide-latest' });
+
+    await expect(
+      service.findLatestByOwnerAndActivity('wx_user', 4),
+    ).resolves.toEqual({ guideId: 'guide-latest' });
+
+    expect(findOne).toHaveBeenCalledWith({
+      ownerUserId: 'wx_user',
+      activityLegacyId: 4,
+    });
+    expect(sort).toHaveBeenCalledWith({ updatedAt: -1 });
+  });
+
   it('maps stored document to read view', async () => {
     const createdAt = new Date('2026-01-01T00:00:00.000Z');
-    findOne.mockReturnValue({
-      lean: jest.fn().mockReturnValue({
-        exec: jest.fn().mockResolvedValue({
-          guideId: 'guide-12345678',
-          activityLegacyId: 4,
-          form: {
-            departure: '上海',
-            headcount: 2,
-            budgetTier: 'standard',
-            accommodationNights: 2,
-          },
-          plan,
-          createdAt,
-        }),
+    lean.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue({
+        guideId: 'guide-12345678',
+        activityLegacyId: 4,
+        form: {
+          departure: '上海',
+          headcount: 2,
+          budgetTier: 'standard',
+          accommodationNights: 2,
+        },
+        plan,
+        createdAt,
       }),
     });
 

@@ -59,4 +59,27 @@ describe('WechatSubscribeMessageService template data', () => {
     );
     expect(formatted).toMatch(/2026年06月19日 21:30/);
   });
+
+  it('maps activity update template fields (#624 活动预约提醒)', () => {
+    const service = createService({
+      'auth.wechatMini.subscribeActivityFieldName': 'thing2',
+      'auth.wechatMini.subscribeActivityFieldLocation': 'thing10',
+      'auth.wechatMini.subscribeActivityFieldDate': 'date3',
+      'auth.wechatMini.subscribeActivityFieldAmount': 'amount21',
+      'auth.wechatMini.subscribeActivityAmountPlaceholder': '详见活动页',
+    });
+
+    const data = service.buildActivityUpdateTemplateData({
+      openid: 'o1',
+      activityLegacyId: 1,
+      activityName: 'TML Thailand',
+      activityDate: '12/11-13',
+      activityLocation: '曼谷',
+    });
+
+    expect(data.thing2.value).toBe('TML Thailand');
+    expect(data.date3.value).toBe('12/11-13');
+    expect(data.thing10.value).toBe('曼谷');
+    expect(data.amount21.value).toBe('详见活动页');
+  });
 });

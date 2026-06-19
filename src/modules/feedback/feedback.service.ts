@@ -27,6 +27,10 @@ export class FeedbackService {
     const created = await this.feedbackModel.create({
       userId: actor.resolvedUserId,
       content,
+      type:
+        dto.type?.trim() === 'account_deletion'
+          ? 'account_deletion'
+          : 'general',
     });
 
     return { ok: true, id: String(created._id) };

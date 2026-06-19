@@ -10,6 +10,9 @@ export class UserFeedback {
 
   @Prop({ required: true })
   content: string;
+
+  @Prop({ default: 'general', index: true })
+  type?: 'general' | 'account_deletion';
 }
 
 export const UserFeedbackSchema = SchemaFactory.createForClass(UserFeedback);

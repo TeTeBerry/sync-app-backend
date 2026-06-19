@@ -14,12 +14,14 @@ import {
 } from '../activity/registration/interfaces/activity-registration.repository.interface';
 import { ItineraryService } from '../itinerary/itinerary.service';
 import { PostQueryService } from '../partner/application/post-query.service';
+import { TravelGuideSavedPlanService } from '../travel-guide/travel-guide-saved-plan.service';
 
 @Injectable()
 export class FestivalPlanProgressService {
   constructor(
     @InjectModel(TravelGuideGenerationJob.name)
     private readonly travelGuideJobModel: Model<TravelGuideGenerationJobDocument>,
+    private readonly savedPlanService: TravelGuideSavedPlanService,
     private readonly itineraryService: ItineraryService,
     private readonly postQueryService: PostQueryService,
     @Inject(ACTIVITY_REGISTRATION_REPOSITORY)
@@ -32,8 +34,12 @@ export class FestivalPlanProgressService {
   ): Promise<FestivalPlanProgressDto> {
     const ownerFilter = ownerFilterFromActor(actor);
 
-    const [guideJob, savedItinerary, buddyPost, registration] =
+    const [savedGuide, guideJob, savedItinerary, buddyPost, registration] =
       await Promise.all([
+        this.savedPlanService.findLatestByOwnerAndActivity(
+          actor.resolvedUserId,
+          activityLegacyId,
+        ),
         this.findLatestCompletedGuideJob(
           activityLegacyId,
           actor.resolvedUserId,
@@ -49,7 +55,7 @@ export class FestivalPlanProgressService {
         ),
       ]);
 
-    const travelGuideId = guideJob?.jobId;
+    const travelGuideId = savedGuide?.guideId ?? readGuideIdFromJob(guideJob);
     const itineraryDays =
       savedItinerary.saved && savedItinerary.days?.length
         ? savedItinerary.days
@@ -84,4 +90,18 @@ export class FestivalPlanProgressService {
       .lean()
       .exec();
   }
+}
+
+function readGuideIdFromJob(
+  guideJob: Pick<TravelGuideGenerationJob, 'requestParams'> | null,
+): string | undefined {
+  if (!guideJob?.requestParams || typeof guideJob.requestParams !== 'object') {
+    return undefined;
+  }
+
+  const guideId = (guideJob.requestParams as { guideId?: unknown }).guideId;
+  if (typeof guideId !== 'string' || !guideId.trim()) {
+    return undefined;
+  }
+  return guideId.trim();
 }

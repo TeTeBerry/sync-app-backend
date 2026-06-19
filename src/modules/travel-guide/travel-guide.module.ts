@@ -68,6 +68,10 @@ import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
     TravelGuideGuardService,
     TravelGuideSavedPlanService,
   ],
-  exports: [TravelGuideGenerationService, TravelGuideGenerationJobService],
+  exports: [
+    TravelGuideGenerationService,
+    TravelGuideGenerationJobService,
+    TravelGuideSavedPlanService,
+  ],
 })
 export class TravelGuideModule {}

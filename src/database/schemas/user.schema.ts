@@ -42,8 +42,8 @@ export class User {
   @Prop({ default: true })
   notificationsEnabled: boolean;
 
-  @Prop({ default: 'public', enum: ['public', 'friends', 'private'] })
-  privacyLevel: 'public' | 'friends' | 'private';
+  @Prop({ default: 'public', enum: ['public', 'private'] })
+  privacyLevel: 'public' | 'private';
 
   /** Incremented on logout to invalidate outstanding JWTs (`tv` claim). */
   @Prop({ default: 0 })

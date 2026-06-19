@@ -519,6 +519,8 @@ export class ActivityService implements OnModuleInit {
       activity.legacyId,
       activity.name,
       changeSummary,
+      activity.date,
+      activity.location,
     );
   }
 }

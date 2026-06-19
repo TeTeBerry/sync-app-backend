@@ -96,6 +96,8 @@ export class NoticeAgent {
     activityLegacyId: number,
     activityName: string,
     changeSummary: string,
+    activityDate?: string,
+    activityLocation?: string,
   ): Promise<void> {
     const recipients = [
       ...new Set(userIds.map((id) => id.trim()).filter(Boolean)),
@@ -126,6 +128,14 @@ export class NoticeAgent {
         }),
       ),
     );
+
+    void this.sendActivityUpdateSubscribe({
+      recipientUserIds: recipients,
+      activityLegacyId,
+      activityName,
+      activityDate,
+      activityLocation,
+    });
   }
 
   async notifyComment(params: {
@@ -324,5 +334,31 @@ export class NoticeAgent {
       actorName: params.actorName,
       preview: params.preview,
     });
+  }
+
+  private async sendActivityUpdateSubscribe(params: {
+    recipientUserIds: string[];
+    activityLegacyId: number;
+    activityName: string;
+    activityDate?: string;
+    activityLocation?: string;
+  }): Promise<void> {
+    if (!this.wechatSubscribe.isActivityUpdateEnabled()) return;
+
+    await Promise.all(
+      params.recipientUserIds.map(async (userId) => {
+        const user = await this.userRepository.findByExternalId(userId.trim());
+        const openid = user?.openid?.trim();
+        if (!openid) return;
+
+        await this.wechatSubscribe.sendActivityUpdateNotice({
+          openid,
+          activityLegacyId: params.activityLegacyId,
+          activityName: params.activityName,
+          activityDate: params.activityDate,
+          activityLocation: params.activityLocation,
+        });
+      }),
+    );
   }
 }

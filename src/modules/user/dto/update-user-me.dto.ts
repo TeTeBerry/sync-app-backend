@@ -48,6 +48,6 @@ export class UpdateUserMeDto {
   notificationsEnabled?: boolean;
 
   @IsOptional()
-  @IsIn(['public', 'friends', 'private'])
-  privacyLevel?: 'public' | 'friends' | 'private';
+  @IsIn(['public', 'private'])
+  privacyLevel?: 'public' | 'private';
 }
