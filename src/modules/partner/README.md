@@ -32,4 +32,6 @@ REST 路径仍为 `/api/posts`（资源名不变）。
 
 同时携带 `tags` 的组队发帖走风控 `{ rulesOnly: true }`。帖子正文 **不得包含任何联系方式**（手机号、微信号、QQ、邮箱、链接等），命中规则直接拒绝发布。落库前会对最终正文再次校验，并走微信 `msg_sec_check` 文本审核。
 
+评论与回复同样执行：**禁联系方式**、票务敏感词拦截、规则风控（`matchRiskRules`）、微信 `msg_sec_check`（`assertUserUgcTexts`），并记录账号风控违规。
+
 详见前端 `sync-app/docs/POST-LIFECYCLE.md`。

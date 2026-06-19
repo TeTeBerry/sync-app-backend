@@ -20,6 +20,9 @@ export interface RuleMatchResult {
 export const POST_CONTACT_FORBIDDEN_MESSAGE =
   '帖子中不可包含联系方式（手机号、微信号、邮箱、链接等），请修改后重试。';
 
+export const COMMENT_CONTACT_FORBIDDEN_MESSAGE =
+  '评论中不可包含联系方式（手机号、微信号、邮箱、链接等），请修改后重试。';
+
 const SPAM_PATTERN = /(.)\1{8,}/;
 
 const SCALPER_PATTERN =
@@ -59,6 +62,32 @@ export function matchPostContactInfo(text: string): RuleMatchResult | null {
     return {
       publishable: false,
       reason: POST_CONTACT_FORBIDDEN_MESSAGE,
+      violationType: 'traffic_diversion',
+      severity: 'high',
+    };
+  }
+
+  return null;
+}
+
+/** Contact + off-platform diversion patterns forbidden in comments. */
+export function matchCommentContactInfo(text: string): RuleMatchResult | null {
+  const contact = matchPostContactInfo(text);
+  if (contact) {
+    return { ...contact, reason: COMMENT_CONTACT_FORBIDDEN_MESSAGE };
+  }
+
+  const normalized = text.trim();
+  if (!normalized) return null;
+
+  if (
+    TRAFFIC_DIVERSION_PATTERN.test(normalized) ||
+    WECHAT_VARIANT_PATTERN.test(normalized) ||
+    URL_PATTERN.test(normalized)
+  ) {
+    return {
+      publishable: false,
+      reason: COMMENT_CONTACT_FORBIDDEN_MESSAGE,
       violationType: 'traffic_diversion',
       severity: 'high',
     };

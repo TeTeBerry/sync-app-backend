@@ -10,10 +10,22 @@ import { FilterQuery, Model } from 'mongoose';
 import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { isPostOwnedByActor } from '../../../common/auth/actor-query.util';
 import {
+  assertUserUgcTexts,
+  collectCommentUgcTexts,
+} from '../../../common/media/user-ugc-text.util';
+import {
   PostComment,
   PostCommentDocument,
 } from '../../../database/schemas/post-comment.schema';
-import { matchRiskRules } from '../../../ai/risk/risk-rules.util';
+import {
+  isTicketPublishProhibited,
+  TICKET_PUBLISH_FORBIDDEN_MESSAGE,
+} from '../../../ai/buddy/ticket-publish-policy.util';
+import {
+  COMMENT_CONTACT_FORBIDDEN_MESSAGE,
+  matchRiskRules,
+  type RuleMatchResult,
+} from '../../../ai/risk/risk-rules.util';
 import { AccountRiskService } from '../../account-risk/account-risk.service';
 import { UserService } from '../../user/user.service';
 import {
@@ -32,8 +44,15 @@ import {
   POST_NOTIFICATION_PORT,
 } from '../ports/post-notification.port';
 import { WechatContentSecurityService } from '../../auth/wechat-content-security.service';
-import { assertPostHasNoContactInfo } from '../utils/post-contact.util';
+import { assertCommentHasNoContactInfo } from '../utils/post-contact.util';
 import { isCommentByPostOwner } from '../utils/comment-ownership.util';
+
+function resolveCommentRiskReason(risk: RuleMatchResult): string {
+  if (risk.violationType === 'traffic_diversion') {
+    return COMMENT_CONTACT_FORBIDDEN_MESSAGE;
+  }
+  return risk.reason?.trim() || '评论未通过审核';
+}
 
 @Injectable()
 export class PostCommentService {
@@ -145,17 +164,7 @@ export class PostCommentService {
     }
 
     await this.accountRisk.assertCanPublish(actor);
-    assertPostHasNoContactInfo(trimmed);
-    await this.wechatContentSecurity.assertTextSafe(trimmed);
-
-    const risk = matchRiskRules(trimmed);
-    if (risk) {
-      void this.accountRisk.recordPublishRiskViolation(actor, risk, {
-        source: 'comment_risk',
-        refId: id,
-      });
-      throw new BadRequestException(risk.reason?.trim() || '评论未通过审核');
-    }
+    await this.assertCommentBodySafe(trimmed, actor, id);
 
     const actorUserId = actor.resolvedUserId;
     const trimmedParentId = parentCommentId?.trim();
@@ -254,5 +263,35 @@ export class PostCommentService {
       ...base,
       recipientUserId,
     });
+  }
+
+  private async assertCommentBodySafe(
+    body: string,
+    actor: RequestActor,
+    postId: string,
+  ): Promise<void> {
+    assertCommentHasNoContactInfo(body);
+
+    if (isTicketPublishProhibited({ body })) {
+      void this.accountRisk.recordTicketPolicyViolation(
+        actor,
+        TICKET_PUBLISH_FORBIDDEN_MESSAGE,
+      );
+      throw new BadRequestException(TICKET_PUBLISH_FORBIDDEN_MESSAGE);
+    }
+
+    await assertUserUgcTexts(
+      this.wechatContentSecurity,
+      collectCommentUgcTexts(body),
+    );
+
+    const risk = matchRiskRules(body);
+    if (risk) {
+      void this.accountRisk.recordPublishRiskViolation(actor, risk, {
+        source: 'comment_risk',
+        refId: postId,
+      });
+      throw new BadRequestException(resolveCommentRiskReason(risk));
+    }
   }
 }

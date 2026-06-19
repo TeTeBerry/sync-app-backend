@@ -24,6 +24,12 @@ export function collectPostWriteUgcTexts(dto: {
   ];
 }
 
+export function collectCommentUgcTexts(
+  body?: string,
+): Array<string | undefined> {
+  return [body];
+}
+
 export function collectProfilePatchUgcTexts(dto: {
   name?: string;
   handle?: string;

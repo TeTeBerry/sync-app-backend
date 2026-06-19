@@ -1,5 +1,6 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, BadRequestException } from '@nestjs/common';
 import { toRequestActor } from '@src/common/auth/actor-query.util';
+import { COMMENT_CONTACT_FORBIDDEN_MESSAGE } from '@src/ai/risk/risk-rules.util';
 import { PostCommentService } from '@src/modules/partner/application/post-comment.service';
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
@@ -28,6 +29,7 @@ describe('PostCommentService notifications', () => {
   const accountRisk = {
     assertCanPublish: jest.fn().mockResolvedValue(undefined),
     recordPublishRiskViolation: jest.fn(),
+    recordTicketPolicyViolation: jest.fn(),
   } as unknown as AccountRiskService;
 
   const userService = {
@@ -36,6 +38,7 @@ describe('PostCommentService notifications', () => {
 
   const wechatContentSecurity = {
     assertTextSafe: jest.fn().mockResolvedValue(undefined),
+    assertTextsSafe: jest.fn().mockResolvedValue(undefined),
   } as unknown as WechatContentSecurityService;
 
   let service: PostCommentService;
@@ -167,5 +170,50 @@ describe('PostCommentService notifications', () => {
         'comment-1',
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('rejects comments with contact info before persistence', async () => {
+    repository.findById = jest.fn().mockResolvedValue({
+      id: 'post-1',
+      userId: 'owner-1',
+      activityLegacyId: 4,
+      status: 'active',
+    });
+
+    await expect(
+      service.addComment(
+        'post-1',
+        '加我微信 vx12345',
+        toRequestActor('user-2', '小红'),
+      ),
+    ).rejects.toThrow(
+      new BadRequestException(COMMENT_CONTACT_FORBIDDEN_MESSAGE),
+    );
+
+    expect(commentModel.create).not.toHaveBeenCalled();
+    expect(wechatContentSecurity.assertTextsSafe).not.toHaveBeenCalled();
+  });
+
+  it('runs wechat ugc check and risk rules for valid comments', async () => {
+    repository.findById = jest.fn().mockResolvedValue({
+      id: 'post-1',
+      userId: 'owner-1',
+      activityLegacyId: 4,
+      status: 'active',
+    });
+    repository.incrementCommentCount = jest
+      .fn()
+      .mockResolvedValue({ comments: 1 });
+
+    await service.addComment(
+      'post-1',
+      '我也想去',
+      toRequestActor('user-2', '小红'),
+    );
+
+    expect(wechatContentSecurity.assertTextsSafe).toHaveBeenCalledWith([
+      '我也想去',
+    ]);
+    expect(commentModel.create).toHaveBeenCalled();
   });
 });
