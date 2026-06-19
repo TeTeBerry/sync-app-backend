@@ -34,7 +34,7 @@ export class ActivityRegistrationAgentToolService {
     if (legacyId == null || Number.isNaN(legacyId)) {
       return {
         ok: false,
-        content: '请先进入活动或指定要报名的活动。',
+        content: '请先进入活动或指定要选择的活动。',
         error: 'activity_not_bound',
       };
     }
@@ -47,8 +47,8 @@ export class ActivityRegistrationAgentToolService {
       const activity = await this.activityService.findByLegacyId(legacyId);
       const title = activity?.name?.trim();
       const reply = result.alreadyRegistered
-        ? `你之前已报名「${title ?? '本场活动'}」，当前共 ${result.attendees} 人报名。`
-        : `已帮你报名「${title ?? '本场活动'}」✅ 当前共 ${result.attendees} 人报名。`;
+        ? `你之前已选择「${title ?? '本场活动'}」，当前共 ${result.attendees} 人关注。`
+        : `已帮你选择「${title ?? '本场活动'}」✅ 当前共 ${result.attendees} 人关注。`;
 
       const sink = asSink(runtime);
       sink.setReply(reply);
@@ -71,7 +71,7 @@ export class ActivityRegistrationAgentToolService {
       };
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : '报名失败，请稍后重试';
+        error instanceof Error ? error.message : '选择活动失败，请稍后重试';
       return { ok: false, content: message, error: 'register_failed' };
     }
   }
@@ -85,7 +85,7 @@ export class ActivityRegistrationAgentToolService {
     if (legacyId == null || Number.isNaN(legacyId)) {
       return {
         ok: false,
-        content: '请指定要取消报名的活动。',
+        content: '请指定要取消选择的活动。',
         error: 'activity_not_bound',
       };
     }
@@ -98,8 +98,8 @@ export class ActivityRegistrationAgentToolService {
       const activity = await this.activityService.findByLegacyId(legacyId);
       const title = activity?.name?.trim();
       const reply = result.wasRegistered
-        ? `已取消报名「${title ?? '本场活动'}」。`
-        : `你尚未报名「${title ?? '本场活动'}」。`;
+        ? `已取消选择「${title ?? '本场活动'}」。`
+        : `你尚未选择「${title ?? '本场活动'}」。`;
 
       runtime.setReply(reply);
       return {
@@ -111,7 +111,7 @@ export class ActivityRegistrationAgentToolService {
       };
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : '取消报名失败，请稍后重试';
+        error instanceof Error ? error.message : '取消选择失败，请稍后重试';
       return { ok: false, content: message, error: 'unregister_failed' };
     }
   }

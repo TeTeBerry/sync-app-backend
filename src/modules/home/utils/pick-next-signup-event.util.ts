@@ -49,7 +49,7 @@ function isEnded(event: SignupEventLike, now: Date): boolean {
   return now.getTime() > endMs;
 }
 
-/** Nearest upcoming registered activity (mirrors frontend pickNextRegisteredEvent). */
+/** Nearest upcoming selected activity (mirrors frontend pickNextSelectedEvent). */
 export function pickNextRegisteredSignupEvent(
   signupEvents: SignupEventLike[],
   now = new Date(),

@@ -1,17 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { ownerFilterFromActor } from '../../common/auth/actor-query.util';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import {
   TravelGuideGenerationJob,
   TravelGuideGenerationJobDocument,
 } from '../../database/schemas/travel-guide-generation-job.schema';
 import type { FestivalPlanProgressDto } from '../../shared/festival-plan';
-import {
-  ACTIVITY_REGISTRATION_REPOSITORY,
-  IActivityRegistrationRepository,
-} from '../activity/registration/interfaces/activity-registration.repository.interface';
 import { ItineraryService } from '../itinerary/itinerary.service';
 import { PostQueryService } from '../partner/application/post-query.service';
 import { TravelGuideSavedPlanService } from '../travel-guide/travel-guide-saved-plan.service';
@@ -24,18 +19,14 @@ export class FestivalPlanProgressService {
     private readonly savedPlanService: TravelGuideSavedPlanService,
     private readonly itineraryService: ItineraryService,
     private readonly postQueryService: PostQueryService,
-    @Inject(ACTIVITY_REGISTRATION_REPOSITORY)
-    private readonly registrationRepository: IActivityRegistrationRepository,
   ) {}
 
   async getProgress(
     activityLegacyId: number,
     actor: RequestActor,
   ): Promise<FestivalPlanProgressDto> {
-    const ownerFilter = ownerFilterFromActor(actor);
-
-    const [savedGuide, guideJob, savedItinerary, buddyPost, registration] =
-      await Promise.all([
+    const [savedGuide, guideJob, savedItinerary, buddyPost] = await Promise.all(
+      [
         this.savedPlanService.findLatestByOwnerAndActivity(
           actor.resolvedUserId,
           activityLegacyId,
@@ -49,11 +40,8 @@ export class FestivalPlanProgressService {
           activityLegacyId,
           actor,
         ),
-        this.registrationRepository.findByOwnerAndActivity(
-          ownerFilter,
-          activityLegacyId,
-        ),
-      ]);
+      ],
+    );
 
     const travelGuideId = savedGuide?.guideId ?? readGuideIdFromJob(guideJob);
     const itineraryDays =
@@ -72,7 +60,6 @@ export class FestivalPlanProgressService {
         : undefined,
       hasBuddyPost: Boolean(buddyPost?.id),
       buddyPostId: buddyPost?.id,
-      isRegistered: Boolean(registration),
     };
   }
 
@@ -98,10 +85,8 @@ function readGuideIdFromJob(
   if (!guideJob?.requestParams || typeof guideJob.requestParams !== 'object') {
     return undefined;
   }
-
   const guideId = (guideJob.requestParams as { guideId?: unknown }).guideId;
-  if (typeof guideId !== 'string' || !guideId.trim()) {
-    return undefined;
-  }
-  return guideId.trim();
+  return typeof guideId === 'string' && guideId.trim()
+    ? guideId.trim()
+    : undefined;
 }

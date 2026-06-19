@@ -8,5 +8,4 @@ export type FestivalPlanProgressDto = {
   itinerarySelectedDjIds?: string[];
   hasBuddyPost: boolean;
   buddyPostId?: string;
-  isRegistered: boolean;
 };

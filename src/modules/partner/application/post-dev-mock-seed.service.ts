@@ -8,7 +8,7 @@ import {
   TML_THAILAND_LEGACY_ID,
 } from '../data/dev-mock-buddy-posts.util';
 
-/** Dev-only mock buddy posts for Tomorrowland Thailand (activity legacyId 1). */
+/** Dev-only mock buddy posts for Tomorrowland Thailand (activity legacyId 1). @see sync-app/docs/POST-LIFECYCLE.md § Dev mock 组队帖 */
 @Injectable()
 export class PostDevMockSeedService implements OnModuleInit {
   private readonly logger = new Logger(PostDevMockSeedService.name);

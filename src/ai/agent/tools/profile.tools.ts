@@ -11,7 +11,7 @@ export class ProfileGetSummaryTool implements ChatAgentTool {
   readonly definition = {
     name: 'profile_get_summary',
     description:
-      '获取当前用户的个人资料摘要（昵称、地区、报名活动数、组队帖数）。',
+      '获取当前用户的个人资料摘要（昵称、地区、已选活动数、组队帖数）。',
     parameters: { type: 'object', properties: {} },
   };
 
@@ -26,7 +26,7 @@ export class ProfileGetSummaryTool implements ChatAgentTool {
 export class ProfileListRegistrationsTool implements ChatAgentTool {
   readonly definition = {
     name: 'profile_list_registrations',
-    description: '列出当前用户已报名的活动。',
+    description: '列出当前用户已选择的活动。',
     parameters: { type: 'object', properties: {} },
   };
 

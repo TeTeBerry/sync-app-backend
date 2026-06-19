@@ -15,7 +15,7 @@ AppModule
 ├── ActivityModule           # 活动 + registration/
 ├── ActivityExperienceModule # travel-plan / itinerary / travel-guide / festival-plan
 ├── UserModule               # 用户资料、画像同步
-├── ProfileModule            # 个人页 BFF（摘要 / 报名活动）
+├── ProfileModule            # 个人页 BFF（摘要 / 已选活动）
 ├── HomeModule               # 首页 BFF
 ├── NotificationModule
 ├── ChatModule               # AI 会话持久化
@@ -31,7 +31,7 @@ AppModule
 | 模块 | 代码路径 | 说明 |
 |------|----------|------|
 | User | `modules/user/` | `GET/PATCH /users/me`、画像 hints 同步 |
-| Activity | `modules/activity/` | 列表 / 关键词解析 / 详情 / 报名 |
+| Activity | `modules/activity/` | 列表 / 关键词解析 / 详情 / 活动选择记录 |
 | AiAssistant | `ai/` + `modules/chat/` | WebSocket + 意图路由 + 确定性回复 |
 | BFF | `home/`、`profile/` | 聚合读 |
 | ActivityExperience | `modules/activity-experience/` | 活动域 API 聚合（行程 / 攻略 / 计划） |
@@ -52,7 +52,7 @@ AppModule
 | 模块 / 端口 | 用途 |
 |-------------|------|
 | `UserRepositoryModule` + `USER_REPOSITORY` | 用户持久化 |
-| `ActivityLookupModule` + `ACTIVITY_LOOKUP_PORT` | 活动只读查询；报名 / BFF |
+| `ActivityLookupModule` + `ACTIVITY_LOOKUP_PORT` | 活动只读查询；选择记录 / BFF |
 
 > LLM：`infra/llm/InfraLlmModule` — 文本经混元 JSON；视觉经千问 VL。详见 [LLM.md](./LLM.md)。
 
@@ -80,7 +80,7 @@ AppModule
   → AiService：message_complete、ChatService.saveTurn、done
 ```
 
-**前端对齐能力**：活动绑定与快捷芯片、DJ 信息、出行攻略（agent 工具 + REST 表单）、聊天组队发帖、行程/性格测试/报名/评论等 agent 工具与 stream 事件。
+**前端对齐能力**：活动绑定与快捷芯片、DJ 信息、出行攻略（agent 工具 + REST 表单）、聊天组队发帖、行程/性格测试/活动选择/评论等 agent 工具与 stream 事件。
 
 ### 会话状态机（ConversationState）
 

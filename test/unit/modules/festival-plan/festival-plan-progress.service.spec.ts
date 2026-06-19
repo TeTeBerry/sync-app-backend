@@ -5,7 +5,6 @@ import { TravelGuideGenerationJob } from '@src/database/schemas/travel-guide-gen
 import { FestivalPlanProgressService } from '@src/modules/festival-plan/festival-plan-progress.service';
 import { ItineraryService } from '@src/modules/itinerary/itinerary.service';
 import { PostQueryService } from '@src/modules/partner/application/post-query.service';
-import { ACTIVITY_REGISTRATION_REPOSITORY } from '@src/modules/activity/registration/interfaces/activity-registration.repository.interface';
 import { TravelGuideSavedPlanService } from '@src/modules/travel-guide/travel-guide-saved-plan.service';
 
 describe('FestivalPlanProgressService', () => {
@@ -21,9 +20,6 @@ describe('FestivalPlanProgressService', () => {
   };
   const postQueryService = {
     findOwnerActivePostForActivity: jest.fn(),
-  };
-  const registrationRepository = {
-    findByOwnerAndActivity: jest.fn(),
   };
 
   let service: FestivalPlanProgressService;
@@ -52,9 +48,6 @@ describe('FestivalPlanProgressService', () => {
     postQueryService.findOwnerActivePostForActivity.mockResolvedValue({
       id: 'post-1',
     });
-    registrationRepository.findByOwnerAndActivity.mockResolvedValue({
-      activityLegacyId: 4,
-    });
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -66,17 +59,13 @@ describe('FestivalPlanProgressService', () => {
         { provide: TravelGuideSavedPlanService, useValue: savedPlanService },
         { provide: ItineraryService, useValue: itineraryService },
         { provide: PostQueryService, useValue: postQueryService },
-        {
-          provide: ACTIVITY_REGISTRATION_REPOSITORY,
-          useValue: registrationRepository,
-        },
       ],
     }).compile();
 
     service = moduleRef.get(FestivalPlanProgressService);
   });
 
-  it('aggregates travel guide, itinerary, buddy post, and registration', async () => {
+  it('aggregates travel guide, itinerary, and buddy post', async () => {
     const result = await service.getProgress(4, actor);
 
     expect(result).toEqual({
@@ -88,7 +77,6 @@ describe('FestivalPlanProgressService', () => {
       itinerarySelectedDjIds: ['dj-1'],
       hasBuddyPost: true,
       buddyPostId: 'post-1',
-      isRegistered: true,
     });
   });
 
@@ -112,7 +100,6 @@ describe('FestivalPlanProgressService', () => {
     });
     itineraryService.getSaved.mockResolvedValue({ saved: false });
     postQueryService.findOwnerActivePostForActivity.mockResolvedValue(null);
-    registrationRepository.findByOwnerAndActivity.mockResolvedValue(null);
 
     const result = await service.getProgress(7, actor);
 
@@ -125,7 +112,6 @@ describe('FestivalPlanProgressService', () => {
       itinerarySelectedDjIds: undefined,
       hasBuddyPost: false,
       buddyPostId: undefined,
-      isRegistered: false,
     });
   });
 });

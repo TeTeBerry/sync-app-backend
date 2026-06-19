@@ -11,7 +11,7 @@ export class ActivityRegisterTool implements ChatAgentTool {
   readonly definition = {
     name: 'activity_register',
     description:
-      '帮当前用户报名活动。默认使用已绑定活动，也可在参数中指定 activityLegacyId。',
+      '帮当前用户选择活动。默认使用已绑定活动，也可在参数中指定 activityLegacyId。',
     parameters: {
       type: 'object',
       properties: {
@@ -44,7 +44,7 @@ export class ActivityRegisterTool implements ChatAgentTool {
 export class ActivityUnregisterTool implements ChatAgentTool {
   readonly definition = {
     name: 'activity_unregister',
-    description: '取消当前用户对活动的报名。',
+    description: '取消当前用户对某活动的选择记录。',
     parameters: {
       type: 'object',
       properties: {

@@ -34,4 +34,5 @@ REST 路径仍为 `/api/posts`（资源名不变）。
 
 评论与回复同样执行：**禁联系方式**、票务敏感词拦截、规则风控（`matchRiskRules`）、微信 `msg_sec_check`（`assertUserUgcTexts`），并记录账号风控违规。
 
-详见前端 `sync-app/docs/POST-LIFECYCLE.md`。
+详见前端 `sync-app/docs/POST-LIFECYCLE.md`（含 Dev mock 组队帖开关与上架验收）。
+
