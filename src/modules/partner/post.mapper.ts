@@ -31,6 +31,7 @@ export class PostMapper {
       id: String(post._id),
       userId: post.userId,
       name: post.authorName,
+      handle: post.authorHandle,
       location: post.location ?? '',
       departureCity: post.departureCity ?? '',
       createdAt,
