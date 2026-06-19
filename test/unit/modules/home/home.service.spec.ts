@@ -4,13 +4,15 @@ import type { IActivityLookupPort } from '@src/modules/activity/ports/activity-l
 import type { ActivityRegistrationService } from '@src/modules/activity/registration/activity-registration.service';
 import type { RedisService } from '@src/redis/redis.service';
 import type { IPostReadPort } from '@src/modules/partner/ports/post-read.port';
+import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
+import type { NotificationService } from '@src/modules/notification/notification.service';
 
 describe('HomeService', () => {
   const activities = [
     {
       legacyId: 4,
       name: 'Storm Fest',
-      date: '06/01',
+      date: '08/01',
       location: 'Shanghai',
       image: 'https://example.com/storm.jpg',
       hot: true,
@@ -19,7 +21,7 @@ describe('HomeService', () => {
     {
       legacyId: 7,
       name: 'Regular Fest',
-      date: '07/12',
+      date: '09/12',
       location: 'Beijing',
       image: '',
       hot: false,
@@ -45,6 +47,14 @@ describe('HomeService', () => {
     listPopular: jest.fn(),
   } as unknown as IPostReadPort;
 
+  const postRepository = {
+    findByOwner: jest.fn(),
+  } as unknown as IPostRepository;
+
+  const notificationService = {
+    countUnreadPostEngagement: jest.fn(),
+  } as unknown as NotificationService;
+
   let service: HomeService;
 
   beforeEach(() => {
@@ -62,6 +72,10 @@ describe('HomeService', () => {
         body: 'Hi',
       },
     ]);
+    (postRepository.findByOwner as jest.Mock).mockResolvedValue([]);
+    (
+      notificationService.countUnreadPostEngagement as jest.Mock
+    ).mockResolvedValue(0);
     (redisService.isEnabled as jest.Mock).mockReturnValue(true);
     (redisService.getHeat as jest.Mock).mockResolvedValue({
       people: 150,
@@ -72,6 +86,8 @@ describe('HomeService', () => {
       registrationService,
       redisService,
       postRead,
+      postRepository,
+      notificationService,
     );
   });
 
@@ -101,6 +117,24 @@ describe('HomeService', () => {
     );
     expect(postRead.listPopular).toHaveBeenCalledWith(8, actor);
     expect(result.popularPosts).toHaveLength(1);
+    expect(result.myNextEventPostEngagement).toBeNull();
+  });
+
+  it('returns unread post engagement for next registered event', async () => {
+    (postRepository.findByOwner as jest.Mock).mockResolvedValue([
+      { _id: 'post-owner-1' },
+    ]);
+    (
+      notificationService.countUnreadPostEngagement as jest.Mock
+    ).mockResolvedValue(2);
+
+    const result = await service.getSummary(toRequestActor('user-1', 'Berry'));
+
+    expect(result.myNextEventPostEngagement).toEqual({
+      activityLegacyId: 4,
+      postId: 'post-owner-1',
+      unreadReplyCount: 2,
+    });
   });
 
   it('writes per-activity heat to redis when enabled', async () => {

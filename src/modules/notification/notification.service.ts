@@ -200,6 +200,26 @@ export class NotificationService {
     return { ok: true };
   }
 
+  async countUnreadPostEngagement(
+    userId: string,
+    postIds: string[],
+  ): Promise<number> {
+    const uid = resolveStoredUserId(userId);
+    if (uid === 'anonymous' || postIds.length === 0) return 0;
+
+    const normalizedPostIds = [
+      ...new Set(postIds.map((id) => id.trim()).filter(Boolean)),
+    ];
+    if (!normalizedPostIds.length) return 0;
+
+    return this.notificationModel.countDocuments({
+      userId: uid,
+      read: false,
+      'meta.type': { $in: ['comment', 'comment_reply'] },
+      'meta.postId': { $in: normalizedPostIds },
+    });
+  }
+
   async hasRecentByMeta(
     userId: string,
     metaType: NotificationInteractionType,

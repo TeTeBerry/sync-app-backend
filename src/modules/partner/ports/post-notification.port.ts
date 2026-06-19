@@ -4,6 +4,7 @@ export interface CommentNotificationInput {
   recipientUserId: string;
   postId: string;
   activityLegacyId?: number;
+  activityTitle?: string;
   actorUserId: string;
   actorUserName?: string;
   commentPreview?: string;

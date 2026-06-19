@@ -134,6 +134,25 @@ export default () => ({
         10,
       ),
       messageToken: cleanEnv(process.env.WECHAT_MESSAGE_TOKEN, ''),
+      /** WeChat subscribe message template IDs (comment / reply on buddy posts). */
+      subscribeCommentTemplateId: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_COMMENT_TEMPLATE_ID,
+      ),
+      subscribeCommentReplyTemplateId: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_COMMENT_REPLY_TEMPLATE_ID,
+      ),
+      subscribeFieldActor: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_FIELD_ACTOR,
+        'thing1',
+      ),
+      subscribeFieldPreview: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_FIELD_PREVIEW,
+        'thing2',
+      ),
+      subscribeFieldActivity: cleanEnv(
+        process.env.WECHAT_SUBSCRIBE_FIELD_ACTIVITY,
+        'thing3',
+      ),
     },
   },
 

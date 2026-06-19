@@ -220,7 +220,7 @@ export class PostCommentService {
   }
 
   private dispatchCommentNotification(params: {
-    post: { userId?: string; activityLegacyId?: number };
+    post: { userId?: string; activityLegacyId?: number; eventTitle?: string };
     postId: string;
     actorUserId: string;
     actorUserName?: string;
@@ -241,6 +241,7 @@ export class PostCommentService {
     const base = {
       postId,
       activityLegacyId: post.activityLegacyId,
+      activityTitle: post.eventTitle?.trim(),
       actorUserId,
       actorUserName,
       commentPreview,

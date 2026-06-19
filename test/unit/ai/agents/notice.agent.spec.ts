@@ -8,6 +8,8 @@ jest.mock('@src/modules/notification/notification.service', () => ({
 import { NoticeAgent } from '@src/ai/agents/notice.agent';
 import type { NotificationService } from '@src/modules/notification/notification.service';
 import type { UserService } from '@src/modules/user/user.service';
+import type { IUserRepository } from '@src/modules/user/interfaces/user.repository.interface';
+import type { WechatSubscribeMessageService } from '@src/modules/auth/wechat-subscribe-message.service';
 
 describe('NoticeAgent', () => {
   let agent: NoticeAgent;
@@ -15,6 +17,13 @@ describe('NoticeAgent', () => {
     Pick<NotificationService, 'createFromTemplate' | 'hasRecentByMeta'>
   >;
   let userService: jest.Mocked<Pick<UserService, 'isNotificationsEnabled'>>;
+  let userRepository: jest.Mocked<Pick<IUserRepository, 'findByExternalId'>>;
+  let wechatSubscribe: jest.Mocked<
+    Pick<
+      WechatSubscribeMessageService,
+      'isEnabled' | 'sendPostEngagementNotice'
+    >
+  >;
 
   beforeEach(() => {
     notificationService = {
@@ -24,9 +33,18 @@ describe('NoticeAgent', () => {
     userService = {
       isNotificationsEnabled: jest.fn().mockResolvedValue(true),
     };
+    userRepository = {
+      findByExternalId: jest.fn().mockResolvedValue({ openid: 'openid-owner' }),
+    };
+    wechatSubscribe = {
+      isEnabled: jest.fn().mockReturnValue(true),
+      sendPostEngagementNotice: jest.fn().mockResolvedValue(undefined),
+    };
     agent = new NoticeAgent(
       notificationService as unknown as NotificationService,
       userService as unknown as UserService,
+      userRepository as unknown as IUserRepository,
+      wechatSubscribe as unknown as WechatSubscribeMessageService,
     );
   });
 
@@ -102,6 +120,13 @@ describe('NoticeAgent', () => {
           activityLegacyId: 4,
           actorUserId: 'user-2',
         }),
+      }),
+    );
+    expect(wechatSubscribe.sendPostEngagementNotice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        openid: 'openid-owner',
+        templateKey: 'comment',
+        postId: 'post-1',
       }),
     );
   });

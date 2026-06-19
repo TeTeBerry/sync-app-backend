@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type {
   NotificationCategory,
   NotificationInteractionType,
@@ -8,7 +8,12 @@ import { NotificationService } from '../../modules/notification/notification.ser
 import type { NotificationTemplateKey } from '../../modules/notification/notification-templates.util';
 import { toRequestActor } from '../../common/auth/actor-query.util';
 import type { RequestActor } from '../../common/auth/request-actor.types';
+import {
+  USER_REPOSITORY,
+  type IUserRepository,
+} from '../../modules/user/interfaces/user.repository.interface';
 import { UserService } from '../../modules/user/user.service';
+import { WechatSubscribeMessageService } from '../../modules/auth/wechat-subscribe-message.service';
 
 export interface NoticeDispatchInput {
   userId: string;
@@ -35,6 +40,9 @@ export class NoticeAgent {
   constructor(
     private readonly notificationService: NotificationService,
     private readonly userService: UserService,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: IUserRepository,
+    private readonly wechatSubscribe: WechatSubscribeMessageService,
   ) {}
 
   async notifyPostRejected(
@@ -124,6 +132,7 @@ export class NoticeAgent {
     recipientUserId: string;
     postId: string;
     activityLegacyId?: number;
+    activityTitle?: string;
     actorUserId: string;
     actorUserName?: string;
     commentPreview?: string;
@@ -148,12 +157,23 @@ export class NoticeAgent {
         actorUserName: actor,
       },
     });
+
+    void this.sendPostEngagementSubscribe({
+      recipientUserId: recipient,
+      templateKey: 'comment',
+      postId: params.postId,
+      activityLegacyId: params.activityLegacyId,
+      activityTitle: params.activityTitle,
+      actorName: actor,
+      preview,
+    });
   }
 
   async notifyCommentReply(params: {
     recipientUserId: string;
     postId: string;
     activityLegacyId?: number;
+    activityTitle?: string;
     actorUserId: string;
     actorUserName?: string;
     commentPreview?: string;
@@ -179,6 +199,16 @@ export class NoticeAgent {
         actorUserName: actor,
         parentCommentId: params.parentCommentId,
       },
+    });
+
+    void this.sendPostEngagementSubscribe({
+      recipientUserId: recipient,
+      templateKey: 'commentReply',
+      postId: params.postId,
+      activityLegacyId: params.activityLegacyId,
+      activityTitle: params.activityTitle,
+      actorName: actor,
+      preview,
     });
   }
 
@@ -266,5 +296,33 @@ export class NoticeAgent {
     if (!normalized) return '…';
     if (normalized.length <= 40) return normalized;
     return `${normalized.slice(0, 40)}…`;
+  }
+
+  private async sendPostEngagementSubscribe(params: {
+    recipientUserId: string;
+    templateKey: 'comment' | 'commentReply';
+    postId: string;
+    activityLegacyId?: number;
+    activityTitle?: string;
+    actorName: string;
+    preview: string;
+  }): Promise<void> {
+    if (!this.wechatSubscribe.isEnabled()) return;
+
+    const user = await this.userRepository.findByExternalId(
+      params.recipientUserId.trim(),
+    );
+    const openid = user?.openid?.trim();
+    if (!openid) return;
+
+    await this.wechatSubscribe.sendPostEngagementNotice({
+      openid,
+      templateKey: params.templateKey,
+      postId: params.postId,
+      activityLegacyId: params.activityLegacyId,
+      activityName: params.activityTitle,
+      actorName: params.actorName,
+      preview: params.preview,
+    });
   }
 }
