@@ -1,247 +1,245 @@
 # Sync App Backend
 
-NestJS 后端：电音节活动、组队帖、AI 对话 WebSocket、出行攻略 / 专属行程、MongoDB、Redis 热度。
+NestJS API and AI WebSocket server for **SYNC** — a WeChat mini program for electronic music festival discovery, activity planning, AI assistance, travel guides, itineraries, and structured buddy posts.
 
-## 技术栈
+## Features
 
-| 层级 | 选型 |
-|------|------|
-| 框架 | NestJS 10（Node ≥ 18.18，Mongoose 7） |
-| AI | 混元文本（`HUNYUAN_API_KEY`）+ 千问 VL（`QWEN_API_KEY`）；两把 Key 分工 |
-| Agent | NoticeAgent（活动更新通知） |
-| 知识库 | Chroma（`sync_knowledge`，活动 RAG，可选） |
-| 存储 | MongoDB |
-| 缓存 | Redis（热度，可选） |
-| 通信 | WebSocket（`ws://<host>/api/ai/chat/ws`） |
+- **Activities** — catalog, detail, keyword resolution, lineup / schedule data
+- **Activity selection** — `POST/DELETE /activities/:legacyId/register` records user interest (frontend auto-calls on bind / enter detail; no separate “sign up” flow)
+- **Home & profile BFF** — aggregated feeds, heat metrics, selected activities
+- **Partner posts** — template buddy posts and comments per activity
+- **AI assistant** — WebSocket streaming (`/api/ai/chat/ws`), tool-calling agent (travel guide, itinerary, posting, activity selection, profile, personality test)
+- **Travel guide** — Amap POI + LLM-generated trip plans
+- **Itinerary** — festival schedule and personalized DJ itineraries
+- **Festival plan progress** — BFF for per-activity prep checklist (guide / itinerary / buddy post)
+- **Notifications** — in-app + WeChat subscribe messages
+- **Account risk** — moderation and posting restrictions
 
-架构说明：[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)  
-LLM 配置：[docs/LLM.md](./docs/LLM.md)（混元文本 + 千问 VL）  
-鉴权：[docs/AUTH.md](./docs/AUTH.md)  
-完整 REST 契约：[sync-app/docs/API.md](../sync-app/docs/API.md)  
-历史迁移记录：[docs/archive/](./docs/archive/)
+## Tech stack
 
-## 快速开始
+| Layer | Choice |
+|-------|--------|
+| Framework | NestJS 10 (Node ≥ 18.18, Mongoose 7) |
+| AI text | Tencent Hunyuan (`HUNYUAN_API_KEY`) |
+| AI vision | Alibaba Qwen VL (`QWEN_API_KEY`) — ticket OCR, image risk |
+| Vector RAG | Chroma (`sync_knowledge`, optional) |
+| Primary DB | MongoDB |
+| Cache | Redis (heat metrics, rate limits; optional) |
+| Real-time | WebSocket (`ws://<host>/api/ai/chat/ws`) |
+| Auth | JWT + WeChat mini program login |
+
+Architecture details: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)  
+LLM setup: [docs/LLM.md](./docs/LLM.md)  
+Auth: [docs/AUTH.md](./docs/AUTH.md)  
+Full REST contract: [../sync-app/docs/API.md](../sync-app/docs/API.md)
+
+## Prerequisites
+
+- Node.js **≥ 18.18**
+- Docker (MongoDB + Redis for local dev)
+- API keys for Hunyuan and Qwen (AI features)
+
+## Quick start
 
 ```bash
 cd sync-app-backend
-# 新建 .env（见下方「环境变量」）：MONGODB_URI、HUNYUAN_API_KEY、QWEN_API_KEY 等
-
-# 推荐：MongoDB + Redis（Docker）+ NestJS
-npm run dev:all
+# Create .env with MONGODB_URI, HUNYUAN_API_KEY, QWEN_API_KEY, etc. (see Environment variables)
+npm install
+npm run dev:all        # Docker mongo + redis, then Nest watch mode
 ```
 
-分步：
+Service base URL: `http://localhost:3000/api`  
+Health check: `GET /api/health`
+
+### Step-by-step
 
 ```bash
-npm run infra:up      # mongo + redis
-npm run infra:chroma  # optional: Chroma on :8000 (profile chroma)
+npm run infra:up       # mongo + redis
+npm run infra:chroma   # optional: Chroma on :8000 (--profile chroma)
 npm run wait:mongo
 npm run start:dev
 ```
 
-国内 Docker 拉取失败：`npm run infra:up:cn`
+If Docker image pulls fail in China: `npm run infra:up:cn`
 
-### 云服务器 Docker 部署
-
-`.env.production` **不会随 git 上传**，须在服务器上单独创建：
+### Optional Chroma (activity RAG)
 
 ```bash
-cd ~/sync-app-backend
-# 新建或 scp 本机 .env.production
-nano .env.production              # WECHAT_MINI_APP_ID、JWT_SECRET、QWEN_API_KEY、HUNYUAN_API_KEY 等
-
-sudo docker compose up -d --build
-sudo docker compose exec app printenv WECHAT_MINI_APP_ID   # 应有 wx...
-sudo docker compose exec app printenv REDIS_URL            # redis://redis:6379
+npm run infra:chroma
+# .env: CHROMA_URL=http://localhost:8000
+curl -s http://localhost:8000/api/v1/heartbeat
 ```
 
-`printenv` 为空 → 服务器上没有 `.env.production` 或文件里未写对应变量。  
-无 `docker` 权限时用 `sudo`；长期可把用户加入 `docker` 组后重新登录 SSH。
+## Scripts
 
-Compose 已为 `app` 注入 `MONGODB_URI`、`REDIS_URL=redis://redis:6379`。活动目录与 **电音节阵容**（`festival_sessions` / `artist_performances`）会在服务启动时 upsert；也可手动执行 `npm run db:seed-itinerary`。
+| Command | Description |
+|---------|-------------|
+| `npm run dev:all` | Infra + wait for Mongo + Nest watch |
+| `npm run start:dev` | Nest watch (expects Mongo already up) |
+| `npm run build` | Production build |
+| `npm run start:prod` | Run `dist/main.js` |
+| `npm run check` | typecheck + lint + format + unit tests |
+| `npm run smoke:api` | REST smoke against running server |
+| `npm run smoke:ws` | AI WebSocket smoke |
+| `npm run db:reset` | Clear AI chat history (keeps activity seeds) |
+| `npm run db:seed-itinerary` | Seed festival lineup catalog |
 
-**Chroma（可选 RAG）**：
+See `package.json` for DB maintenance and media scripts.
+
+## Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `MONGODB_URI` | **Required** — MongoDB connection string |
+| `REDIS_URL` | Redis URL; empty skips Redis (in-memory / Mongo fallbacks) |
+| `HUNYUAN_API_KEY` | **Required** for text / agent JSON |
+| `HUNYUAN_BASE_URL` | Hunyuan API base; use CloudBase gateway URL in production |
+| `QWEN_API_KEY` | Qwen DashScope key for VL / OCR |
+| `JWT_SECRET` | **Required in production** (≥ 32 chars) |
+| `WECHAT_MINI_APP_ID` / `WECHAT_MINI_APP_SECRET` | WeChat mini program login |
+| `AMAP_KEY` | Amap Web API for travel guide POI / routes |
+| `CLOUDBASE_ENV_ID` / `CLOUDBASE_STORAGE_BUCKET` | Validate `cloud://` fileIDs from the mini program |
+| `CHROMA_URL` | Chroma HTTP base; empty disables RAG |
+| `CORS_ORIGINS` | H5 CORS allowlist (comma-separated); mini program can leave empty |
+| `AI_AGENT_MODEL` | Chat agent model override |
+| `DISABLE_DEV_MOCK_POSTS` | `true` disables dev mock buddy-post seed |
+
+WeChat subscribe-message template field names (`WECHAT_SUBSCRIBE_*`) and more defaults live in `src/config/configuration.ts`.
+
+Local-only uploads: `ENABLE_LOCAL_UPLOADS`, `UPLOAD_DIR`, `UPLOAD_PUBLIC_BASE_URL` — **do not use in production**.
+
+## API overview
+
+### AI chat (WebSocket)
+
+Endpoint: `ws://localhost:3000/api/ai/chat/ws` (use `wss://` in production)
+
+1. Client sends `connect`: `{ "type": "connect", "sessionId?", "activityLegacyId?" }`
+2. Server replies `connected`
+3. Client sends `send` with `messages`, `activityLegacyId`; images as **`cloud://` fileIDs** (from `wx.cloud.uploadFile`)
+4. Server streams JSON frames: `delta`, `message_complete`, `activity_recommendation`, `suggested_replies`, `conversation_patch`, `travel_guide_ready`, `itinerary_ready`, `activity_registered`, `done`, `error`
+
+There is **no** `POST /api/ai/chat` HTTP/SSE endpoint.
+
+### REST (selected)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/health` | Health + infra status |
+| POST | `/api/auth/wechat` | Mini program login |
+| POST | `/api/auth/logout` | Revoke JWT (`tokenVersion` bump) |
+| GET | `/api/home` | Home BFF (heat + `signupEvents`) |
+| GET | `/api/activities` | Activity catalog |
+| GET | `/api/activities/:legacyId` | Activity detail |
+| POST/DELETE | `/api/activities/:legacyId/register` | Record / cancel activity selection |
+| GET/PATCH | `/api/users/me` | Current user profile |
+| GET | `/api/profile` | Profile BFF summary |
+| GET | `/api/profile/activities` | User’s selected activities |
+| GET | `/api/chat/sessions/:id` | AI session history |
+
+Full contract: [../sync-app/docs/API.md](../sync-app/docs/API.md)
+
+### Authentication
+
+Global `JwtAuthGuard` + `RequestActor` on protected routes. Send `Authorization: Bearer <jwt>`. See [docs/AUTH.md](./docs/AUTH.md).
+
+## Quality assurance
 
 ```bash
-# .env.production 增加：
-# CHROMA_URL=http://chroma:8000
-
-sudo docker compose --profile chroma up -d --build
+npm run check
 ```
 
-本地非 Docker：`npm run infra:chroma`，`CHROMA_URL=http://localhost:8000`。
+CI (`.github/workflows/ci.yml`) runs `check` + `nest build` on PRs and `main`.  
+Husky + lint-staged format/lint staged files on commit.
 
-服务默认：`http://localhost:3000/api`
+Unit tests: `test/unit/` and `test/contract/`. Details: [test/README.md](./test/README.md)
 
-## 质量检查
+Workspace-wide check from repo parent: `npm run check:all` (see [../CONTRIBUTING.md](../CONTRIBUTING.md)).
+
+## Deployment
+
+### Docker Compose (server)
+
+Create `.env.production` on the server (**not** committed to git):
 
 ```bash
-npm run check   # typecheck + lint + format:check + unit tests（含 contract）
+cd sync-app-backend
+docker compose up -d --build
+docker compose exec app printenv WECHAT_MINI_APP_ID
+docker compose exec app printenv REDIS_URL
 ```
 
-PR / `main` 推送由 [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) 自动执行 `check` + `nest build`。  
-`npm install` 后启用 **husky** + **lint-staged**（pre-commit 仅格式化/修复 staged 文件）。  
-同级工作区一键检查：`../npm run check:all`（见 [`../CONTRIBUTING.md`](../CONTRIBUTING.md)）。  
-详见 [`test/README.md`](./test/README.md)。
+Compose injects `MONGODB_URI` and `REDIS_URL=redis://redis:6379` for the app service.
 
-## 环境变量
-
-| 变量 | 说明 |
-|------|------|
-| `MONGODB_URI` | MongoDB 连接串（必填） |
-| `REDIS_URL` | Redis（空则跳过；热度/限流/缓存走 Mongo 或内存兜底） |
-| `HUNYUAN_API_KEY` | 混元 Key（**文本必填**）；JSON / Agent |
-| `HUNYUAN_BASE_URL` | 混元 API 基址；云托管生产填 CloudBase 网关 URL |
-| `QWEN_API_KEY` | 千问 DashScope Key（**VL**）；小票 OCR、风控识图等 |
-| `JWT_SECRET` | JWT 签名密钥（生产必填，见 [docs/AUTH.md](./docs/AUTH.md)） |
-| `WECHAT_MINI_APP_ID` / `WECHAT_MINI_APP_SECRET` | 微信小程序登录 |
-| `WECHAT_SUBSCRIBE_COMMENT_TEMPLATE_ID` | 订阅消息：组队帖被评论（例：公共模板「新评论提醒」#25486） |
-| `WECHAT_SUBSCRIBE_COMMENT_REPLY_TEMPLATE_ID` | 订阅消息：评论被回复（可与评论模板相同） |
-| `WECHAT_SUBSCRIBE_FIELD_PREVIEW` | 评论模板「评论内容」字段（例：`thing2`；昵称并入内容） |
-| `WECHAT_SUBSCRIBE_FIELD_TIME` | 评论模板时间字段（例：`time3`） |
-| `WECHAT_SUBSCRIBE_REPLY_FIELD_PREVIEW` | 回复模板内容字段（例：`thing2`） |
-| `WECHAT_SUBSCRIBE_REPLY_FIELD_TIME` | 回复模板时间字段（例：`time4`） |
-| `WECHAT_SUBSCRIBE_ACTIVITY_UPDATE_TEMPLATE_ID` | 订阅消息：活动更新（例：公共模板「活动预约提醒」#624） |
-| `WECHAT_SUBSCRIBE_ACTIVITY_FIELD_NAME` | 活动名称字段（例：`thing2`） |
-| `WECHAT_SUBSCRIBE_ACTIVITY_FIELD_DATE` | 活动日期字段（例：`date3`，取自活动 `date`） |
-| `WECHAT_SUBSCRIBE_ACTIVITY_FIELD_LOCATION` | 活动地址字段（例：`thing10`） |
-| `WECHAT_SUBSCRIBE_ACTIVITY_FIELD_AMOUNT` | 价格槽位（例：`amount21`；合规占位，非真实票价） |
-| `WECHAT_SUBSCRIBE_ACTIVITY_AMOUNT_PLACEHOLDER` | `amount21` 占位文案（默认「详见活动页」） |
-| `AMAP_KEY` | AI 出行攻略 — 高德 Web 服务 Key |
-| `CLOUDBASE_ENV_ID` / `CLOUDBASE_STORAGE_BUCKET` | 校验小程序提交的 `cloud://` fileID |
-| `CHROMA_URL` | Chroma HTTP 基址（可选）；空则 RAG 降级 |
-| `CORS_ORIGINS` | H5 跨域白名单（逗号分隔 HTTPS origins）；**纯小程序可留空**（走 `callContainer` 不经浏览器 CORS） |
-| `AI_AGENT_MODEL` | Chat Agent 模型（可选，默认 `HUNYUAN_TEXT_MODEL`） |
-| `DISABLE_DEV_MOCK_POSTS` | 设为 `true` 时关闭 dev mock 组队帖 seed（`PostDevMockSeedService`）；**生产 `NODE_ENV=production` 永不 seed** |
-
-本地联调可选：`ENABLE_LOCAL_UPLOADS`、`UPLOAD_DIR`、`UPLOAD_PUBLIC_BASE_URL`（云托管生产勿用）。  
-Discogs 爬虫脚本：`DISCOGS_TOKEN` 等（见 `scripts/crawl-discogs-djs.mjs`，运行时 Nest 不读）。  
-更多默认值与进阶项见 `src/config/configuration.ts`。
-
-LLM 分工见 [docs/LLM.md](./docs/LLM.md)。鉴权说明：[docs/AUTH.md](./docs/AUTH.md)。
-
-## 主要接口
-
-### AI 流式对话（WebSocket）
-
-连接：`ws://localhost:3000/api/ai/chat/ws`（生产使用 `wss://` + 合法域名）
-
-1. 客户端发送 `connect`：`{ "type": "connect", "sessionId?", "activityLegacyId?" }`
-2. 服务端回复 `connected`
-3. 客户端发送 `send`：`messages`、`userId`、`userName`、`activityLegacyId`；图片字段为 **`cloud://` fileID**（小程序 `wx.cloud.uploadFile` 后提交）；本地 dev 可传 `http://…/uploads/…`；不支持 data URL / 外链
-4. 服务端推送 JSON 帧：`delta`、`message_complete`、`activity_recommendation`、`suggested_replies`、`conversation_patch`、`done`、`error`
-
-### 业务 REST（节选）
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/home` | 首页（热度 + 活动列表） |
-| GET | `/api/activities` | 活动列表 |
-| GET | `/api/activities/:legacyId` | 活动详情 |
-| POST/DELETE | `/api/activities/:legacyId/register` | 记录 / 取消活动选择 |
-| POST | `/api/auth/logout` | 退出登录（Bearer；递增 `tokenVersion` 吊销旧 JWT） |
-| GET/PATCH | `/api/users/me` | 当前用户资料 |
-| GET | `/api/profile` | 个人页 BFF 摘要 |
-| GET | `/api/profile/activities` | 个人活动列表 |
-| WS | `/api/ai/chat/ws` | AI 对话（主通道） |
-| GET | `/api/chat/sessions/:id` | 会话历史 |
-
-完整契约：`sync-app/docs/API.md`
-
-**身份（当前）**：全局 `JwtAuthGuard` + `RequestActor`；受保护路由需 `Authorization: Bearer`。详见 [`docs/AUTH.md`](./docs/AUTH.md)。
-
-## REST 冒烟
-
-后端已启动时，一键跑主路径 REST（见 `scripts/smoke-api.mjs`）：
+Optional Chroma profile:
 
 ```bash
-npm run smoke:api        # 默认 http://localhost:3000/api，活动 legacyId=4
-npm run smoke:api:wait   # 等待 :3000 就绪后再跑
+# .env.production: CHROMA_URL=http://chroma:8000
+docker compose --profile chroma up -d --build
 ```
 
-环境变量：`SMOKE_API_BASE`、`SMOKE_ACTIVITY_ID`、`SMOKE_USER_ID`、`SMOKE_AUTHOR_NAME`。说明见 `test/README.md`。
+### Production env checklist
 
-## 测试数据重置
+| Variable | Requirement |
+|----------|-------------|
+| `JWT_SECRET` | ≥ 32 characters, not dev default |
+| `WECHAT_MINI_APP_ID` / `WECHAT_MINI_APP_SECRET` | Required |
+| `HUNYUAN_API_KEY` | Required |
+| `MONGODB_URI` | Reachable from runtime |
+| `CORS_ORIGINS` | Optional for mini program-only |
 
-```bash
-npm run db:reset
-```
+Cloud Run / CloudBase logs: search for `Production configuration invalid` if the container restarts.
 
-清空 MongoDB `chats` 集合（AI 会话历史），保留活动等种子数据。重置后前端需清除 `sessionStorage` 键 `sync_ai_session`（或开无痕窗口）。
+## Frontend integration
 
-各模块 `OnModuleInit` 会在集合为空时自动 seed：
-
-| 集合 | 来源 |
-|------|------|
-| activities | `ActivityService` |
-| activity registrations | `ActivityRegistrationSeedService` |
-| users (demo profile) | `UserService` |
-| Chroma 知识库 | `ChromaService.seedIfEmpty` |
-
-活动域 REST（专属行程、出行攻略、组队帖等）见 [sync-app/docs/API.md](../sync-app/docs/API.md)。
-
-## 前端对接
-
-`sync-app/.env` / `.env.production`（Taro `--mode` 加载；`.env` 为本地默认，production 模式由 `.env.production` 覆盖）：
+Configure [../sync-app](../sync-app) (`.env` for local, `.env.production` for release):
 
 ```env
 TARO_APP_API_BASE_URL=https://sync-backend-prd-xxxx.sh.run.tcloudbase.com/api
 TARO_APP_AI_CHAT_WS_URL=wss://sync-backend-prd-xxxx.sh.run.tcloudbase.com/api/ai/chat/ws
 TARO_APP_CLOUDBASE_ENV_ID=sync-prd-xxxx
+TARO_APP_CLOUD_RUN_SERVICE=sync-backend-prd-xxxx
 ```
 
-H5 devServer 将 `/api`（含 WebSocket 升级）代理到 `http://localhost:3000`。契约详见 `sync-app/docs/API.md`。
+Production mini program uses `wx.cloud.callContainer` and `wx.cloud.connectContainer` instead of direct domain requests.
 
-> **说明**：AI 对话仅走 **WebSocket** `ws(s)://<host>/api/ai/chat/ws`，无 `POST /api/ai/chat` HTTP/SSE 端点。历史文档中的 SSE 指同一套 `AiStreamEvent` 载荷，经 WS JSON 帧下发。
-
-## 运维与监控
-
-| 检查项 | 方式 |
-|--------|------|
-| 进程与基础设施 | `GET /api/health` → `mongodb` / `redis` / `chroma` |
-| AI 传输通道 | 同上响应中的 `ai.transport` = `websocket`，`ai.path` = `/api/ai/chat/ws` |
-| 启动日志 | `✅ AI WebSocket: ws://localhost:<port>/api/ai/chat/ws`（`main.ts` / `AiChatWsServer`） |
-| 单轮 AI 日志 | 结构化 `logAiTurn`（`event=turn_start|turn_complete|turn_error`），请求头 `X-Request-Id` 贯穿 WS 与 REST |
-
-### 图片与云托管
-
-| 变量 | 说明 |
-|------|------|
-| `CLOUDBASE_ENV_ID` / `CLOUDBASE_STORAGE_BUCKET` | 校验客户端 `cloud://` fileID |
-| `ENABLE_LOCAL_UPLOADS` | 生产默认 `false`；仅本地 Nest 联调时设 `true` |
-| `UPLOAD_DIR` / `UPLOAD_PUBLIC_BASE_URL` | 配合 `ENABLE_LOCAL_UPLOADS=true` 的本地静态 `/uploads`（云托管容器无持久盘，生产勿用） |
-
-生产：**小程序直传 CloudBase 云存储** → 后端存 `cloud://` fileID；API 走**云托管** HTTPS（前端 `TARO_APP_API_BASE_URL`，非后端环境变量），不依赖 CVM 静态目录。
-
-## 常见问题
-
-### 云托管部署 `Back-off restarting failed container`
-
-镜像构建成功但实例反复重启，多为 **生产环境变量校验** 未通过（`NODE_ENV=production` 时 `main.ts` 启动前检查）：
-
-| 变量 | 要求 |
-|------|------|
-| `JWT_SECRET` | **至少 32 字符**，不能为 dev 默认值 |
-| `WECHAT_MINI_APP_ID` / `WECHAT_MINI_APP_SECRET` | 必填 |
-| `HUNYUAN_API_KEY` | 必填 |
-| `MONGODB_URI` | 云托管网络可达 |
-| `CORS_ORIGINS` | 可选（纯小程序可留空；有 H5 再配 HTTPS origins） |
-
-在 CloudBase 控制台 → 云托管 → `sync-backend-prd` → **环境变量** 修改后重新发布。实例 **运行日志** 中搜索 `Production configuration invalid` 或 `JWT_SECRET` 可定位具体项。
-
-本地复现：`NODE_ENV=production npm run build && node dist/main.js`（需配齐上述变量）。
-
-### MongoDB 连接失败
-
-1. `docker compose ps` 确认 mongo 为 healthy  
-2. `.env` 中 `MONGODB_URI` 与 compose 端口一致  
-3. 使用 `npm run dev:all` 而非单独 `start:dev`
-
-### Chroma
+## Test data
 
 ```bash
-npm run infra:chroma   # docker compose --profile chroma up -d chroma  → :8000
-curl -s http://localhost:8000/api/v1/heartbeat
+npm run db:reset
 ```
 
-`.env` 设置 `CHROMA_URL=http://localhost:8000`。未配置或连不上时活动知识库 RAG 自动降级；专属行程仍以 Mongo 官方演出表为准。后端健康：`GET /api/health` → `chroma: enabled|disabled|circuitOpen`。
+Clears MongoDB `chats` collection. Frontend should clear `sessionStorage` key `sync_ai_session` or use a fresh session.
+
+`OnModuleInit` seeds empty collections: activities, demo users, Chroma knowledge (when enabled).
+
+## Troubleshooting
+
+### MongoDB connection failed
+
+1. `docker compose ps` — mongo should be healthy  
+2. Match `MONGODB_URI` in `.env` to compose ports  
+3. Prefer `npm run dev:all` over bare `start:dev`
+
+### Chroma unavailable
+
+RAG degrades gracefully. Itinerary still uses Mongo lineup data. Check `GET /api/health` → `chroma` field.
+
+### Container back-off restart (Cloud Run)
+
+Usually failed production env validation in `main.ts`. Verify `JWT_SECRET`, WeChat credentials, `HUNYUAN_API_KEY`, and `MONGODB_URI`.
+
+## Related documentation
+
+| Doc | Topic |
+|-----|--------|
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Modules, AI pipeline, data stores |
+| [docs/AUTH.md](./docs/AUTH.md) | JWT, WeChat login, actors |
+| [docs/LLM.md](./docs/LLM.md) | Hunyuan + Qwen configuration |
+| [docs/TRAVEL_GUIDE_MAP.md](./docs/TRAVEL_GUIDE_MAP.md) | Amap integration |
+| [../sync-app/docs/API.md](../sync-app/docs/API.md) | Full API contract |
+| [docs/archive/](./docs/archive/) | Historical migration notes |
+
+## License
+
+UNLICENSED — private project.
