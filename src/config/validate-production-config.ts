@@ -3,12 +3,20 @@ import type { ConfigService } from '@nestjs/config';
 const DEV_JWT_SECRET = 'sync-dev-jwt-secret-change-me';
 const MIN_JWT_SECRET_LENGTH = 32;
 
-export function validateProductionConfig(config: ConfigService): void {
+export type ProductionConfigValidationResult = {
+  errors: string[];
+  warnings: string[];
+};
+
+export function validateProductionConfig(
+  config: ConfigService,
+): ProductionConfigValidationResult {
   if (process.env.NODE_ENV !== 'production') {
-    return;
+    return { errors: [], warnings: [] };
   }
 
   const errors: string[] = [];
+  const warnings: string[] = [];
 
   const jwtSecret = config.get<string>('auth.jwtSecret')?.trim() ?? '';
   if (!jwtSecret || jwtSecret === DEV_JWT_SECRET) {
@@ -33,14 +41,16 @@ export function validateProductionConfig(config: ConfigService): void {
 
   const corsOrigins = config.get<string[]>('cors.origins');
   if (!corsOrigins?.length) {
-    errors.push(
-      'CORS_ORIGINS should be set for production H5 (comma-separated)',
+    warnings.push(
+      'CORS_ORIGINS is unset — OK for WeChat mini program (callContainer); set comma-separated HTTPS origins if you ship H5',
     );
   }
 
-  if (errors.length) {
-    throw new Error(
-      `Production configuration invalid:\n${errors.map((e) => `  - ${e}`).join('\n')}`,
-    );
-  }
+  return { errors, warnings };
+}
+
+export function formatProductionConfigFailure(
+  result: ProductionConfigValidationResult,
+): string {
+  return `Production configuration invalid:\n${result.errors.map((e) => `  - ${e}`).join('\n')}`;
 }

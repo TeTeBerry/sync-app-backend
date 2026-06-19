@@ -14,7 +14,10 @@ import {
   resolveCorsOptions,
 } from './common/cors/cors-config.util';
 import { isLegacyLocalUploadEnabled } from './common/media/local-upload.util';
-import { validateProductionConfig } from './config/validate-production-config';
+import {
+  validateProductionConfig,
+  formatProductionConfigFailure,
+} from './config/validate-production-config';
 import { ConfigService } from '@nestjs/config';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -52,7 +55,13 @@ async function bootstrap() {
     }),
   );
 
-  validateProductionConfig(app.get(ConfigService));
+  const productionConfig = validateProductionConfig(app.get(ConfigService));
+  for (const warning of productionConfig.warnings) {
+    logger.warn(`⚠️  ${warning}`);
+  }
+  if (productionConfig.errors.length) {
+    throw new Error(formatProductionConfigFailure(productionConfig));
+  }
 
   // 全局过滤器 & 拦截器（你原有的，保留！更规范）
   app.useGlobalFilters(new HttpExceptionFilter());
@@ -91,4 +100,18 @@ async function bootstrap() {
     process.exit(1);
   }
 }
-bootstrap();
+
+bootstrap().catch((error: unknown) => {
+  const logger = new Logger('Bootstrap');
+  const message =
+    error instanceof Error && error.message.trim()
+      ? error.message.trim()
+      : String(error);
+  logger.error(`❌ 服务启动失败: ${message}`);
+  if (message.includes('JWT_SECRET')) {
+    logger.error(
+      '云托管请在「环境变量」将 JWT_SECRET 设为至少 32 位的随机字符串后重新部署',
+    );
+  }
+  process.exit(1);
+});

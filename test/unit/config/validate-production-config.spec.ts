@@ -1,4 +1,13 @@
-import { validateProductionConfig } from '../../../src/config/validate-production-config';
+import {
+  formatProductionConfigFailure,
+  validateProductionConfig,
+} from '../../../src/config/validate-production-config';
+
+function mockConfig(values: Record<string, unknown>) {
+  return {
+    get: (key: string) => values[key],
+  } as never;
+}
 
 describe('validateProductionConfig', () => {
   const originalEnv = process.env.NODE_ENV;
@@ -9,26 +18,45 @@ describe('validateProductionConfig', () => {
 
   it('skips validation outside production', () => {
     process.env.NODE_ENV = 'development';
-    expect(() =>
-      validateProductionConfig({
-        get: () => undefined,
-      } as never),
-    ).not.toThrow();
+    expect(validateProductionConfig(mockConfig({}))).toEqual({
+      errors: [],
+      warnings: [],
+    });
   });
 
-  it('throws when JWT secret is missing in production', () => {
+  it('reports JWT secret errors in production', () => {
     process.env.NODE_ENV = 'production';
-    expect(() =>
-      validateProductionConfig({
-        get: (key: string) => {
-          if (key === 'auth.jwtSecret') return 'sync-dev-jwt-secret-change-me';
-          if (key === 'auth.wechatMini.appId') return 'wx-test';
-          if (key === 'auth.wechatMini.appSecret') return 'secret';
-          if (key === 'hunyuan.apiKey') return 'hk-test';
-          if (key === 'cors.origins') return ['https://example.com'];
-          return undefined;
-        },
-      } as never),
-    ).toThrow(/JWT_SECRET/);
+    const result = validateProductionConfig(
+      mockConfig({
+        'auth.jwtSecret': 'sync-dev-jwt-secret-change-me',
+        'auth.wechatMini.appId': 'wx-test',
+        'auth.wechatMini.appSecret': 'secret',
+        'hunyuan.apiKey': 'hk-test',
+      }),
+    );
+    expect(result.errors.join('\n')).toMatch(/JWT_SECRET/);
+  });
+
+  it('warns but does not block when CORS_ORIGINS is unset', () => {
+    process.env.NODE_ENV = 'production';
+    const result = validateProductionConfig(
+      mockConfig({
+        'auth.jwtSecret': 'a'.repeat(32),
+        'auth.wechatMini.appId': 'wx-test',
+        'auth.wechatMini.appSecret': 'secret',
+        'hunyuan.apiKey': 'hk-test',
+      }),
+    );
+    expect(result.errors).toEqual([]);
+    expect(result.warnings.join('\n')).toMatch(/CORS_ORIGINS/);
+  });
+
+  it('formats fatal errors for startup logs', () => {
+    expect(
+      formatProductionConfigFailure({
+        errors: ['JWT_SECRET must be at least 32 characters'],
+        warnings: [],
+      }),
+    ).toContain('JWT_SECRET must be at least 32 characters');
   });
 });
