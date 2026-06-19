@@ -19,6 +19,7 @@ import {
 import { PostCommentService } from './application/post-comment.service';
 import { BuddyPostSearchParseService } from './application/buddy-post-search-parse.service';
 import { PostSearchService } from './application/post-search.service';
+import { PostDevMockSeedService } from './application/post-dev-mock-seed.service';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { PostSearchService } from './application/post-search.service';
     PostCommentService,
     BuddyPostSearchParseService,
     PostSearchService,
+    PostDevMockSeedService,
   ],
   exports: [
     PostService,
