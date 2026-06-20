@@ -14,4 +14,11 @@ export class PostReadAdapter implements IPostReadPort {
   listByOwner(actor: RequestActor) {
     return this.postQuery.listByOwner(actor);
   }
+
+  listByOwnerPage(
+    actor: RequestActor,
+    options?: { limit?: number; cursor?: string },
+  ) {
+    return this.postQuery.listByOwnerPage(actor, options);
+  }
 }

@@ -172,6 +172,12 @@ export class PostWriteService {
 
     const listedInFeed = dto.listedInFeed !== false;
 
+    const BODY_PREVIEW_MAX = 280;
+    const bodyPreview =
+      bodyToSave.length > BODY_PREVIEW_MAX
+        ? bodyToSave.slice(0, BODY_PREVIEW_MAX)
+        : '';
+
     assertPostHasNoContactInfo(bodyToSave);
     await assertUserUgcTexts(this.wechatContentSecurity, [
       bodyToSave,
@@ -191,6 +197,7 @@ export class PostWriteService {
       location,
       departureCity,
       body: bodyToSave,
+      bodyPreview,
       tags: dto.tags ?? [],
       status,
       listedInFeed,

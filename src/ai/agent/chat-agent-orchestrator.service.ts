@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ActivityService } from '../../modules/activity/activity.service';
 import {
   AgentLlmService,
@@ -11,6 +12,10 @@ import { shouldRunAgentFirst } from '../policy/chat-turn-policy';
 import { buildAgentLlmMessages } from './agent-context.builder';
 import type { ChatAgentTurnInput, ChatAgentTurnResult } from './agent.types';
 import { ChatAgentToolRegistry } from './chat-agent-tool.registry';
+import {
+  compactToolResultForLlm,
+  getToolResultMaxChars,
+} from './agent-tool-result.util';
 import type { ConversationState } from '../conversation';
 import type { ResolvedChatIntent } from '../intent/chat-intent.types';
 import type { ChatRequestDto } from '../presentation/chat-request.dto';
@@ -19,12 +24,17 @@ const MAX_AGENT_STEPS = 4;
 
 @Injectable()
 export class ChatAgentOrchestratorService {
+  private readonly toolResultMaxChars: number;
+
   constructor(
     private readonly agentLlm: AgentLlmService,
     private readonly toolRegistry: ChatAgentToolRegistry,
     private readonly activityService: ActivityService,
     private readonly djInfoResolver: DjInfoResolverService,
-  ) {}
+    private readonly config: ConfigService,
+  ) {
+    this.toolResultMaxChars = getToolResultMaxChars(config);
+  }
 
   isEnabled(): boolean {
     return this.agentLlm.enabled;
@@ -119,11 +129,7 @@ export class ChatAgentOrchestratorService {
         llmMessages.push({
           role: 'tool',
           tool_call_id: call.id ?? toolName,
-          content: JSON.stringify({
-            ok: result.ok,
-            content: result.content,
-            error: result.error,
-          }),
+          content: compactToolResultForLlm(result, this.toolResultMaxChars),
         });
 
         if (result.terminal) {

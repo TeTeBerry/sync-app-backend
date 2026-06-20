@@ -132,4 +132,11 @@ export class ProfileSummaryService {
   listPosts(actor: RequestActor) {
     return this.postRead.listByOwner(actor);
   }
+
+  async listPostsPage(
+    actor: RequestActor,
+    options?: { limit?: number; cursor?: string },
+  ) {
+    return this.postRead.listByOwnerPage(actor, options);
+  }
 }

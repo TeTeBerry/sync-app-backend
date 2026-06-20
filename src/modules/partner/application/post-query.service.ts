@@ -26,12 +26,12 @@ export class PostQueryService {
 
   async listPopular(limit = 20, actor: RequestActor) {
     const rows = await this.repository.findPopular(limit);
-    return this.mapPosts(rows, PostMapper.toHomeFeedItem, actor);
+    return this.mapPosts(rows, PostMapper.toHomeFeedListItem, actor);
   }
 
   async listByActivity(activityLegacyId: number, actor: RequestActor) {
     const rows = await this.repository.findByActivityLegacyId(activityLegacyId);
-    return this.mapPosts(rows, PostMapper.toEventDetailItem, actor);
+    return this.mapPosts(rows, PostMapper.toEventDetailListItem, actor);
   }
 
   async listByActivityPage(
@@ -60,7 +60,7 @@ export class PostQueryService {
 
     let items = await this.mapPosts(
       pageRows,
-      PostMapper.toEventDetailItem,
+      PostMapper.toEventDetailListItem,
       actor,
     );
 
@@ -95,7 +95,36 @@ export class PostQueryService {
   async listByOwner(actor: RequestActor) {
     const filter = resolveOwnerFilterFromActor(actor);
     const rows = await this.repository.findByOwner(filter);
-    return rows.map((row) => PostMapper.toProfileItem(row));
+    return rows.map((row) => PostMapper.toProfileListItem(row));
+  }
+
+  async listByOwnerPage(
+    actor: RequestActor,
+    options?: { limit?: number; cursor?: string },
+  ) {
+    const filter = resolveOwnerFilterFromActor(actor);
+    const limit = clampActivityPostsLimit(options?.limit);
+    const decodedCursor = options?.cursor
+      ? decodePostCursor(options.cursor)
+      : null;
+    if (options?.cursor && !decodedCursor) {
+      throw new BadRequestException('无效的分页游标');
+    }
+
+    const rows = await this.repository.findByOwnerPage(filter, {
+      limit: limit + 1,
+      cursor: decodedCursor,
+    });
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+
+    const items = pageRows.map((row) => PostMapper.toProfileListItem(row));
+    const nextCursor =
+      hasMore && pageRows.length > 0
+        ? encodePostCursor(pageRows[pageRows.length - 1])
+        : undefined;
+
+    return { items, nextCursor, hasMore };
   }
 
   findPostById(id: string): Promise<PostRecord | null> {

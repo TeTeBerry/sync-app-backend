@@ -34,6 +34,10 @@ export class Post {
   @Prop({ required: true })
   body: string;
 
+  /** 列表摘要：正文前 280 字符，避免列表接口返回全文 body */
+  @Prop({ default: '' })
+  bodyPreview: string;
+
   @Prop({ type: [String], default: [] })
   tags: string[];
 
@@ -58,3 +62,10 @@ PostSchema.index({ activityLegacyId: 1, createdAt: -1 });
 PostSchema.index({ activityLegacyId: 1, status: 1, departureCity: 1 });
 PostSchema.index({ activityLegacyId: 1, status: 1, createdAt: -1 });
 PostSchema.index({ status: 1, createdAt: -1 });
+/** Index audit: compound index for activity feed with listedInFeed filter */
+PostSchema.index(
+  { activityLegacyId: 1, listedInFeed: 1, status: 1, createdAt: -1, _id: -1 },
+  { name: 'activity_feed_compound' },
+);
+/** Index audit: owner list sorted by createdAt */
+PostSchema.index({ userId: 1, createdAt: -1 });

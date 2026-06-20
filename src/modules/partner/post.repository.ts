@@ -84,6 +84,27 @@ export class PostRepository implements IPostRepository {
       .lean();
   }
 
+  async findByOwnerPage(
+    filter: PostQueryFilter,
+    options: { limit: number; cursor?: PostPageCursor | null },
+  ): Promise<PostRecord[]> {
+    const query = buildOwnerFilter(filter);
+    if (options.cursor) {
+      (query as Record<string, unknown>).$or = [
+        { createdAt: { $lt: options.cursor.createdAt } },
+        {
+          createdAt: options.cursor.createdAt,
+          _id: { $lt: options.cursor.id },
+        },
+      ];
+    }
+    return this.model
+      .find(query)
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(options.limit)
+      .lean();
+  }
+
   async findById(id: string): Promise<PostRecord | null> {
     return this.model.findById(id).lean();
   }

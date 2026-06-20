@@ -160,6 +160,24 @@ export class TravelGuideGenerationService {
       return guideId ? { plan: cachedPlan, guideId } : { plan: cachedPlan };
     }
 
+    // Fuzzy cache: try similar params before generating
+    const fuzzyPlan = await this.generationCache.findSimilarPlan(cacheParams);
+    if (fuzzyPlan) {
+      this.userProfileSync.applyTravelGuideHints(actor, {
+        departure: dto.departure,
+        departureCity: dto.departureCity,
+        budgetTier: dto.budgetTier,
+      });
+      const guideId = await this.persistSavedPlanIfRequested(
+        dto,
+        accommodationNights,
+        actor.resolvedUserId,
+        activityLegacyId,
+        fuzzyPlan,
+      );
+      return guideId ? { plan: fuzzyPlan, guideId } : { plan: fuzzyPlan };
+    }
+
     await this.travelGuideGuard.assertCanGenerate(
       actor.resolvedUserId,
       activityLegacyId,
@@ -172,7 +190,9 @@ export class TravelGuideGenerationService {
       accommodationNights,
     );
     if (!lockAcquired) {
-      const racingPlan = await this.generationCache.findPlan(cacheKey);
+      const racingPlan =
+        (await this.generationCache.findPlan(cacheKey)) ??
+        (await this.generationCache.findSimilarPlan(cacheParams));
       if (racingPlan) {
         const guideId = await this.persistSavedPlanIfRequested(
           dto,

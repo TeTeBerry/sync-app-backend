@@ -37,6 +37,44 @@ export function normalizeTravelGuideGenerationParams(
 /** Bump when map POI / venue resolution logic changes (invalidates cached plans). */
 const TRAVEL_GUIDE_MAP_DATA_VERSION = 2;
 
+/**
+ * Normalize params for fuzzy matching.
+ * - headcount: bucketed to nearest 5 (±2 tolerance when matching)
+ * - accommodationNights: allow ±1
+ * - departure / departureCity: exact match (already normalized)
+ */
+export function normalizeFuzzyTravelGuideParams(
+  params: TravelGuideGenerationCacheParams,
+): TravelGuideGenerationCacheParams {
+  return {
+    ...params,
+    /** bucket headcount to nearest 5 for fuzzy grouping */
+    headcount: Math.max(1, Math.round(params.headcount / 5) * 5),
+  };
+}
+
+/**
+ * Check if two cache param sets are "fuzzy" equivalent.
+ * - exact: activityLegacyId, budgetTier, selfDrive
+ * - departure: exact string match (already normalized via normalizeDepartureCityLabel)
+ * - headcount: |a - b| <= 2
+ * - accommodationNights: |a - b| <= 1
+ */
+export function isFuzzyTravelGuideParamsMatch(
+  exact: TravelGuideGenerationCacheParams,
+  candidate: TravelGuideGenerationCacheParams,
+): boolean {
+  if (exact.activityLegacyId !== candidate.activityLegacyId) return false;
+  if (exact.budgetTier !== candidate.budgetTier) return false;
+  if (exact.selfDrive !== candidate.selfDrive) return false;
+  if (exact.departure !== candidate.departure) return false;
+  if (exact.departureCity !== candidate.departureCity) return false;
+  if (Math.abs(exact.headcount - candidate.headcount) > 2) return false;
+  if (Math.abs(exact.accommodationNights - candidate.accommodationNights) > 1)
+    return false;
+  return true;
+}
+
 export function buildTravelGuideGenerationCacheKey(
   params: TravelGuideGenerationCacheParams,
 ): string {

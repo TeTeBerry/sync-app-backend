@@ -7,7 +7,11 @@ import {
   TravelGuideGenerationCacheDocument,
 } from '../../database/schemas/travel-guide-generation-cache.schema';
 import type { TravelGuidePlan } from './domain/travel-guide.types';
-import type { TravelGuideGenerationCacheParams } from './domain/travel-guide-generation-cache.util';
+import {
+  buildTravelGuideGenerationCacheKey,
+  type TravelGuideGenerationCacheParams,
+  isFuzzyTravelGuideParamsMatch,
+} from './domain/travel-guide-generation-cache.util';
 
 @Injectable()
 export class TravelGuideGenerationCacheService {
@@ -59,5 +63,38 @@ export class TravelGuideGenerationCacheService {
     this.logger.debug(
       `travel guide cached activity=${activityLegacyId} key=${cacheKey.slice(0, 8)} ttlSec=${this.generationTtlSec}`,
     );
+  }
+
+  /**
+   * Fuzzy lookup: scan recent cache entries for the same activityLegacyId
+   * and return the first one whose params pass isFuzzyTravelGuideParamsMatch.
+   */
+  async findSimilarPlan(
+    exactParams: TravelGuideGenerationCacheParams,
+    maxCandidates = 15,
+  ): Promise<TravelGuidePlan | null> {
+    const now = new Date();
+    const docs = await this.model
+      .find({
+        activityLegacyId: exactParams.activityLegacyId,
+        $or: [{ expiresAt: { $gt: now } }, { expiresAt: { $exists: false } }],
+      })
+      .sort({ createdAt: -1 })
+      .limit(maxCandidates)
+      .lean()
+      .exec();
+
+    for (const doc of docs) {
+      const candidate = doc.requestParams as TravelGuideGenerationCacheParams;
+      if (isFuzzyTravelGuideParamsMatch(exactParams, candidate)) {
+        this.logger.log(
+          `travel guide fuzzy hit activity=${exactParams.activityLegacyId} ` +
+            `exact=${buildTravelGuideGenerationCacheKey(exactParams).slice(0, 8)} ` +
+            `fuzzy=${doc.cacheKey.slice(0, 8)}`,
+        );
+        return doc.plan as TravelGuidePlan;
+      }
+    }
+    return null;
   }
 }

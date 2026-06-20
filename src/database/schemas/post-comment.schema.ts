@@ -23,3 +23,13 @@ export class PostComment {
 }
 
 export const PostCommentSchema = SchemaFactory.createForClass(PostComment);
+/** Index audit: compound index for top-level comment pagination */
+PostCommentSchema.index(
+  { postId: 1, createdAt: 1, _id: 1 },
+  { name: 'post_comment_pagination' },
+);
+/** Index audit: compound index for reply lookup */
+PostCommentSchema.index(
+  { postId: 1, parentCommentId: 1, createdAt: 1 },
+  { name: 'post_comment_replies' },
+);

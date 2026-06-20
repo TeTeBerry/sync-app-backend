@@ -24,6 +24,10 @@ export interface IPostRepository {
     options: { limit: number; cursor?: PostPageCursor | null },
   ): Promise<PostRecord[]>;
   findByOwner(filter: PostQueryFilter): Promise<PostRecord[]>;
+  findByOwnerPage(
+    filter: PostQueryFilter,
+    options: { limit: number; cursor?: PostPageCursor | null },
+  ): Promise<PostRecord[]>;
   findById(id: string): Promise<PostRecord | null>;
   findByIds(ids: string[]): Promise<PostRecord[]>;
   create(data: Partial<PostRecord>): Promise<PostRecord>;

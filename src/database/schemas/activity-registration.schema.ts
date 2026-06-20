@@ -25,3 +25,8 @@ ActivityRegistrationSchema.index(
   { userId: 1, activityLegacyId: 1 },
   { unique: true },
 );
+/** Index audit: compound index for owner list sorted by createdAt */
+ActivityRegistrationSchema.index(
+  { userId: 1, createdAt: -1 },
+  { name: 'registration_owner_list' },
+);

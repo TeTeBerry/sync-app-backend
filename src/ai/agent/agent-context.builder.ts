@@ -2,8 +2,9 @@ import type { ChatMessageDto } from '../../shared/chat';
 import type { Activity } from '../../database/schemas/activity.schema';
 import type { ConversationState } from '../conversation';
 import type { OpenAiChatMessage } from './agent-llm.service';
+import { CHAT_LLM_CONTEXT_TURNS } from '../../modules/chat/chat.service';
 
-const CONTEXT_TURNS = 8;
+const CONTEXT_TURNS = CHAT_LLM_CONTEXT_TURNS;
 
 export function buildAgentSessionContext(params: {
   activity?: Activity | null;
@@ -20,15 +21,25 @@ export function buildAgentSessionContext(params: {
         ].join('\n')
       : '当前未绑定具体活动（首页或未选活动场景）。';
 
+  const activeTask = params.conversationState.activeTask;
+  let taskLine = '';
+  if (activeTask?.kind === 'travel_guide') {
+    const s = activeTask.travelGuide;
+    const filled = [
+      s.departure && `出发地=${s.departure}`,
+      s.headcount != null && `人数=${s.headcount}`,
+      s.budgetTier && `预算=${s.budgetTier}`,
+    ].filter(Boolean);
+    taskLine = `- activeTask: travel_guide [${filled.join('; ')}]`;
+  } else if (activeTask?.kind === 'itinerary') {
+    const s = activeTask.itinerary;
+    taskLine = `- activeTask: itinerary [dj=${s.selectedDjIds?.length ?? 0}个]`;
+  }
+
   return [
     '【会话状态】',
     `- flow: ${params.conversationState.flow}`,
-    params.conversationState.activeTask?.kind === 'travel_guide'
-      ? `- activeTask: travel_guide slots=${JSON.stringify(params.conversationState.activeTask.travelGuide)}`
-      : '',
-    params.conversationState.activeTask?.kind === 'itinerary'
-      ? `- activeTask: itinerary slots=${JSON.stringify(params.conversationState.activeTask.itinerary)}`
-      : '',
+    taskLine,
     '',
     activityBlock,
   ]
@@ -57,10 +68,14 @@ export function buildAgentLlmMessages(params: {
     if (message.role !== 'user' && message.role !== 'assistant') {
       continue;
     }
-    const content = message.content?.trim();
-    if (!content) {
+    const rawContent = message.content?.trim();
+    if (!rawContent) {
       continue;
     }
+    const content =
+      rawContent.length > 1200
+        ? rawContent.slice(0, 1200) + '…[截断]'
+        : rawContent;
     llmMessages.push({ role: message.role, content });
   }
 
