@@ -60,7 +60,6 @@
     "smoke:ws:wait": "node scripts/wait-for-port.mjs localhost 3000 90000 API && node scripts/smoke-ai-ws.mjs"
   },
   "dependencies": {
-    "@langchain/community": "^0.2.10",
     "@langchain/core": "^0.2.10",
     "@nestjs/common": "^10.4.15",
     "@nestjs/config": "^3.3.0",

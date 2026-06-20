@@ -52,9 +52,9 @@ export default () => ({
       cleanEnv(process.env.HUNYUAN_TRAVEL_GUIDE_LLM_TIMEOUT_MS, '25000'),
       10,
     ),
-    /** 设为 false 可跳过 LLM，直接返回地图模板（最快） */
+    /** 设为 true 启用 LLM 润色；默认 false 以降低攻略生成尾延迟 */
     travelGuideLlmPolishEnabled:
-      cleanEnv(process.env.TRAVEL_GUIDE_LLM_POLISH_ENABLED, 'true') !== 'false',
+      cleanEnv(process.env.TRAVEL_GUIDE_LLM_POLISH_ENABLED, 'false') === 'true',
   },
 
   chroma: {
@@ -296,6 +296,17 @@ export default () => ({
         10,
       ),
     },
+  },
+
+  bff: {
+    homeSummaryTtlSec: parseInt(
+      cleanEnv(process.env.BFF_HOME_SUMMARY_TTL_SEC, '45'),
+      10,
+    ),
+    festivalPlanTtlSec: parseInt(
+      cleanEnv(process.env.BFF_FESTIVAL_PLAN_TTL_SEC, '60'),
+      10,
+    ),
   },
 
   catalog: {

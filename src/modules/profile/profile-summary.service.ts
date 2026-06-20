@@ -108,23 +108,23 @@ export class ProfileSummaryService {
       await this.registrationRepository.findByOwner(filter)
     ).filter((registration) => registration.activityLegacyId !== 3);
 
-    const items = await Promise.all(
-      registrations.map(async (registration) => {
-        const activity = await this.activityLookup.findByLegacyId(
-          registration.activityLegacyId,
-        );
-        const title = activity?.name ?? `活动 ${registration.activityLegacyId}`;
-        const date = activity?.date ?? '';
-        return {
-          id: String(registration.activityLegacyId),
-          title,
-          date,
-          location: activity?.location ?? '',
-          image: activity?.image ?? '',
-          status: resolveProfileActivityStatus(date, title),
-        };
-      }),
+    const activityMap = await this.activityLookup.findByLegacyIds(
+      registrations.map((registration) => registration.activityLegacyId),
     );
+
+    const items = registrations.map((registration) => {
+      const activity = activityMap.get(registration.activityLegacyId);
+      const title = activity?.name ?? `活动 ${registration.activityLegacyId}`;
+      const date = activity?.date ?? '';
+      return {
+        id: String(registration.activityLegacyId),
+        title,
+        date,
+        location: activity?.location ?? '',
+        image: activity?.image ?? '',
+        status: resolveProfileActivityStatus(date, title),
+      };
+    });
 
     return items.sort(compareActivityDateDesc);
   }

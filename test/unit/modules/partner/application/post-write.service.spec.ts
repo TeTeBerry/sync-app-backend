@@ -9,6 +9,7 @@ import type { IPostNotificationPort } from '@src/modules/partner/ports/post-noti
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
 import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
 import type { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
+import type { BffReadCacheInvalidationService } from '@src/infra/cache/bff-read-cache.service';
 import type { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
 
 jest.mock('chromadb', () => require('../../../../mocks/chromadb'));
@@ -56,6 +57,11 @@ describe('PostWriteService', () => {
     isEnabled: jest.fn().mockReturnValue(true),
   } as unknown as WechatContentSecurityService;
 
+  const bffCacheInvalidation = {
+    invalidateHomeForUser: jest.fn().mockResolvedValue(undefined),
+    invalidateFestivalPlanForUser: jest.fn().mockResolvedValue(undefined),
+  } as unknown as BffReadCacheInvalidationService;
+
   let service: PostWriteService;
 
   beforeEach(() => {
@@ -72,6 +78,7 @@ describe('PostWriteService', () => {
       postNotification,
       postModeration,
       wechatContentSecurity,
+      bffCacheInvalidation,
     );
   });
 

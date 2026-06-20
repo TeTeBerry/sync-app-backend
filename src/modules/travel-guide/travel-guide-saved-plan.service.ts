@@ -8,6 +8,7 @@ import {
 } from '../../database/schemas/travel-guide-saved-plan.schema';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
 import type { TravelGuidePlan } from './domain/travel-guide.types';
+import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cache.service';
 
 export type TravelGuideSavedPlanView = {
   guideId: string;
@@ -25,6 +26,7 @@ export class TravelGuideSavedPlanService {
     @InjectModel(TravelGuideSavedPlan.name)
     private readonly model: Model<TravelGuideSavedPlanDocument>,
     config: ConfigService,
+    private readonly bffCacheInvalidation: BffReadCacheInvalidationService,
   ) {
     this.ttlSec =
       config.get<number>('travelGuide.savedPlanTtlSec') ?? 2_592_000;
@@ -57,6 +59,11 @@ export class TravelGuideSavedPlanService {
         },
       },
       { upsert: true },
+    );
+
+    await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
+      ownerUserId,
+      activityLegacyId,
     );
   }
 

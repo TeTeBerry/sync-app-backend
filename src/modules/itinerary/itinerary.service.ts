@@ -12,6 +12,7 @@ import {
 } from '../../database/schemas/user-itinerary.schema';
 import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
+import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cache.service';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import type { ItineraryDay } from '../../database/schemas/user-itinerary.schema';
 import type { SaveItineraryDto } from './dto/save-itinerary.dto';
@@ -26,6 +27,7 @@ export class ItineraryService {
     private readonly scheduleService: ItineraryScheduleService,
     private readonly generationService: ItineraryGenerationService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
+    private readonly bffCacheInvalidation: BffReadCacheInvalidationService,
   ) {}
 
   getSchedule(
@@ -107,6 +109,11 @@ export class ItineraryService {
     const savedAt =
       (doc as { updatedAt?: Date }).updatedAt?.toISOString() ??
       new Date().toISOString();
+
+    await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
+      actor.resolvedUserId,
+      activityLegacyId,
+    );
 
     return {
       ok: true as const,

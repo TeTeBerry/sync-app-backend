@@ -77,6 +77,20 @@ export class ActivityLookupService
     return this.cache.byLegacyId.get(legacyId) ?? null;
   }
 
+  async findByLegacyIds(
+    legacyIds: number[],
+  ): Promise<Map<number, ActivityLookupRecord>> {
+    await this.syncIfStale();
+    const map = new Map<number, ActivityLookupRecord>();
+    for (const legacyId of legacyIds) {
+      const record = this.cache.byLegacyId.get(legacyId);
+      if (record) {
+        map.set(legacyId, record);
+      }
+    }
+    return map;
+  }
+
   async findByCode(code: string): Promise<ActivityLookupRecord | null> {
     const normalized = code.toLowerCase().trim();
     if (!normalized) {

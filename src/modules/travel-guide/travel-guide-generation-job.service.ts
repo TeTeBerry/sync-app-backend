@@ -23,6 +23,7 @@ import {
   normalizeTravelGuideGenerationParams,
 } from './domain/travel-guide-generation-cache.util';
 import { TravelGuideGenerationService } from './travel-guide-generation.service';
+import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cache.service';
 
 const JOB_TTL_MS = 60 * 60 * 1000;
 const ACTIVE_JOB_STATUSES: TravelGuideGenerationJobStatus[] = [
@@ -46,6 +47,7 @@ export class TravelGuideGenerationJobService {
     private readonly model: Model<TravelGuideGenerationJobDocument>,
     private readonly generationService: TravelGuideGenerationService,
     private readonly activityService: ActivityService,
+    private readonly bffCacheInvalidation: BffReadCacheInvalidationService,
   ) {}
 
   async createJob(
@@ -154,6 +156,10 @@ export class TravelGuideGenerationJobService {
       await this.model.updateOne(
         { jobId },
         { $set: { status: 'completed', plan, errorMessage: undefined } },
+      );
+      await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
+        actor.resolvedUserId,
+        activityLegacyId,
       );
     } catch (error) {
       const message = formatTravelGuideJobError(error);

@@ -5,16 +5,45 @@ import {
 } from '../conversation';
 import type { ResolvedChatIntent } from '../intent/chat-intent.types';
 
-/** Chip / exact submit labels aligned with sync-app `aiCtaLabels` + capability discovery. */
+/** Chip / exact submit labels aligned with sync-app `aiCtaLabels` + labelAliases. */
 export const LINEUP_OVERVIEW_FAST_PATH_INPUTS = new Set([
   '查阵容',
   '阵容',
   '艺人名单',
+  'Lineup info',
 ]);
 
-export const TRAVEL_GUIDE_SHEET_FAST_PATH_INPUTS = new Set(['生成出行攻略']);
+export const TRAVEL_GUIDE_SHEET_FAST_PATH_INPUTS = new Set([
+  '生成出行攻略',
+  'Generate travel guide',
+]);
 
-export const ITINERARY_SHEET_FAST_PATH_INPUTS = new Set(['生成专属行程']);
+export const ITINERARY_SHEET_FAST_PATH_INPUTS = new Set([
+  '生成专属行程',
+  'Build my itinerary',
+]);
+
+export const BUDDY_POST_FAST_PATH_INPUTS = new Set([
+  '组队发帖',
+  'Post buddy thread',
+]);
+
+export const PERSONALITY_TEST_FAST_PATH_INPUTS = new Set([
+  '开始人格测试',
+  'Start persona test',
+]);
+
+export const NEAR_EVENTS_FAST_PATH_INPUTS = new Set([
+  '最近有什么活动',
+  'Events coming up',
+  '查最近活动',
+  'Show nearby events',
+]);
+
+export const PICK_FESTIVAL_FAST_PATH_INPUTS = new Set([
+  '选一场电音节',
+  'Pick a festival',
+]);
 
 export type ReadOnlyFastPathKind =
   | 'lineup'
@@ -43,6 +72,10 @@ export function isTravelGuideSheetFastPathInput(input: string): boolean {
 
 export function isItinerarySheetFastPathInput(input: string): boolean {
   return ITINERARY_SHEET_FAST_PATH_INPUTS.has(input.trim());
+}
+
+export function isBuddyPostFastPathInput(input: string): boolean {
+  return BUDDY_POST_FAST_PATH_INPUTS.has(input.trim());
 }
 
 export function isScheduleOverviewFastPathInput(input: string): boolean {
@@ -102,6 +135,18 @@ export function resolveReadOnlyActivityFastPath(
     };
   }
 
+  if (isBuddyPostFastPathInput(trimmed)) {
+    return { kind: 'create_post', source: 'rule' };
+  }
+
+  if (
+    PERSONALITY_TEST_FAST_PATH_INPUTS.has(trimmed) ||
+    NEAR_EVENTS_FAST_PATH_INPUTS.has(trimmed) ||
+    PICK_FESTIVAL_FAST_PATH_INPUTS.has(trimmed)
+  ) {
+    return { kind: 'quick_reply', source: 'rule' };
+  }
+
   return null;
 }
 
@@ -112,6 +157,9 @@ export function shouldBypassAgentForReadOnlyFastPath(
     return true;
   }
   if (routed?.kind === 'quick_reply' && routed.source === 'rule') {
+    return true;
+  }
+  if (routed?.kind === 'create_post' && routed.source === 'rule') {
     return true;
   }
   return routed?.kind === 'dj_info' && routed.source === 'rule';

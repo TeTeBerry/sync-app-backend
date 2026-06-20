@@ -17,6 +17,9 @@ export interface ActivityLookupPageOptions {
 export interface IActivityLookupPort {
   findAll(): Promise<ActivityLookupRecord[]>;
   findByLegacyId(legacyId: number): Promise<ActivityLookupRecord | null>;
+  findByLegacyIds(
+    legacyIds: number[],
+  ): Promise<Map<number, ActivityLookupRecord>>;
   findByCode(code: string): Promise<ActivityLookupRecord | null>;
   findPage(options?: ActivityLookupPageOptions): Promise<ActivityListPage>;
   refreshCache(): Promise<void>;

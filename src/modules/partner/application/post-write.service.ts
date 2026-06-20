@@ -39,6 +39,7 @@ import {
   collectPostWriteUgcTexts,
 } from '../../../common/media/user-ugc-text.util';
 import { assertPostHasNoContactInfo } from '../utils/post-contact.util';
+import { BffReadCacheInvalidationService } from '../../../infra/cache/bff-read-cache.service';
 import { WechatContentSecurityService } from '../../auth/wechat-content-security.service';
 
 @Injectable()
@@ -58,6 +59,7 @@ export class PostWriteService {
     @Inject(POST_MODERATION_PORT)
     private readonly postModeration: IPostModerationPort,
     private readonly wechatContentSecurity: WechatContentSecurityService,
+    private readonly bffCacheInvalidation: BffReadCacheInvalidationService,
   ) {}
 
   private async toCreatedEventDetailItem(
@@ -202,6 +204,14 @@ export class PostWriteService {
       departureCity,
       tags: dto.tags,
     });
+
+    if (activityLegacyId != null) {
+      await this.bffCacheInvalidation.invalidateHomeForUser(ownerUserId);
+      await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
+        ownerUserId,
+        activityLegacyId,
+      );
+    }
 
     if (status === 'hidden') {
       void this.postNotification.notifyPostHidden(

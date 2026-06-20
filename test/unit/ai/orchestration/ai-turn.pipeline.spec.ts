@@ -7,8 +7,10 @@ jest.mock('@langchain/core/documents', () =>
 jest.mock('@langchain/core/messages', () =>
   require('../../../mocks/langchain-messages'),
 );
-jest.mock('@langchain/community/chat_models/alibaba_tongyi', () =>
-  require('../../../mocks/alibaba-tongyi'),
+jest.mock(
+  '@langchain/community/chat_models/alibaba_tongyi',
+  () => require('../../../mocks/alibaba-tongyi'),
+  { virtual: true },
 );
 jest.mock('@src/infra/llm/llm.service', () => ({
   LlmService: mockLlmService,

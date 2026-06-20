@@ -11,6 +11,7 @@ import {
   ACTIVITY_REGISTRATION_REPOSITORY,
   IActivityRegistrationRepository,
 } from './interfaces/activity-registration.repository.interface';
+import { BffReadCacheInvalidationService } from '../../../infra/cache/bff-read-cache.service';
 
 function resolveActorAuthorName(
   actor: RequestActor,
@@ -45,6 +46,7 @@ export class ActivityRegistrationService {
     private readonly activityLookup: IActivityLookupPort,
     private readonly activityService: ActivityService,
     private readonly userService: UserService,
+    private readonly bffCacheInvalidation: BffReadCacheInvalidationService,
   ) {}
 
   async register(
@@ -99,6 +101,12 @@ export class ActivityRegistrationService {
     await this.activityService.syncAttendeeCounts([legacyId]);
     const refreshed = await this.activityLookup.findByLegacyId(legacyId);
 
+    await this.bffCacheInvalidation.invalidateHomeForUser(actor.resolvedUserId);
+    await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
+      actor.resolvedUserId,
+      legacyId,
+    );
+
     return {
       ok: true,
       activityLegacyId: legacyId,
@@ -139,6 +147,16 @@ export class ActivityRegistrationService {
     }
 
     const refreshed = await this.activityLookup.findByLegacyId(legacyId);
+
+    if (removed) {
+      await this.bffCacheInvalidation.invalidateHomeForUser(
+        actor.resolvedUserId,
+      );
+      await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
+        actor.resolvedUserId,
+        legacyId,
+      );
+    }
 
     return {
       ok: true,

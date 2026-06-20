@@ -6,6 +6,7 @@ import type { RedisService } from '@src/redis/redis.service';
 import type { IPostReadPort } from '@src/modules/partner/ports/post-read.port';
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { NotificationService } from '@src/modules/notification/notification.service';
+import type { HomeSummaryCacheService } from '@src/infra/cache/bff-read-cache.service';
 
 describe('HomeService', () => {
   const activities = [
@@ -55,6 +56,11 @@ describe('HomeService', () => {
     countUnreadPostEngagement: jest.fn(),
   } as unknown as NotificationService;
 
+  const homeSummaryCache = {
+    get: jest.fn(),
+    set: jest.fn(),
+  } as unknown as HomeSummaryCacheService;
+
   let service: HomeService;
 
   beforeEach(() => {
@@ -81,6 +87,8 @@ describe('HomeService', () => {
       people: 150,
       growthPercent: 12,
     });
+    (homeSummaryCache.get as jest.Mock).mockResolvedValue(null);
+    (homeSummaryCache.set as jest.Mock).mockResolvedValue(undefined);
     service = new HomeService(
       activityLookup,
       registrationService,
@@ -88,7 +96,23 @@ describe('HomeService', () => {
       postRead,
       postRepository,
       notificationService,
+      homeSummaryCache,
     );
+  });
+
+  it('returns cached summary without rebuilding when cache hits', async () => {
+    const cached = {
+      signupEvents: [],
+      heat: { people: 1, growthPercent: 0 },
+      popularPosts: [],
+      myNextEventPostEngagement: null,
+    };
+    (homeSummaryCache.get as jest.Mock).mockResolvedValue(cached);
+
+    const result = await service.getSummary(toRequestActor('user-1', 'Berry'));
+
+    expect(result).toEqual(cached);
+    expect(activityLookup.findAll).not.toHaveBeenCalled();
   });
 
   it('returns heat and signup events with going flags', async () => {

@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
+import { HomeSummaryCacheService } from '../../infra/cache/bff-read-cache.service';
 import { RedisService } from '../../redis/redis.service';
 import {
   ACTIVITY_LOOKUP_PORT,
@@ -39,9 +40,26 @@ export class HomeService {
     @Inject(POST_REPOSITORY)
     private readonly postRepository: IPostRepository,
     private readonly notificationService: NotificationService,
+    private readonly homeSummaryCache: HomeSummaryCacheService,
   ) {}
 
   async getSummary(actor: RequestActor) {
+    const userId = actor.resolvedUserId?.trim();
+    if (userId) {
+      const cached = await this.homeSummaryCache.get(userId);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    const summary = await this.buildSummary(actor);
+    if (userId) {
+      await this.homeSummaryCache.set(userId, summary);
+    }
+    return summary;
+  }
+
+  private async buildSummary(actor: RequestActor) {
     const [activities, registeredLegacyIds, popularPosts] = await Promise.all([
       this.activityLookup.findAll(),
       this.registrationService.listRegisteredLegacyIds(actor),
