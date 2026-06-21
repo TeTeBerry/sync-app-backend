@@ -73,6 +73,14 @@ export interface ArtistPerformanceHit {
   genreLabel: string;
 }
 
+export interface CatalogLineupArtistDto {
+  id: string;
+  name: string;
+  genreLabel: string;
+  activityCount: number;
+  thumbnail?: string;
+}
+
 export interface ItineraryScheduleDto {
   activityLegacyId: number;
   eventMeta: string;
@@ -437,6 +445,84 @@ export class ItineraryScheduleService implements OnModuleInit {
     return [...byName.values()];
   }
 
+  /**
+   * Unique lineup artists across all activities in the catalog, ranked by
+   * how many activities each artist appears on.
+   */
+  async listCatalogLineupArtistsRanked(): Promise<CatalogLineupArtistDto[]> {
+    const activities = await this.activityLookup.findAll();
+    if (!activities.length) {
+      return [];
+    }
+
+    const legacyIds = activities.map((activity) => activity.legacyId);
+    const performances = await this.performanceModel
+      .find({ activityLegacyId: { $in: legacyIds } })
+      .select('activityLegacyId artistName genreLabel')
+      .lean()
+      .exec();
+
+    const byArtist = new Map<
+      string,
+      {
+        artistName: string;
+        genreLabel: string;
+        activityIds: Set<number>;
+      }
+    >();
+
+    for (const activity of activities) {
+      for (const artist of this.collectLineupArtistsForActivity(
+        activity.legacyId,
+        performances,
+      )) {
+        const key = artist.artistName.trim().toLowerCase();
+        if (!key) {
+          continue;
+        }
+        let entry = byArtist.get(key);
+        if (!entry) {
+          entry = {
+            artistName: artist.artistName.trim(),
+            genreLabel: artist.genreLabel,
+            activityIds: new Set<number>(),
+          };
+          byArtist.set(key, entry);
+        }
+        entry.activityIds.add(activity.legacyId);
+      }
+    }
+
+    if (!byArtist.size) {
+      return [];
+    }
+
+    const artistNames = [...byArtist.values()].map((entry) => entry.artistName);
+    const catalogByLineupName =
+      await this.djService.lookupForLineupArtists(artistNames);
+
+    const ranked = [...byArtist.values()].map((entry) => {
+      const catalog = catalogByLineupName.get(entry.artistName);
+      const genreLabel = catalog
+        ? formatDiscogsStyleLabel(catalog)
+        : entry.genreLabel;
+      return {
+        id: this.artistIdFromName(entry.artistName),
+        name: entry.artistName,
+        genreLabel,
+        activityCount: entry.activityIds.size,
+        thumbnail: catalog?.thumbnail,
+      };
+    });
+
+    return ranked.sort((a, b) => {
+      if (b.activityCount !== a.activityCount) {
+        return b.activityCount - a.activityCount;
+      }
+      return a.name.localeCompare(b.name, 'zh');
+    });
+  }
+
   /** Find activities where an artist appears on the announced lineup (not timetable-only). */
   async findArtistLineupMemberships(params: {
     artistName: string;
@@ -745,5 +831,15 @@ export class ItineraryScheduleService implements OnModuleInit {
       endTime: p.endTime,
       stageLabel: p.stageLabel,
     }));
+  }
+
+  private artistIdFromName(name: string): string {
+    return name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/&/g, 'and')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
   }
 }

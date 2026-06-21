@@ -324,4 +324,12 @@ export default () => ({
       ttlSec: parseInt(cleanEnv(process.env.CATALOG_DJ_TTL_SEC, '86400'), 10),
     },
   },
+
+  audioDb: {
+    apiKey: cleanEnv(process.env.AUDIO_DB_API_KEY, '123'),
+    requestDelayMs: parseInt(
+      cleanEnv(process.env.AUDIO_DB_REQUEST_DELAY_MS, '350'),
+      10,
+    ),
+  },
 });

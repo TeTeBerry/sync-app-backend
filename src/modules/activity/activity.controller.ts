@@ -12,6 +12,7 @@ import {
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import { Public } from '../../common/auth/public.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
+import { ItineraryScheduleService } from '../itinerary/itinerary-schedule.service';
 import { ActivityRegistrationService } from './registration/activity-registration.service';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ActivityService } from './activity.service';
@@ -23,6 +24,7 @@ export class ActivityController {
     private readonly activityService: ActivityService,
     private readonly activityLookup: ActivityLookupService,
     private readonly registrationService: ActivityRegistrationService,
+    private readonly itineraryScheduleService: ItineraryScheduleService,
   ) {}
 
   @Public()
@@ -49,6 +51,12 @@ export class ActivityController {
   @Get('resolve')
   resolve(@Query('keyword') keyword: string) {
     return this.activityService.resolveActivityByKeyword(keyword ?? '');
+  }
+
+  @Public()
+  @Get('lineup-artists')
+  listLineupArtists() {
+    return this.itineraryScheduleService.listCatalogLineupArtistsRanked();
   }
 
   @Public()

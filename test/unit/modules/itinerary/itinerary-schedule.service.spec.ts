@@ -325,4 +325,42 @@ describe('ItineraryScheduleService discogs styles', () => {
 
     expect(artists.some((item) => item.artistName === 'NEW ACT')).toBe(true);
   });
+
+  it('ranks catalog lineup artists by activity count', async () => {
+    activityLookup.findAll.mockResolvedValue([
+      {
+        legacyId: 8,
+        name: 'EDC Korea 2026',
+        date: '10/03-04',
+      },
+      {
+        legacyId: 99,
+        name: 'New Fest 2026',
+        date: '12/01-02',
+      },
+    ]);
+    performanceModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([
+            {
+              activityLegacyId: 99,
+              artistName: 'SHARED ACT',
+              genreLabel: 'Techno',
+            },
+          ]),
+        }),
+      }),
+    });
+    djService.lookupForLineupArtists.mockResolvedValue(new Map());
+
+    const artists = await service.listCatalogLineupArtistsRanked();
+
+    expect(artists.length).toBeGreaterThan(1);
+    expect(artists[0]?.activityCount).toBeGreaterThanOrEqual(
+      artists[1]?.activityCount ?? 0,
+    );
+    expect(artists.some((item) => item.name === 'SHARED ACT')).toBe(true);
+    expect(artists.some((item) => item.name === 'DJ SNAKE')).toBe(true);
+  });
 });

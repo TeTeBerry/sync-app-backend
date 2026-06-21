@@ -1,5 +1,5 @@
 // src/modules/activity/activity.module.ts
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AgentsModule } from '../../ai/agents/agents.module';
 import { InfraChromaModule } from '../../infra/chroma/chroma.module';
@@ -14,6 +14,7 @@ import {
   ActivityRegistrationSchema,
 } from '../../database/schemas/activity-registration.schema';
 import { NotificationModule } from '../notification/notification.module';
+import { ItineraryModule } from '../itinerary/itinerary.module';
 import { UserModule } from '../user/user.module';
 import { ActivityLookupModule } from './activity-lookup.module';
 import { ActivityCatalogRefreshService } from './activity-catalog-refresh.service';
@@ -25,6 +26,7 @@ import { ACTIVITY_REGISTRATION_REPOSITORY } from './registration/interfaces/acti
 
 @Module({
   imports: [
+    forwardRef(() => ItineraryModule),
     UserModule,
     ActivityLookupModule,
     AgentsModule,

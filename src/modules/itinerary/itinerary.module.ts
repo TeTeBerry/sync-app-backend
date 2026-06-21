@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
   ArtistPerformance,
@@ -27,7 +27,7 @@ import { ItineraryCacheService } from './itinerary-cache.service';
 
 @Module({
   imports: [
-    ActivityModule,
+    forwardRef(() => ActivityModule),
     AuthModule,
     DjModule,
     MongooseModule.forFeature([

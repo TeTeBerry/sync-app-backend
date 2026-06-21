@@ -50,6 +50,7 @@ export interface ProfileActivityItemDto {
   location: string;
   image: string;
   status: 'registered' | 'attended';
+  activityLegacyId: string;
 }
 
 @Injectable()
@@ -123,6 +124,7 @@ export class ProfileSummaryService {
         location: activity?.location ?? '',
         image: activity?.image ?? '',
         status: resolveProfileActivityStatus(date, title),
+        activityLegacyId: String(registration.activityLegacyId),
       };
     });
 
