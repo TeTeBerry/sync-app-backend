@@ -1,6 +1,5 @@
 import {
   IsArray,
-  IsBoolean,
   IsIn,
   IsNumber,
   IsOptional,
@@ -9,18 +8,10 @@ import {
   MinLength,
 } from 'class-validator';
 
-export class CreatePostDto {
+export class UpdatePostDto {
   @IsString()
   @MinLength(1)
   body: string;
-
-  @IsOptional()
-  @IsNumber()
-  activityLegacyId?: number;
-
-  @IsOptional()
-  @IsString()
-  eventTitle?: string;
 
   @IsOptional()
   @IsString()
@@ -34,11 +25,6 @@ export class CreatePostDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
-
-  /** Default true. False = save post but hide from activity/popular feeds. */
-  @IsOptional()
-  @IsBoolean()
-  listedInFeed?: boolean;
 
   @IsOptional()
   @IsIn(['open', 'full'])

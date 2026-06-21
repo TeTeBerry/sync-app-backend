@@ -45,7 +45,10 @@ import {
 } from '../ports/post-notification.port';
 import { WechatContentSecurityService } from '../../auth/wechat-content-security.service';
 import { assertCommentHasNoContactInfo } from '../utils/post-contact.util';
-import { isCommentByPostOwner } from '../utils/comment-ownership.util';
+import {
+  isCommentByPostOwner,
+  isCommentOwnedByActor,
+} from '../utils/comment-ownership.util';
 
 function resolveCommentRiskReason(risk: RuleMatchResult): string {
   if (risk.violationType === 'traffic_diversion') {
@@ -53,6 +56,10 @@ function resolveCommentRiskReason(risk: RuleMatchResult): string {
   }
   return risk.reason?.trim() || '评论未通过审核';
 }
+
+type CommentListItem = ReturnType<typeof PostMapper.toCommentItem> & {
+  replies?: CommentListItem[];
+};
 
 @Injectable()
 export class PostCommentService {
@@ -129,6 +136,8 @@ export class PostCommentService {
       };
     });
 
+    const enrichedItems = await this.enrichCommentItems(items);
+
     const last = pageRows[pageRows.length - 1] as
       | ((typeof pageRows)[number] & { createdAt?: Date })
       | undefined;
@@ -141,7 +150,7 @@ export class PostCommentService {
         : undefined;
 
     return {
-      items,
+      items: enrichedItems,
       hasMore,
       ...(nextCursor ? { nextCursor } : {}),
     };
@@ -168,6 +177,7 @@ export class PostCommentService {
 
     const actorUserId = actor.resolvedUserId;
     const trimmedParentId = parentCommentId?.trim();
+    const profile = await this.userService.resolveProfile(actor);
     let parentComment: {
       _id?: unknown;
       userId: string;
@@ -180,7 +190,6 @@ export class PostCommentService {
       if (!parentComment || parentComment.postId !== id) {
         throw new BadRequestException('回复的评论不存在');
       }
-      const profile = await this.userService.resolveProfile(actor);
       if (!isPostOwnedByActor(post, actor, profile?.name)) {
         throw new ForbiddenException('仅发帖人可以回复评论');
       }
@@ -189,9 +198,14 @@ export class PostCommentService {
       }
     }
 
+    const authorName =
+      profile?.name?.trim() || actor.displayName?.trim() || '用户';
+    const authorAvatar = profile?.avatar?.trim() || '';
+
     await this.commentModel.create({
       userId: actorUserId,
-      authorName: actor.displayName?.trim(),
+      authorName,
+      authorAvatar,
       postId: id,
       parentCommentId: trimmedParentId,
       body: trimmed,
@@ -201,7 +215,7 @@ export class PostCommentService {
       post,
       postId: id,
       actorUserId,
-      actorUserName: actor.displayName?.trim(),
+      actorUserName: authorName,
       commentPreview: trimmed,
       parentComment,
       parentCommentId: trimmedParentId,
@@ -217,6 +231,53 @@ export class PostCommentService {
 
   async deleteCommentsForPost(postId: string): Promise<void> {
     await this.commentModel.deleteMany({ postId });
+  }
+
+  async deleteOwnedComment(
+    postId: string,
+    commentId: string,
+    actor: RequestActor,
+  ) {
+    const post = await this.repository.findById(postId);
+    if (!post || post.status === 'hidden') {
+      throw new NotFoundException('帖子不存在');
+    }
+
+    const comment = await this.commentModel.findById(commentId).lean();
+    if (!comment || comment.postId !== postId) {
+      throw new NotFoundException('评论不存在');
+    }
+
+    const profile = await this.userService.resolveProfile(actor);
+    if (
+      !isCommentOwnedByActor(
+        comment,
+        actor.resolvedUserId,
+        profile?.name ?? actor.displayName,
+      )
+    ) {
+      throw new ForbiddenException('无权删除该评论');
+    }
+
+    const commentObjectId = String(comment._id);
+    const replyCount = await this.commentModel.countDocuments({
+      postId,
+      parentCommentId: commentObjectId,
+    });
+    await this.commentModel.deleteMany({
+      postId,
+      $or: [{ _id: comment._id }, { parentCommentId: commentObjectId }],
+    });
+
+    const removedCount = 1 + replyCount;
+    const updated =
+      (await this.repository.decrementCommentCount(postId, removedCount)) ??
+      post;
+
+    return {
+      id: postId,
+      comments: updated.comments ?? 0,
+    };
   }
 
   private dispatchCommentNotification(params: {
@@ -264,6 +325,36 @@ export class PostCommentService {
       ...base,
       recipientUserId,
     });
+  }
+
+  private async enrichCommentItems(
+    items: CommentListItem[],
+  ): Promise<CommentListItem[]> {
+    const userIds = new Set<string>();
+    const collectIds = (rows: CommentListItem[]) => {
+      for (const row of rows) {
+        const uid = row.userId?.trim();
+        if (uid) userIds.add(uid);
+        if (row.replies?.length) collectIds(row.replies);
+      }
+    };
+    collectIds(items);
+
+    const summaries = await this.userService.findAuthorSummariesByExternalIds([
+      ...userIds,
+    ]);
+
+    const apply = (row: CommentListItem): CommentListItem => {
+      const summary = summaries.get(row.userId?.trim() ?? '');
+      return {
+        ...row,
+        authorName: summary?.name || row.authorName,
+        avatar: summary?.avatar || row.avatar,
+        ...(row.replies?.length ? { replies: row.replies.map(apply) } : {}),
+      };
+    };
+
+    return items.map(apply);
   }
 
   private async assertCommentBodySafe(

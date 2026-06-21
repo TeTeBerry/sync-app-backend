@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { Post, PostDocument } from '../../../database/schemas/post.schema';
 import {
   buildDevMockTmlBuddyPosts,
+  DEV_MOCK_TML_POST_COUNT,
   DEV_MOCK_TML_POST_USER_PREFIX,
   TML_THAILAND_LEGACY_ID,
 } from '../data/dev-mock-buddy-posts.util';
@@ -19,15 +20,12 @@ export class PostDevMockSeedService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    if (process.env.NODE_ENV === 'production') {
-      return;
-    }
-    if (process.env.DISABLE_DEV_MOCK_POSTS === 'true') {
+    if (!this.isDevMockEnabled()) {
       return;
     }
 
     try {
-      await this.seedTmlMockPosts();
+      await this.ensureTmlMockPosts();
     } catch (error) {
       this.logger.warn(
         `Dev mock post seed failed: ${(error as Error).message}`,
@@ -35,7 +33,35 @@ export class PostDevMockSeedService implements OnModuleInit {
     }
   }
 
-  private async seedTmlMockPosts(): Promise<void> {
+  /** Re-upsert TML mock posts when dev DB was wiped without restarting the backend. */
+  async ensureTmlMockPostsIfMissing(): Promise<void> {
+    if (!this.isDevMockEnabled()) {
+      return;
+    }
+
+    const total = await this.countTmlMockPosts();
+    if (total >= DEV_MOCK_TML_POST_COUNT) {
+      return;
+    }
+
+    await this.ensureTmlMockPosts();
+  }
+
+  private isDevMockEnabled(): boolean {
+    return (
+      process.env.NODE_ENV !== 'production' &&
+      process.env.DISABLE_DEV_MOCK_POSTS !== 'true'
+    );
+  }
+
+  private async countTmlMockPosts(): Promise<number> {
+    return this.postModel.countDocuments({
+      activityLegacyId: TML_THAILAND_LEGACY_ID,
+      userId: { $regex: `^${DEV_MOCK_TML_POST_USER_PREFIX}` },
+    });
+  }
+
+  private async ensureTmlMockPosts(): Promise<void> {
     const seeds = buildDevMockTmlBuddyPosts();
     let upserted = 0;
 
@@ -53,10 +79,7 @@ export class PostDevMockSeedService implements OnModuleInit {
       }
     }
 
-    const total = await this.postModel.countDocuments({
-      activityLegacyId: TML_THAILAND_LEGACY_ID,
-      userId: { $regex: `^${DEV_MOCK_TML_POST_USER_PREFIX}` },
-    });
+    const total = await this.countTmlMockPosts();
 
     this.logger.log(
       `Dev mock buddy posts for TML Thailand: upserted ${upserted}, total mock rows ${total}`,

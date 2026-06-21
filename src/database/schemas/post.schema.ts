@@ -3,6 +3,7 @@ import { HydratedDocument } from 'mongoose';
 export type PostDocument = HydratedDocument<Post>;
 
 export type PostStatus = 'active' | 'hidden';
+export type PostRecruitStatus = 'open' | 'full';
 
 @Schema({ timestamps: true })
 export class Post {
@@ -54,6 +55,18 @@ export class Post {
 
   @Prop({ default: 0 })
   comments: number;
+
+  /** Buddy recruit wall: open = recruiting; full = closed by author. */
+  @Prop({ default: 'open' })
+  recruitStatus: PostRecruitStatus;
+
+  /** Total slots the author wants to fill (including self when applicable). */
+  @Prop()
+  slotsTotal?: number;
+
+  /** Slots already filled per author self-report. */
+  @Prop()
+  slotsFilled?: number;
 }
 
 export const PostSchema = SchemaFactory.createForClass(Post);

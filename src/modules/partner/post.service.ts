@@ -17,6 +17,8 @@ import {
 } from '../activity/ports/activity-lookup.port';
 import { UserService } from '../user/user.service';
 import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
+import { UpdatePostRecruitDto } from './dto/update-post-recruit.dto';
 import {
   IPostRepository,
   POST_REPOSITORY,
@@ -26,6 +28,8 @@ import { PostWriteService } from './application/post-write.service';
 import { PostQueryService } from './application/post-query.service';
 import { PostCommentService } from './application/post-comment.service';
 import { PostSearchService } from './application/post-search.service';
+import { PostDevMockSeedService } from './application/post-dev-mock-seed.service';
+import { TML_THAILAND_LEGACY_ID } from './data/dev-mock-buddy-posts.util';
 
 @Injectable()
 export class PostService implements OnModuleInit {
@@ -43,6 +47,7 @@ export class PostService implements OnModuleInit {
     private readonly postComments: PostCommentService,
     private readonly postSearch: PostSearchService,
     private readonly userService: UserService,
+    private readonly devMockSeed: PostDevMockSeedService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -83,7 +88,7 @@ export class PostService implements OnModuleInit {
     return this.postQuery.listPopular(limit, actor);
   }
 
-  listByActivityPage(
+  async listByActivityPage(
     activityLegacyId: number,
     options: {
       limit?: number;
@@ -92,6 +97,9 @@ export class PostService implements OnModuleInit {
     },
     actor: RequestActor,
   ) {
+    if (activityLegacyId === TML_THAILAND_LEGACY_ID) {
+      await this.devMockSeed.ensureTmlMockPostsIfMissing();
+    }
     return this.postQuery.listByActivityPage(activityLegacyId, options, actor);
   }
 
@@ -117,6 +125,18 @@ export class PostService implements OnModuleInit {
     options?: { skipRiskCheck?: boolean },
   ) {
     return this.postWrite.createPost(dto, actor, options);
+  }
+
+  updatePostRecruit(
+    id: string,
+    dto: UpdatePostRecruitDto,
+    actor: RequestActor,
+  ) {
+    return this.postWrite.updateRecruitStatus(id, dto, actor);
+  }
+
+  updatePost(id: string, dto: UpdatePostDto, actor: RequestActor) {
+    return this.postWrite.updatePost(id, dto, actor);
   }
 
   findPostById(id: string): Promise<PostRecord | null> {
@@ -162,6 +182,10 @@ export class PostService implements OnModuleInit {
     parentCommentId?: string,
   ) {
     return this.postComments.addComment(id, body, actor, parentCommentId);
+  }
+
+  deleteOwnedComment(postId: string, commentId: string, actor: RequestActor) {
+    return this.postComments.deleteOwnedComment(postId, commentId, actor);
   }
 
   private async isOwnedPost(

@@ -4,9 +4,11 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
@@ -14,6 +16,8 @@ import type { RequestActor } from '../../common/auth/request-actor.types';
 import { PublicApiRateLimitService } from '../../common/rate-limit/public-api-rate-limit.service';
 import { Public } from '../../common/auth/public.decorator';
 import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
+import { UpdatePostRecruitDto } from './dto/update-post-recruit.dto';
 import { AiSearchPostsDto } from './dto/ai-search-posts.dto';
 import { CreatePostCommentDto } from './dto/create-post-comment.dto';
 import { PostService } from './post.service';
@@ -40,6 +44,7 @@ export class PostController {
     return this.postService.listPopular(safeLimit, actor);
   }
 
+  @Public()
   @Get()
   list(
     @CurrentActor() actor: RequestActor,
@@ -66,6 +71,9 @@ export class PostController {
         );
       }
     }
+    if (!actor.resolvedUserId?.trim()) {
+      throw new UnauthorizedException('请先登录');
+    }
     return this.postService.listByOwner(actor);
   }
 
@@ -90,6 +98,24 @@ export class PostController {
   @Post()
   create(@Body() body: CreatePostDto, @CurrentActor() actor: RequestActor) {
     return this.postService.createPost(body, actor);
+  }
+
+  @Patch(':id/recruit')
+  updateRecruit(
+    @Param('id') id: string,
+    @Body() body: UpdatePostRecruitDto,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.postService.updatePostRecruit(id, body, actor);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() body: UpdatePostDto,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.postService.updatePost(id, body, actor);
   }
 
   @Delete(':id')
@@ -123,5 +149,14 @@ export class PostController {
       actor,
       body.parentCommentId,
     );
+  }
+
+  @Delete(':id/comments/:commentId')
+  removeComment(
+    @Param('id') id: string,
+    @Param('commentId') commentId: string,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.postService.deleteOwnedComment(id, commentId, actor);
   }
 }

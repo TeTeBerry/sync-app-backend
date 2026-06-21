@@ -11,6 +11,9 @@ export class PostComment {
   @Prop()
   authorName?: string;
 
+  @Prop()
+  authorAvatar?: string;
+
   @Prop({ required: true, index: true })
   postId: string;
 

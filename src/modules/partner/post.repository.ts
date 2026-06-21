@@ -228,4 +228,17 @@ export class PostRepository implements IPostRepository {
       .findByIdAndUpdate(id, { $inc: { comments: 1 } }, { new: true })
       .lean();
   }
+
+  async decrementCommentCount(
+    id: string,
+    amount = 1,
+  ): Promise<PostRecord | null> {
+    const delta = Math.max(1, Math.trunc(amount));
+    const post = await this.model.findById(id).lean();
+    if (!post) return null;
+    const next = Math.max(0, (post.comments ?? 0) - delta);
+    return this.model
+      .findByIdAndUpdate(id, { comments: next }, { new: true })
+      .lean();
+  }
 }

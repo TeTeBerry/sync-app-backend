@@ -76,6 +76,9 @@ export class PostMapper {
       tags: post.tags ?? [],
       comments: post.comments ?? 0,
       avatar: post.authorAvatar ?? '',
+      recruitStatus: post.recruitStatus ?? 'open',
+      ...(post.slotsTotal != null ? { slotsTotal: post.slotsTotal } : {}),
+      ...(post.slotsFilled != null ? { slotsFilled: post.slotsFilled } : {}),
     };
   }
 
@@ -98,6 +101,9 @@ export class PostMapper {
       tags: post.tags ?? [],
       comments: post.comments ?? 0,
       avatar: post.authorAvatar ?? '',
+      recruitStatus: post.recruitStatus ?? 'open',
+      ...(post.slotsTotal != null ? { slotsTotal: post.slotsTotal } : {}),
+      ...(post.slotsFilled != null ? { slotsFilled: post.slotsFilled } : {}),
     };
   }
 

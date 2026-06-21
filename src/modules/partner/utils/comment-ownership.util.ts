@@ -17,3 +17,17 @@ export function isCommentByPostOwner(
 
   return false;
 }
+
+export function isCommentOwnedByActor(
+  comment: { userId?: string; authorName?: string },
+  actorUserId: string,
+  actorDisplayName?: string,
+): boolean {
+  const commentUid = comment.userId?.trim();
+  if (commentUid && actorUserId) {
+    return commentUid === actorUserId;
+  }
+  const commentName = comment.authorName?.trim();
+  const actorName = actorDisplayName?.trim();
+  return Boolean(commentName && actorName && commentName === actorName);
+}

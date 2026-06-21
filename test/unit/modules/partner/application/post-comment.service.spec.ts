@@ -34,6 +34,7 @@ describe('PostCommentService notifications', () => {
 
   const userService = {
     resolveProfile: jest.fn(),
+    findAuthorSummariesByExternalIds: jest.fn().mockResolvedValue(new Map()),
   } as unknown as UserService;
 
   const wechatContentSecurity = {
@@ -72,6 +73,12 @@ describe('PostCommentService notifications', () => {
       toRequestActor('user-2', '小红'),
     );
 
+    expect(commentModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-2',
+        authorName: expect.any(String),
+      }),
+    );
     expect(postNotification.notifyComment).toHaveBeenCalledWith(
       expect.objectContaining({
         recipientUserId: 'owner-1',
@@ -215,5 +222,70 @@ describe('PostCommentService notifications', () => {
       '我也想去',
     ]);
     expect(commentModel.create).toHaveBeenCalled();
+  });
+});
+
+describe('PostCommentService deleteOwnedComment', () => {
+  const repository = {
+    findById: jest.fn(),
+    decrementCommentCount: jest.fn(),
+  } as unknown as IPostRepository;
+
+  const commentModel = {
+    findById: jest.fn(),
+    countDocuments: jest.fn(),
+    deleteMany: jest.fn(),
+  };
+
+  const postNotification = {} as unknown as IPostNotificationPort;
+  const accountRisk = {} as unknown as AccountRiskService;
+  const userService = {
+    resolveProfile: jest.fn().mockResolvedValue({ name: '小红' }),
+  } as unknown as UserService;
+  const wechatContentSecurity = {} as unknown as WechatContentSecurityService;
+
+  let service: PostCommentService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new PostCommentService(
+      repository,
+      commentModel as never,
+      postNotification,
+      accountRisk,
+      userService,
+      wechatContentSecurity,
+    );
+  });
+
+  it('deletes owned comment and decrements post count', async () => {
+    repository.findById = jest.fn().mockResolvedValue({
+      _id: 'post-1',
+      userId: 'owner-1',
+      status: 'active',
+      comments: 3,
+    });
+    commentModel.findById = jest.fn().mockReturnValue({
+      lean: jest.fn().mockResolvedValue({
+        _id: 'comment-1',
+        userId: 'user-2',
+        authorName: '小红',
+        postId: 'post-1',
+      }),
+    });
+    commentModel.countDocuments = jest.fn().mockResolvedValue(1);
+    commentModel.deleteMany = jest.fn().mockResolvedValue({ deletedCount: 2 });
+    repository.decrementCommentCount = jest
+      .fn()
+      .mockResolvedValue({ comments: 1 });
+
+    const result = await service.deleteOwnedComment(
+      'post-1',
+      'comment-1',
+      toRequestActor('user-2', '小红'),
+    );
+
+    expect(result).toEqual({ id: 'post-1', comments: 1 });
+    expect(repository.decrementCommentCount).toHaveBeenCalledWith('post-1', 2);
   });
 });

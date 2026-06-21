@@ -1,5 +1,6 @@
 import {
   buildDevMockTmlBuddyPosts,
+  DEV_MOCK_TML_POST_COUNT,
   DEV_MOCK_TML_POST_USER_PREFIX,
   TML_THAILAND_LEGACY_ID,
   TML_THAILAND_EVENT_TITLE,
@@ -8,11 +9,11 @@ import { isCurrentPersonalityNicknameFormat } from '@src/modules/personality-tes
 import { isRaverAvatarAssetKeyInCatalog } from '@src/modules/personality-test/utils/personality-raver-avatar.util';
 
 describe('dev-mock-buddy-posts.util', () => {
-  it('builds ten stable TML Thailand mock posts with recruiting and full states', () => {
+  it('builds stable TML Thailand mock posts with US-Q2-16 recruit fields', () => {
     const fixedNow = new Date('2026-06-01T12:00:00.000Z');
     const posts = buildDevMockTmlBuddyPosts(fixedNow);
 
-    expect(posts).toHaveLength(10);
+    expect(posts).toHaveLength(DEV_MOCK_TML_POST_COUNT);
     expect(
       posts.every((p) => p.activityLegacyId === TML_THAILAND_LEGACY_ID),
     ).toBe(true);
@@ -23,15 +24,27 @@ describe('dev-mock-buddy-posts.util', () => {
       posts.every((p) => p.userId.startsWith(DEV_MOCK_TML_POST_USER_PREFIX)),
     ).toBe(true);
 
-    const recruitingBodies = posts.slice(0, 6).map((p) => p.body);
-    const fullBodies = posts.slice(6).map((p) => p.body);
+    const recruiting = posts.filter((post) => post.recruitStatus === 'open');
+    const full = posts.filter((post) => post.recruitStatus === 'full');
 
-    expect(recruitingBodies.every((body) => !/已满|招满|满员/.test(body))).toBe(
-      true,
-    );
+    expect(recruiting.length).toBeGreaterThan(0);
+    expect(full.length).toBeGreaterThanOrEqual(7);
     expect(
-      fullBodies.every(
-        (body) => /已满|招满/.test(body) && /\d+\s*\/\s*\d+/.test(body),
+      recruiting.every(
+        (post) =>
+          post.slotsTotal != null &&
+          post.slotsFilled != null &&
+          post.slotsFilled < post.slotsTotal,
+      ),
+    ).toBe(true);
+
+    expect(full.every((post) => post.recruitStatus === 'full')).toBe(true);
+    expect(
+      full.every(
+        (post) =>
+          post.slotsTotal != null &&
+          post.slotsFilled != null &&
+          post.slotsFilled === post.slotsTotal,
       ),
     ).toBe(true);
 
@@ -40,7 +53,12 @@ describe('dev-mock-buddy-posts.util', () => {
       expect(isRaverAvatarAssetKeyInCatalog(post.authorAvatar)).toBe(true);
       expect(post.authorAvatar.startsWith('avatar/')).toBe(true);
       expect(post.tags).toEqual(['#组队']);
+      expect(post.body).toMatch(/^组队，/);
+      expect(post.body).not.toMatch(/已满|招满|满员|招募中｜/);
       expect(post.body.length).toBeGreaterThan(20);
+      expect(post.recruitStatus).toMatch(/^(open|full)$/);
+      expect(post.slotsTotal).toBeGreaterThan(0);
+      expect(post.slotsFilled).toBeGreaterThanOrEqual(0);
       expect(post.createdAt.getTime()).toBeLessThanOrEqual(fixedNow.getTime());
     }
 

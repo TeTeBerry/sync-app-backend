@@ -260,3 +260,106 @@ describe('PostWriteService', () => {
     );
   });
 });
+
+describe('PostWriteService.updatePost', () => {
+  const repository = {
+    findById: jest.fn(),
+    updateById: jest.fn(),
+    findOwnerSimilarActivePost: jest.fn().mockResolvedValue(null),
+  } as unknown as IPostRepository;
+
+  const userService = {
+    resolveProfile: jest.fn(),
+  } as unknown as UserService;
+
+  const activityLookup = {} as unknown as IActivityLookupPort;
+
+  const postNotification = {} as unknown as IPostNotificationPort;
+
+  const postModeration = {
+    assessPost: jest.fn().mockResolvedValue({ publishable: true }),
+  } as unknown as IPostModerationPort;
+
+  const userProfileSync = {
+    applyBuddyPostHints: jest.fn(),
+  } as unknown as UserProfileSyncService;
+
+  const accountRisk = {
+    recordTicketPolicyViolation: jest.fn(),
+    recordPublishRiskViolation: jest.fn(),
+  } as unknown as AccountRiskService;
+
+  const wechatContentSecurity = {
+    assertTextsSafe: jest.fn().mockResolvedValue(undefined),
+  } as unknown as WechatContentSecurityService;
+
+  const bffCacheInvalidation = {
+    invalidateHomeForUser: jest.fn().mockResolvedValue(undefined),
+    invalidateFestivalPlanForUser: jest.fn().mockResolvedValue(undefined),
+  } as unknown as BffReadCacheInvalidationService;
+
+  let service: PostWriteService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new PostWriteService(
+      repository,
+      userService,
+      userProfileSync,
+      accountRisk,
+      activityLookup,
+      postNotification,
+      postModeration,
+      wechatContentSecurity,
+      bffCacheInvalidation,
+    );
+  });
+
+  it('updates owned buddy post body and recruit fields', async () => {
+    (userService.resolveProfile as jest.Mock).mockResolvedValue({
+      name: 'Zara Chen',
+    });
+    (repository.findById as jest.Mock).mockResolvedValue({
+      _id: 'post-1',
+      userId: 'demo-user',
+      authorName: 'Zara Chen',
+      body: '组队，6.13-6.14，上海，2人',
+      activityLegacyId: 4,
+      eventTitle: '风暴电音节',
+      recruitStatus: 'open',
+      slotsTotal: 2,
+      tags: ['#组队'],
+      location: '上海',
+    });
+    (repository.updateById as jest.Mock).mockResolvedValue({
+      _id: 'post-1',
+      userId: 'demo-user',
+      body: '组队，6.13-6.14，上海，3人',
+      activityLegacyId: 4,
+      recruitStatus: 'open',
+      slotsTotal: 3,
+      tags: ['#组队'],
+      location: '上海',
+    });
+
+    const result = await service.updatePost(
+      'post-1',
+      {
+        body: '组队，6.13-6.14，上海，3人',
+        location: '上海',
+        tags: ['#组队'],
+        slotsTotal: 3,
+      },
+      toRequestActor('demo-user', 'Zara Chen'),
+    );
+
+    expect(result.id).toBe('post-1');
+    expect(repository.updateById).toHaveBeenCalledWith(
+      'post-1',
+      expect.objectContaining({
+        body: '组队，6.13-6.14，上海，3人',
+        slotsTotal: 3,
+      }),
+    );
+  });
+});

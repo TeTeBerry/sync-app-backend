@@ -140,6 +140,27 @@ export class UserService implements OnModuleInit {
     return map;
   }
 
+  async findAuthorSummariesByExternalIds(
+    externalIds: string[],
+  ): Promise<Map<string, { name: string; avatar: string }>> {
+    const unique = [
+      ...new Set(externalIds.map((id) => id.trim()).filter(Boolean)),
+    ];
+    if (!unique.length) return new Map();
+
+    const rows = await this.repository.findSummariesByExternalIds(unique);
+    const map = new Map<string, { name: string; avatar: string }>();
+    for (const row of rows) {
+      const externalId = row.externalId?.trim();
+      if (!externalId) continue;
+      map.set(externalId, {
+        name: row.name?.trim() || EMPTY_PROFILE_DEFAULTS.name,
+        avatar: row.avatar?.trim() || '',
+      });
+    }
+    return map;
+  }
+
   async isNotificationsEnabled(actor: RequestActor): Promise<boolean> {
     try {
       const me = await this.getMe(actor);

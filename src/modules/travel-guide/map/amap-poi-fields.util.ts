@@ -1,3 +1,22 @@
+/** Normalize Amap text fields that may arrive as string or string[]. */
+export function formatAmapTextField(value: unknown): string {
+  if (value == null) return '';
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => formatAmapTextField(item))
+      .filter(Boolean)
+      .join('');
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed === '[]' ? '' : trimmed;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return '';
+}
+
 /** Normalize Amap POI `biz_ext.cost` (string | number | array) to yuan per person. */
 export function parseAmapCost(
   cost?: string | number | string[],

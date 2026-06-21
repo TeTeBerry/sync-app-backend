@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AMAP_WS } from './amap.capabilities';
-import { parseAmapCost } from './amap-poi-fields.util';
+import { parseAmapCost, formatAmapTextField } from './amap-poi-fields.util';
 import { MapApiRateLimiter } from './map-api-rate-limiter';
 import type { GeocodedPlace, RawMapPoi } from './travel-guide-map.types';
 import type { MapPoiKind } from './travel-guide-map.types';
@@ -36,8 +36,8 @@ type RegeoResponse = AmapBaseResponse & {
 
 type InputTipsItem = {
   name?: string;
-  address?: string;
-  district?: string;
+  address?: string | string[];
+  district?: string | string[];
   location?: string;
 };
 
@@ -201,13 +201,17 @@ export class AmapMapService {
 
     const suggestions: PlaceSuggestion[] = [];
     for (const item of data.tips) {
-      const title = item.name?.trim();
-      if (!title || title === '[]') continue;
+      const title = formatAmapTextField(item.name);
+      if (!title) continue;
       const loc = parseAmapLocation(item.location);
+      const address =
+        formatAmapTextField(item.address) ||
+        formatAmapTextField(item.district) ||
+        title;
       suggestions.push({
         title,
-        address: item.address?.trim() || item.district?.trim() || title,
-        city: item.district?.trim(),
+        address,
+        city: formatAmapTextField(item.district) || undefined,
         lat: loc?.lat,
         lng: loc?.lng,
       });
@@ -469,8 +473,7 @@ function parseAmapLocation(
 }
 
 function formatPoiAddress(address?: string | string[]): string {
-  if (Array.isArray(address)) return address.filter(Boolean).join('');
-  return address?.trim() ?? '';
+  return formatAmapTextField(address);
 }
 
 function formatPoiTel(tel?: string | string[]): string | undefined {

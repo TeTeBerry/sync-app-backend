@@ -12,6 +12,7 @@ import type { IPostModerationPort } from '@src/modules/partner/ports/post-modera
 import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
 import type { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import type { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
+import type { BffReadCacheInvalidationService } from '@src/infra/cache/bff-read-cache.service';
 
 jest.mock('chromadb', () => require('../../../../mocks/chromadb'));
 
@@ -69,6 +70,11 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
     assertTextsSafe: jest.fn().mockResolvedValue(undefined),
   } as unknown as WechatContentSecurityService;
 
+  const bffCacheInvalidation = {
+    invalidateHomeForUser: jest.fn().mockResolvedValue(undefined),
+    invalidateFestivalPlanForUser: jest.fn().mockResolvedValue(undefined),
+  } as unknown as BffReadCacheInvalidationService;
+
   let service: PostWriteService;
 
   beforeEach(() => {
@@ -85,6 +91,7 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
       postNotification,
       postModeration,
       wechatContentSecurity,
+      bffCacheInvalidation,
     );
     (userService.resolveProfile as jest.Mock).mockResolvedValue({
       name: 'Test User',
@@ -125,6 +132,8 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
         location: '上海',
         tags: ['#组队'],
         status: 'active',
+        recruitStatus: 'open',
+        slotsTotal: 2,
       }),
     );
     expect(postModeration.assessPost).toHaveBeenCalledWith(
