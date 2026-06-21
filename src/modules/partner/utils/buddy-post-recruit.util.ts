@@ -129,12 +129,19 @@ export function normalizeRecruitFields(input: {
   let recruitStatus = parsed.recruitStatus ?? 'open';
   const slotsTotal = normalizeSlotsTotal(parsed.slotsTotal);
   let slotsFilled = normalizeSlotsFilled(parsed.slotsFilled, slotsTotal);
+  const explicitStatus = input.recruitStatus;
 
   if (recruitStatus === 'full' && slotsTotal != null && slotsFilled == null) {
     slotsFilled = slotsTotal;
   }
 
-  if (slotsFilled != null && slotsTotal != null && slotsFilled >= slotsTotal) {
+  // Author explicitly reopening recruitment must not be overridden by slot math.
+  if (
+    explicitStatus !== 'open' &&
+    slotsFilled != null &&
+    slotsTotal != null &&
+    slotsFilled >= slotsTotal
+  ) {
     recruitStatus = 'full';
     slotsFilled = slotsTotal;
   }

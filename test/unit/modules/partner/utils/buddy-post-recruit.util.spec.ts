@@ -46,4 +46,31 @@ describe('buddy-post-recruit.util', () => {
       slotsFilled: 2,
     });
   });
+
+  it('keeps open when author reopens recruitment despite full slots', () => {
+    expect(
+      normalizeRecruitFields({
+        recruitStatus: 'open',
+        slotsTotal: 3,
+        slotsFilled: 3,
+      }),
+    ).toEqual({
+      recruitStatus: 'open',
+      slotsTotal: 3,
+      slotsFilled: 3,
+    });
+  });
+
+  it('still infers full from slots when status is not explicitly open', () => {
+    expect(
+      normalizeRecruitFields({
+        slotsTotal: 3,
+        slotsFilled: 3,
+      }),
+    ).toEqual({
+      recruitStatus: 'full',
+      slotsTotal: 3,
+      slotsFilled: 3,
+    });
+  });
 });
