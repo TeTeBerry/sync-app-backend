@@ -24,7 +24,7 @@ export const PERSONALITY_NICKNAME_CORES: Record<
   readonly string[]
 > = {
   rager: ['拳皇', 'DROP', '硬好', '贝斯', '前排'],
-  connoisseur: ['滤波', '失真', '铁克诺', '特兰斯', '琶音'],
+  connoisseur: ['滤波', '铁克诺', '特兰斯', '琶音'],
   vibe_curator: ['浩室', '气氛', '闪片', '舞池', '霓虹'],
   zen_raver: ['氛围', '后排', '佛系', '缓拍', '霓'],
   documentarian: ['快门', '转场', '录现', '镜头', '切片'],

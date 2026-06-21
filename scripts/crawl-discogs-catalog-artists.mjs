@@ -6,6 +6,7 @@
  * Usage:
  *   npm run db:crawl-catalog-artists
  *   npm run db:crawl-catalog-artists -- --dry-run
+ *   npm run db:crawl-catalog-artists -- --names "GREEN VELVET,KANINE"
  */
 
 import mongoose from 'mongoose';
@@ -24,6 +25,14 @@ loadDotEnv();
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
+const namesArgIndex = args.indexOf('--names');
+const explicitNames =
+  namesArgIndex >= 0
+    ? args[namesArgIndex + 1]
+        ?.split(',')
+        .map((name) => name.trim())
+        .filter(Boolean)
+    : null;
 
 async function main() {
   const config = getCrawlConfig();
@@ -38,7 +47,9 @@ async function main() {
   const discogs = createDiscogsClient(config);
 
   const allNames = await loadAllCatalogLineupArtistNames(db, config);
-  const targets = await findMissingCatalogArtists(db, config);
+  const targets = explicitNames?.length
+    ? explicitNames
+    : await findMissingCatalogArtists(db, config);
 
   console.log('✅ MongoDB:', config.mongoUri);
   console.log(`🎤 活动目录阵容艺人 ${allNames.length} 位（B2B 已拆分）`);

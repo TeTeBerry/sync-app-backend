@@ -10,9 +10,8 @@ Upload these files to **CloudBase 云存储** under `static/personality-test/`.
 
 Short Big Room drop clip (~8–15s), normalized volume.
 
-Audio files are **not committed** (see `.gitignore`). Place a source WAV locally under
-`audio/big-room-drop-source.wav`, or set `PERSONALITY_TEST_AUDIO_SOURCE` to an absolute path,
-then run `npm run media:generate-personality-test` to produce `audio/big-room-drop.mp3`.
+Audio files are **not committed** (see `.gitignore`). Place the MP3 locally under
+`audio/big-room-drop.mp3` before upload.
 
 ## Upload
 
@@ -20,16 +19,11 @@ then run `npm run media:generate-personality-test` to produce `audio/big-room-dr
 2. Run:
 
 ```bash
-node scripts/upload-personality-test-media.mjs
+npm run media:upload-personality-test
 ```
 
 Or upload manually in WeChat CloudBase console to the paths in
 `src/modules/personality-test/data/personality-media.ts`.
-
-```bash
-npm run media:generate-personality-test
-npm run media:upload-personality-test
-```
 
 After upload, set `CLOUDBASE_STORAGE_BUCKET` on the backend runtime (printed by the upload script).
 

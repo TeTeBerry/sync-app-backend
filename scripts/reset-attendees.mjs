@@ -8,6 +8,11 @@
  */
 
 import mongoose from 'mongoose';
+import {
+  listActivityAttendees,
+  maskMongoUri,
+  resetAttendeeCounts,
+} from './lib/reset-attendees.util.mjs';
 
 const uri =
   process.env.MONGODB_URI ??
@@ -17,12 +22,8 @@ const uri =
 const dryRun = process.argv.includes('--dry-run');
 const confirmed = process.env.CONFIRM === '1' || process.env.CONFIRM === 'true';
 
-function maskUri(value) {
-  return value.replace(/:([^:@/]+)@/, ':***@');
-}
-
 async function main() {
-  console.log(`MongoDB: ${maskUri(uri)}`);
+  console.log(`MongoDB: ${maskMongoUri(uri)}`);
   console.log(
     dryRun ? 'Mode: dry-run' : confirmed ? 'Mode: RESET' : 'Mode: preview (set CONFIRM=1 to reset)',
   );
@@ -30,14 +31,11 @@ async function main() {
   await mongoose.connect(uri);
   const db = mongoose.connection.db;
 
-  const activities = db.collection('activities');
-  const registrations = db.collection('activityregistrations');
-
-  const registrationCount = await registrations.countDocuments();
-  const activityRows = await activities
-    .find({})
-    .project({ legacyId: 1, name: 1, attendees: 1 })
-    .toArray();
+  const activityRows = await listActivityAttendees(db);
+  const registrationCount = await db
+    .collection('activityregistrations')
+    .countDocuments()
+    .catch(() => 0);
 
   console.log('');
   console.log('Current attendees:');
@@ -60,13 +58,12 @@ async function main() {
     process.exit(1);
   }
 
-  const regResult = await registrations.deleteMany({});
-  const actResult = await activities.updateMany({}, { $set: { attendees: 0 } });
+  const result = await resetAttendeeCounts(db);
 
   console.log('');
   console.log('✅ Attendee counts reset');
-  console.log(`   registrations deleted: ${regResult.deletedCount ?? 0}`);
-  console.log(`   activities updated: ${actResult.modifiedCount ?? 0}`);
+  console.log(`   registrations deleted: ${result.registrationCount}`);
+  console.log(`   activities updated: ${result.activityCount}`);
 
   await mongoose.disconnect();
 }

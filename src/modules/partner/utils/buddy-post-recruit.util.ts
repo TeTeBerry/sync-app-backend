@@ -97,11 +97,13 @@ function normalizeSlotsFilled(
   if (value == null || !Number.isFinite(value)) {
     return undefined;
   }
-  const rounded = Math.max(0, Math.trunc(value));
+  const rounded = Math.trunc(value);
+  const minFilled = slotsTotal != null ? 1 : 0;
+  const clamped = Math.max(minFilled, rounded);
   if (slotsTotal != null) {
-    return Math.min(rounded, slotsTotal);
+    return Math.min(clamped, slotsTotal);
   }
-  return rounded;
+  return clamped > 0 ? clamped : undefined;
 }
 
 export function normalizeRecruitFields(input: {

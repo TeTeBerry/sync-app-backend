@@ -12,6 +12,10 @@
  */
 
 import mongoose from 'mongoose';
+import {
+  maskMongoUri,
+  resetAttendeeCounts,
+} from './lib/reset-attendees.util.mjs';
 
 const uri =
   process.env.MONGODB_URI ??
@@ -30,10 +34,6 @@ const KEEP_COLLECTIONS = new Set([
   'travel_guide_venue_cache',
 ]);
 
-function maskUri(value) {
-  return value.replace(/:([^:@/]+)@/, ':***@');
-}
-
 async function countDocuments(collection) {
   try {
     return await collection.countDocuments();
@@ -42,38 +42,8 @@ async function countDocuments(collection) {
   }
 }
 
-/** Wipe registrations and zero out per-activity attendee totals. */
-async function resetAttendeeCounts(db, { dryRun = false } = {}) {
-  const activities = db.collection('activities');
-  const registrations = db.collection('activityregistrations');
-
-  const registrationCount = await countDocuments(registrations);
-  const activityCount = await countDocuments(activities);
-
-  if (dryRun) {
-    console.log('');
-    console.log('Would reset attendee counts:');
-    console.log(`  activityregistrations delete: ${registrationCount}`);
-    console.log(`  activities.attendees → 0: ${activityCount}`);
-    return { registrationCount, activityCount };
-  }
-
-  const regResult = await registrations.deleteMany({});
-  const actResult = await activities.updateMany({}, { $set: { attendees: 0 } });
-
-  console.log(`  cleared activityregistrations: ${regResult.deletedCount ?? registrationCount}`);
-  console.log(
-    `  reset activities.attendees → 0: ${actResult.modifiedCount ?? activityCount}`,
-  );
-
-  return {
-    registrationCount: regResult.deletedCount ?? registrationCount,
-    activityCount: actResult.modifiedCount ?? activityCount,
-  };
-}
-
 async function main() {
-  console.log(`MongoDB: ${maskUri(uri)}`);
+  console.log(`MongoDB: ${maskMongoUri(uri)}`);
   console.log(dryRun ? 'Mode: dry-run' : confirmed ? 'Mode: DELETE' : 'Mode: preview (set CONFIRM=1 to delete)');
   console.log('');
 
@@ -100,7 +70,11 @@ async function main() {
   }
 
   if (dryRun) {
-    await resetAttendeeCounts(db, { dryRun: true });
+    const preview = await resetAttendeeCounts(db, { dryRun: true });
+    console.log('');
+    console.log('Would reset attendee counts:');
+    console.log(`  activityregistrations delete: ${preview.registrationCount}`);
+    console.log(`  activities.attendees → 0: ${preview.activityCount}`);
     console.log('');
     console.log('Dry-run only — no data changed.');
     await mongoose.disconnect();
@@ -128,7 +102,9 @@ async function main() {
 
   console.log('');
   console.log('Reset attendee counts:');
-  await resetAttendeeCounts(db);
+  const attendeeReset = await resetAttendeeCounts(db);
+  console.log(`  cleared activityregistrations: ${attendeeReset.registrationCount}`);
+  console.log(`  reset activities.attendees → 0: ${attendeeReset.activityCount}`);
 
   console.log('');
   console.log('✅ Dirty data removed');

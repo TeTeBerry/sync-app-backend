@@ -304,40 +304,6 @@ export async function loadLineupArtistNames(db, activityLegacyId, fallbackNames,
   return [...fallbackNames];
 }
 
-export async function loadFestivalLineupArtistNames(db, config) {
-  const storm = await loadLineupArtistNames(
-    db,
-    config.stormActivityLegacyId,
-    STORM_LINEUP_ARTIST_NAMES,
-    '风暴',
-  );
-  const edc = await loadLineupArtistNames(
-    db,
-    config.edcThailandActivityLegacyId,
-    loadEdcThailandFallbackNames(),
-    'EDC Thailand',
-  );
-  const edcKorea = await loadLineupArtistNames(
-    db,
-    config.edcKoreaActivityLegacyId,
-    loadEdcKoreaFallbackNames(),
-    'EDC Korea',
-  );
-  const tomorrowland = await loadLineupArtistNames(
-    db,
-    config.tomorrowlandThailandActivityLegacyId,
-    loadTomorrowlandThailandFallbackNames(),
-    'Tomorrowland Thailand',
-  );
-
-  return expandFestivalArtistNames([
-    ...storm,
-    ...edc,
-    ...edcKorea,
-    ...tomorrowland,
-  ]);
-}
-
 const CATALOG_LINEUP_FALLBACK_BY_LEGACY_ID = (config) =>
   new Map([
     [config.stormActivityLegacyId, STORM_LINEUP_ARTIST_NAMES],
@@ -429,12 +395,6 @@ export function isLineupArtistCovered(lineupName, djs) {
         targetKey.includes(djKey),
     );
   });
-}
-
-export async function findMissingFestivalArtists(db, config) {
-  const expected = await loadFestivalLineupArtistNames(db, config);
-  const djs = await db.collection('djs').find({}).project({ name: 1 }).toArray();
-  return expected.filter((name) => !isLineupArtistCovered(name, djs));
 }
 
 export async function upsertDjRecord(Dj, data) {

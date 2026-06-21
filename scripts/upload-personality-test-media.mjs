@@ -97,13 +97,13 @@ async function uploadToCloud({
 async function main() {
   if (!existsSync(ASSETS_DIR)) {
     console.error(`Missing assets directory: ${ASSETS_DIR}`);
-    console.error('Run: npm run media:generate-personality-test');
+    console.error('Place files under assets/personality-test/ (see README.md).');
     process.exit(1);
   }
 
   const files = await collectFiles(ASSETS_DIR);
   if (!files.length) {
-    console.error('No media files found. Run: npm run media:generate-personality-test');
+    console.error('No media files found. Place audio/big-room-drop.mp3 under assets/personality-test/.');
     process.exit(1);
   }
 

@@ -73,4 +73,18 @@ describe('buddy-post-recruit.util', () => {
       slotsFilled: 3,
     });
   });
+
+  it('clamps slotsFilled to at least 1 when slotsTotal is set', () => {
+    expect(
+      normalizeRecruitFields({
+        recruitStatus: 'open',
+        slotsTotal: 3,
+        slotsFilled: 0,
+      }),
+    ).toEqual({
+      recruitStatus: 'open',
+      slotsTotal: 3,
+      slotsFilled: 1,
+    });
+  });
 });

@@ -47,7 +47,7 @@ async function ensureSmokeUser(externalId, name) {
     mongoose.models.SmokeJwtUser ??
     mongoose.model('SmokeJwtUser', userSchema);
 
-  const doc = await User.findOneAndUpdate(
+  const result = await User.findOneAndUpdate(
     { externalId },
     {
       $setOnInsert: {
@@ -65,9 +65,13 @@ async function ensureSmokeUser(externalId, name) {
     { upsert: true, new: true },
   ).lean();
 
+  if (!result || Array.isArray(result)) {
+    throw new Error(`Failed to upsert smoke user: ${externalId}`);
+  }
+
   return {
-    externalId: doc.externalId,
-    tokenVersion: doc.tokenVersion ?? 0,
+    externalId: result.externalId,
+    tokenVersion: result.tokenVersion ?? 0,
   };
 }
 
