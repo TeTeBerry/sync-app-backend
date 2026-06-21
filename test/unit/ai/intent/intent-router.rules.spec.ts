@@ -175,6 +175,18 @@ describe('intent-router.rules', () => {
     expect(hit?.source).toBe('rule');
   });
 
+  it('routes near-events chip to read-only fast path without binding activity', () => {
+    const hit = resolveChatIntentFastPath('查最近活动', {
+      messages: [],
+      input: '查最近活动',
+    });
+    expect(hit).toEqual({
+      kind: 'quick_reply',
+      source: 'rule',
+      readOnlyFastPath: 'near_events',
+    });
+  });
+
   it('does not rule-route activity brief questions (agent-first)', () => {
     const hit = resolveChatIntentFastPath('这场几点开始', {
       messages: [],

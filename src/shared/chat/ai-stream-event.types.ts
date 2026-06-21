@@ -50,6 +50,7 @@ export type AiStreamEvent =
       type: 'suggested_replies';
       replies: string[];
     }
+  | { type: 'prep_guidance' }
   | {
       type: 'conversation_patch';
       state: ConversationState;

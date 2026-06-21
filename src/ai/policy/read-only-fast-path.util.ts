@@ -49,7 +49,8 @@ export type ReadOnlyFastPathKind =
   | 'lineup'
   | 'schedule'
   | 'travel_guide_sheet'
-  | 'itinerary_sheet';
+  | 'itinerary_sheet'
+  | 'near_events';
 
 export const SCHEDULE_OVERVIEW_FAST_PATH_INPUTS = new Set([
   '查演出表',
@@ -76,6 +77,10 @@ export function isItinerarySheetFastPathInput(input: string): boolean {
 
 export function isBuddyPostFastPathInput(input: string): boolean {
   return BUDDY_POST_FAST_PATH_INPUTS.has(input.trim());
+}
+
+export function isNearEventsFastPathInput(input: string): boolean {
+  return NEAR_EVENTS_FAST_PATH_INPUTS.has(input.trim());
 }
 
 export function isScheduleOverviewFastPathInput(input: string): boolean {
@@ -141,10 +146,17 @@ export function resolveReadOnlyActivityFastPath(
 
   if (
     PERSONALITY_TEST_FAST_PATH_INPUTS.has(trimmed) ||
-    NEAR_EVENTS_FAST_PATH_INPUTS.has(trimmed) ||
     PICK_FESTIVAL_FAST_PATH_INPUTS.has(trimmed)
   ) {
     return { kind: 'quick_reply', source: 'rule' };
+  }
+
+  if (NEAR_EVENTS_FAST_PATH_INPUTS.has(trimmed)) {
+    return {
+      kind: 'quick_reply',
+      source: 'rule',
+      readOnlyFastPath: 'near_events',
+    };
   }
 
   return null;

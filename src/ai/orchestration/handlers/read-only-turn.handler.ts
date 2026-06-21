@@ -2,8 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DjInfoService } from '../../dj/dj-info.service';
 import { buildItineraryScheduleOverviewReply } from '../../agent/itinerary-schedule-reply.util';
 import { ItineraryService } from '../../../modules/itinerary/itinerary.service';
+import { ActivityService } from '../../../modules/activity/activity.service';
 import { buildDjInfoSuggestedReplies } from '../../dj/dj-info-suggested-replies.util';
 import { buildItineraryCollectPrompt } from '../../agent/itinerary-chat-slots.util';
+import { buildNearEventsReply } from '../../utils/activity-reply.util';
 import { enterItineraryCollectState } from '../../conversation';
 import { logAiTurn } from '../../utils/log-ai-turn.util';
 import {
@@ -23,6 +25,7 @@ export class ReadOnlyTurnHandler {
   constructor(
     private readonly djInfoService: DjInfoService,
     private readonly itineraryService: ItineraryService,
+    private readonly activityService: ActivityService,
     private readonly sseBuilder: AiStreamEventBuilder,
   ) {}
 
@@ -66,9 +69,20 @@ export class ReadOnlyTurnHandler {
         return this.runTravelGuideSheet(ctx.sink);
       case 'itinerary_sheet':
         return this.runItinerarySheet(ctx);
+      case 'near_events':
+        return this.runNearEvents(ctx);
       default:
         return [];
     }
+  }
+
+  private async runNearEvents(
+    ctx: TurnHandlerContext,
+  ): Promise<AiStreamEvent[]> {
+    const activities = await this.activityService.findAll();
+    const replyText = buildNearEventsReply(activities);
+    ctx.sink.setReply(replyText);
+    return [{ type: 'delta', content: replyText }];
   }
 
   private async runLineup(ctx: TurnHandlerContext): Promise<AiStreamEvent[]> {

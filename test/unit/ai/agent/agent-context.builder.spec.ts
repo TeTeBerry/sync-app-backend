@@ -34,6 +34,7 @@ describe('agent-context.builder', () => {
     expect(system).toContain('类似风格');
     expect(system).toContain('get_festival_info');
     expect(system).toContain('get_activity_brief');
+    expect(system).toContain('本场计划');
   });
 
   it('builds native multi-turn llm messages', () => {

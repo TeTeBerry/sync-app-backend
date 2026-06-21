@@ -508,7 +508,7 @@ export async function bumpDjCatalogCacheVersion() {
   }
 
   try {
-    const { default: Redis } = await import('ioredis');
+    const { Redis } = await import('ioredis');
     const versionKey = process.env.CATALOG_DJ_VERSION_KEY ?? 'catalog:dj:version';
     const redis = new Redis(redisUrl);
     await redis.incr(versionKey);

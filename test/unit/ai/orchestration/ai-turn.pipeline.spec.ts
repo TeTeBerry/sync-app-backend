@@ -53,6 +53,13 @@ describe('AiTurnPipeline homepage activity gating', () => {
   const activityService = {
     findByCode: jest.fn().mockResolvedValue(null),
     resolveActivityByKeyword: jest.fn().mockResolvedValue(null),
+    findAll: jest.fn().mockResolvedValue([
+      {
+        name: 'Tomorrowland Thailand 2026',
+        date: '12/11-13',
+        location: '芭提雅',
+      },
+    ]),
   };
   const djInfoService = {
     answerFromChat: jest.fn().mockResolvedValue({
@@ -110,6 +117,7 @@ describe('AiTurnPipeline homepage activity gating', () => {
   const readOnlyTurnHandler = new ReadOnlyTurnHandler(
     djInfoService as never,
     itineraryService as never,
+    activityService as never,
     sseBuilder,
   );
   const legacyTurnHandler = new LegacyTurnHandler(
@@ -428,6 +436,31 @@ describe('AiTurnPipeline homepage activity gating', () => {
           replies: ['Marshmello 近期演出', '找类似风格的 DJ'],
         },
       ]),
+    );
+  });
+
+  it('uses read-only near-events path for unbound prep tab chip', async () => {
+    chatAgentOrchestrator.isEnabled.mockReturnValue(true);
+    intentRouter.resolve.mockResolvedValue({
+      kind: 'quick_reply',
+      source: 'rule',
+      readOnlyFastPath: 'near_events',
+    });
+
+    const result = await pipeline.runTurn(
+      baseDto,
+      [{ role: 'user', content: '查最近活动' }],
+      '查最近活动',
+      { version: 1, flow: 'idle' },
+      'req-near-events',
+      'near-events-session',
+    );
+
+    expect(chatAgentOrchestrator.runTurn).not.toHaveBeenCalled();
+    expect(activityService.findAll).toHaveBeenCalled();
+    expect(result.assistantReply).toContain('这些是平台近期热门活动');
+    expect(result.events[0]).toEqual(
+      expect.objectContaining({ type: 'delta' }),
     );
   });
 

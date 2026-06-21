@@ -10,6 +10,7 @@ import type {
 } from '../../agent/agent.types';
 import type { AiStreamEvent } from '../../../shared/chat';
 import type { AgentTurnResult, TurnHandlerContext } from './turn-handler.types';
+import { shouldEmitPrepGuidance } from './prep-guidance.util';
 
 /**
  * Phase 1 agent kernel: default chat path via LLM tool loop.
@@ -116,6 +117,16 @@ export class AgentTurnHandler {
       if (suggested) {
         events.push(suggested);
       }
+    }
+
+    if (
+      shouldEmitPrepGuidance({
+        toolsUsed: agentResult.toolsUsed,
+        conversationState: ctx.sink.getState(),
+        events,
+      })
+    ) {
+      events.push({ type: 'prep_guidance' });
     }
 
     return events;

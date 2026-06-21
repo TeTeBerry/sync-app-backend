@@ -16,9 +16,19 @@ describe('ReadOnlyTurnHandler', () => {
       schedulePublished: true,
     }),
   };
+  const activityService = {
+    findAll: jest.fn().mockResolvedValue([
+      {
+        name: 'Tomorrowland Thailand 2026',
+        date: '12/11-13',
+        location: '芭提雅',
+      },
+    ]),
+  };
   const handler = new ReadOnlyTurnHandler(
     djInfoService as never,
     itineraryService as never,
+    activityService as never,
     new AiStreamEventBuilder(),
   );
 
@@ -78,6 +88,32 @@ describe('ReadOnlyTurnHandler', () => {
     expect(itineraryService.getSchedule).toHaveBeenCalledWith(1, {});
     expect(baseCtx.sink.setReply).toHaveBeenCalledWith(
       expect.stringContaining('官方演出表已发布'),
+    );
+  });
+
+  it('returns near-events delta without agent', async () => {
+    const sink = {
+      setReply: jest.fn(),
+      getReply: jest.fn().mockReturnValue(''),
+      setState: jest.fn(),
+      getState: jest.fn().mockReturnValue({ version: 1, flow: 'idle' }),
+    };
+    const result = await handler.tryRun({
+      ...baseCtx,
+      dto: { ...baseCtx.dto, activityLegacyId: undefined },
+      input: '查最近活动',
+      sink,
+      routed: {
+        kind: 'quick_reply',
+        source: 'rule',
+        readOnlyFastPath: 'near_events',
+      },
+    });
+
+    expect(result?.events.some((event) => event.type === 'delta')).toBe(true);
+    expect(activityService.findAll).toHaveBeenCalled();
+    expect(sink.setReply).toHaveBeenCalledWith(
+      expect.stringContaining('这些是平台近期热门活动'),
     );
   });
 

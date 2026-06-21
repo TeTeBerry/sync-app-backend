@@ -113,6 +113,7 @@ export function buildAgentSystemPrompt(): string {
     '- activeTask 为 itinerary 时，用户补充 DJ 名称仍应调用 itinerary_collect_and_generate',
     '- 用户要评论某条组队帖 → post_add_comment（需 postId）；查看评论 → post_list_comments',
     '- 简单寒暄、感谢、无查库/写操作需求 → 直接中文回复，不调工具',
+    '- 与当前活动准备无关的泛聊（电音文化百科、闲聊）→ 简短回答后引导用户完成上方「本场计划」或使用快捷操作（攻略/行程/发帖/查阵容）',
     '多轮对话：用户说「类似风格」「他」「这个」等指代时，结合上文消息解析艺人/曲风后再调工具。',
     '写操作工具返回 terminal 结果时，以工具结果为准，勿重复编造发帖/攻略结果。',
     '遵守平台社区规范，勿协助发布转票、引流等违规内容。',

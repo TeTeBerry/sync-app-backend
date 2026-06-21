@@ -10,6 +10,7 @@ const STREAM_EVENT_TYPES: AiStreamEvent['type'][] = [
   'existing_post',
   'activity_recommendation',
   'suggested_replies',
+  'prep_guidance',
   'conversation_patch',
   'travel_guide_ready',
   'travel_guide_job',
@@ -51,6 +52,7 @@ describe('chat AiStreamEvent contract', () => {
         },
       },
       { type: 'suggested_replies', replies: ['好的', '换一个'] },
+      { type: 'prep_guidance' },
       {
         type: 'conversation_patch',
         state: { version: CONVERSATION_STATE_VERSION, flow: 'idle' },

@@ -5,6 +5,7 @@ import {
   isAwaitingActivityEnterSelection,
 } from '../utils/activity-enter.util';
 import { isQuickReplyIntent } from '../intent/user-intent';
+import { isNearEventsFastPathInput } from '../policy/read-only-fast-path.util';
 import { resolveActivityScopedFastPath } from '../policy/chat-turn-policy';
 import { resolveReadOnlyActivityFastPath } from '../policy/read-only-fast-path.util';
 import type { IntentRouterInput } from './intent-router.service';
@@ -25,6 +26,13 @@ export function resolveChatIntentFastPath(
   }
 
   if (params.activityLegacyId == null && isQuickReplyIntent(trimmed)) {
+    if (isNearEventsFastPathInput(trimmed)) {
+      return {
+        kind: 'quick_reply',
+        source: 'rule',
+        readOnlyFastPath: 'near_events',
+      };
+    }
     return { kind: 'quick_reply', source: 'rule' };
   }
 

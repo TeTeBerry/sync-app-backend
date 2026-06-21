@@ -129,6 +129,6 @@ describe('chat-turn-policy', () => {
         conversationState: { version: 1, flow: 'idle' },
         routed: { kind: 'quick_reply', source: 'rule' },
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 });
