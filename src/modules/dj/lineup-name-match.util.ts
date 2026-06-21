@@ -6,6 +6,7 @@ export const DISCOGS_LINEUP_ARTIST_IDS: Record<string, number> = {
   KANINE: 5865864,
   'SVDDEN DEATH': 5375145,
   'HOHO ONE': 1889815,
+  'DJ SNAKE': 4046989,
 };
 
 /** No reliable Discogs profile — itinerary uses seed genreLabel instead. */

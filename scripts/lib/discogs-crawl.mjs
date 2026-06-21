@@ -95,7 +95,6 @@ export function createDjModel(mongoose) {
       country: { type: String, default: '' },
       urls: { type: [String], default: [] },
       members: { type: [String], default: [] },
-      thumbnail: { type: String, default: '' },
       representativeWorks: {
         type: [
           {
@@ -268,7 +267,6 @@ export function createDiscogsClient(config) {
       members: Array.isArray(artist.members)
         ? artist.members.map((member) => member.name)
         : [],
-      thumbnail: artist.images?.[0]?.uri ?? '',
       representativeWorks: releaseInsights.representativeWorks,
       crawledAt: new Date(),
     };
@@ -338,6 +336,79 @@ export async function loadFestivalLineupArtistNames(db, config) {
     ...edcKorea,
     ...tomorrowland,
   ]);
+}
+
+const CATALOG_LINEUP_FALLBACK_BY_LEGACY_ID = (config) =>
+  new Map([
+    [config.stormActivityLegacyId, STORM_LINEUP_ARTIST_NAMES],
+    [config.edcThailandActivityLegacyId, loadEdcThailandFallbackNames()],
+    [config.edcKoreaActivityLegacyId, loadEdcKoreaFallbackNames()],
+    [
+      config.tomorrowlandThailandActivityLegacyId,
+      loadTomorrowlandThailandFallbackNames(),
+    ],
+  ]);
+
+/** All lineup artist names across every activity in the catalog. */
+export async function loadAllCatalogLineupArtistNames(db, config) {
+  const activities = await db
+    .collection('activities')
+    .find({})
+    .project({ legacyId: 1, name: 1 })
+    .toArray();
+
+  const fallbackByLegacyId = CATALOG_LINEUP_FALLBACK_BY_LEGACY_ID(config);
+  const names = [];
+
+  for (const activity of activities) {
+    const legacyId = Number(activity.legacyId);
+    if (!Number.isFinite(legacyId)) {
+      continue;
+    }
+    const fallback = fallbackByLegacyId.get(legacyId) ?? [];
+    const label = activity.name?.trim() || `#${legacyId}`;
+    const activityNames = await loadLineupArtistNames(
+      db,
+      legacyId,
+      fallback,
+      label,
+    );
+    names.push(...activityNames);
+  }
+
+  return expandFestivalArtistNames(names);
+}
+
+export function findDjForLineupName(lineupName, djs) {
+  const targetKeys = getLineupCoverageKeys(lineupName);
+  if (!targetKeys.length) {
+    return null;
+  }
+
+  return (
+    djs.find((dj) => {
+      const djKey = normalizeArtistNameKey(dj.name ?? '');
+      if (!djKey) {
+        return false;
+      }
+      return targetKeys.some(
+        (targetKey) =>
+          djKey === targetKey ||
+          djKey.includes(targetKey) ||
+          targetKey.includes(djKey),
+      );
+    }) ?? null
+  );
+}
+
+export async function findMissingCatalogArtists(db, config) {
+  const expected = await loadAllCatalogLineupArtistNames(db, config);
+  const djs = await db
+    .collection('djs')
+    .find({})
+    .project({ name: 1, discogsId: 1 })
+    .toArray();
+  return expected.filter((name) => !isLineupArtistCovered(name, djs));
 }
 
 export function isLineupArtistCovered(lineupName, djs) {
@@ -428,4 +499,23 @@ export async function crawlArtistNames({
   }
 
   return { upserted, missed };
+}
+
+export async function bumpDjCatalogCacheVersion() {
+  const redisUrl = process.env.REDIS_URL?.trim();
+  if (!redisUrl) {
+    return false;
+  }
+
+  try {
+    const { default: Redis } = await import('ioredis');
+    const versionKey = process.env.CATALOG_DJ_VERSION_KEY ?? 'catalog:dj:version';
+    const redis = new Redis(redisUrl);
+    await redis.incr(versionKey);
+    await redis.quit();
+    return true;
+  } catch (error) {
+    console.warn('⚠️  Redis 缓存版本未更新:', error.message ?? error);
+    return false;
+  }
 }

@@ -42,9 +42,6 @@ export class Dj {
   @Prop({ type: [String], default: [] })
   members!: string[];
 
-  @Prop({ default: '' })
-  thumbnail?: string;
-
   /** Notable releases / tracks from Discogs — festival lineup artists only. */
   @Prop({
     type: [

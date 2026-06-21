@@ -45,6 +45,7 @@ import {
   resolveLineupDjs,
 } from './domain/itinerary-catalog.util';
 import { ItineraryCacheService } from './itinerary-cache.service';
+import { LineupArtistAvatarService } from './lineup-artist-avatar.service';
 import {
   detectPerformanceConflicts,
   type ItineraryConflict,
@@ -131,6 +132,7 @@ export class ItineraryScheduleService implements OnModuleInit {
     private readonly activityLookup: IActivityLookupPort,
     private readonly cache: ItineraryCacheService,
     private readonly djService: DjService,
+    private readonly lineupArtistAvatarService: LineupArtistAvatarService,
   ) {}
 
   async onModuleInit() {
@@ -498,22 +500,27 @@ export class ItineraryScheduleService implements OnModuleInit {
     }
 
     const artistNames = [...byArtist.values()].map((entry) => entry.artistName);
-    const catalogByLineupName =
-      await this.djService.lookupForLineupArtists(artistNames);
+    const [catalogByLineupName, avatarUrlsByKey] = await Promise.all([
+      this.djService.lookupForLineupArtists(artistNames),
+      this.lineupArtistAvatarService.findAvatarUrlsByArtistNames(artistNames),
+    ]);
 
-    const ranked = [...byArtist.values()].map((entry) => {
-      const catalog = catalogByLineupName.get(entry.artistName);
-      const genreLabel = catalog
-        ? formatDiscogsStyleLabel(catalog)
-        : entry.genreLabel;
-      return {
-        id: this.artistIdFromName(entry.artistName),
-        name: entry.artistName,
-        genreLabel,
-        activityCount: entry.activityIds.size,
-        thumbnail: catalog?.thumbnail,
-      };
-    });
+    const ranked = [...byArtist.values()]
+      .map((entry) => {
+        const catalog = catalogByLineupName.get(entry.artistName);
+        const genreLabel = catalog
+          ? formatDiscogsStyleLabel(catalog)
+          : entry.genreLabel;
+        const nameKey = entry.artistName.trim().toLowerCase();
+        return {
+          id: this.artistIdFromName(entry.artistName),
+          name: entry.artistName,
+          genreLabel,
+          activityCount: entry.activityIds.size,
+          thumbnail: avatarUrlsByKey.get(nameKey),
+        };
+      })
+      .filter((entry) => Boolean(entry.thumbnail?.trim()));
 
     return ranked.sort((a, b) => {
       if (b.activityCount !== a.activityCount) {

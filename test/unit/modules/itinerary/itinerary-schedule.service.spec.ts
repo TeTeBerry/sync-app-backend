@@ -53,6 +53,9 @@ describe('ItineraryScheduleService discogs styles', () => {
       ]),
     ),
   };
+  const lineupArtistAvatarService = {
+    findAvatarUrlsByArtistNames: jest.fn().mockResolvedValue(new Map()),
+  };
 
   let service: ItineraryScheduleService;
 
@@ -103,6 +106,7 @@ describe('ItineraryScheduleService discogs styles', () => {
       activityLookup as never,
       cache as never,
       djService as never,
+      lineupArtistAvatarService as never,
     );
   });
 
@@ -353,6 +357,12 @@ describe('ItineraryScheduleService discogs styles', () => {
       }),
     });
     djService.lookupForLineupArtists.mockResolvedValue(new Map());
+    lineupArtistAvatarService.findAvatarUrlsByArtistNames.mockResolvedValue(
+      new Map([
+        ['shared act', 'https://cdn.example/shared.jpg'],
+        ['dj snake', 'https://cdn.example/snake.jpg'],
+      ]),
+    );
 
     const artists = await service.listCatalogLineupArtistsRanked();
 

@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { CloudModule } from '../../infra/cloud/cloud.module';
 import {
   ArtistPerformance,
   ArtistPerformanceSchema,
@@ -16,6 +17,10 @@ import {
   ItineraryGenerationLog,
   ItineraryGenerationLogSchema,
 } from '../../database/schemas/itinerary-generation-log.schema';
+import {
+  LineupArtistAvatar,
+  LineupArtistAvatarSchema,
+} from '../../database/schemas/lineup-artist-avatar.schema';
 import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
 import { DjModule } from '../dj/dj.module';
@@ -24,11 +29,13 @@ import { ItineraryService } from './itinerary.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
 import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryCacheService } from './itinerary-cache.service';
+import { LineupArtistAvatarService } from './lineup-artist-avatar.service';
 
 @Module({
   imports: [
     forwardRef(() => ActivityModule),
     AuthModule,
+    CloudModule,
     DjModule,
     MongooseModule.forFeature([
       { name: ArtistPerformance.name, schema: ArtistPerformanceSchema },
@@ -38,6 +45,7 @@ import { ItineraryCacheService } from './itinerary-cache.service';
         name: ItineraryGenerationLog.name,
         schema: ItineraryGenerationLogSchema,
       },
+      { name: LineupArtistAvatar.name, schema: LineupArtistAvatarSchema },
     ]),
   ],
   controllers: [ItineraryController],
@@ -46,6 +54,7 @@ import { ItineraryCacheService } from './itinerary-cache.service';
     ItineraryScheduleService,
     ItineraryGenerationService,
     ItineraryCacheService,
+    LineupArtistAvatarService,
   ],
   exports: [ItineraryService, ItineraryScheduleService],
 })

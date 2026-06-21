@@ -173,6 +173,7 @@ export const DISCOGS_LINEUP_ARTIST_IDS = {
    * No standalone Discogs page; producer half is #1889815.
    */
   'HOHO ONE': 1889815,
+  'DJ SNAKE': 4046989,
 };
 
 /** Skip Discogs crawl — no reliable match; itinerary keeps seed genreLabel. */
@@ -253,7 +254,6 @@ export const LINEUP_MANUAL_DJ_PROFILES = {
     country: 'South Korea',
     urls: ['https://soundcloud.com/paul-eun'],
     members: [],
-    thumbnail: '',
     representativeWorks: [],
   },
 };

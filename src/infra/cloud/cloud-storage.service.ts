@@ -24,6 +24,9 @@ type WechatBatchDownloadResponse = {
   }>;
 };
 
+/** WeChat `tcb/batchdownloadfile` rejects more than 50 files per request. */
+const BATCH_DOWNLOAD_MAX_FILES = 50;
+
 @Injectable()
 export class CloudStorageService {
   private readonly logger = new Logger(CloudStorageService.name);
@@ -75,31 +78,47 @@ export class CloudStorageService {
 
     try {
       let token = await this.accessToken.getAccessToken();
-      let payload = await this.batchDownloadFile(token, candidates);
-      if (this.isInvalidAccessTokenError(payload)) {
-        this.logger.warn('WeChat access_token invalid, forcing refresh');
-        this.accessToken.clearCache();
-        token = await this.accessToken.getAccessToken({ forceRefresh: true });
-        payload = await this.batchDownloadFile(token, candidates);
-      }
-      if (payload.errcode && payload.errcode !== 0) {
-        throw new BadRequestException(
-          payload.errmsg || `读取云存储失败 (${payload.errcode})`,
+      const results: string[] = [];
+
+      for (
+        let offset = 0;
+        offset < candidates.length;
+        offset += BATCH_DOWNLOAD_MAX_FILES
+      ) {
+        const chunk = candidates.slice(
+          offset,
+          offset + BATCH_DOWNLOAD_MAX_FILES,
+        );
+        let payload = await this.batchDownloadFile(token, chunk);
+        if (this.isInvalidAccessTokenError(payload)) {
+          this.logger.warn('WeChat access_token invalid, forcing refresh');
+          this.accessToken.clearCache();
+          token = await this.accessToken.getAccessToken({ forceRefresh: true });
+          payload = await this.batchDownloadFile(token, chunk);
+        }
+        if (payload.errcode && payload.errcode !== 0) {
+          throw new BadRequestException(
+            payload.errmsg || `读取云存储失败 (${payload.errcode})`,
+          );
+        }
+
+        results.push(
+          ...chunk.map((fileId, index) => {
+            const row = payload.file_list?.[index];
+            const downloadUrl =
+              row?.fileid === fileId ? row.download_url?.trim() : '';
+            if (!downloadUrl || row?.status !== 0) {
+              this.logger.warn(
+                `cloud file download unavailable: ${fileId} status=${row?.status ?? 'missing'}`,
+              );
+              return '';
+            }
+            return downloadUrl;
+          }),
         );
       }
 
-      return candidates.map((fileId, index) => {
-        const row = payload.file_list?.[index];
-        const downloadUrl =
-          row?.fileid === fileId ? row.download_url?.trim() : '';
-        if (!downloadUrl || row?.status !== 0) {
-          this.logger.warn(
-            `cloud file download unavailable: ${fileId} status=${row?.status ?? 'missing'}`,
-          );
-          return '';
-        }
-        return downloadUrl;
-      });
+      return results;
     } catch (error) {
       if (
         error instanceof BadRequestException ||

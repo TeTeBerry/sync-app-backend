@@ -14,7 +14,6 @@ export type DjCatalogItem = {
   genres: string[];
   styles: string[];
   country?: string;
-  thumbnail?: string;
   representativeWorks?: DjRepresentativeWork[];
 };
 

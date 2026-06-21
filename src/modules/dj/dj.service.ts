@@ -27,7 +27,6 @@ function toCatalogItem(doc: DjDocument | Dj): DjCatalogItem {
     genres: doc.genres ?? [],
     styles: doc.styles ?? [],
     country: doc.country,
-    thumbnail: doc.thumbnail,
     representativeWorks: doc.representativeWorks ?? [],
   };
 }
