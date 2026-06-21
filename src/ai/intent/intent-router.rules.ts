@@ -4,12 +4,33 @@ import {
   isActivityEnterNameInput,
   isAwaitingActivityEnterSelection,
 } from '../utils/activity-enter.util';
+import {
+  isHomeFestivalShortcutInput,
+  resolveHomeFestivalShortcutCode,
+} from '../utils/festival-shortcut.util';
 import { isQuickReplyIntent } from '../intent/user-intent';
 import { isNearEventsFastPathInput } from '../policy/read-only-fast-path.util';
 import { resolveActivityScopedFastPath } from '../policy/chat-turn-policy';
 import { resolveReadOnlyActivityFastPath } from '../policy/read-only-fast-path.util';
 import type { IntentRouterInput } from './intent-router.service';
 import type { ResolvedChatIntent } from './chat-intent.types';
+
+function resolveUnboundFestivalCatalogIntent(
+  trimmed: string,
+): ResolvedChatIntent | null {
+  if (!trimmed) return null;
+  if (
+    resolveHomeFestivalShortcutCode(trimmed) ||
+    isHomeFestivalShortcutInput(trimmed)
+  ) {
+    return {
+      kind: 'quick_reply',
+      source: 'rule',
+      readOnlyFastPath: 'festival_catalog',
+    };
+  }
+  return null;
+}
 
 /** 规则快路径：命中则不调用 Intent LLM */
 export function resolveChatIntentFastPath(
@@ -22,6 +43,13 @@ export function resolveChatIntentFastPath(
   ) {
     if (isActivityEnterNameInput(trimmed)) {
       return { kind: 'activity_enter', source: 'rule' };
+    }
+  }
+
+  if (params.activityLegacyId == null && trimmed) {
+    const festivalCatalog = resolveUnboundFestivalCatalogIntent(trimmed);
+    if (festivalCatalog) {
+      return festivalCatalog;
     }
   }
 

@@ -46,12 +46,14 @@ export function buildActivityEnterConfirmationReply(
 }
 
 export function toRecommendedActivityCard(
-  activity: Pick<Activity, 'legacyId' | 'name' | 'date' | 'location'>,
+  activity: Pick<Activity, 'legacyId' | 'name' | 'date' | 'location' | 'image'>,
 ): RecommendedActivityCard {
+  const image = activity.image?.trim();
   return {
     activityLegacyId: activity.legacyId,
     title: activity.name?.trim() || '活动',
     date: activity.date?.trim() || undefined,
     venue: activity.location?.trim() || undefined,
+    ...(image ? { image } : {}),
   };
 }

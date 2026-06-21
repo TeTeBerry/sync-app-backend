@@ -24,6 +24,12 @@ describe('ReadOnlyTurnHandler', () => {
         location: '芭提雅',
       },
     ]),
+    findByCode: jest.fn().mockResolvedValue({
+      legacyId: 5,
+      name: 'EDC Thailand 2026',
+      date: '12/18-20',
+      location: '普吉岛 Rhythm Park',
+    }),
   };
   const handler = new ReadOnlyTurnHandler(
     djInfoService as never,
@@ -115,6 +121,39 @@ describe('ReadOnlyTurnHandler', () => {
     expect(sink.setReply).toHaveBeenCalledWith(
       expect.stringContaining('这些是平台近期热门活动'),
     );
+  });
+
+  it('returns festival activity card for catalog lookup', async () => {
+    const sink = {
+      setReply: jest.fn(),
+      getReply: jest.fn().mockReturnValue(''),
+      setState: jest.fn(),
+      getState: jest.fn().mockReturnValue({ version: 1, flow: 'idle' }),
+    };
+    const result = await handler.tryRun({
+      ...baseCtx,
+      dto: { ...baseCtx.dto, activityLegacyId: undefined },
+      input: 'EDC Thailand 阵容官宣了吗',
+      sink,
+      routed: {
+        kind: 'quick_reply',
+        source: 'rule',
+        readOnlyFastPath: 'festival_catalog',
+      },
+    });
+
+    expect(activityService.findByCode).toHaveBeenCalledWith('edc-thailand');
+    expect(sink.setReply).toHaveBeenCalledWith(
+      '好的，点下方卡片进入「EDC Thailand 2026」，我可以帮你了解活动详情。',
+    );
+    expect(
+      result?.events.some(
+        (event) =>
+          event.type === 'activity_recommendation' &&
+          'activity' in event &&
+          event.activity.title === 'EDC Thailand 2026',
+      ),
+    ).toBe(true);
   });
 
   it('opens travel guide sheet for chip text', async () => {

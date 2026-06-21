@@ -1,6 +1,8 @@
 # Sync App Backend
 
-NestJS API and AI WebSocket server for **SYNC** — a WeChat mini program for electronic music festival discovery, activity planning, AI assistance, travel guides, itineraries, and structured buddy posts.
+NestJS API for **SYNC** — a WeChat mini program for electronic music festival discovery, activity planning, travel guides, itineraries, and structured buddy posts.
+
+**Note:** Multi-turn AI chat WebSocket (`/api/ai/chat/ws`) is **disabled by default** (`AI_CHAT_WS_ENABLED` unset or `false`). Non-chat AI APIs remain: travel guide generation, post AI search, etc.
 
 ## Features
 

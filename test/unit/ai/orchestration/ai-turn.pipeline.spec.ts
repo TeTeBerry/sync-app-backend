@@ -439,6 +439,44 @@ describe('AiTurnPipeline homepage activity gating', () => {
     );
   });
 
+  it('uses read-only festival catalog path for lineup lookup question', async () => {
+    chatAgentOrchestrator.isEnabled.mockReturnValue(true);
+    activityService.findByCode.mockResolvedValue({
+      legacyId: 5,
+      name: 'EDC Thailand 2026',
+      date: '12/18-20',
+      location: '普吉岛 Rhythm Park',
+    });
+    intentRouter.resolve.mockResolvedValue({
+      kind: 'quick_reply',
+      source: 'rule',
+      readOnlyFastPath: 'festival_catalog',
+    });
+
+    const result = await pipeline.runTurn(
+      baseDto,
+      [{ role: 'user', content: 'EDC Thailand 阵容官宣了吗' }],
+      'EDC Thailand 阵容官宣了吗',
+      { version: 1, flow: 'idle' },
+      'req-edc-lineup',
+      'edc-lineup-session',
+    );
+
+    expect(chatAgentOrchestrator.runTurn).not.toHaveBeenCalled();
+    expect(djInfoService.answerFromChat).not.toHaveBeenCalled();
+    expect(activityService.findByCode).toHaveBeenCalledWith('edc-thailand');
+    expect(result.assistantReply).toContain('EDC Thailand 2026');
+    expect(result.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'delta' }),
+        expect.objectContaining({
+          type: 'activity_recommendation',
+          activity: expect.objectContaining({ title: 'EDC Thailand 2026' }),
+        }),
+      ]),
+    );
+  });
+
   it('uses read-only near-events path for unbound prep tab chip', async () => {
     chatAgentOrchestrator.isEnabled.mockReturnValue(true);
     intentRouter.resolve.mockResolvedValue({

@@ -8,11 +8,11 @@ import { isCurrentPersonalityNicknameFormat } from '@src/modules/personality-tes
 import { isRaverAvatarAssetKeyInCatalog } from '@src/modules/personality-test/utils/personality-raver-avatar.util';
 
 describe('dev-mock-buddy-posts.util', () => {
-  it('builds five stable TML Thailand mock posts with random cloud avatars and nicknames', () => {
+  it('builds ten stable TML Thailand mock posts with recruiting and full states', () => {
     const fixedNow = new Date('2026-06-01T12:00:00.000Z');
     const posts = buildDevMockTmlBuddyPosts(fixedNow);
 
-    expect(posts).toHaveLength(5);
+    expect(posts).toHaveLength(10);
     expect(
       posts.every((p) => p.activityLegacyId === TML_THAILAND_LEGACY_ID),
     ).toBe(true);
@@ -23,12 +23,24 @@ describe('dev-mock-buddy-posts.util', () => {
       posts.every((p) => p.userId.startsWith(DEV_MOCK_TML_POST_USER_PREFIX)),
     ).toBe(true);
 
+    const recruitingBodies = posts.slice(0, 6).map((p) => p.body);
+    const fullBodies = posts.slice(6).map((p) => p.body);
+
+    expect(recruitingBodies.every((body) => !/已满|招满|满员/.test(body))).toBe(
+      true,
+    );
+    expect(
+      fullBodies.every(
+        (body) => /已满|招满/.test(body) && /\d+\s*\/\s*\d+/.test(body),
+      ),
+    ).toBe(true);
+
     for (const post of posts) {
       expect(isCurrentPersonalityNicknameFormat(post.authorName)).toBe(true);
       expect(isRaverAvatarAssetKeyInCatalog(post.authorAvatar)).toBe(true);
       expect(post.authorAvatar.startsWith('avatar/')).toBe(true);
       expect(post.tags).toEqual(['#组队']);
-      expect(post.body).toContain('组队');
+      expect(post.body.length).toBeGreaterThan(20);
       expect(post.createdAt.getTime()).toBeLessThanOrEqual(fixedNow.getTime());
     }
 

@@ -57,7 +57,11 @@ export class LegacyTurnHandler {
       }
     }
 
-    if (isDjInfoIntent(ctx.input.trim())) {
+    if (
+      isDjInfoIntent(ctx.input.trim(), {
+        activityLegacyId: ctx.dto.activityLegacyId,
+      })
+    ) {
       return this.djInfoTurnHandler.run(ctx);
     }
 

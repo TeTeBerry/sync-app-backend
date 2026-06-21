@@ -74,7 +74,7 @@ export class AgentRuntimeService {
     }
 
     return {
-      result: this.fallbackProvider.create(ctx.state),
+      result: this.fallbackProvider.create(ctx.state, ctx.activityLegacyId),
       steps,
     };
   }

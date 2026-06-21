@@ -166,13 +166,40 @@ describe('intent-router.rules', () => {
     });
   });
 
-  it('routes homepage festival shortcut to quick_reply without binding activity', () => {
+  it('routes homepage festival shortcut to festival_catalog without binding activity', () => {
     const hit = resolveChatIntentFastPath('风暴电音节', {
       messages: [],
       input: '风暴电音节',
     });
-    expect(hit?.kind).toBe('quick_reply');
-    expect(hit?.source).toBe('rule');
+    expect(hit).toEqual({
+      kind: 'quick_reply',
+      source: 'rule',
+      readOnlyFastPath: 'festival_catalog',
+    });
+  });
+
+  it('routes natural-language festival lookup to festival_catalog when unbound', () => {
+    const hit = resolveChatIntentFastPath('风暴什么时候', {
+      messages: [],
+      input: '风暴什么时候',
+    });
+    expect(hit).toEqual({
+      kind: 'quick_reply',
+      source: 'rule',
+      readOnlyFastPath: 'festival_catalog',
+    });
+  });
+
+  it('routes festival lineup questions to festival_catalog when unbound', () => {
+    const hit = resolveChatIntentFastPath('EDC Thailand 阵容官宣了吗', {
+      messages: [],
+      input: 'EDC Thailand 阵容官宣了吗',
+    });
+    expect(hit).toEqual({
+      kind: 'quick_reply',
+      source: 'rule',
+      readOnlyFastPath: 'festival_catalog',
+    });
   });
 
   it('routes near-events chip to read-only fast path without binding activity', () => {

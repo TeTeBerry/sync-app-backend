@@ -1,5 +1,6 @@
 import type { ChatMessageDto } from '../../shared/chat';
 import type { DjInfoStructuredQuery } from './dj-info-structured.types';
+import { resolveHomeFestivalShortcutCode } from '../utils/festival-shortcut.util';
 
 export type DjInfoQueryKind =
   | 'artist_profile'
@@ -40,9 +41,18 @@ const STYLE_PATTERN =
   /\b(techno|house|trance|dubstep|hardstyle|trap|dnb|drum\s*&?\s*bass|big\s*room|bass\s*house|future\s*bass)\b/gi;
 
 /** 规则快路径 + agent-first：DJ/艺人/曲风只读问句 */
-export function isDjInfoIntent(input: string): boolean {
+export function isDjInfoIntent(
+  input: string,
+  options?: { activityLegacyId?: number },
+): boolean {
   const text = input.trim();
   if (!text) return false;
+
+  const activityLegacyId = options?.activityLegacyId;
+  const unbound = activityLegacyId == null || Number.isNaN(activityLegacyId);
+  if (unbound && resolveHomeFestivalShortcutCode(text)) {
+    return false;
+  }
 
   if (
     /什么风格|什么曲风|风格是什么|曲风是什么|玩什么风格|主要风格|音乐风格/.test(

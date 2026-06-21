@@ -74,9 +74,18 @@ async function bootstrap() {
   try {
     await app.listen(port);
     const httpServer = app.getHttpServer();
-    app.get(AiChatWsServer).attach(httpServer);
+    const aiChatWsEnabled =
+      process.env.AI_CHAT_WS_ENABLED === 'true' ||
+      process.env.AI_CHAT_WS_ENABLED === '1';
+    if (aiChatWsEnabled) {
+      app.get(AiChatWsServer).attach(httpServer);
+      logger.log(`✅ AI WebSocket: ws://localhost:${port}${AI_CHAT_WS_PATH}`);
+    } else {
+      logger.log(
+        'ℹ️  AI WebSocket disabled (set AI_CHAT_WS_ENABLED=true to enable)',
+      );
+    }
     logger.log(`🚀 API: http://localhost:${port}/api`);
-    logger.log(`✅ AI WebSocket: ws://localhost:${port}${AI_CHAT_WS_PATH}`);
     logger.log(`📦 MongoDB: ${mongoUri.replace(/\/\/.*@/, '//***@')}`);
     const corsOrigins = parseCorsOrigins();
     const corsMessage = describeCorsPolicy(process.env.NODE_ENV, corsOrigins);

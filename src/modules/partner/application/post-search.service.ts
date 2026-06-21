@@ -1,6 +1,8 @@
 import { Types } from 'mongoose';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../../common/auth/request-actor.types';
+import { UserService } from '../../user/user.service';
+import type { UserMatchProfile } from '../../user/user-profile-hints.util';
 import {
   IPostRepository,
   POST_REPOSITORY,
@@ -9,7 +11,7 @@ import type { PostPageCursor } from '../domain/post-cursor.util';
 import { BuddyPostSearchParseService } from './buddy-post-search-parse.service';
 import { PostQueryService } from './post-query.service';
 import {
-  filterBuddyPostsBySearchTerms,
+  rankBuddyPostsBySearch,
   resolveBuddyPostSearchTerms,
 } from '../utils/buddy-post-search.util';
 
@@ -24,6 +26,7 @@ export class PostSearchService {
     private readonly repository: IPostRepository,
     private readonly parseService: BuddyPostSearchParseService,
     private readonly postQuery: PostQueryService,
+    private readonly userService: UserService,
   ) {}
 
   async searchByNaturalLanguage(
@@ -39,8 +42,9 @@ export class PostSearchService {
       throw new BadRequestException('活动信息无效');
     }
 
-    const parsed = this.parseService.parse(trimmed);
+    const parsed = await this.parseService.parse(trimmed);
     const searchTerms = resolveBuddyPostSearchTerms(parsed, trimmed);
+    const viewerProfile = await this.loadViewerMatchProfile(actor);
 
     const rows: Awaited<
       ReturnType<IPostRepository['findByActivityLegacyIdPage']>
@@ -68,12 +72,13 @@ export class PostSearchService {
     }
 
     const totalScanned = rows.length;
-    const filtered = filterBuddyPostsBySearchTerms(rows, searchTerms).slice(
-      0,
-      MAX_AI_SEARCH_RESULTS,
-    );
+    const ranked = rankBuddyPostsBySearch(
+      rows,
+      searchTerms,
+      viewerProfile,
+    ).slice(0, MAX_AI_SEARCH_RESULTS);
 
-    const items = await this.postQuery.mapEventDetailPosts(filtered, actor);
+    const items = await this.postQuery.mapEventDetailPosts(ranked, actor);
 
     return {
       parsed: {
@@ -81,8 +86,27 @@ export class PostSearchService {
         searchTerms,
       },
       items,
-      totalMatched: filtered.length,
+      totalMatched: ranked.length,
       totalScanned,
     };
+  }
+
+  private async loadViewerMatchProfile(
+    actor: RequestActor,
+  ): Promise<UserMatchProfile | null> {
+    const record = await this.userService.resolveProfile(actor);
+    if (!record) return null;
+
+    const profile: UserMatchProfile = {
+      city: record.city?.trim() || undefined,
+      favorGenres: record.favorGenres,
+      budgetLevel: record.budgetLevel?.trim() || undefined,
+    };
+
+    if (!profile.city && !profile.favorGenres?.length && !profile.budgetLevel) {
+      return null;
+    }
+
+    return profile;
   }
 }

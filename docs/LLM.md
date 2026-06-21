@@ -58,6 +58,12 @@ QWEN_API_KEY=
 | `HUNYUAN_API_KEY` | 文本 LLM 禁用；意图路由走规则快路径；Agent 降级 |
 | `QWEN_API_KEY` | 视觉禁用；小票 OCR、风控识图等 VL 能力不可用 |
 
+## AI 聊天 WebSocket（已默认下线）
+
+自 **US-Q2-22** 起，前端已移除准备 Tab 与聊天客户端；`main.ts` 仅在 `AI_CHAT_WS_ENABLED=true` 时挂载 `AiChatWsServer`。
+
+仍保留的 LLM 能力：出行攻略生成、招募帖 AI 搜索、意图解析等非对话 API。
+
 ## 相关文档
 
 - 环境变量表：[README.md](../README.md#环境变量)

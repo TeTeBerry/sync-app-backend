@@ -4,7 +4,9 @@ import {
   filterBuddyPostsBySearchTerms,
   fuzzyTextMatches,
   parseBuddyPostSearchQuery,
+  rankBuddyPostsBySearch,
   resolveBuddyPostSearchTerms,
+  scoreBuddyPostKeywordMatch,
 } from '@src/modules/partner/utils/buddy-post-search.util';
 import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
 
@@ -44,7 +46,7 @@ describe('buddy-post-search.util', () => {
     ).toBe(true);
   });
 
-  it('filters posts without changing createdAt order', () => {
+  it('filters posts without changing relative order when no profile is given', () => {
     const older = samplePost({
       _id: 'older',
       createdAt: new Date('2026-09-01T10:00:00Z'),
@@ -121,5 +123,54 @@ describe('buddy-post-search.util', () => {
       body: '10.3 EDC 韩国 白天在场，喜欢 Techno，找 2 人同逛舞台',
     });
     expect(buddyPostMatchesSearchTerms(post, terms)).toBe(true);
+  });
+
+  it('strips buddy-search boilerplate for departure city queries', () => {
+    const terms = resolveBuddyPostSearchTerms(
+      parseBuddyPostSearchQuery('找成都出发的队'),
+      '找成都出发的队',
+    );
+    expect(terms).toEqual(['成都出发']);
+
+    const post = samplePost({
+      body: '成都出发，12.12-13 两天场',
+      departureCity: '成都',
+    });
+    expect(buddyPostMatchesSearchTerms(post, terms)).toBe(true);
+  });
+
+  it('scores stronger keyword coverage higher', () => {
+    const stronger = scoreBuddyPostKeywordMatch(
+      samplePost({ body: '成都出发 Techno', departureCity: '成都' }),
+      ['成都', '出发', 'Techno'],
+    );
+    const weaker = scoreBuddyPostKeywordMatch(
+      samplePost({ body: '成都 Techno', departureCity: '成都' }),
+      ['成都', 'Techno'],
+    );
+    expect(stronger).toBeGreaterThan(weaker);
+  });
+
+  it('uses viewer profile as tiebreaker when keyword scores match', () => {
+    const shanghai = samplePost({
+      _id: 'shanghai',
+      body: 'Techno 同逛舞台',
+      departureCity: '上海',
+    });
+    const guangzhou = samplePost({
+      _id: 'guangzhou',
+      body: 'Techno 同逛舞台',
+      departureCity: '广州',
+    });
+
+    const ranked = rankBuddyPostsBySearch(
+      [guangzhou, shanghai],
+      ['Techno', '同逛舞台'],
+      { city: '上海', favorGenres: ['Techno'] },
+    );
+    expect(ranked.map((row) => String(row._id))).toEqual([
+      'shanghai',
+      'guangzhou',
+    ]);
   });
 });

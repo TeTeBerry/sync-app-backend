@@ -116,11 +116,13 @@ export class ChatService {
     }
     const date = activity.date?.trim();
     const venue = activity.venue?.trim();
+    const image = activity.image?.trim();
     return {
       activityLegacyId: activity.activityLegacyId,
       title: activity.title.trim(),
       ...(date ? { date } : {}),
       ...(venue ? { venue } : {}),
+      ...(image ? { image } : {}),
     };
   }
 

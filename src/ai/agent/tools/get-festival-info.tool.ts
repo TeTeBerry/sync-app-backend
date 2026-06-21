@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ActivityService } from '../../../modules/activity/activity.service';
-import { buildHomeFestivalShortcutReplyFromCatalog } from '../../utils/festival-shortcut.util';
+import {
+  buildActivityEnterConfirmationReply,
+  toRecommendedActivityCard,
+} from '../../utils/activity-enter.util';
+import { resolveHomeFestivalShortcutCode } from '../../utils/festival-shortcut.util';
 import type { ChatAgentTurnInput } from '../agent.types';
 import type {
   ChatAgentTool,
@@ -37,12 +41,8 @@ export class GetFestivalInfoTool implements ChatAgentTool {
         ? args.festivalName.trim()
         : input.input.trim();
 
-    const reply = await buildHomeFestivalShortcutReplyFromCatalog(
-      festivalName,
-      (code) => this.activityService.findByCode(code),
-    );
-
-    if (!reply) {
+    const code = resolveHomeFestivalShortcutCode(festivalName);
+    if (!code) {
       return {
         ok: false,
         content: `未识别电音节「${festivalName}」，可尝试风暴电音节、EDC Thailand、Tomorrowland。`,
@@ -50,11 +50,28 @@ export class GetFestivalInfoTool implements ChatAgentTool {
       };
     }
 
+    const activity = await this.activityService.findByCode(code);
+    if (!activity?.legacyId) {
+      return {
+        ok: false,
+        content: `未找到电音节「${festivalName}」的 catalog 活动。`,
+        error: 'festival_not_found',
+      };
+    }
+
+    const card = toRecommendedActivityCard(activity);
+    const replyText = buildActivityEnterConfirmationReply(card.title);
+
     return {
       ok: true,
-      content: reply,
+      content: replyText,
       terminal: true,
-      data: { festivalName },
+      replyOverride: replyText,
+      data: { festivalName, activityLegacyId: card.activityLegacyId },
+      streamEvents: [
+        { type: 'delta', content: replyText },
+        { type: 'activity_recommendation', activity: card },
+      ],
     };
   }
 }

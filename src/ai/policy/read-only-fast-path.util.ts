@@ -50,7 +50,8 @@ export type ReadOnlyFastPathKind =
   | 'schedule'
   | 'travel_guide_sheet'
   | 'itinerary_sheet'
-  | 'near_events';
+  | 'near_events'
+  | 'festival_catalog';
 
 export const SCHEDULE_OVERVIEW_FAST_PATH_INPUTS = new Set([
   '查演出表',

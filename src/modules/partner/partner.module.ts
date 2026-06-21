@@ -10,6 +10,7 @@ import { PostController } from './post.controller';
 import { PartnerRepositoryModule } from './partner-repository.module';
 import { PostService } from './post.service';
 import { MediaSecurityModule } from '../media-security/media-security.module';
+import { InfraLlmModule } from '../../infra/llm/llm.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Post, PostSchema } from '../../database/schemas/post.schema';
 import {
@@ -31,6 +32,7 @@ import { PostDevMockSeedService } from './application/post-dev-mock-seed.service
     PartnerRepositoryModule,
     PartnerWriteModule,
     NotificationModule,
+    InfraLlmModule,
     MongooseModule.forFeature([
       { name: Post.name, schema: PostSchema },
       { name: PostComment.name, schema: PostCommentSchema },

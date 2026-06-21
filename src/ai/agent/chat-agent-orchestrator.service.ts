@@ -67,6 +67,8 @@ export class ChatAgentOrchestratorService {
         ? await this.activityService.findByLegacyId(input.dto.activityLegacyId)
         : null;
 
+    const activityBound = activity != null;
+
     const llmMessages = buildAgentLlmMessages({
       input: input.input,
       messages: input.messages,
@@ -80,7 +82,7 @@ export class ChatAgentOrchestratorService {
     for (let step = 0; step < MAX_AGENT_STEPS; step += 1) {
       const message = await this.agentLlm.chatWithTools({
         messages: llmMessages,
-        tools: this.toolRegistry.openAiToolSchemas(),
+        tools: this.toolRegistry.openAiToolSchemas(activityBound),
       });
 
       if (!message) {

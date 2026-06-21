@@ -4,6 +4,24 @@ import {
 } from '../../common/utils/day-time.util';
 import { PostRecord } from './interfaces/post.repository.interface';
 
+const LIST_BODY_PREVIEW_MAX = 280;
+
+/** List APIs omit full `body`; short posts store text only on `body`. */
+export function resolvePostListBodyPreview(post: PostRecord): string {
+  const storedPreview = post.bodyPreview?.trim() ?? '';
+  if (storedPreview) {
+    return storedPreview;
+  }
+  const body = post.body?.trim() ?? '';
+  if (!body) {
+    return '';
+  }
+  if (body.length <= LIST_BODY_PREVIEW_MAX) {
+    return body;
+  }
+  return body.slice(0, LIST_BODY_PREVIEW_MAX);
+}
+
 export class PostMapper {
   static toHomeFeedItem(post: PostRecord) {
     return {
@@ -32,7 +50,7 @@ export class PostMapper {
       event: post.eventTitle,
       activityLegacyId: post.activityLegacyId,
       location: post.location ?? '',
-      bodyPreview: post.bodyPreview ?? '',
+      bodyPreview: resolvePostListBodyPreview(post),
       time: formatRelativeTime(post.createdAt),
       avatar: post.authorAvatar ?? '',
       tags: post.tags ?? [],
@@ -76,7 +94,7 @@ export class PostMapper {
       location: post.location ?? '',
       departureCity: post.departureCity ?? '',
       createdAt,
-      bodyPreview: post.bodyPreview ?? '',
+      bodyPreview: resolvePostListBodyPreview(post),
       tags: post.tags ?? [],
       comments: post.comments ?? 0,
       avatar: post.authorAvatar ?? '',
@@ -126,7 +144,7 @@ export class PostMapper {
     return {
       id: String(post._id),
       title: post.eventTitle,
-      contentPreview: post.bodyPreview ?? '',
+      contentPreview: resolvePostListBodyPreview(post),
       date: formatDateLabel(post.createdAt),
       activityLegacyId: post.activityLegacyId,
     };

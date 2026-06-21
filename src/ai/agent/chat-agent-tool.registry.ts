@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { GetActivityBriefTool } from './tools/get-activity-brief.tool';
+import { GetFestivalInfoTool } from './tools/get-festival-info.tool';
 import { QueryDjInfoTool } from './tools/query-dj-info.tool';
 import { PostConfirmPublishTool } from './tools/post-confirm-publish.tool';
 import { PostStartCollectTool } from './tools/post-start-collect.tool';
@@ -10,6 +11,7 @@ import {
   ItineraryCollectAndGenerateTool,
   ItineraryGenerateTool,
 } from './tools/itinerary.tools';
+import { resolveAgentToolsForBinding } from './agent-main-path-tools.util';
 import type { ChatAgentTool } from './tools/chat-agent-tool.types';
 
 @Injectable()
@@ -19,6 +21,7 @@ export class ChatAgentToolRegistry {
   constructor(
     queryDjInfoTool: QueryDjInfoTool,
     getActivityBriefTool: GetActivityBriefTool,
+    getFestivalInfoTool: GetFestivalInfoTool,
     postStartCollectTool: PostStartCollectTool,
     postSubmitTool: PostSubmitTool,
     postConfirmPublishTool: PostConfirmPublishTool,
@@ -30,6 +33,7 @@ export class ChatAgentToolRegistry {
     this.tools = [
       queryDjInfoTool,
       getActivityBriefTool,
+      getFestivalInfoTool,
       postStartCollectTool,
       postSubmitTool,
       postConfirmPublishTool,
@@ -48,7 +52,7 @@ export class ChatAgentToolRegistry {
     return this.tools.find((tool) => tool.definition.name === name);
   }
 
-  openAiToolSchemas(): Array<{
+  openAiToolSchemas(activityBound = false): Array<{
     type: 'function';
     function: {
       name: string;
@@ -56,13 +60,16 @@ export class ChatAgentToolRegistry {
       parameters: Record<string, unknown>;
     };
   }> {
-    return this.tools.map((tool) => ({
-      type: 'function',
-      function: {
-        name: tool.definition.name,
-        description: tool.definition.description,
-        parameters: tool.definition.parameters,
-      },
-    }));
+    const allowed = new Set(resolveAgentToolsForBinding(activityBound));
+    return this.tools
+      .filter((tool) => allowed.has(tool.definition.name))
+      .map((tool) => ({
+        type: 'function',
+        function: {
+          name: tool.definition.name,
+          description: tool.definition.description,
+          parameters: tool.definition.parameters,
+        },
+      }));
   }
 }

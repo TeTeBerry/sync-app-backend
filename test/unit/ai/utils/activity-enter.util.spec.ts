@@ -42,12 +42,14 @@ describe('activity-enter.util', () => {
         name: '风暴电音节 深圳站',
         date: '06/13-14',
         location: '深圳国际会展中心',
+        image: 'https://cdn.example.com/storm.jpg',
       }),
     ).toEqual({
       activityLegacyId: 4,
       title: '风暴电音节 深圳站',
       date: '06/13-14',
       venue: '深圳国际会展中心',
+      image: 'https://cdn.example.com/storm.jpg',
     });
   });
 });

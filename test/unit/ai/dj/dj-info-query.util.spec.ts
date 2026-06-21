@@ -20,6 +20,14 @@ describe('dj-info-query.util', () => {
     expect(isDjInfoIntent('阵容里有哪些 house')).toBe(true);
   });
 
+  it('does not treat unbound festival catalog lookup as DJ info', () => {
+    expect(isDjInfoIntent('EDC Thailand 阵容官宣了吗')).toBe(false);
+    expect(isDjInfoIntent('Tomorrowland 什么时候')).toBe(false);
+    expect(
+      isDjInfoIntent('这场有哪些 Techno DJ', { activityLegacyId: 5 }),
+    ).toBe(true);
+  });
+
   it('extracts normalized styles', () => {
     expect(extractDjStyles('有哪些 dnb 和 big room DJ')).toEqual([
       'Drum & Bass',

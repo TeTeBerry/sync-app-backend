@@ -41,10 +41,15 @@ export function buildAgentSessionContext(params: {
     ? [
         '【准备台模式】',
         '用户已绑定活动。回复保持简短，勿罗列功能菜单。',
-        '攻略/行程/组队帖 → 引导使用上方「本场计划」；查阵容用快捷操作，我的演出表仅在已生成行程后出现。',
+        '查节/阵容 → 调用 get_activity_brief 或 query_dj_info。',
+        '找公开招募帖 → 引导用户点「找招募帖」或去活动详情招募区搜索；勿在对话内检索帖子。',
         '勿主动推荐人格测试、选活动等辅助功能；仅当用户明确问起时再处理。',
       ].join('\n')
-    : '';
+    : [
+        '【查节模式】',
+        '用户未绑定活动。问某场电音节档期/地点/阵容 → 调用 get_festival_info。',
+        '找队 → 引导去活动 Tab 或活动详情公开招募区；勿表述为智能配对。',
+      ].join('\n');
 
   return [
     '【会话状态】',
@@ -52,7 +57,7 @@ export function buildAgentSessionContext(params: {
     taskLine,
     '',
     activityBlock,
-    prepModeBlock ? `\n${prepModeBlock}` : '',
+    `\n${prepModeBlock}`,
   ]
     .filter(Boolean)
     .join('\n');
@@ -65,7 +70,7 @@ export function buildAgentLlmMessages(params: {
   conversationState: ConversationState;
 }): OpenAiChatMessage[] {
   const systemContent = [
-    buildAgentSystemPrompt(),
+    buildAgentSystemPrompt(params.activity != null),
     '',
     buildAgentSessionContext(params),
   ].join('\n');
@@ -104,13 +109,23 @@ export function buildAgentLlmMessages(params: {
   return llmMessages;
 }
 
-export function buildAgentSystemPrompt(): string {
+export function buildAgentSystemPrompt(activityBound = false): string {
+  const catalogTools = activityBound
+    ? []
+    : [
+        '- get_festival_info：未绑活动时查电音节档期、地点、官宣阵容（风暴、EDC、Tomorrowland 等）',
+      ];
+  const boundTools = activityBound
+    ? ['- get_activity_brief：用户已绑定活动且问本场简介、档期、地点']
+    : [];
+
   return [
-    '你是 Sync 电音节 App 的观演准备台 AI 编排器。',
+    '你是 Sync 电音节 App 的 AI 助手，帮助用户查电音节资讯与浏览公开组队招募。',
     '你可以直接简短回复闲聊，也可以在需要查资料或执行写操作时调用工具。',
     '仅可使用以下工具（主路径）：',
     '- query_dj_info：DJ/艺人/曲风/阵容/代表作/近期演出/类似风格',
-    '- get_activity_brief：用户已绑定活动且问本场简介、档期、地点',
+    ...boundTools,
+    ...catalogTools,
     '- travel_guide_collect_slots：出行攻略（解析出发地/人数/预算；齐全则自动生成）',
     '- travel_guide_generate：槽位已齐时生成攻略（通常由 collect_slots 触发）',
     '- itinerary_collect_and_generate：专属行程（解析 DJ 名称并生成）',
@@ -122,16 +137,21 @@ export function buildAgentSystemPrompt(): string {
     '- activeTask 为 travel_guide 时，用户补充槽位仍应调用 travel_guide_collect_slots',
     '- activeTask 为 itinerary 时，用户补充 DJ 名称仍应调用 itinerary_collect_and_generate',
     '- 写操作工具返回 terminal 结果时，以工具结果为准，勿重复编造发帖/攻略结果',
-    '以下需求不调工具，简短引导使用准备台界面：',
-    '- 查阵容 → 上方快捷操作；我的演出表（已生成行程后）→ 快捷操作或活动详情',
-    '- 选活动、最近有什么活动 → 上方选活动卡片或「最近有什么活动」',
-    '- 人格测试、个人主页、我选了哪些活动、评论组队帖',
-    '- 未绑定活动时问其他电音节档期 → 引导先选活动',
+    activityBound
+      ? '- 已绑定活动问本场档期/简介 → get_activity_brief；问阵容/DJ → query_dj_info'
+      : '- 未绑定活动问某节档期/阵容 → get_festival_info（festivalName 取用户提到的节名）',
+    activityBound
+      ? '以下需求不调工具，简短引导：'
+      : '以下需求不调工具，简短引导：',
+    activityBound
+      ? '- 找队/公开招募 → 活动详情招募区搜索条，或点「找招募帖」跳转（勿称智能配对）'
+      : '- 找队/招募 → 活动 Tab 或活动详情公开招募区（勿称智能配对）',
+    '- 选活动 → 上方选活动卡片',
+    '- 人格测试、个人主页、评论组队帖',
     '- 简单寒暄、感谢、无查库/写操作需求 → 直接中文回复',
-    '- 与准备无关的泛聊 → 一两句回答后引导完成「本场计划」或快捷操作；勿罗列功能菜单',
     '- 已绑定活动时，勿在回复末尾附加「你还可以…」式能力清单',
     '多轮对话：用户说「类似风格」「他」「这个」等指代时，结合上文消息解析艺人/曲风后再调工具。',
     '遵守平台社区规范，勿协助发布转票、引流等违规内容。',
-    '回复使用简洁中文；艺名保留英文。',
+    '回复使用简洁中文；艺名保留英文。查节回答尾注可加「仅供参考，以主办方为准」。',
   ].join('\n');
 }

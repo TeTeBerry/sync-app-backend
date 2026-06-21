@@ -6,6 +6,8 @@ import { ActivityService } from '../../../modules/activity/activity.service';
 import { buildDjInfoSuggestedReplies } from '../../dj/dj-info-suggested-replies.util';
 import { buildItineraryCollectPrompt } from '../../agent/itinerary-chat-slots.util';
 import { buildNearEventsReply } from '../../utils/activity-reply.util';
+import { toRecommendedActivityCard } from '../../utils/activity-enter.util';
+import { resolveHomeFestivalShortcutCode } from '../../utils/festival-shortcut.util';
 import { enterItineraryCollectState } from '../../conversation';
 import { logAiTurn } from '../../utils/log-ai-turn.util';
 import {
@@ -71,9 +73,28 @@ export class ReadOnlyTurnHandler {
         return this.runItinerarySheet(ctx);
       case 'near_events':
         return this.runNearEvents(ctx);
+      case 'festival_catalog':
+        return this.runFestivalCatalog(ctx);
       default:
         return [];
     }
+  }
+
+  private async runFestivalCatalog(
+    ctx: TurnHandlerContext,
+  ): Promise<AiStreamEvent[]> {
+    const code = resolveHomeFestivalShortcutCode(ctx.input.trim());
+    if (!code) {
+      return [];
+    }
+
+    const activity = await this.activityService.findByCode(code);
+    if (!activity?.legacyId) {
+      return [];
+    }
+
+    const card = toRecommendedActivityCard(activity);
+    return this.sseBuilder.buildActivityEnterEvents(ctx.sink, card);
   }
 
   private async runNearEvents(
