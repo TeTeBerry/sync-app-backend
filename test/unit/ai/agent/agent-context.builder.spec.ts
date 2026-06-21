@@ -28,14 +28,17 @@ describe('agent-context.builder', () => {
     );
   });
 
-  it('mentions tools in system prompt', () => {
+  it('mentions main-path tools in system prompt', () => {
     const system = buildAgentSystemPrompt();
     expect(system).toContain('query_dj_info');
-    expect(system).toContain('类似风格');
-    expect(system).toContain('get_festival_info');
     expect(system).toContain('get_activity_brief');
+    expect(system).toContain('travel_guide_collect_slots');
+    expect(system).toContain('itinerary_collect_and_generate');
+    expect(system).toContain('post_start_collect');
+    expect(system).not.toContain('get_festival_info');
+    expect(system).not.toContain('personality_test_open');
+    expect(system).not.toContain('profile_get_summary');
     expect(system).toContain('本场计划');
-    expect(system).toContain('勿主动推荐');
   });
 
   it('includes prep mode block when activity is bound', () => {
