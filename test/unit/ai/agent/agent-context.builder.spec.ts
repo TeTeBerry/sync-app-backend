@@ -35,6 +35,23 @@ describe('agent-context.builder', () => {
     expect(system).toContain('get_festival_info');
     expect(system).toContain('get_activity_brief');
     expect(system).toContain('本场计划');
+    expect(system).toContain('勿主动推荐');
+  });
+
+  it('includes prep mode block when activity is bound', () => {
+    const messages = buildAgentLlmMessages({
+      input: '你好',
+      messages: [],
+      activity: {
+        legacyId: 4,
+        name: '风暴电音节 深圳站',
+      } as never,
+      conversationState: { version: 1, flow: 'idle' },
+    });
+
+    const system = messages[0].content ?? '';
+    expect(system).toContain('【准备台模式】');
+    expect(system).toContain('勿主动推荐人格测试');
   });
 
   it('builds native multi-turn llm messages', () => {

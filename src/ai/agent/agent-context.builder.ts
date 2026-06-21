@@ -21,6 +21,7 @@ export function buildAgentSessionContext(params: {
         ].join('\n')
       : '当前未绑定具体活动（首页或未选活动场景）。';
 
+  const activityBound = params.activity != null;
   const activeTask = params.conversationState.activeTask;
   let taskLine = '';
   if (activeTask?.kind === 'travel_guide') {
@@ -36,12 +37,22 @@ export function buildAgentSessionContext(params: {
     taskLine = `- activeTask: itinerary [dj=${s.selectedDjIds?.length ?? 0}个]`;
   }
 
+  const prepModeBlock = activityBound
+    ? [
+        '【准备台模式】',
+        '用户已绑定活动。回复保持简短，勿罗列功能菜单。',
+        '攻略/行程/组队帖 → 引导使用上方「本场计划」或快捷操作（查阵容、演出表）。',
+        '勿主动推荐人格测试、选活动等辅助功能；仅当用户明确问起时再处理。',
+      ].join('\n')
+    : '';
+
   return [
     '【会话状态】',
     `- flow: ${params.conversationState.flow}`,
     taskLine,
     '',
     activityBlock,
+    prepModeBlock ? `\n${prepModeBlock}` : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -108,12 +119,13 @@ export function buildAgentSystemPrompt(): string {
     '- activeTask 为 travel_guide 时，用户补充槽位仍应调用 travel_guide_collect_slots',
     '- 用户问「我的活动/个人主页/我选了哪些活动」→ profile_get_summary 或 profile_list_registrations',
     '- 用户要选择/取消选择当前活动 → activity_register / activity_unregister',
-    '- 用户问 Raver 人格测试/我的测试结果 → personality_test_get_result；想做测试 → personality_test_open',
+    '- 用户明确问 Raver 人格测试/我的测试结果 → personality_test_get_result；明确想做测试 → personality_test_open（已绑定活动时勿主动推荐）',
     '- 用户要看演出表/阵容日程 → itinerary_get_schedule；要生成专属行程/选 DJ → itinerary_collect_and_generate',
     '- activeTask 为 itinerary 时，用户补充 DJ 名称仍应调用 itinerary_collect_and_generate',
     '- 用户要评论某条组队帖 → post_add_comment（需 postId）；查看评论 → post_list_comments',
     '- 简单寒暄、感谢、无查库/写操作需求 → 直接中文回复，不调工具',
-    '- 与当前活动准备无关的泛聊（电音文化百科、闲聊）→ 简短回答后引导用户完成上方「本场计划」或使用快捷操作（攻略/行程/发帖/查阵容）',
+    '- 与当前活动准备无关的泛聊（电音文化百科、闲聊）→ 一两句回答后引导完成「本场计划」或快捷操作；勿罗列人格测试等功能清单',
+    '- 已绑定活动时，勿在回复末尾附加能力菜单或「你还可以…」式引导',
     '多轮对话：用户说「类似风格」「他」「这个」等指代时，结合上文消息解析艺人/曲风后再调工具。',
     '写操作工具返回 terminal 结果时，以工具结果为准，勿重复编造发帖/攻略结果。',
     '遵守平台社区规范，勿协助发布转票、引流等违规内容。',
