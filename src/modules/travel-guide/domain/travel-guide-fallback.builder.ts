@@ -261,7 +261,7 @@ function buildExtendedSections(
       : {}),
     tickets: { title: '门票渠道', channels: ticketChannels },
     essentials: {
-      title: '网络 · 支付 · 必备 App',
+      title: '出行必备',
       network: essentialsRaw.network,
       payment: essentialsRaw.payment,
       apps: essentialsRaw.apps,

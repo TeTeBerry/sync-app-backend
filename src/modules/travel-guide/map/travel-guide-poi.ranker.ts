@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type { GenerateTravelGuideDto } from '../dto/generate-travel-guide.dto';
-import { budgetTierHotelNightRanges } from '../domain/parse-activity-days.util';
+import {
+  budgetTierHotelNightRanges,
+  resolveTravelGuideBudgetTier,
+} from '../domain/parse-activity-days.util';
 import type { TravelGuideBudgetTier } from '../domain/travel-guide.types';
 import { isAfterpartyMapPoi } from './travel-guide-afterparty.constants';
 import type {
@@ -33,7 +36,7 @@ export class TravelGuidePoiRanker {
       minHotelRating?: number;
     },
   ): TravelGuideRankedCandidates {
-    const budgetTier = dto.budgetTier;
+    const budgetTier = resolveTravelGuideBudgetTier(dto.budgetTier);
     const ranges = budgetTierHotelNightRanges(budgetTier);
     const minHotelRating = options?.minHotelRating ?? DEFAULT_MIN_HOTEL_RATING;
 

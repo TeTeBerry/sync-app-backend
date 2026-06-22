@@ -277,17 +277,18 @@ export function buildPersonalityProfileHints(params: {
 export function buildTravelGuideProfileHints(params: {
   departure: string;
   departureCity?: string;
-  budgetTier: 'economy' | 'standard' | 'comfort';
+  budgetTier?: 'economy' | 'standard' | 'comfort';
 }): UserMatchProfileHints {
   const city =
     normalizeCityName(params.departureCity) ??
     normalizeCityName(params.departure) ??
     inferDepartureCityFromText(params.departure, params.departureCity);
 
-  const hints: UserMatchProfileHints = {
-    budgetLevel: travelGuideBudgetTierToProfileLevel(params.budgetTier),
-  };
+  const hints: UserMatchProfileHints = {};
   if (city) hints.city = city;
+  if (params.budgetTier) {
+    hints.budgetLevel = travelGuideBudgetTierToProfileLevel(params.budgetTier);
+  }
 
   return hints;
 }

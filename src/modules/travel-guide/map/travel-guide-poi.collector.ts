@@ -5,6 +5,7 @@ import { TravelGuideGeoCacheService } from './travel-guide-geo-cache.service';
 import { getAllHotPathFallbackPois } from './travel-guide-hot-path-pois.data';
 import { isTravelGuideAbroad } from '../domain/travel-guide-international.util';
 import { filterDomesticTransportHints } from '../domain/travel-guide-departure-airport.util';
+import { resolveTravelGuideBudgetTier } from '../domain/parse-activity-days.util';
 import { destinationCityFromActivityLocation } from './travel-guide-intercity.util';
 import {
   AFTERPARTY_SEARCH_KEYWORD,
@@ -132,9 +133,12 @@ function buildPoiSearchTasks(
   budgetTier: GenerateTravelGuideDto['budgetTier'],
   abroad: boolean,
 ): PoiSearchTask[] {
-  const hotelKeywords = hotelSearchKeywordsForBudgetTier(budgetTier, {
-    abroad,
-  });
+  const hotelKeywords = hotelSearchKeywordsForBudgetTier(
+    resolveTravelGuideBudgetTier(budgetTier),
+    {
+      abroad,
+    },
+  );
   const tasks: PoiSearchTask[] = hotelKeywords.map((keyword) => ({
     keyword,
     kind: 'hotel' as const,

@@ -5,9 +5,11 @@ import {
   buildSearchTermsFromParsed,
   filterBuddyPostsBySearchTerms,
   fuzzyTextMatches,
+  isBudgetBuddySearchTerm,
   isConfidentRuleBuddySearchParse,
   isSimpleCityOnlyBuddySearch,
   parseBuddyPostSearchQuery,
+  partitionBuddyPostSearchTerms,
   rankBuddyPostsBySearch,
   resolveBuddyPostSearchCriteria,
   resolveBuddyPostSearchTerms,
@@ -137,7 +139,11 @@ describe('buddy-post-search.util', () => {
     expect(parsed.departureCity).toBe('成都');
 
     const criteria = resolveBuddyPostSearchCriteria(parsed, '找成都出发的队');
-    expect(criteria).toEqual({ departureCity: '成都', searchTerms: [] });
+    expect(criteria).toEqual({
+      departureCity: '成都',
+      searchTerms: [],
+      softSearchTerms: [],
+    });
     expect(resolveBuddyPostSearchTerms(parsed, '找成都出发的队')).toEqual([
       '成都',
     ]);
@@ -154,7 +160,11 @@ describe('buddy-post-search.util', () => {
     expect(parsed.departureCity).toBe('杭州');
 
     const criteria = resolveBuddyPostSearchCriteria(parsed, '杭州出发');
-    expect(criteria).toEqual({ departureCity: '杭州', searchTerms: [] });
+    expect(criteria).toEqual({
+      departureCity: '杭州',
+      searchTerms: [],
+      softSearchTerms: [],
+    });
 
     const post = samplePost({
       body: '12.18-12.20，差 1 人',
@@ -233,6 +243,57 @@ describe('buddy-post-search.util', () => {
     expect(criteria.searchTerms).not.toContain('-12');
     expect(criteria.searchTerms).not.toContain('13');
     expect(criteria.preferOpenRecruit).toBe(true);
+  });
+
+  it('partitions budget terms as soft search criteria', () => {
+    expect(isBudgetBuddySearchTerm('舒适(¥300-600)')).toBe(true);
+    expect(isBudgetBuddySearchTerm('12.11-12.13')).toBe(false);
+    expect(
+      partitionBuddyPostSearchTerms(['12.11-12.13', '1', '舒适(¥300-600)']),
+    ).toEqual({
+      required: ['12.11-12.13', '1'],
+      soft: ['舒适(¥300-600)'],
+    });
+  });
+
+  it('matches posts when core criteria hit even if budget term is missing in post', () => {
+    const query = '上海出发，12.11-12.13，差 1 人，舒适(¥300-600)';
+    const parsed = parseBuddyPostSearchQuery(query);
+    const criteria = resolveBuddyPostSearchCriteria(parsed, query);
+
+    expect(criteria.softSearchTerms).toEqual(
+      expect.arrayContaining(['舒适(¥300-600)']),
+    );
+
+    const withoutBudget = samplePost({
+      _id: 'core-match',
+      body: '上海出发 12.11-12.13 Techno 差 1 人',
+      departureCity: '上海',
+      recruitStatus: 'open',
+      slotsTotal: 3,
+      slotsFilled: 2,
+    });
+    const withBudget = samplePost({
+      _id: 'full-match',
+      body: '上海出发 12.11-12.13 舒适住宿 差 1 人',
+      departureCity: '上海',
+      recruitStatus: 'open',
+      slotsTotal: 3,
+      slotsFilled: 2,
+    });
+
+    expect(buddyPostMatchesSearchCriteria(withoutBudget, criteria)).toBe(true);
+    expect(buddyPostMatchesSearchCriteria(withBudget, criteria)).toBe(true);
+
+    const ranked = rankBuddyPostsBySearch(
+      [withoutBudget, withBudget],
+      criteria,
+      { city: '上海', favorGenres: ['Techno'] },
+    );
+    expect(ranked.map((row) => String(row._id))).toEqual([
+      'full-match',
+      'core-match',
+    ]);
   });
 
   it('ranks open recruit posts above full when preferOpenRecruit is set', () => {

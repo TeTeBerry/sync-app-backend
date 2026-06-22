@@ -37,6 +37,16 @@ describe('user-profile-hints.util', () => {
     expect(hints.budgetLevel).toBe('high');
   });
 
+  it('buildTravelGuideProfileHints omits budgetLevel when tier absent', () => {
+    const hints = buildTravelGuideProfileHints({
+      departure: '上海虹桥站',
+      departureCity: '上海市',
+    });
+
+    expect(hints.city).toBe('上海');
+    expect(hints.budgetLevel).toBeUndefined();
+  });
+
   it('travelGuideBudgetTierToProfileLevel maps tiers', () => {
     expect(travelGuideBudgetTierToProfileLevel('economy')).toBe('low');
     expect(travelGuideBudgetTierToProfileLevel('standard')).toBe('medium');

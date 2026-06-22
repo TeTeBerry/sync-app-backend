@@ -5,6 +5,7 @@ import {
   NotFoundException,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Req,
 } from '@nestjs/common';
@@ -14,6 +15,8 @@ import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { PublicApiRateLimitService } from '../../common/rate-limit/public-api-rate-limit.service';
 import { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
+import { SelectTravelGuideBudgetTierDto } from './dto/select-travel-guide-budget-tier.dto';
+import { TravelGuideBudgetTierService } from './travel-guide-budget-tier.service';
 import { TravelGuideGenerationJobService } from './travel-guide-generation-job.service';
 import { TravelGuideGenerationService } from './travel-guide-generation.service';
 import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
@@ -24,6 +27,7 @@ export class TravelGuideController {
     private readonly generationService: TravelGuideGenerationService,
     private readonly generationJobService: TravelGuideGenerationJobService,
     private readonly savedPlanService: TravelGuideSavedPlanService,
+    private readonly budgetTierService: TravelGuideBudgetTierService,
     private readonly publicRateLimit: PublicApiRateLimitService,
   ) {}
 
@@ -65,5 +69,14 @@ export class TravelGuideController {
       throw new NotFoundException('攻略不存在或已过期');
     }
     return plan;
+  }
+
+  @Patch('travel-guide/plans/:guideId/budget-tier')
+  selectBudgetTier(
+    @Param('guideId') guideId: string,
+    @Body() body: SelectTravelGuideBudgetTierDto,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.budgetTierService.selectBudgetTier(guideId, body, actor);
   }
 }

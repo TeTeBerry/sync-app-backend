@@ -2,6 +2,7 @@ import {
   budgetTierHotelNightRanges,
   budgetTierLabel,
   parseActivityDayCount,
+  resolveTravelGuideBudgetTier,
 } from '@src/modules/travel-guide/domain/parse-activity-days.util';
 
 describe('parse-activity-days.util', () => {
@@ -25,5 +26,10 @@ describe('parse-activity-days.util', () => {
       secondary: '¥800-1200',
     });
     expect(budgetTierHotelNightRanges('standard').secondary).toBe('¥450-600');
+  });
+
+  it('resolves missing budget tier to standard', () => {
+    expect(resolveTravelGuideBudgetTier()).toBe('standard');
+    expect(resolveTravelGuideBudgetTier('economy')).toBe('economy');
   });
 });

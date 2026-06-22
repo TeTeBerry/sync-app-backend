@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import type { GenerateTravelGuideDto } from '../dto/generate-travel-guide.dto';
+import { resolveTravelGuideBudgetTier } from './parse-activity-days.util';
 import { normalizeDepartureCityLabel } from '../map/travel-guide-departure-suggestions.util';
 
 export type TravelGuideGenerationCacheParams = {
@@ -28,7 +29,7 @@ export function normalizeTravelGuideGenerationParams(
     departure,
     departureCity,
     headcount: dto.headcount,
-    budgetTier: dto.budgetTier,
+    budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
     selfDrive: Boolean(dto.selfDrive),
     accommodationNights,
   };

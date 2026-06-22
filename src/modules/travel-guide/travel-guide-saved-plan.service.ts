@@ -8,6 +8,7 @@ import {
 } from '../../database/schemas/travel-guide-saved-plan.schema';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
 import type { TravelGuidePlan } from './domain/travel-guide.types';
+import type { TravelGuideBudgetTier } from './domain/travel-guide.types';
 import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cache.service';
 
 export type TravelGuideSavedPlanView = {
@@ -100,6 +101,65 @@ export class TravelGuideSavedPlanService {
           : new Date().toISOString(),
     };
   }
+
+  async findOwnedByGuideId(
+    guideId: string,
+    ownerUserId: string,
+  ): Promise<(TravelGuideSavedPlanView & { ownerUserId: string }) | null> {
+    const id = guideId.trim();
+    if (!id) return null;
+
+    const doc = await this.model.findOne({ guideId: id }).lean().exec();
+    if (!doc || doc.ownerUserId !== ownerUserId) return null;
+
+    return {
+      guideId: doc.guideId,
+      activityLegacyId: doc.activityLegacyId,
+      ownerUserId: doc.ownerUserId,
+      form: doc.form,
+      plan: doc.plan,
+      createdAt:
+        doc.createdAt instanceof Date
+          ? doc.createdAt.toISOString()
+          : new Date().toISOString(),
+    };
+  }
+
+  async updateBudgetTier(
+    guideId: string,
+    ownerUserId: string,
+    budgetTier: TravelGuideBudgetTier,
+    plan: TravelGuidePlan,
+  ): Promise<TravelGuideSavedPlanView | null> {
+    const id = guideId.trim();
+    if (!id) return null;
+
+    const doc = await this.model.findOne({ guideId: id }).lean().exec();
+    if (!doc || doc.ownerUserId !== ownerUserId) return null;
+
+    const form = {
+      ...doc.form,
+      budgetTier,
+    };
+
+    await this.model.updateOne({ guideId: id }, { $set: { form, plan } });
+
+    await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
+      ownerUserId,
+      doc.activityLegacyId,
+    );
+
+    return {
+      guideId: doc.guideId,
+      activityLegacyId: doc.activityLegacyId,
+      form,
+      plan,
+      createdAt:
+        doc.createdAt instanceof Date
+          ? doc.createdAt.toISOString()
+          : new Date().toISOString(),
+    };
+  }
 }
 
 function buildSavedPlanForm(
@@ -112,7 +172,7 @@ function buildSavedPlanForm(
       ? { departureCity: dto.departureCity.trim() }
       : {}),
     headcount: dto.headcount,
-    budgetTier: dto.budgetTier,
+    ...(dto.budgetTier ? { budgetTier: dto.budgetTier } : {}),
     ...(dto.selfDrive != null ? { selfDrive: dto.selfDrive } : {}),
     accommodationNights,
   };

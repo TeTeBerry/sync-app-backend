@@ -1,4 +1,15 @@
 /** Infer festival day count from catalog date strings like `06/13-14` or `12/11-13`. */
+import type { TravelGuideBudgetTier } from './travel-guide.types';
+
+export function resolveTravelGuideBudgetTier(
+  tier?: TravelGuideBudgetTier | null,
+): TravelGuideBudgetTier {
+  if (tier === 'economy' || tier === 'standard' || tier === 'comfort') {
+    return tier;
+  }
+  return 'standard';
+}
+
 export function parseActivityDayCount(date?: string): number {
   const raw = date?.trim();
   if (!raw) return 2;

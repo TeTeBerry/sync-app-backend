@@ -48,11 +48,13 @@ describe('TravelGuideGenerationService cache', () => {
   let findPlan: jest.Mock;
   let savePlan: jest.Mock;
   let collect: jest.Mock;
+  let applyTravelGuideHints: jest.Mock;
 
   beforeEach(async () => {
     findPlan = jest.fn().mockResolvedValue(null);
     savePlan = jest.fn().mockResolvedValue(undefined);
     collect = jest.fn();
+    applyTravelGuideHints = jest.fn();
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -97,7 +99,7 @@ describe('TravelGuideGenerationService cache', () => {
         },
         {
           provide: UserProfileSyncService,
-          useValue: { applyTravelGuideHints: jest.fn() },
+          useValue: { applyTravelGuideHints },
         },
         {
           provide: WechatContentSecurityService,
@@ -117,5 +119,16 @@ describe('TravelGuideGenerationService cache', () => {
     expect(result.plan).toEqual(cachedPlan);
     expect(collect).not.toHaveBeenCalled();
     expect(savePlan).not.toHaveBeenCalled();
+  });
+
+  it('applies travel guide hints without budget tier on cache hit', async () => {
+    findPlan.mockResolvedValue(cachedPlan);
+
+    await service.generate(4, { ...dto, budgetTier: undefined }, testActor);
+
+    expect(applyTravelGuideHints).toHaveBeenCalledWith(testActor, {
+      departure: '上海',
+      departureCity: undefined,
+    });
   });
 });

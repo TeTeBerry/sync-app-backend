@@ -32,8 +32,9 @@ export class GenerateTravelGuideDto {
   @Max(10)
   headcount!: number;
 
+  @IsOptional()
   @IsIn(['economy', 'standard', 'comfort'])
-  budgetTier!: 'economy' | 'standard' | 'comfort';
+  budgetTier?: 'economy' | 'standard' | 'comfort';
 
   @IsOptional()
   @IsBoolean()

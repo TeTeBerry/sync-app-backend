@@ -23,6 +23,7 @@ import {
   budgetTierHotelNightRanges,
   budgetTierLabel,
   parseActivityDayCount,
+  resolveTravelGuideBudgetTier,
 } from './domain/parse-activity-days.util';
 import type {
   LlmTravelGuidePayload,
@@ -134,9 +135,14 @@ export class TravelGuideGenerationService {
     const accommodationNights =
       dto.accommodationNights ?? parseActivityDayCount(activity.date);
 
+    const generationDto: GenerateTravelGuideDto = {
+      ...dto,
+      budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
+    };
+
     const cacheParams = normalizeTravelGuideGenerationParams(
       activityLegacyId,
-      dto,
+      generationDto,
       accommodationNights,
     );
     const cacheKey = buildTravelGuideGenerationCacheKey(cacheParams);
@@ -148,7 +154,6 @@ export class TravelGuideGenerationService {
       this.userProfileSync.applyTravelGuideHints(actor, {
         departure: dto.departure,
         departureCity: dto.departureCity,
-        budgetTier: dto.budgetTier,
       });
       const guideId = await this.persistSavedPlanIfRequested(
         dto,
@@ -166,7 +171,6 @@ export class TravelGuideGenerationService {
       this.userProfileSync.applyTravelGuideHints(actor, {
         departure: dto.departure,
         departureCity: dto.departureCity,
-        budgetTier: dto.budgetTier,
       });
       const guideId = await this.persistSavedPlanIfRequested(
         dto,
@@ -186,7 +190,7 @@ export class TravelGuideGenerationService {
     const lockAcquired = await this.travelGuideGuard.acquireGenerationLock(
       actor.resolvedUserId,
       activityLegacyId,
-      dto,
+      generationDto,
       accommodationNights,
     );
     if (!lockAcquired) {
@@ -209,19 +213,19 @@ export class TravelGuideGenerationService {
     }
 
     try {
-      const mapCtx = await this.poiCollector.collect(activity, dto);
+      const mapCtx = await this.poiCollector.collect(activity, generationDto);
       if (!mapCtx) {
         throw new ServiceUnavailableException(
           '无法获取场馆周边推荐（酒店/散场/停车），请确认活动地址或明日再试；若使用高德 Key，请检查配额是否用尽',
         );
       }
 
-      const ranked = this.poiRanker.rank(mapCtx, dto);
-      this.assertRankedCandidates(ranked, Boolean(dto.selfDrive));
+      const ranked = this.poiRanker.rank(mapCtx, generationDto);
+      this.assertRankedCandidates(ranked, Boolean(generationDto.selfDrive));
 
       const llmPayload = await this.buildPayloadFromMap(
         activity,
-        dto,
+        generationDto,
         accommodationNights,
         mapCtx,
         ranked,
@@ -229,11 +233,11 @@ export class TravelGuideGenerationService {
 
       const plan = buildTravelGuidePlan({
         activity,
-        departure: dto.departure.trim(),
-        headcount: dto.headcount,
-        budgetTier: dto.budgetTier,
+        departure: generationDto.departure.trim(),
+        headcount: generationDto.headcount,
+        budgetTier: generationDto.budgetTier!,
         accommodationNights,
-        selfDrive: dto.selfDrive,
+        selfDrive: generationDto.selfDrive,
         llm: llmPayload,
         mapSourcedOnly: true,
         interCity: Boolean(mapCtx.interCity),
@@ -249,7 +253,6 @@ export class TravelGuideGenerationService {
       this.userProfileSync.applyTravelGuideHints(actor, {
         departure: dto.departure,
         departureCity: dto.departureCity,
-        budgetTier: dto.budgetTier,
       });
 
       const guideId = await this.persistSavedPlanIfRequested(
@@ -264,7 +267,7 @@ export class TravelGuideGenerationService {
       await this.travelGuideGuard.releaseGenerationLock(
         actor.resolvedUserId,
         activityLegacyId,
-        dto,
+        generationDto,
         accommodationNights,
       );
     }
@@ -406,7 +409,8 @@ export class TravelGuideGenerationService {
   ): Promise<LlmTravelGuidePayload | null> {
     if (!this.llmService.enabled) return null;
 
-    const hotelRanges = budgetTierHotelNightRanges(dto.budgetTier);
+    const budgetTier = resolveTravelGuideBudgetTier(dto.budgetTier);
+    const hotelRanges = budgetTierHotelNightRanges(budgetTier);
     const routeSummary = mapCtx.drivingRoute ?? mapCtx.transitRoute;
     const payload: TravelGuideMapLlmInput = {
       activityName: activity.name,
@@ -416,8 +420,8 @@ export class TravelGuideGenerationService {
       eventDates: activity.date?.trim() || '详见官方日程',
       departure: dto.departure.trim(),
       headcount: dto.headcount,
-      budgetTier: dto.budgetTier,
-      budgetLabel: budgetTierLabel(dto.budgetTier),
+      budgetTier,
+      budgetLabel: budgetTierLabel(budgetTier),
       accommodationNights,
       selfDrive: Boolean(dto.selfDrive),
       eventEndHour: mapCtx.eventEndHour,

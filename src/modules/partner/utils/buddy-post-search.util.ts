@@ -23,6 +23,8 @@ export type BuddyPostSearchParsed = {
 export type BuddyPostSearchCriteria = {
   departureCity?: string;
   searchTerms: string[];
+  /** Budget / price-band terms — boost ranking but never block results alone. */
+  softSearchTerms?: string[];
   preferOpenRecruit?: boolean;
 };
 
@@ -92,6 +94,71 @@ export function buddyPostMatchesSearchTerms(
   return searchTerms.every((term) => fuzzyTextMatches(haystack, term));
 }
 
+const BUDGET_SEARCH_TERM_PATTERN =
+  /^(经济|舒适|豪华|标准|实惠|省钱|高端|奢华)(档|型|预算)?/;
+
+/** Budget / price-band tokens are optional for inclusion (ranking signal only). */
+export function isBudgetBuddySearchTerm(term: string): boolean {
+  const trimmed = term.trim();
+  if (!trimmed) return false;
+  if (BUDGET_SEARCH_TERM_PATTERN.test(trimmed)) return true;
+  if (/¥\s*\d/.test(trimmed)) return true;
+  if (/\(\s*¥?\d+[-–~]¥?\d+/.test(trimmed)) return true;
+  if (/\/晚/.test(trimmed) && /\d/.test(trimmed)) return true;
+  return false;
+}
+
+export function partitionBuddyPostSearchTerms(terms: string[]): {
+  required: string[];
+  soft: string[];
+} {
+  const required: string[] = [];
+  const soft: string[] = [];
+  for (const term of terms) {
+    if (isBudgetBuddySearchTerm(term)) {
+      soft.push(term);
+    } else {
+      required.push(term);
+    }
+  }
+  return { required, soft };
+}
+
+function countMatchedBuddyPostSearchTerms(
+  post: PostRecord,
+  terms: string[],
+): number {
+  if (!terms.length) return 0;
+  const haystack = buildBuddyPostSearchText(post);
+  return terms.filter((term) => buddyPostSearchTermMatches(haystack, term))
+    .length;
+}
+
+function budgetLabelFromSearchTerm(term: string): string | undefined {
+  const match = term.trim().match(BUDGET_SEARCH_TERM_PATTERN);
+  return match?.[1];
+}
+
+function buddyPostSearchTermMatches(haystack: string, term: string): boolean {
+  if (fuzzyTextMatches(haystack, term)) return true;
+  const budgetLabel = budgetLabelFromSearchTerm(term);
+  if (budgetLabel && fuzzyTextMatches(haystack, budgetLabel)) return true;
+  return false;
+}
+
+function resolveCriteriaSearchTermGroups(criteria: BuddyPostSearchCriteria): {
+  required: string[];
+  soft: string[];
+} {
+  if (criteria.softSearchTerms !== undefined) {
+    return {
+      required: criteria.searchTerms,
+      soft: criteria.softSearchTerms,
+    };
+  }
+  return partitionBuddyPostSearchTerms(criteria.searchTerms);
+}
+
 const SEARCH_STOP_WORDS = new Set([
   '找',
   '个',
@@ -139,7 +206,7 @@ export function buildBuddyPostSearchDisplayTerms(
   parsed: BuddyPostSearchParsed,
   criteria: BuddyPostSearchCriteria,
 ): string[] {
-  const terms = [...criteria.searchTerms];
+  const terms = [...criteria.searchTerms, ...(criteria.softSearchTerms ?? [])];
   if (parsed.departureCity?.trim()) {
     terms.unshift(parsed.departureCity.trim());
   }
@@ -164,13 +231,31 @@ export function buddyPostMatchesSearchCriteria(
   post: PostRecord,
   criteria: BuddyPostSearchCriteria,
 ): boolean {
-  if (!postMatchesDepartureCity(post, criteria.departureCity)) {
+  const departureCity = criteria.departureCity?.trim();
+  if (departureCity && !postMatchesDepartureCity(post, departureCity)) {
     return false;
   }
-  if (!criteria.searchTerms.length) {
-    return Boolean(criteria.departureCity?.trim());
+
+  const { required, soft } = resolveCriteriaSearchTermGroups(criteria);
+  if (!required.length && !soft.length) {
+    return Boolean(departureCity);
   }
-  return buddyPostMatchesSearchTerms(post, criteria.searchTerms);
+
+  const requiredMatched = countMatchedBuddyPostSearchTerms(post, required);
+  const softMatched = countMatchedBuddyPostSearchTerms(post, soft);
+
+  // Core terms (date / headcount / genre, etc.) all match → include even without budget.
+  if (required.length > 0 && requiredMatched === required.length) {
+    return true;
+  }
+
+  const totalDimensions =
+    (departureCity ? 1 : 0) + required.length + soft.length;
+  const matchedDimensions =
+    (departureCity ? 1 : 0) + requiredMatched + softMatched;
+  const minMatches = Math.max(1, Math.ceil(totalDimensions * 0.75));
+
+  return matchedDimensions >= minMatches;
 }
 
 export function tokenizeRawBuddySearchQuery(query: string): string[] {
@@ -367,11 +452,14 @@ export function resolveBuddyPostSearchCriteria(
   parsed: BuddyPostSearchParsed,
   rawQuery: string,
 ): BuddyPostSearchCriteria {
-  const searchTerms = buildBodySearchTermsFromParsed(parsed);
-  if (searchTerms.length || parsed.departureCity?.trim()) {
+  const bodyTerms = buildBodySearchTermsFromParsed(parsed);
+  const { required, soft } = partitionBuddyPostSearchTerms(bodyTerms);
+
+  if (required.length || soft.length || parsed.departureCity?.trim()) {
     return {
       departureCity: parsed.departureCity?.trim() || undefined,
-      searchTerms,
+      searchTerms: required,
+      softSearchTerms: soft,
       preferOpenRecruit: parsed.preferOpenRecruit,
     };
   }
@@ -381,15 +469,33 @@ export function resolveBuddyPostSearchCriteria(
     inferDepartureCityFromText(normalized, rawQuery) ?? undefined;
   if (normalized) {
     const fromNormalized = tokenizeRawBuddySearchQuery(normalized);
-    if (fromNormalized.length || departureCity) {
-      return { departureCity, searchTerms: fromNormalized };
+    const partitioned = partitionBuddyPostSearchTerms(fromNormalized);
+    if (
+      partitioned.required.length ||
+      partitioned.soft.length ||
+      departureCity
+    ) {
+      return {
+        departureCity,
+        searchTerms: partitioned.required,
+        softSearchTerms: partitioned.soft,
+      };
     }
-    return { departureCity, searchTerms: [normalized] };
+    const fallbackPartition = partitionBuddyPostSearchTerms([normalized]);
+    return {
+      departureCity,
+      searchTerms: fallbackPartition.required,
+      softSearchTerms: fallbackPartition.soft,
+    };
   }
 
+  const rawPartition = partitionBuddyPostSearchTerms(
+    tokenizeRawBuddySearchQuery(rawQuery),
+  );
   return {
     departureCity,
-    searchTerms: tokenizeRawBuddySearchQuery(rawQuery),
+    searchTerms: rawPartition.required,
+    softSearchTerms: rawPartition.soft,
   };
 }
 
@@ -417,26 +523,33 @@ function termMatchStrength(haystack: string, term: string): number {
   const normalizedTerm = normalizeSearchText(term);
   if (!normalizedTerm) return 0;
   if (normalizedHaystack.includes(normalizedTerm)) return 100;
-  if (fuzzyTextMatches(haystack, term)) return 60;
+  if (buddyPostSearchTermMatches(haystack, term)) return 60;
   return 0;
 }
 
-/** Higher = stronger keyword relevance (all terms must match to be included). */
+/** Higher = stronger keyword relevance; partial matches rank below full matches. */
 export function scoreBuddyPostSearchCriteria(
   post: PostRecord,
   criteria: BuddyPostSearchCriteria,
 ): number {
   if (!buddyPostMatchesSearchCriteria(post, criteria)) return 0;
 
-  let total = 0;
-  if (
-    criteria.departureCity &&
-    postMatchesDepartureCity(post, criteria.departureCity)
-  ) {
+  const departureCity = criteria.departureCity?.trim();
+  const { required, soft } = resolveCriteriaSearchTermGroups(criteria);
+  const requiredMatched = countMatchedBuddyPostSearchTerms(post, required);
+  const softMatched = countMatchedBuddyPostSearchTerms(post, soft);
+  const totalDimensions =
+    (departureCity ? 1 : 0) + required.length + soft.length;
+  const matchedDimensions =
+    (departureCity ? 1 : 0) + requiredMatched + softMatched;
+
+  let total = matchedDimensions * 100;
+
+  if (departureCity && postMatchesDepartureCity(post, departureCity)) {
     total += 80;
   }
 
-  if (!criteria.searchTerms.length) {
+  if (!required.length && !soft.length) {
     return total;
   }
 
@@ -445,9 +558,9 @@ export function scoreBuddyPostSearchCriteria(
     [post.departureCity, post.location].filter(Boolean).join(' '),
   );
 
-  for (const term of criteria.searchTerms) {
+  for (const term of [...required, ...soft]) {
     const strength = termMatchStrength(haystack, term);
-    if (strength === 0) return 0;
+    if (strength <= 0) continue;
     total += strength;
 
     const normalizedTerm = normalizeSearchText(term);
@@ -458,6 +571,12 @@ export function scoreBuddyPostSearchCriteria(
     ) {
       total += 20;
     }
+  }
+
+  total += softMatched * 40;
+
+  if (totalDimensions > 0 && matchedDimensions === totalDimensions) {
+    total += 50;
   }
 
   return total;
