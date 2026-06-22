@@ -29,6 +29,21 @@ describe('ActivityLookupService', () => {
     find: jest.fn(),
   };
 
+  const performanceModel = {
+    aggregate: jest.fn().mockReturnValue({
+      exec: jest.fn().mockResolvedValue([{ _id: 4 }, { _id: 8 }]),
+    }),
+  };
+
+  const postModel = {
+    aggregate: jest.fn().mockReturnValue({
+      exec: jest.fn().mockResolvedValue([
+        { _id: 1, count: 3 },
+        { _id: 4, count: 5 },
+      ]),
+    }),
+  };
+
   const jsonCache = {
     setJson: jest.fn().mockResolvedValue(undefined),
     getJson: jest.fn().mockResolvedValue(null),
@@ -46,9 +61,19 @@ describe('ActivityLookupService', () => {
     }),
   };
 
+  const activityImages = {
+    resolveRecords: jest.fn(
+      async <T extends { image?: string }>(records: T[]) =>
+        records.map((record) => ({ ...record })),
+    ),
+  };
+
   const service = new ActivityLookupService(
     model as never,
+    performanceModel as never,
+    postModel as never,
     jsonCache as never,
+    activityImages as never,
     config as never,
   );
 
@@ -66,10 +91,29 @@ describe('ActivityLookupService', () => {
   it('warms cache on refreshCache and writes Redis payload', async () => {
     await service.refreshCache();
 
-    expect(await service.findAll()).toEqual(records);
+    const all = await service.findAll();
+    expect(all[0]).toMatchObject({
+      legacyId: 1,
+      lineupPublished: true,
+      recruitPostCount: 3,
+    });
+    expect(all[1]).toMatchObject({
+      legacyId: 4,
+      lineupPublished: true,
+      recruitPostCount: 5,
+    });
+    expect(all[2]).toMatchObject({
+      legacyId: 8,
+      lineupPublished: true,
+      recruitPostCount: 0,
+    });
     expect(jsonCache.setJson).toHaveBeenCalledWith(
       'catalog:activity:v1',
-      { records },
+      expect.objectContaining({
+        records: expect.arrayContaining([
+          expect.objectContaining({ legacyId: 1, recruitPostCount: 3 }),
+        ]),
+      }),
       86_400,
     );
     expect(jsonCache.bumpVersion).toHaveBeenCalledWith(
@@ -83,7 +127,7 @@ describe('ActivityLookupService', () => {
     const page = await service.findPage({ skip: 1, limit: 1 });
 
     expect(page).toEqual({
-      items: [records[1]],
+      items: [expect.objectContaining({ legacyId: 4 })],
       total: 3,
       skip: 1,
       limit: 1,

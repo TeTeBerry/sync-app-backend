@@ -168,6 +168,9 @@ export class PostService implements OnModuleInit {
       throw new NotFoundException('帖子不存在');
     }
     await this.postComments.deleteCommentsForPost(id);
+    if (post.activityLegacyId != null) {
+      void this.activityLookup.refreshCache().catch(() => undefined);
+    }
     return { ok: true as const };
   }
 

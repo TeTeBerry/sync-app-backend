@@ -1,7 +1,12 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Post, PostDocument } from '../../../database/schemas/post.schema';
+import {
+  ACTIVITY_LOOKUP_PORT,
+  type IActivityLookupPort,
+} from '../../activity/ports/activity-lookup.port';
 import {
   buildDevMockTmlBuddyPosts,
   DEV_MOCK_TML_POST_COUNT,
@@ -17,6 +22,8 @@ export class PostDevMockSeedService implements OnModuleInit {
   constructor(
     @InjectModel(Post.name)
     private readonly postModel: Model<PostDocument>,
+    @Inject(ACTIVITY_LOOKUP_PORT)
+    private readonly activityLookup: IActivityLookupPort,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -84,5 +91,6 @@ export class PostDevMockSeedService implements OnModuleInit {
     this.logger.log(
       `Dev mock buddy posts for TML Thailand: upserted ${upserted}, total mock rows ${total}`,
     );
+    void this.activityLookup.refreshCache().catch(() => undefined);
   }
 }

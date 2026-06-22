@@ -1,4 +1,4 @@
-/** 2026 电音节 catalog（来源：各 festival 官网 / 官方票务与文旅发布） */
+/** Keep in sync with src/modules/activity/activity.seed.ts */
 const INFO_UPDATED_AT = new Date('2026-06-01T00:00:00.000Z');
 
 export const ACTIVITY_SEED = [
@@ -81,3 +81,24 @@ export const ACTIVITY_SEED = [
     infoUpdatedAt: INFO_UPDATED_AT,
   },
 ];
+
+export const DEPRECATED_ACTIVITY_FILTER = {
+  $or: [
+    { code: 's2o' },
+    { legacyId: 3 },
+    { code: 'sync-live-sh' },
+    { legacyId: 7 },
+    { code: 'ultra' },
+    { code: 'edc' },
+    { legacyId: 2 },
+    { code: 'vac-zhuhai' },
+    { legacyId: 6 },
+  ],
+};
+
+/** Public recruit posts visible on activity feeds (matches PostRepository). */
+export const PUBLIC_RECRUIT_POST_MATCH = {
+  activityLegacyId: { $exists: true, $type: 'number' },
+  status: { $ne: 'hidden' },
+  listedInFeed: { $ne: false },
+};

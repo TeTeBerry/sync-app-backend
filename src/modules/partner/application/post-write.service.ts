@@ -235,6 +235,9 @@ export class PostWriteService {
         ownerUserId,
         activityLegacyId,
       );
+      if (status !== 'hidden' && listedInFeed) {
+        void this.activityLookup.refreshCache().catch(() => undefined);
+      }
     }
 
     if (status === 'hidden') {
@@ -420,6 +423,9 @@ export class PostWriteService {
         ownerUserId,
         activityLegacyId,
       );
+      if (updated.status !== 'hidden' && updated.listedInFeed !== false) {
+        void this.activityLookup.refreshCache().catch(() => undefined);
+      }
     }
 
     return PostMapper.toEventDetailItem(updated);

@@ -1,4 +1,5 @@
-import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsBoolean, IsDate, IsIn, IsOptional, IsString } from 'class-validator';
 import { ACTIVITY_TYPES } from '../utils/activity-type.util';
 
 export class UpdateActivityDto {
@@ -25,4 +26,13 @@ export class UpdateActivityDto {
   @IsOptional()
   @IsBoolean()
   hot?: boolean;
+
+  @IsOptional()
+  @IsString()
+  infoSource?: string;
+
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  infoUpdatedAt?: Date;
 }

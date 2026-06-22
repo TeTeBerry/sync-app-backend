@@ -56,6 +56,14 @@ export class Activity {
   /** Official ticketing page (e.g. detail.damai.cn). */
   @Prop()
   externalUrl?: string;
+
+  /** Structured info attribution (e.g. festival official site). */
+  @Prop()
+  infoSource?: string;
+
+  /** When catalog info was last verified or updated. */
+  @Prop()
+  infoUpdatedAt?: Date;
 }
 
 export const ActivitySchema = SchemaFactory.createForClass(Activity);

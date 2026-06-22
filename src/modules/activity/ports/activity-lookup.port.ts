@@ -1,6 +1,12 @@
 import type { Activity } from '../../../database/schemas/activity.schema';
 
-export type ActivityLookupRecord = Activity & { _id?: unknown };
+export type ActivityLookupRecord = Activity & {
+  _id?: unknown;
+  /** Lineup announced (performances or seeded lineup DJs). */
+  lineupPublished?: boolean;
+  /** Public recruit posts visible on activity feed. */
+  recruitPostCount?: number;
+};
 
 export interface ActivityListPage {
   items: ActivityLookupRecord[];

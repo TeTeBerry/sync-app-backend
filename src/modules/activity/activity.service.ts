@@ -445,6 +445,15 @@ export class ActivityService implements OnModuleInit {
     if (dto.hot !== undefined) {
       patch.hot = dto.hot;
     }
+    if (dto.activityType !== undefined) {
+      patch.activityType = dto.activityType;
+    }
+    if (dto.infoSource !== undefined) {
+      patch.infoSource = dto.infoSource.trim() || undefined;
+    }
+    if (dto.infoUpdatedAt !== undefined) {
+      patch.infoUpdatedAt = dto.infoUpdatedAt;
+    }
 
     if (Object.keys(patch).length === 0) {
       return activity;
