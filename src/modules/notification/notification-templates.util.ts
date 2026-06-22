@@ -43,13 +43,13 @@ const TEMPLATE_DEFAULTS: Record<
   },
   comment: {
     type: 'interaction',
-    title: '收到新评论',
-    body: '{{actor}} 评论了你的帖子：{{preview}}',
+    title: '招募帖收到新公开回复',
+    body: '{{actor}} 公开回复了你的招募帖：{{preview}}',
   },
   commentReply: {
     type: 'interaction',
-    title: '收到新回复',
-    body: '{{actor}} 回复了你的评论：{{preview}}',
+    title: '收到新公开回复',
+    body: '{{actor}} 公开回复了你的评论：{{preview}}',
   },
 };
 

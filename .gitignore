@@ -18,6 +18,9 @@ lerna-debug.log*
 .env.production
 .env.*.local
 
+# Local AI / editor config
+.claude/settings.local.json
+
 # OS
 .DS_Store
 

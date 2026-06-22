@@ -33,7 +33,8 @@ describe('notification-templates.util', () => {
     );
 
     expect(built.type).toBe('interaction');
-    expect(built.title).toContain('评论');
+    expect(built.title).toContain('公开回复');
+    expect(built.body).toContain('招募帖');
     expect(built.body).toContain('小红');
     expect(built.meta.category).toBe('general');
   });
