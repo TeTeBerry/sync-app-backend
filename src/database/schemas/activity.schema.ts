@@ -36,6 +36,10 @@ export class Activity {
   @Prop({ enum: ['domestic', 'overseas', 'hmt'], default: 'domestic' })
   region?: string;
 
+  /** Display area label for catalog badges (e.g. 泰国, 日本, 比利时). */
+  @Prop()
+  area?: string;
+
   @Prop()
   image?: string;
 

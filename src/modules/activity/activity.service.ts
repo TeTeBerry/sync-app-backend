@@ -48,32 +48,14 @@ function slugifyActivityCode(raw: string): string {
   return compact || `event-${Date.now()}`;
 }
 
-const ACTIVITY_MAP_COORD_PATCHES = [
-  {
-    legacyId: 1,
-    latitude: 12.9367,
-    longitude: 100.8839,
-    region: 'overseas',
-  },
-  {
-    legacyId: 4,
-    latitude: 22.704518,
-    longitude: 113.771513,
-    region: 'domestic',
-  },
-  {
-    legacyId: 5,
-    latitude: 7.96,
-    longitude: 98.35,
-    region: 'overseas',
-  },
-  {
-    legacyId: 8,
-    latitude: 37.466757,
-    longitude: 126.390594,
-    region: 'overseas',
-  },
-] as const;
+const ACTIVITY_MAP_COORD_PATCHES = ACTIVITY_SEED.filter(
+  (item) => item.latitude != null && item.longitude != null,
+).map((item) => ({
+  legacyId: item.legacyId,
+  latitude: item.latitude,
+  longitude: item.longitude,
+  region: item.region,
+}));
 
 function formatActivityDate(eventDate?: string): string | undefined {
   if (!eventDate) return undefined;
@@ -175,23 +157,15 @@ export class ActivityService implements OnModuleInit {
     await this.refreshLookupCache();
   }
 
-  /** Drop retired festivals still present from older seeds (e.g. S2O). */
+  /** Drop retired festivals still present from older seeds (legacy codes only). */
   async removeDeprecatedActivities() {
     await this.model.deleteMany({
       $or: [
-        { code: 's2o' },
-        { legacyId: 3 },
         { code: 'sync-live-sh' },
-        { legacyId: 7 },
         { code: 'ultra' },
         { code: 'edc' },
-        { legacyId: 2 },
         { code: 'vac-zhuhai' },
-        { legacyId: 6 },
       ],
-    });
-    await this.registrationModel.deleteMany({
-      activityLegacyId: { $in: [2, 6] },
     });
     await this.refreshLookupCache();
   }

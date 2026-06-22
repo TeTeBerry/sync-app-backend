@@ -1,4 +1,4 @@
-/** 2026 电音节 catalog（来源：各 festival 官网 / 官方票务与文旅发布） */
+/** Keep in sync with src/modules/activity/activity.seed.ts */
 const INFO_UPDATED_AT = new Date('2026-06-01T00:00:00.000Z');
 
 export const ACTIVITY_SEED = [

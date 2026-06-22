@@ -76,6 +76,8 @@ export class HomeService {
       hot: Boolean(item.hot),
       attendees: item.attendees ?? 0,
       going: registeredLegacyIds.has(item.legacyId),
+      region: item.region,
+      area: item.area,
     }));
 
     const totalAttendees = activities.reduce(

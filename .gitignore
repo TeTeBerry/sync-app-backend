@@ -31,6 +31,11 @@ assets/personality-test/audio/*
 # Raver avatars (upload to CloudBase avatar/, do not commit)
 assets/avatar/*.png
 
+# Activity hero images (upload staging; runtime reads CloudBase static/activity/)
+assets/activity/*
+!assets/activity/.gitkeep
+!assets/activity/README.md
+
 # Tests
 /coverage
 /.nyc_output
