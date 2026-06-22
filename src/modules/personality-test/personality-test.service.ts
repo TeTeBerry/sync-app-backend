@@ -6,8 +6,10 @@ import {
   type UserPersonalityTestResultDocument,
 } from '@src/database/schemas/user-personality-test-result.schema';
 import { CloudStorageService } from '@src/infra/cloud/cloud-storage.service';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 import { DjService } from '../dj/dj.service';
 import { ItineraryScheduleService } from '../itinerary/itinerary-schedule.service';
+import { UserProfileSyncService } from '../user/user-profile-sync.service';
 import {
   ACTIVITY_LOOKUP_PORT,
   type IActivityLookupPort,
@@ -51,6 +53,7 @@ export class PersonalityTestService {
     private readonly scheduleService: ItineraryScheduleService,
     private readonly catalog: PersonalityTestCatalogService,
     private readonly cloudStorage: CloudStorageService,
+    private readonly userProfileSync: UserProfileSyncService,
     @InjectModel(UserPersonalityTestResult.name)
     private readonly resultModel: Model<UserPersonalityTestResultDocument>,
   ) {}
@@ -135,10 +138,10 @@ export class PersonalityTestService {
   }
 
   async saveResult(
-    userId: string,
+    actor: RequestActor,
     result: PersonalityTestResult,
   ): Promise<PersonalityTestResult> {
-    const trimmedUserId = userId.trim();
+    const trimmedUserId = actor.resolvedUserId?.trim() ?? '';
     if (!trimmedUserId) {
       throw new BadRequestException('请先登录');
     }
@@ -148,6 +151,13 @@ export class PersonalityTestService {
 
     const saved = ensurePersonalityResultIdentity(result);
     await this.persistResult(trimmedUserId, saved);
+    if (actor.clientUserId?.trim() && saved.score?.primaryType) {
+      const runtimeCatalog = await this.catalog.getRuntimeCatalog();
+      this.userProfileSync.applyPersonalityTestHints(actor, {
+        primaryType: saved.score.primaryType,
+        typeMeta: runtimeCatalog.typeMeta,
+      });
+    }
     return saved;
   }
 
@@ -190,7 +200,7 @@ export class PersonalityTestService {
 
   async submit(
     dto: SubmitPersonalityTestDto,
-    userId?: string,
+    actor: RequestActor,
   ): Promise<PersonalityTestResult> {
     if (dto.questionIds.length !== PERSONALITY_TEST_DRAW_COUNT) {
       throw new BadRequestException('题目信息无效，请重新开始测试');
@@ -246,7 +256,14 @@ export class PersonalityTestService {
       narrative,
     });
 
-    await this.persistResult(userId ?? '', result);
+    await this.persistResult(actor.resolvedUserId ?? '', result);
+
+    if (actor.clientUserId?.trim()) {
+      this.userProfileSync.applyPersonalityTestHints(actor, {
+        primaryType: score.primaryType,
+        typeMeta: runtimeCatalog.typeMeta,
+      });
+    }
 
     return result;
   }

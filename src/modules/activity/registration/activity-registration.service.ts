@@ -37,6 +37,12 @@ export interface ActivityUnregisterResultDto {
   attendees: number;
 }
 
+export interface ActivityWechatUpdateOptInResultDto {
+  ok: true;
+  activityLegacyId: number;
+  wechatActivityUpdateOptIn: true;
+}
+
 @Injectable()
 export class ActivityRegistrationService {
   constructor(
@@ -117,6 +123,38 @@ export class ActivityRegistrationService {
 
   async listRegisteredUserIds(activityLegacyId: number): Promise<string[]> {
     return this.registrationRepository.findRegisteredUserIds(activityLegacyId);
+  }
+
+  async optInWechatActivityUpdates(
+    legacyId: number,
+    actor: RequestActor,
+  ): Promise<ActivityWechatUpdateOptInResultDto> {
+    const activity = await this.activityLookup.findByLegacyId(legacyId);
+    if (!activity) {
+      throw new NotFoundException(`Activity ${legacyId} not found`);
+    }
+
+    const filter = ownerFilterFromActor(actor);
+    const existing = await this.registrationRepository.findByOwnerAndActivity(
+      filter,
+      legacyId,
+    );
+    if (!existing) {
+      throw new NotFoundException(
+        `Activity ${legacyId} registration not found for current user`,
+      );
+    }
+
+    await this.registrationRepository.setWechatActivityUpdateOptIn(
+      filter,
+      legacyId,
+    );
+
+    return {
+      ok: true,
+      activityLegacyId: legacyId,
+      wechatActivityUpdateOptIn: true,
+    };
   }
 
   async listRegisteredLegacyIds(actor: RequestActor): Promise<Set<number>> {

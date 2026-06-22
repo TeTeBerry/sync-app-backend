@@ -1,12 +1,18 @@
 import {
+  buddyPostMatchesSearchCriteria,
   buddyPostMatchesSearchTerms,
+  buildBodySearchTermsFromParsed,
   buildSearchTermsFromParsed,
   filterBuddyPostsBySearchTerms,
   fuzzyTextMatches,
+  isConfidentRuleBuddySearchParse,
+  isSimpleCityOnlyBuddySearch,
   parseBuddyPostSearchQuery,
   rankBuddyPostsBySearch,
+  resolveBuddyPostSearchCriteria,
   resolveBuddyPostSearchTerms,
-  scoreBuddyPostKeywordMatch,
+  scoreBuddyPostSearchCriteria,
+  shouldRetryBuddySearchWithLlm,
 } from '@src/modules/partner/utils/buddy-post-search.util';
 import type { PostRecord } from '@src/modules/partner/interfaces/post.repository.interface';
 
@@ -27,21 +33,22 @@ function samplePost(overrides: Partial<PostRecord> = {}): PostRecord {
 
 describe('buddy-post-search.util', () => {
   it('matches all parsed terms against post body', () => {
-    const terms = resolveBuddyPostSearchTerms(
-      {
-        eventName: 'EDC',
-        date: '10.3',
-        genre: 'Techno',
-        peopleCount: '2',
-        extraKeywords: ['白天', '同逛舞台'],
-      },
+    const parsed = {
+      eventName: 'EDC',
+      date: '10.3',
+      genre: 'Techno',
+      peopleCount: '2',
+      extraKeywords: ['白天', '同逛舞台'],
+    };
+    const criteria = resolveBuddyPostSearchCriteria(
+      parsed,
       '比如：喜欢 Techno，白天在场，找 2 个同逛舞台的搭子',
     );
 
     expect(
-      buddyPostMatchesSearchTerms(
+      buddyPostMatchesSearchCriteria(
         samplePost({ body: '10.3 EDC 白天在场，喜欢 Techno，找 2 人同逛舞台' }),
-        terms,
+        criteria,
       ),
     ).toBe(true);
   });
@@ -117,36 +124,54 @@ describe('buddy-post-search.util', () => {
       expect.arrayContaining(['EDC', '韩国', '白天在场', '同逛舞台']),
     );
 
-    const terms = resolveBuddyPostSearchTerms(parsed, '');
+    const criteria = resolveBuddyPostSearchCriteria(parsed, '');
     const post = samplePost({
       eventTitle: 'EDC 韩国',
       body: '10.3 EDC 韩国 白天在场，喜欢 Techno，找 2 人同逛舞台',
     });
-    expect(buddyPostMatchesSearchTerms(post, terms)).toBe(true);
+    expect(buddyPostMatchesSearchCriteria(post, criteria)).toBe(true);
   });
 
-  it('strips buddy-search boilerplate for departure city queries', () => {
-    const terms = resolveBuddyPostSearchTerms(
-      parseBuddyPostSearchQuery('找成都出发的队'),
-      '找成都出发的队',
-    );
-    expect(terms).toEqual(['成都出发']);
+  it('matches departure city via structured field instead of body keyword 出发', () => {
+    const parsed = parseBuddyPostSearchQuery('找成都出发的队');
+    expect(parsed.departureCity).toBe('成都');
+
+    const criteria = resolveBuddyPostSearchCriteria(parsed, '找成都出发的队');
+    expect(criteria).toEqual({ departureCity: '成都', searchTerms: [] });
+    expect(resolveBuddyPostSearchTerms(parsed, '找成都出发的队')).toEqual([
+      '成都',
+    ]);
 
     const post = samplePost({
-      body: '成都出发，12.12-13 两天场',
+      body: '12.12-13 两天场',
       departureCity: '成都',
     });
-    expect(buddyPostMatchesSearchTerms(post, terms)).toBe(true);
+    expect(buddyPostMatchesSearchCriteria(post, criteria)).toBe(true);
+  });
+
+  it('matches Hangzhou departure posts when query includes 出发 suffix', () => {
+    const parsed = parseBuddyPostSearchQuery('杭州出发');
+    expect(parsed.departureCity).toBe('杭州');
+
+    const criteria = resolveBuddyPostSearchCriteria(parsed, '杭州出发');
+    expect(criteria).toEqual({ departureCity: '杭州', searchTerms: [] });
+
+    const post = samplePost({
+      body: '12.18-12.20，差 1 人',
+      departureCity: '杭州',
+      location: '杭州',
+    });
+    expect(buddyPostMatchesSearchCriteria(post, criteria)).toBe(true);
   });
 
   it('scores stronger keyword coverage higher', () => {
-    const stronger = scoreBuddyPostKeywordMatch(
-      samplePost({ body: '成都出发 Techno', departureCity: '成都' }),
-      ['成都', '出发', 'Techno'],
+    const stronger = scoreBuddyPostSearchCriteria(
+      samplePost({ body: 'Techno 同逛', departureCity: '成都' }),
+      { departureCity: '成都', searchTerms: ['Techno', '同逛'] },
     );
-    const weaker = scoreBuddyPostKeywordMatch(
-      samplePost({ body: '成都 Techno', departureCity: '成都' }),
-      ['成都', 'Techno'],
+    const weaker = scoreBuddyPostSearchCriteria(
+      samplePost({ body: 'Techno', departureCity: '成都' }),
+      { departureCity: '成都', searchTerms: ['Techno'] },
     );
     expect(stronger).toBeGreaterThan(weaker);
   });
@@ -165,12 +190,116 @@ describe('buddy-post-search.util', () => {
 
     const ranked = rankBuddyPostsBySearch(
       [guangzhou, shanghai],
-      ['Techno', '同逛舞台'],
+      { searchTerms: ['Techno', '同逛舞台'] },
       { city: '上海', favorGenres: ['Techno'] },
     );
     expect(ranked.map((row) => String(row._id))).toEqual([
       'shanghai',
       'guangzhou',
     ]);
+  });
+
+  it('does not require 出发 in post body when only departureCity is parsed', () => {
+    expect(
+      buddyPostMatchesSearchTerms(
+        samplePost({ body: '差 1 人', departureCity: '杭州' }),
+        ['出发'],
+      ),
+    ).toBe(false);
+    expect(
+      buddyPostMatchesSearchCriteria(
+        samplePost({ body: '差 1 人', departureCity: '杭州' }),
+        { departureCity: '杭州', searchTerms: [] },
+      ),
+    ).toBe(true);
+  });
+
+  it('does not treat recruit-slot queries as confident rule parses', () => {
+    const query = '上海出发，12.11-12.13，差 1 人';
+    const parsed = parseBuddyPostSearchQuery(query);
+    expect(parsed.departureCity).toBe('上海');
+    expect(parsed.date).toBe('12.11-12.13');
+    expect(parsed.peopleCount).toBe('1');
+    expect(parsed.preferOpenRecruit).toBe(true);
+    expect(isConfidentRuleBuddySearchParse(query, parsed)).toBe(false);
+  });
+
+  it('parses date ranges as a single date term without garbage tokens', () => {
+    const parsed = parseBuddyPostSearchQuery('上海出发，12.11-12.13，差 1 人');
+    const criteria = resolveBuddyPostSearchCriteria(
+      parsed,
+      '上海出发，12.11-12.13，差 1 人',
+    );
+    expect(criteria.searchTerms).not.toContain('-12');
+    expect(criteria.searchTerms).not.toContain('13');
+    expect(criteria.preferOpenRecruit).toBe(true);
+  });
+
+  it('ranks open recruit posts above full when preferOpenRecruit is set', () => {
+    const full = samplePost({
+      _id: 'full',
+      body: '组队，12.11-13，上海，3人，上海 Techno 小队人齐',
+      departureCity: '上海',
+      recruitStatus: 'full',
+    });
+    const open = samplePost({
+      _id: 'open',
+      body: '上海出发 12.11-12.13 Techno 差 1 人',
+      departureCity: '上海',
+      recruitStatus: 'open',
+      slotsTotal: 3,
+      slotsFilled: 2,
+    });
+
+    const ranked = rankBuddyPostsBySearch(
+      [full, open],
+      {
+        departureCity: '上海',
+        searchTerms: ['12.11', '12.13'],
+        preferOpenRecruit: true,
+      },
+      { city: '上海', favorGenres: ['Techno'] },
+    );
+    expect(ranked.map((row) => String(row._id))).toEqual(['open', 'full']);
+  });
+});
+
+describe('buddy-post-search rule-first helpers', () => {
+  it('treats city-only queries as confident rule parses', () => {
+    const parsed = parseBuddyPostSearchQuery('杭州出发');
+    expect(isSimpleCityOnlyBuddySearch('杭州出发', parsed)).toBe(true);
+    expect(isConfidentRuleBuddySearchParse('杭州出发', parsed)).toBe(true);
+  });
+
+  it('treats short keyword queries as confident rule parses', () => {
+    const parsed = parseBuddyPostSearchQuery('Techno 组队');
+    expect(isConfidentRuleBuddySearchParse('Techno 组队', parsed)).toBe(true);
+  });
+
+  it('does not treat complex natural language as confident', () => {
+    const query = '想找能一起逛主舞台的小伙伴';
+    const parsed = parseBuddyPostSearchQuery(query);
+    expect(isConfidentRuleBuddySearchParse(query, parsed)).toBe(false);
+  });
+
+  it('skips LLM retry for confident city-only zero-result searches', () => {
+    const parsed = parseBuddyPostSearchQuery('杭州出发');
+    expect(shouldRetryBuddySearchWithLlm('杭州出发', 'rule', 0, parsed)).toBe(
+      false,
+    );
+  });
+
+  it('retries LLM when confident keyword search returns zero matches', () => {
+    const parsed = parseBuddyPostSearchQuery('Techno 组队');
+    expect(
+      shouldRetryBuddySearchWithLlm('Techno 组队', 'rule', 0, parsed),
+    ).toBe(true);
+  });
+
+  it('does not retry after LLM parse was already used', () => {
+    const parsed = parseBuddyPostSearchQuery('Techno 组队');
+    expect(shouldRetryBuddySearchWithLlm('Techno 组队', 'llm', 0, parsed)).toBe(
+      false,
+    );
   });
 });

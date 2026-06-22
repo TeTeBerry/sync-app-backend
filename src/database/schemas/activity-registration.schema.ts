@@ -17,6 +17,10 @@ export class ActivityRegistration {
 
   @Prop({ default: 'registered' })
   status: 'registered';
+
+  /** User accepted WeChat subscribe template for activity lineup/info updates. */
+  @Prop({ default: false })
+  wechatActivityUpdateOptIn?: boolean;
 }
 
 export const ActivityRegistrationSchema =

@@ -20,6 +20,7 @@ import {
 import { ActivityLookupModule } from '../activity/activity-lookup.module';
 import { DjModule } from '../dj/dj.module';
 import { ItineraryModule } from '../itinerary/itinerary.module';
+import { UserModule } from '../user/user.module';
 import { PublicApiRateLimitModule } from '../../common/rate-limit/public-api-rate-limit.module';
 import { PersonalityTestCatalogService } from './personality-test-catalog.service';
 import { PersonalityTestController } from './personality-test.controller';
@@ -48,6 +49,7 @@ import { PersonalityTestService } from './personality-test.service';
     ActivityLookupModule,
     DjModule,
     ItineraryModule,
+    UserModule,
     CloudModule,
     PublicApiRateLimitModule,
   ],

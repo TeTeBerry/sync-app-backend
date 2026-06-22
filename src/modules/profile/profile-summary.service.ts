@@ -17,9 +17,14 @@ import {
 import { canViewPersonalInfo } from '../../common/utils/privacy.util';
 import { UserService } from '../user/user.service';
 import {
-  resolveProfileActivityStatus,
   compareActivityDateDesc,
+  resolveProfileActivityStatus,
 } from '../../common/utils/activity-date.util';
+import {
+  appendDevProfileStormActivity,
+  DEV_PROFILE_STORM_LEGACY_ID,
+  shouldInjectDevProfileStorm,
+} from './utils/dev-profile-storm-activity.util';
 
 function registrationFilterFromActor(
   actor: RequestActor,
@@ -75,11 +80,24 @@ export class ProfileSummaryService {
     const isOwner =
       !viewerId || !ownerExternalId || viewerId === ownerExternalId;
 
-    const [profile, events, ownerPosts] = await Promise.all([
+    const [profile, registrations, ownerPosts] = await Promise.all([
       this.userService.resolveProfile(actor),
-      this.registrationRepository.countByOwner(filter),
+      this.registrationRepository.findByOwner(filter),
       this.postRead.listByOwner(actor),
     ]);
+
+    const visibleRegistrations = registrations.filter(
+      (registration) => registration.activityLegacyId !== 3,
+    );
+    const events =
+      visibleRegistrations.length +
+      (shouldInjectDevProfileStorm(
+        visibleRegistrations.map(
+          (registration) => registration.activityLegacyId,
+        ),
+      )
+        ? 1
+        : 0);
 
     const privacyLevel =
       (profile as { privacyLevel?: 'public' | 'friends' | 'private' })
@@ -128,7 +146,16 @@ export class ProfileSummaryService {
       };
     });
 
-    return items.sort(compareActivityDateDesc);
+    const sorted = items.sort(compareActivityDateDesc);
+    const stormActivity = await this.activityLookup.findByLegacyId(
+      DEV_PROFILE_STORM_LEGACY_ID,
+    );
+
+    return appendDevProfileStormActivity(
+      sorted,
+      stormActivity,
+      registrations.map((registration) => registration.activityLegacyId),
+    );
   }
 
   listPosts(actor: RequestActor) {

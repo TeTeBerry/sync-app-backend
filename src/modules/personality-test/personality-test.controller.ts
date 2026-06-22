@@ -63,7 +63,7 @@ export class PersonalityTestController {
     @Body() body: SavePersonalityTestResultDto,
     @CurrentActor() actor: RequestActor,
   ) {
-    return this.personalityTest.saveResult(actor.resolvedUserId, body.result);
+    return this.personalityTest.saveResult(actor, body.result);
   }
 
   @Public()
@@ -72,6 +72,6 @@ export class PersonalityTestController {
     @Body() body: SubmitPersonalityTestDto,
     @CurrentActor() actor: RequestActor,
   ) {
-    return this.personalityTest.submit(body, actor.resolvedUserId);
+    return this.personalityTest.submit(body, actor);
   }
 }

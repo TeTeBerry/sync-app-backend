@@ -64,6 +64,21 @@ export const FESTIVAL_BRANDS: FestivalBrand[] = [
     ],
   },
   {
+    code: 'tomorrowland-shanghai',
+    name: 'Tomorrowland Shanghai',
+    aliases: [
+      'tomorrowland shanghai',
+      'tomorrowland 上海',
+      'tml上海',
+      'tml shanghai',
+      'the magic of tomorrowland',
+      '明日世界上海',
+      '上海明日世界',
+      'planaxis',
+      '海底幻境',
+    ],
+  },
+  {
     code: 'storm',
     name: '风暴电音节',
     aliases: [
@@ -117,9 +132,12 @@ function compactText(text: string): string {
   return text.toLowerCase().replace(/[\s.\-_/]+/g, '');
 }
 
-function regionHint(text: string): 'thailand' | 'china' | undefined {
+function regionHint(
+  text: string,
+): 'thailand' | 'shanghai' | 'china' | undefined {
   const lower = text.toLowerCase();
   if (/泰国|thailand|泰國|曼谷|pattaya|芭提雅/.test(lower)) return 'thailand';
+  if (/上海|shanghai/.test(lower)) return 'shanghai';
   if (/中国|china|阳澄湖|苏州/.test(lower)) return 'china';
   return undefined;
 }
@@ -142,6 +160,10 @@ export function resolveFestivalBrand(
   for (const brand of FESTIVAL_BRANDS) {
     if (brand.code === 'edc' && region === 'thailand') continue;
     if (brand.code === 'edc-thailand' && region === 'china') continue;
+    if (brand.code === 'tomorrowland' && region === 'shanghai') continue;
+    if (brand.code === 'tomorrowland-shanghai' && region === 'thailand') {
+      continue;
+    }
     if (
       brand.code === 'edc' &&
       /vac|vision|colour|珠海|hilton|希尔顿/.test(lower)

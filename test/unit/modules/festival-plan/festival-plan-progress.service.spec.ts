@@ -4,8 +4,10 @@ import { Test } from '@nestjs/testing';
 import { TravelGuideGenerationJob } from '@src/database/schemas/travel-guide-generation-job.schema';
 import { FestivalPlanProgressService } from '@src/modules/festival-plan/festival-plan-progress.service';
 import { ItineraryService } from '@src/modules/itinerary/itinerary.service';
+import { NotificationService } from '@src/modules/notification/notification.service';
 import { PostQueryService } from '@src/modules/partner/application/post-query.service';
 import { TravelGuideSavedPlanService } from '@src/modules/travel-guide/travel-guide-saved-plan.service';
+import { FestivalPlanProgressCacheService } from '@src/infra/cache/bff-read-cache.service';
 
 describe('FestivalPlanProgressService', () => {
   const actor = toRequestActor('user-1', 'Berry');
@@ -20,6 +22,13 @@ describe('FestivalPlanProgressService', () => {
   };
   const postQueryService = {
     findOwnerActivePostForActivity: jest.fn(),
+  };
+  const notificationService = {
+    countUnreadPostEngagement: jest.fn(),
+  };
+  const festivalPlanCache = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(undefined),
   };
 
   let service: FestivalPlanProgressService;
@@ -48,6 +57,7 @@ describe('FestivalPlanProgressService', () => {
     postQueryService.findOwnerActivePostForActivity.mockResolvedValue({
       id: 'post-1',
     });
+    notificationService.countUnreadPostEngagement.mockResolvedValue(2);
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -59,6 +69,11 @@ describe('FestivalPlanProgressService', () => {
         { provide: TravelGuideSavedPlanService, useValue: savedPlanService },
         { provide: ItineraryService, useValue: itineraryService },
         { provide: PostQueryService, useValue: postQueryService },
+        { provide: NotificationService, useValue: notificationService },
+        {
+          provide: FestivalPlanProgressCacheService,
+          useValue: festivalPlanCache,
+        },
       ],
     }).compile();
 
@@ -77,7 +92,12 @@ describe('FestivalPlanProgressService', () => {
       itinerarySelectedDjIds: ['dj-1'],
       hasBuddyPost: true,
       buddyPostId: 'post-1',
+      unreadReplyCount: 2,
     });
+    expect(notificationService.countUnreadPostEngagement).toHaveBeenCalledWith(
+      'user-1',
+      ['post-1'],
+    );
   });
 
   it('falls back to guideId from completed job when saved plan is missing', async () => {
@@ -112,6 +132,15 @@ describe('FestivalPlanProgressService', () => {
       itinerarySelectedDjIds: undefined,
       hasBuddyPost: false,
       buddyPostId: undefined,
+      unreadReplyCount: undefined,
     });
+  });
+
+  it('omits unreadReplyCount when there are no unread replies', async () => {
+    notificationService.countUnreadPostEngagement.mockResolvedValue(0);
+
+    const result = await service.getProgress(4, actor);
+
+    expect(result.unreadReplyCount).toBeUndefined();
   });
 });

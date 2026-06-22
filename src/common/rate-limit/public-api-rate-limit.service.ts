@@ -42,7 +42,7 @@ export class PublicApiRateLimitService {
       },
       post_ai_search: {
         maxRequests:
-          config.get<number>('publicApi.rateLimit.postAiSearchMax') ?? 20,
+          config.get<number>('publicApi.rateLimit.postAiSearchMax') ?? 40,
         windowMs,
       },
       chat_session: {

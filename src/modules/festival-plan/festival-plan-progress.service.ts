@@ -12,6 +12,7 @@ import {
 } from '../../database/schemas/travel-guide-generation-job.schema';
 import type { FestivalPlanProgressDto } from '../../shared/festival-plan';
 import { ItineraryService } from '../itinerary/itinerary.service';
+import { NotificationService } from '../notification/notification.service';
 import { PostQueryService } from '../partner/application/post-query.service';
 import { TravelGuideSavedPlanService } from '../travel-guide/travel-guide-saved-plan.service';
 
@@ -23,6 +24,7 @@ export class FestivalPlanProgressService {
     private readonly savedPlanService: TravelGuideSavedPlanService,
     private readonly itineraryService: ItineraryService,
     private readonly postQueryService: PostQueryService,
+    private readonly notificationService: NotificationService,
     private readonly festivalPlanCache: FestivalPlanProgressCacheService,
   ) {}
 
@@ -72,6 +74,14 @@ export class FestivalPlanProgressService {
       savedItinerary.saved && savedItinerary.days?.length
         ? savedItinerary.days
         : null;
+    const buddyPostId = buddyPost?.id;
+    const userId = actor.resolvedUserId?.trim();
+    const unreadReplyCount =
+      userId && buddyPostId
+        ? await this.notificationService.countUnreadPostEngagement(userId, [
+            buddyPostId,
+          ])
+        : 0;
 
     return {
       activityLegacyId,
@@ -82,8 +92,9 @@ export class FestivalPlanProgressService {
       itinerarySelectedDjIds: savedItinerary.saved
         ? savedItinerary.selectedDjIds
         : undefined,
-      hasBuddyPost: Boolean(buddyPost?.id),
-      buddyPostId: buddyPost?.id,
+      hasBuddyPost: Boolean(buddyPostId),
+      buddyPostId,
+      unreadReplyCount: unreadReplyCount > 0 ? unreadReplyCount : undefined,
     };
   }
 

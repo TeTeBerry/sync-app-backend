@@ -265,6 +265,15 @@ export function buildBuddyPostProfileHints(params: {
   return hints;
 }
 
+export function buildPersonalityProfileHints(params: {
+  primaryType: string;
+  typeMeta: Record<string, { genreTags: string[] }>;
+}): UserMatchProfileHints {
+  const tags = params.typeMeta[params.primaryType]?.genreTags ?? [];
+  const genres = normalizeProfileGenres(tags);
+  return genres.length ? { favorGenres: genres } : {};
+}
+
 export function buildTravelGuideProfileHints(params: {
   departure: string;
   departureCity?: string;

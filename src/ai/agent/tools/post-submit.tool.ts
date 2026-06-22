@@ -17,7 +17,7 @@ export class PostSubmitTool implements ChatAgentTool {
       properties: {
         body: {
           type: 'string',
-          description: '组队帖正文（活动时间、集合点、人数、备注等）',
+          description: '组队帖正文（活动时间、出发地、人数、备注等）',
         },
       },
     },

@@ -34,6 +34,11 @@ export const KNOWLEDGE_DOCUMENTS: Document[] = [
   }),
   new Document({
     pageContent:
+      'The Magic Of Tomorrowland 上海 2026（tomorrowland-shanghai）2026 年 10 月 17 日至 18 日，地点上海（具体场馆待定），主题 Planaxis · 海底幻境。别名：tomorrowland shanghai、tml上海、明日世界上海、the magic of tomorrowland。',
+    metadata: { topic: 'activity', code: 'tomorrowland-shanghai' },
+  }),
+  new Document({
+    pageContent:
       '2026横琴VAC电音节（vac-zhuhai，喜力星电音呈现）2026 年 4 月 18 日至 19 日，地点横琴长隆度假区 5 号停车场，主题 Neo Zen。别名：vac、vision & colour、横琴vac、珠海vac。',
     metadata: { topic: 'activity', code: 'vac-zhuhai' },
   }),

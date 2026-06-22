@@ -205,7 +205,7 @@ export default () => ({
         10,
       ),
       postAiSearchMax: parseInt(
-        cleanEnv(process.env.PUBLIC_API_POST_AI_SEARCH_MAX, '20'),
+        cleanEnv(process.env.PUBLIC_API_POST_AI_SEARCH_MAX, '40'),
         10,
       ),
       chatSessionMax: parseInt(

@@ -11,7 +11,7 @@ export class PostStartCollectTool implements ChatAgentTool {
   readonly definition = {
     name: 'post_start_collect',
     description:
-      '用户想发组队帖但尚未填写正文时，进入结构化收集流程（活动时间、集合点、人数、备注）。需已绑定活动。',
+      '用户想发组队帖但尚未填写正文时，进入结构化收集流程（活动时间、出发地、人数、备注）。需已绑定活动。',
     parameters: {
       type: 'object',
       properties: {},

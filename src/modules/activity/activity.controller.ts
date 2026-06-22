@@ -81,6 +81,14 @@ export class ActivityController {
     return this.registrationService.register(legacyId, actor);
   }
 
+  @Post(':legacyId/register/wechat-updates')
+  optInWechatActivityUpdates(
+    @Param('legacyId', ParseIntPipe) legacyId: number,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.registrationService.optInWechatActivityUpdates(legacyId, actor);
+  }
+
   @Delete(':legacyId/register')
   unregister(
     @Param('legacyId', ParseIntPipe) legacyId: number,

@@ -4,6 +4,7 @@ import type { UserMatchProfile } from './user-profile-hints.util';
 import { UserService } from './user.service';
 import {
   buildBuddyPostProfileHints,
+  buildPersonalityProfileHints,
   buildTravelGuideProfileHints,
   hasUserMatchProfileHints,
   mergeUserProfileHints,
@@ -82,5 +83,13 @@ export class UserProfileSyncService {
   ): void {
     const hints = buildTravelGuideProfileHints(params);
     void this.applyHints(actor, hints, 'travel_guide');
+  }
+
+  applyPersonalityTestHints(
+    actor: RequestActor,
+    params: Parameters<typeof buildPersonalityProfileHints>[0],
+  ): void {
+    const hints = buildPersonalityProfileHints(params);
+    void this.applyHints(actor, hints, 'personality_test');
   }
 }

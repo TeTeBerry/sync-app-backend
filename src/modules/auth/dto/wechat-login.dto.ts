@@ -12,13 +12,13 @@ export class WechatLoginDto {
   @MaxLength(512)
   code!: string;
 
-  /** WeChat nickName from `getUserProfile` (mini program). */
+  /** Optional nickName (legacy / explicit profile sync; login does not require). */
   @IsOptional()
   @IsString()
   @MaxLength(64)
   nickName?: string;
 
-  /** WeChat avatarUrl from `getUserProfile` (mini program). */
+  /** Optional avatar URL (legacy / explicit profile sync; login does not require). */
   @IsOptional()
   @IsString()
   @MaxLength(2048)

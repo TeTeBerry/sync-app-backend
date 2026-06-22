@@ -87,4 +87,10 @@ export const ACTIVITY_IMAGE_SOURCES = [
     code: 'ultra-europe',
     sourceUrl: 'https://ultraeurope.com/wp-content/uploads/2015/07/ultra-europe.png',
   },
+  {
+    legacyId: 16,
+    code: 'tomorrowland-shanghai',
+    /** Local asset — see assets/activity/tomorrowland-shanghai.png */
+    sourceUrl: '',
+  },
 ];

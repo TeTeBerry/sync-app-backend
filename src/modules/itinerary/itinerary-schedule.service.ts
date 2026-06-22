@@ -189,6 +189,7 @@ export class ItineraryScheduleService implements OnModuleInit {
     await Promise.all(
       activityIds.map((legacyId) => this.cache.invalidateSchedule(legacyId)),
     );
+    await this.activityService.refreshActivityLookupCache();
   }
 
   private async pruneStalePerformances(

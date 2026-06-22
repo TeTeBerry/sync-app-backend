@@ -108,7 +108,7 @@ export function buildTravelGuideEssentials(input: {
           ? 'AIS/TrueMove 电话卡或 eSIM，机场/711 可购；国内可提前淘宝/eSIM 平台订购。'
           : '目的地 eSIM/当地 SIM，活动场馆与郊区信号可能较弱，建议下载离线地图。',
         '国际漫游包可作备用，但现场刷票/叫车更依赖当地网络。',
-        '场馆内 Wi‑Fi 不稳定，关键信息（票夹、集合点）建议截图保存。',
+        '场馆内 Wi‑Fi 不稳定，关键信息（票夹、行程）建议截图保存。',
       ],
       payment: [
         thailand
@@ -138,7 +138,7 @@ export function buildTravelGuideEssentials(input: {
       network: [
         '开通港澳台漫游包或购买当地 SIM/eSIM；微信/支付宝在港澳部分场景可用。',
         '台湾建议提前购中华电信/远传等预付卡，机场柜位即买即用。',
-        '场馆与地下信号可能弱，集合点与票夹信息请截图。',
+        '场馆与地下信号可能弱，行程与票夹信息请截图。',
       ],
       payment: [
         '港币/澳门元/新台币现金 + 银联/Visa；八达通（香港）可覆盖地铁与小商户。',

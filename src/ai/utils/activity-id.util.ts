@@ -45,6 +45,14 @@ export function resolveActivityId(text: string): string | undefined {
   const festival = resolveFestivalBrand(text);
   if (festival) return festival.brand.code;
 
+  if (
+    /tomorrowland.*shanghai|shanghai.*tomorrowland|tml上海|上海明日世界|magicoftomorrowland|planaxis|海底幻境/.test(
+      compact + lower,
+    )
+  ) {
+    return 'tomorrowland-shanghai';
+  }
+
   if (/tomorrowland|tmw/.test(compact)) return 'tomorrowland';
 
   return undefined;

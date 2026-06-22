@@ -1,10 +1,12 @@
 import {
+  buildPersonalityProfileHints,
   buildTravelGuideProfileHints,
   extractProfileGenresFromText,
   mergeUserProfileHints,
   travelGuideBudgetTierToProfileLevel,
   userMatchProfilesEqual,
 } from '@src/modules/user/user-profile-hints.util';
+import { PERSONALITY_TYPE_META } from '@src/modules/personality-test/data/personality-types';
 
 describe('user-profile-hints.util', () => {
   it('prefers compound genres over substring matches', () => {
@@ -61,5 +63,30 @@ describe('user-profile-hints.util', () => {
         { favorGenres: ['Edm', 'Techno'] },
       ),
     ).toBe(true);
+  });
+
+  it('buildPersonalityProfileHints maps primary type genreTags', () => {
+    const hints = buildPersonalityProfileHints({
+      primaryType: 'connoisseur',
+      typeMeta: PERSONALITY_TYPE_META,
+    });
+
+    expect(hints.favorGenres).toEqual(
+      expect.arrayContaining(['Techno', 'Trance', 'Progressive']),
+    );
+    expect(hints.city).toBeUndefined();
+    expect(hints.budgetLevel).toBeUndefined();
+  });
+
+  it('buildPersonalityProfileHints unions with existing genres via merge', () => {
+    const hints = buildPersonalityProfileHints({
+      primaryType: 'rager',
+      typeMeta: PERSONALITY_TYPE_META,
+    });
+    const merged = mergeUserProfileHints({ favorGenres: ['House'] }, hints);
+
+    expect(merged.favorGenres).toEqual(
+      expect.arrayContaining(['House', 'Big room', 'Hardstyle', 'Dubstep']),
+    );
   });
 });

@@ -32,7 +32,7 @@ function buildBuddyPostFieldGuideLines(activityLabel: string): string[] {
     `在「${activityLabel}」发帖前，请补充你的组队信息：`,
     '',
     '· 活动时间（如 6.13-6.14）',
-    '· 出发地/集合点（如 上海、场馆北门）',
+    '· 出发地（如 上海、上海虹桥站）',
     '· 人数（如 2人）',
     '· 备注（可选）：性别偏好、音乐风格、组队类型等',
     '',

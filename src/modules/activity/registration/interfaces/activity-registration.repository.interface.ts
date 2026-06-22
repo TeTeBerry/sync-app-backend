@@ -33,6 +33,13 @@ export interface IActivityRegistrationRepository {
     activityLegacyId: number,
   ): Promise<boolean>;
   findRegisteredUserIds(activityLegacyId: number): Promise<string[]>;
+  findWechatActivityUpdateOptInUserIds(
+    activityLegacyId: number,
+  ): Promise<string[]>;
+  setWechatActivityUpdateOptIn(
+    filter: ActivityRegistrationQueryFilter,
+    activityLegacyId: number,
+  ): Promise<boolean>;
 }
 
 export const ACTIVITY_REGISTRATION_REPOSITORY = Symbol(

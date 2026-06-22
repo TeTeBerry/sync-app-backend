@@ -82,6 +82,24 @@ describe('NoticeAgent', () => {
         }),
       }),
     );
+    expect(wechatSubscribe.sendActivityUpdateNotice).toHaveBeenCalledTimes(2);
+  });
+
+  it('sends WeChat activity update only to opted-in recipients', async () => {
+    await agent.notifyActivityUpdate(
+      ['user-a', 'user-b'],
+      99,
+      'Tomorrowland',
+      '阵容已官宣',
+      undefined,
+      undefined,
+      ['user-b'],
+    );
+
+    expect(wechatSubscribe.sendActivityUpdateNotice).toHaveBeenCalledTimes(1);
+    expect(wechatSubscribe.sendActivityUpdateNotice).toHaveBeenCalledWith(
+      expect.objectContaining({ openid: 'openid-owner' }),
+    );
   });
 
   it('skips duplicate activity update for same user and changeSummary', async () => {

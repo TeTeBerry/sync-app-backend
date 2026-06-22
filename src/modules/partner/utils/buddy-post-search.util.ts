@@ -3,14 +3,27 @@ import {
   extractProfileGenresFromText,
   type UserMatchProfile,
 } from '../../user/user-profile-hints.util';
-import { normalizeCityName } from './departure-city.util';
+import {
+  inferDepartureCityFromText,
+  normalizeCityName,
+  resolveDepartureCity,
+} from './departure-city.util';
 
 export type BuddyPostSearchParsed = {
+  departureCity?: string;
   eventName?: string;
   date?: string;
   genre?: string;
   peopleCount?: string;
   extraKeywords?: string[];
+  /** LLM: user wants posts still recruiting, not already full. */
+  preferOpenRecruit?: boolean;
+};
+
+export type BuddyPostSearchCriteria = {
+  departureCity?: string;
+  searchTerms: string[];
+  preferOpenRecruit?: boolean;
 };
 
 export type BuddyPostSearchResult = {
@@ -94,7 +107,7 @@ const SEARCH_STOP_WORDS = new Set([
   '喜欢',
 ]);
 
-export function buildSearchTermsFromParsed(
+export function buildBodySearchTermsFromParsed(
   parsed: BuddyPostSearchParsed,
 ): string[] {
   const terms: string[] = [];
@@ -113,6 +126,51 @@ export function buildSearchTermsFromParsed(
   }
 
   return [...new Set(terms)];
+}
+
+/** @deprecated Use buildBodySearchTermsFromParsed */
+export function buildSearchTermsFromParsed(
+  parsed: BuddyPostSearchParsed,
+): string[] {
+  return buildBodySearchTermsFromParsed(parsed);
+}
+
+export function buildBuddyPostSearchDisplayTerms(
+  parsed: BuddyPostSearchParsed,
+  criteria: BuddyPostSearchCriteria,
+): string[] {
+  const terms = [...criteria.searchTerms];
+  if (parsed.departureCity?.trim()) {
+    terms.unshift(parsed.departureCity.trim());
+  }
+  return [...new Set(terms)];
+}
+
+export function postMatchesDepartureCity(
+  post: PostRecord,
+  departureCity?: string,
+): boolean {
+  const want = normalizeCityName(departureCity);
+  if (!want) return true;
+  const got = resolveDepartureCity({
+    departureCity: post.departureCity,
+    location: post.location,
+    body: post.body,
+  });
+  return got === want;
+}
+
+export function buddyPostMatchesSearchCriteria(
+  post: PostRecord,
+  criteria: BuddyPostSearchCriteria,
+): boolean {
+  if (!postMatchesDepartureCity(post, criteria.departureCity)) {
+    return false;
+  }
+  if (!criteria.searchTerms.length) {
+    return Boolean(criteria.departureCity?.trim());
+  }
+  return buddyPostMatchesSearchTerms(post, criteria.searchTerms);
 }
 
 export function tokenizeRawBuddySearchQuery(query: string): string[] {
@@ -144,6 +202,88 @@ export function normalizeBuddyPostSearchInput(query: string): string {
     .trim();
 }
 
+const COMPLEX_BUDDY_SEARCH_MARKERS =
+  /喜欢|同逛|主舞台|拼房|白天|差\s*\d|在场|小伙伴|比如|招募/;
+
+/** True when the query is essentially a departure-city filter (e.g. 杭州出发). */
+export function isSimpleCityOnlyBuddySearch(
+  query: string,
+  ruleParsed: BuddyPostSearchParsed,
+): boolean {
+  if (!ruleParsed.departureCity?.trim()) return false;
+  if (ruleParsed.genre || ruleParsed.date || ruleParsed.peopleCount)
+    return false;
+  if ((ruleParsed.extraKeywords?.length ?? 0) > 0) return false;
+
+  const normalized = normalizeBuddyPostSearchInput(query.trim());
+  const withoutCity = normalized
+    .replace(ruleParsed.departureCity, '')
+    .replace(/出发|离队|走|的队|找|公开招募/g, '')
+    .trim();
+  return withoutCity.length === 0;
+}
+
+/**
+ * Rule parse is trustworthy enough to skip the LLM on the first pass.
+ * Complex natural language still goes to LLM in BuddyPostSearchParseService.
+ */
+export function isConfidentRuleBuddySearchParse(
+  query: string,
+  ruleParsed: BuddyPostSearchParsed,
+): boolean {
+  const trimmed = query.trim();
+  if (!trimmed) return false;
+
+  // Recruit-slot intent needs LLM (e.g. 差 1 人 = join a team with an open slot).
+  if (/差\s*\d+\s*人/.test(trimmed)) return false;
+
+  if (ruleParsed.date || ruleParsed.genre || ruleParsed.peopleCount) {
+    return true;
+  }
+
+  if (isSimpleCityOnlyBuddySearch(trimmed, ruleParsed)) {
+    return true;
+  }
+
+  if (ruleParsed.departureCity && (ruleParsed.extraKeywords?.length ?? 0) > 0) {
+    const tokens = ruleParsed.extraKeywords ?? [];
+    if (tokens.length <= 4 && tokens.every((token) => token.length >= 2)) {
+      return true;
+    }
+  }
+
+  const keywords = ruleParsed.extraKeywords ?? [];
+  if (!ruleParsed.departureCity && keywords.length > 0) {
+    if (!COMPLEX_BUDDY_SEARCH_MARKERS.test(trimmed) && trimmed.length <= 32) {
+      if (keywords.length >= 1 && keywords.length <= 4) {
+        if (
+          keywords.length === 1 &&
+          keywords[0] === trimmed &&
+          trimmed.length > 16
+        ) {
+          return false;
+        }
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/** Retry LLM when a confident rule parse returned zero matches (not city-only). */
+export function shouldRetryBuddySearchWithLlm(
+  query: string,
+  source: 'rule' | 'llm',
+  matchCount: number,
+  ruleParsed: BuddyPostSearchParsed,
+): boolean {
+  if (source !== 'rule' || matchCount > 0) return false;
+  if (!isConfidentRuleBuddySearchParse(query, ruleParsed)) return false;
+  if (isSimpleCityOnlyBuddySearch(query, ruleParsed)) return false;
+  return true;
+}
+
 /** Rule-based keyword parse — LLM fallback when disabled. */
 export function parseBuddyPostSearchQuery(
   query: string,
@@ -153,56 +293,113 @@ export function parseBuddyPostSearchQuery(
 
   const normalized = normalizeBuddyPostSearchInput(trimmed);
   const parseTarget = normalized || trimmed;
+  const departureCity = inferDepartureCityFromText(parseTarget, trimmed);
+  const gapPeopleMatch = parseTarget.match(/差\s*(\d+)\s*人/);
   const peopleMatch = parseTarget.match(/(\d+)\s*(个|人|名)/);
-  const dateMatch = parseTarget.match(
-    /(\d{1,2}[./月]\d{1,2}(?:[./月]\d{2,4})?)/,
+  const dateRangeMatch = parseTarget.match(
+    /(\d{1,2}[./月]\d{1,2})\s*[-–~至]\s*(\d{1,2}(?:[./月]\d{1,2})?)/,
   );
+  const dateMatch = dateRangeMatch
+    ? null
+    : parseTarget.match(/(\d{1,2}[./月]\d{1,2}(?:[./月]\d{2,4})?)/);
   const genreMatch = parseTarget.match(/喜欢\s*([^，,。.!！?？；;]+)/);
 
-  const peopleCount = peopleMatch?.[1];
-  const date = dateMatch?.[1];
+  const peopleCount = gapPeopleMatch?.[1] ?? peopleMatch?.[1];
+  const date = dateRangeMatch
+    ? `${dateRangeMatch[1]}-${dateRangeMatch[2]}`
+    : dateMatch?.[1];
   const genre = genreMatch?.[1]?.trim();
 
   let remainder = parseTarget;
-  if (dateMatch?.[0]) remainder = remainder.replace(dateMatch[0], ' ');
+  if (dateRangeMatch?.[0])
+    remainder = remainder.replace(dateRangeMatch[0], ' ');
+  else if (dateMatch?.[0]) remainder = remainder.replace(dateMatch[0], ' ');
   if (genreMatch?.[0]) remainder = remainder.replace(genreMatch[0], ' ');
-  if (peopleMatch?.[0]) remainder = remainder.replace(peopleMatch[0], ' ');
+  if (gapPeopleMatch?.[0])
+    remainder = remainder.replace(gapPeopleMatch[0], ' ');
+  else if (peopleMatch?.[0]) remainder = remainder.replace(peopleMatch[0], ' ');
 
   const extraKeywords = tokenizeRawBuddySearchQuery(remainder);
   const parsed: BuddyPostSearchParsed = {
+    departureCity,
     date,
     genre,
     peopleCount,
+    preferOpenRecruit: gapPeopleMatch ? true : undefined,
     extraKeywords: extraKeywords.length ? extraKeywords : undefined,
   };
 
-  if (!buildSearchTermsFromParsed(parsed).length) {
+  if (departureCity && parsed.extraKeywords?.length) {
+    const filtered = parsed.extraKeywords.filter(
+      (keyword) =>
+        normalizeCityName(keyword) !== departureCity &&
+        keyword !== `${departureCity}出发`,
+    );
+    parsed.extraKeywords = filtered.length ? filtered : undefined;
+  }
+
+  if (!buildBodySearchTermsFromParsed(parsed).length && !parsed.departureCity) {
     const fromRaw = tokenizeRawBuddySearchQuery(parseTarget || trimmed);
-    return fromRaw.length
+    const fallback: BuddyPostSearchParsed = fromRaw.length
       ? { extraKeywords: fromRaw }
       : parseTarget
         ? { extraKeywords: [parseTarget] }
         : { extraKeywords: [trimmed] };
+    const inferredCity = inferDepartureCityFromText(parseTarget, trimmed);
+    if (inferredCity) {
+      fallback.departureCity = inferredCity;
+      fallback.extraKeywords = (fallback.extraKeywords ?? []).filter(
+        (keyword) =>
+          normalizeCityName(keyword) !== inferredCity &&
+          keyword !== `${inferredCity}出发`,
+      );
+      if (!fallback.extraKeywords.length) {
+        delete fallback.extraKeywords;
+      }
+    }
+    return fallback;
   }
 
   return parsed;
 }
 
+export function resolveBuddyPostSearchCriteria(
+  parsed: BuddyPostSearchParsed,
+  rawQuery: string,
+): BuddyPostSearchCriteria {
+  const searchTerms = buildBodySearchTermsFromParsed(parsed);
+  if (searchTerms.length || parsed.departureCity?.trim()) {
+    return {
+      departureCity: parsed.departureCity?.trim() || undefined,
+      searchTerms,
+      preferOpenRecruit: parsed.preferOpenRecruit,
+    };
+  }
+
+  const normalized = normalizeBuddyPostSearchInput(rawQuery);
+  const departureCity =
+    inferDepartureCityFromText(normalized, rawQuery) ?? undefined;
+  if (normalized) {
+    const fromNormalized = tokenizeRawBuddySearchQuery(normalized);
+    if (fromNormalized.length || departureCity) {
+      return { departureCity, searchTerms: fromNormalized };
+    }
+    return { departureCity, searchTerms: [normalized] };
+  }
+
+  return {
+    departureCity,
+    searchTerms: tokenizeRawBuddySearchQuery(rawQuery),
+  };
+}
+
+/** Flat term list for API display / legacy callers. */
 export function resolveBuddyPostSearchTerms(
   parsed: BuddyPostSearchParsed,
   rawQuery: string,
 ): string[] {
-  const fromParsed = buildSearchTermsFromParsed(parsed);
-  if (fromParsed.length) return fromParsed;
-
-  const normalized = normalizeBuddyPostSearchInput(rawQuery);
-  if (normalized) {
-    const fromNormalized = tokenizeRawBuddySearchQuery(normalized);
-    if (fromNormalized.length) return fromNormalized;
-    return [normalized];
-  }
-
-  return tokenizeRawBuddySearchQuery(rawQuery);
+  const criteria = resolveBuddyPostSearchCriteria(parsed, rawQuery);
+  return buildBuddyPostSearchDisplayTerms(parsed, criteria);
 }
 
 function comparePostsByCreatedAtDesc(
@@ -225,19 +422,30 @@ function termMatchStrength(haystack: string, term: string): number {
 }
 
 /** Higher = stronger keyword relevance (all terms must match to be included). */
-export function scoreBuddyPostKeywordMatch(
+export function scoreBuddyPostSearchCriteria(
   post: PostRecord,
-  searchTerms: string[],
+  criteria: BuddyPostSearchCriteria,
 ): number {
-  if (!searchTerms.length) return 0;
+  if (!buddyPostMatchesSearchCriteria(post, criteria)) return 0;
+
+  let total = 0;
+  if (
+    criteria.departureCity &&
+    postMatchesDepartureCity(post, criteria.departureCity)
+  ) {
+    total += 80;
+  }
+
+  if (!criteria.searchTerms.length) {
+    return total;
+  }
 
   const haystack = buildBuddyPostSearchText(post);
   const departureHaystack = normalizeSearchText(
     [post.departureCity, post.location].filter(Boolean).join(' '),
   );
 
-  let total = 0;
-  for (const term of searchTerms) {
+  for (const term of criteria.searchTerms) {
     const strength = termMatchStrength(haystack, term);
     if (strength === 0) return 0;
     total += strength;
@@ -253,6 +461,14 @@ export function scoreBuddyPostKeywordMatch(
   }
 
   return total;
+}
+
+/** @deprecated Use scoreBuddyPostSearchCriteria */
+export function scoreBuddyPostKeywordMatch(
+  post: PostRecord,
+  searchTerms: string[],
+): number {
+  return scoreBuddyPostSearchCriteria(post, { searchTerms });
 }
 
 /** Secondary ranking signal from the viewer's saved match profile. */
@@ -287,21 +503,44 @@ export function scoreBuddyPostPreferenceMatch(
   return score;
 }
 
-/** Keyword filter first; rank by keyword score, then user preference, then recency. */
+/** Higher when the post still has recruit slots (used when LLM sets preferOpenRecruit). */
+export function scoreBuddyPostOpenRecruitFit(post: PostRecord): number {
+  if (post.recruitStatus === 'full') return 0;
+  if (post.recruitStatus === 'open') {
+    if (
+      post.slotsTotal != null &&
+      post.slotsFilled != null &&
+      post.slotsFilled < post.slotsTotal
+    ) {
+      return 100;
+    }
+    return 80;
+  }
+  return 40;
+}
+
+/** Keyword filter first; rank by keyword score, open-recruit intent, preference, recency. */
 export function rankBuddyPostsBySearch(
   posts: PostRecord[],
-  searchTerms: string[],
+  criteria: BuddyPostSearchCriteria,
   profile?: UserMatchProfile | null,
 ): PostRecord[] {
-  const matched = searchTerms.length
-    ? posts.filter((post) => buddyPostMatchesSearchTerms(post, searchTerms))
-    : [...posts];
+  const matched = posts.filter((post) =>
+    buddyPostMatchesSearchCriteria(post, criteria),
+  );
 
   return matched.sort((left, right) => {
     const keywordDelta =
-      scoreBuddyPostKeywordMatch(right, searchTerms) -
-      scoreBuddyPostKeywordMatch(left, searchTerms);
+      scoreBuddyPostSearchCriteria(right, criteria) -
+      scoreBuddyPostSearchCriteria(left, criteria);
     if (keywordDelta !== 0) return keywordDelta;
+
+    if (criteria.preferOpenRecruit) {
+      const openDelta =
+        scoreBuddyPostOpenRecruitFit(right) -
+        scoreBuddyPostOpenRecruitFit(left);
+      if (openDelta !== 0) return openDelta;
+    }
 
     const preferenceDelta =
       scoreBuddyPostPreferenceMatch(right, profile) -
@@ -312,10 +551,10 @@ export function rankBuddyPostsBySearch(
   });
 }
 
-/** @deprecated Prefer rankBuddyPostsBySearch */
+/** @deprecated Prefer rankBuddyPostsBySearch with BuddyPostSearchCriteria */
 export function filterBuddyPostsBySearchTerms(
   posts: PostRecord[],
   searchTerms: string[],
 ): PostRecord[] {
-  return rankBuddyPostsBySearch(posts, searchTerms);
+  return rankBuddyPostsBySearch(posts, { searchTerms });
 }

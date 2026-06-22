@@ -61,6 +61,31 @@ export class ActivityRegistrationRepository implements IActivityRegistrationRepo
     return [...new Set(rows.map((row) => row.userId).filter(Boolean))];
   }
 
+  async findWechatActivityUpdateOptInUserIds(
+    activityLegacyId: number,
+  ): Promise<string[]> {
+    const rows = await this.model
+      .find({
+        activityLegacyId,
+        status: 'registered',
+        wechatActivityUpdateOptIn: true,
+      })
+      .select('userId')
+      .lean();
+    return [...new Set(rows.map((row) => row.userId).filter(Boolean))];
+  }
+
+  async setWechatActivityUpdateOptIn(
+    filter: ActivityRegistrationQueryFilter,
+    activityLegacyId: number,
+  ): Promise<boolean> {
+    const result = await this.model.updateOne(
+      { ...buildOwnerFilter(filter), activityLegacyId, status: 'registered' },
+      { $set: { wechatActivityUpdateOptIn: true } },
+    );
+    return (result.matchedCount ?? 0) > 0;
+  }
+
   async deleteByOwnerAndActivity(
     filter: ActivityRegistrationQueryFilter,
     activityLegacyId: number,

@@ -477,7 +477,22 @@ export class ActivityService implements OnModuleInit {
   }
 
   async refreshActivityLookupCache(): Promise<void> {
+    const beforeRecords = await this.activityLookup.findAll();
+    const previousLineup = new Map(
+      beforeRecords.map((record) => [record.legacyId, record.lineupPublished]),
+    );
+
     await this.refreshLookupCache();
+
+    const afterRecords = await this.activityLookup.findAll();
+    for (const record of afterRecords) {
+      if (
+        previousLineup.get(record.legacyId) === false &&
+        record.lineupPublished === true
+      ) {
+        void this.notifyActivityUpdate(record, '阵容已官宣');
+      }
+    }
   }
 
   private async refreshLookupCache(): Promise<void> {
@@ -485,16 +500,19 @@ export class ActivityService implements OnModuleInit {
   }
 
   private async notifyActivityUpdate(
-    activity: Activity,
+    activity: Pick<Activity, 'legacyId' | 'name' | 'date' | 'location'>,
     changeSummary: string,
   ): Promise<void> {
     if (!this.noticeAgent || !this.registrationRepository) {
       return;
     }
 
-    const userIds = await this.registrationRepository.findRegisteredUserIds(
-      activity.legacyId,
-    );
+    const [userIds, wechatUserIds] = await Promise.all([
+      this.registrationRepository.findRegisteredUserIds(activity.legacyId),
+      this.registrationRepository.findWechatActivityUpdateOptInUserIds(
+        activity.legacyId,
+      ),
+    ]);
     if (!userIds.length) return;
 
     void this.noticeAgent.notifyActivityUpdate(
@@ -504,6 +522,7 @@ export class ActivityService implements OnModuleInit {
       changeSummary,
       activity.date,
       activity.location,
+      wechatUserIds,
     );
   }
 }

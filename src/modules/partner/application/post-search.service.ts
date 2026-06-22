@@ -8,11 +8,16 @@ import {
   POST_REPOSITORY,
 } from '../interfaces/post.repository.interface';
 import type { PostPageCursor } from '../domain/post-cursor.util';
+import type { PostRecord } from '../interfaces/post.repository.interface';
 import { BuddyPostSearchParseService } from './buddy-post-search-parse.service';
 import { PostQueryService } from './post-query.service';
 import {
+  buildBuddyPostSearchDisplayTerms,
+  parseBuddyPostSearchQuery,
   rankBuddyPostsBySearch,
-  resolveBuddyPostSearchTerms,
+  resolveBuddyPostSearchCriteria,
+  shouldRetryBuddySearchWithLlm,
+  type BuddyPostSearchCriteria,
 } from '../utils/buddy-post-search.util';
 
 const MAX_AI_SEARCH_RESULTS = 100;
@@ -42,13 +47,60 @@ export class PostSearchService {
       throw new BadRequestException('活动信息无效');
     }
 
-    const parsed = await this.parseService.parse(trimmed);
-    const searchTerms = resolveBuddyPostSearchTerms(parsed, trimmed);
+    const { parsed: initialParsed, source } =
+      await this.parseService.parse(trimmed);
     const viewerProfile = await this.loadViewerMatchProfile(actor);
+    const rows = await this.loadActivityPosts(activityLegacyId);
 
-    const rows: Awaited<
-      ReturnType<IPostRepository['findByActivityLegacyIdPage']>
-    > = [];
+    let parsed = initialParsed;
+    let criteria = resolveBuddyPostSearchCriteria(parsed, trimmed);
+    let ranked = this.rankPosts(rows, criteria, viewerProfile);
+
+    const ruleParsed = parseBuddyPostSearchQuery(trimmed);
+    if (
+      shouldRetryBuddySearchWithLlm(trimmed, source, ranked.length, ruleParsed)
+    ) {
+      const llmParsed = await this.parseService.tryLlmParse(trimmed);
+      if (llmParsed) {
+        const llmCriteria = resolveBuddyPostSearchCriteria(llmParsed, trimmed);
+        const llmRanked = this.rankPosts(rows, llmCriteria, viewerProfile);
+        if (llmRanked.length > 0) {
+          parsed = llmParsed;
+          criteria = llmCriteria;
+          ranked = llmRanked;
+        }
+      }
+    }
+
+    const totalScanned = rows.length;
+    const items = await this.postQuery.mapEventDetailPosts(ranked, actor);
+
+    return {
+      parsed: {
+        ...parsed,
+        searchTerms: buildBuddyPostSearchDisplayTerms(parsed, criteria),
+      },
+      items,
+      totalMatched: ranked.length,
+      totalScanned,
+    };
+  }
+
+  private rankPosts(
+    rows: PostRecord[],
+    criteria: BuddyPostSearchCriteria,
+    viewerProfile: UserMatchProfile | null,
+  ): PostRecord[] {
+    return rankBuddyPostsBySearch(rows, criteria, viewerProfile).slice(
+      0,
+      MAX_AI_SEARCH_RESULTS,
+    );
+  }
+
+  private async loadActivityPosts(
+    activityLegacyId: number,
+  ): Promise<PostRecord[]> {
+    const rows: PostRecord[] = [];
     let cursor: PostPageCursor | null = null;
     while (rows.length < MAX_AI_SEARCH_SCAN) {
       const batch = await this.repository.findByActivityLegacyIdPage(
@@ -70,25 +122,7 @@ export class PostSearchService {
         id: new Types.ObjectId(String(last._id)),
       };
     }
-
-    const totalScanned = rows.length;
-    const ranked = rankBuddyPostsBySearch(
-      rows,
-      searchTerms,
-      viewerProfile,
-    ).slice(0, MAX_AI_SEARCH_RESULTS);
-
-    const items = await this.postQuery.mapEventDetailPosts(ranked, actor);
-
-    return {
-      parsed: {
-        ...parsed,
-        searchTerms,
-      },
-      items,
-      totalMatched: ranked.length,
-      totalScanned,
-    };
+    return rows;
   }
 
   private async loadViewerMatchProfile(

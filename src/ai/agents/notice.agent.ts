@@ -98,6 +98,7 @@ export class NoticeAgent {
     changeSummary: string,
     activityDate?: string,
     activityLocation?: string,
+    wechatUserIds?: string[],
   ): Promise<void> {
     const recipients = [
       ...new Set(userIds.map((id) => id.trim()).filter(Boolean)),
@@ -129,8 +130,17 @@ export class NoticeAgent {
       ),
     );
 
+    const wechatRecipients =
+      wechatUserIds != null
+        ? recipients.filter((userId) =>
+            new Set(wechatUserIds.map((id) => id.trim()).filter(Boolean)).has(
+              userId,
+            ),
+          )
+        : recipients;
+
     void this.sendActivityUpdateSubscribe({
-      recipientUserIds: recipients,
+      recipientUserIds: wechatRecipients,
       activityLegacyId,
       activityName,
       activityDate,

@@ -7,6 +7,7 @@ describe('PostSearchService', () => {
   };
   const parseService = {
     parse: jest.fn(),
+    tryLlmParse: jest.fn(),
   };
   const postQuery = {
     mapEventDetailPosts: jest.fn(),
@@ -52,8 +53,11 @@ describe('PostSearchService', () => {
       unrelated,
     ]);
     parseService.parse.mockResolvedValue({
-      genre: 'Techno',
-      extraKeywords: ['同逛舞台'],
+      parsed: {
+        genre: 'Techno',
+        extraKeywords: ['同逛舞台'],
+      },
+      source: 'llm',
     });
     userService.resolveProfile.mockResolvedValue({
       city: '上海',
@@ -97,8 +101,11 @@ describe('PostSearchService', () => {
       shanghai,
     ]);
     parseService.parse.mockResolvedValue({
-      genre: 'Techno',
-      extraKeywords: ['同逛舞台'],
+      parsed: {
+        genre: 'Techno',
+        extraKeywords: ['同逛舞台'],
+      },
+      source: 'llm',
     });
     userService.resolveProfile.mockResolvedValue({
       city: '上海',
@@ -118,5 +125,36 @@ describe('PostSearchService', () => {
       'shanghai',
       'guangzhou',
     ]);
+  });
+
+  it('retries LLM when confident rule parse returns zero matches', async () => {
+    const post = {
+      _id: 'hangzhou',
+      body: '12.18-12.20，差 1 人',
+      departureCity: '杭州',
+      createdAt: new Date('2026-10-03T10:00:00Z'),
+    } as PostRecord;
+
+    repository.findByActivityLegacyIdPage.mockResolvedValue([post]);
+    parseService.parse.mockResolvedValue({
+      parsed: { extraKeywords: ['Techno', '组队'] },
+      source: 'rule',
+    });
+    parseService.tryLlmParse.mockResolvedValue({
+      departureCity: '杭州',
+    });
+    postQuery.mapEventDetailPosts.mockImplementation(
+      async (rows: PostRecord[]) =>
+        rows.map((row) => ({ id: String(row._id), body: row.body })),
+    );
+
+    const result = await service.searchByNaturalLanguage('Techno 组队', 4, {
+      resolvedUserId: 'viewer',
+      clientUserId: 'viewer',
+    } as never);
+
+    expect(parseService.tryLlmParse).toHaveBeenCalledWith('Techno 组队');
+    expect(result.totalMatched).toBe(1);
+    expect(result.items[0]?.id).toBe('hangzhou');
   });
 });
