@@ -81,8 +81,10 @@ curl -s http://localhost:8000/api/v1/heartbeat
 | `npm run build` | Production build |
 | `npm run start:prod` | Run `dist/main.js` |
 | `npm run check` | typecheck + lint + format + unit tests |
-| `npm run smoke:api` | REST smoke against running server |
-| `npm run smoke:ws` | AI WebSocket smoke |
+| `npm run smoke:api` | Full REST smoke against running server |
+| `npm run smoke:golden` | CI golden path (health, activities, ops-seed posts, travel-guide async) |
+| `npm run smoke:suite` | Golden REST + AI WS ping (`AI_CHAT_WS_ENABLED=true` on server) |
+| `npm run smoke:ws` | AI WebSocket smoke (JWT / invalid / anonymous) |
 | `npm run db:reset` | Clear AI chat history (keeps activity seeds) |
 | `npm run db:migrate-partner` | One-off partner/post legacy DB migrations (run before first deploy after upgrade) |
 | `npm run db:migrate-partner:dry-run` | Preview partner legacy migrations without writing |

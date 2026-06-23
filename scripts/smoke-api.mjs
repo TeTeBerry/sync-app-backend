@@ -15,6 +15,10 @@
  *   SMOKE_TIMEOUT_MS   Per-request timeout (default 30000)
  */
 
+import { assert, createSmokeHttp } from './lib/smoke-http.mjs';
+import { smokeTravelGuideGenerateAsync } from './lib/smoke-travel-guide-async.mjs';
+import { resolveSmokeJwt } from './lib/smoke-jwt.mjs';
+
 const DEFAULT_BASE = 'http://localhost:3000/api';
 const DEFAULT_ACTIVITY_ID = 4;
 const DEFAULT_AUTHOR = 'Smoke';
@@ -25,10 +29,12 @@ const userId = process.env.SMOKE_USER_ID || `smoke-${Date.now()}`;
 const authorName = process.env.SMOKE_AUTHOR_NAME || DEFAULT_AUTHOR;
 const timeoutMs = Number(process.env.SMOKE_TIMEOUT_MS || 30_000);
 
+const http = createSmokeHttp(baseUrl, timeoutMs);
+
 /** @type {{ name: string, run: (ctx: SmokeContext) => Promise<void> }[]} */
 const steps = [];
 
-/** @typedef {{ baseUrl: string, activityId: number, q: string, postId?: string, postAuthorUserId?: string, djIds?: string[], generateResult?: unknown }} SmokeContext */
+/** @typedef {{ baseUrl: string, activityId: number, q: string, postId?: string, postAuthorUserId?: string, djIds?: string[], generateResult?: unknown, bearerToken?: string }} SmokeContext */
 
 function ownerQuery() {
   // authorName kept for legacy smoke paths; production demo uses userId only.
@@ -36,100 +42,40 @@ function ownerQuery() {
   return p.toString();
 }
 
-/**
- * @param {string} method
- * @param {string} path path after /api (no leading slash) or full URL
- * @param {{ body?: unknown, expectStatus?: number, expectCode?: number }} [opts]
- */
-async function request(method, path, opts = {}) {
-  const url = path.startsWith('http')
-    ? path
-    : `${baseUrl}/${path.replace(/^\//, '')}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const res = await fetch(url, {
-      method,
-      headers: opts.body ? { 'Content-Type': 'application/json' } : undefined,
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
-      signal: controller.signal,
-    });
-
-    const text = await res.text();
-    let json;
-    try {
-      json = text ? JSON.parse(text) : null;
-    } catch {
-      throw new Error(`${method} ${url} → non-JSON (${res.status}): ${text.slice(0, 200)}`);
-    }
-
-    const expectCode = opts.expectCode ?? 200;
-    const expectStatus = opts.expectStatus ?? (expectCode === 200 ? undefined : expectCode);
-
-    if (expectStatus != null) {
-      if (res.status !== expectStatus) {
-        throw new Error(
-          `${method} ${url} → HTTP ${res.status}, expected ${expectStatus}: ${JSON.stringify(json)}`,
-        );
-      }
-    } else if (!res.ok) {
-      throw new Error(
-        `${method} ${url} → HTTP ${res.status}: ${JSON.stringify(json)}`,
-      );
-    }
-
-    if (json && typeof json === 'object' && 'code' in json) {
-      if (json.code !== expectCode) {
-        throw new Error(`${method} ${url} → code ${json.code}: ${json.message ?? ''}`);
-      }
-      return expectCode === 200 ? json.data : json;
-    }
-
-    return json;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 function step(name, run) {
   steps.push({ name, run });
 }
 
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
-
 step('GET /health', async () => {
-  const data = await request('GET', 'health');
+  const data = await http.request('GET', 'health');
   assert(data?.ok === true, 'health.ok should be true');
   assert(data?.ai?.transport === 'websocket', 'health.ai.transport should be websocket');
 });
 
 step('GET /home', async () => {
-  const data = await request('GET', 'home');
+  const data = await http.request('GET', 'home');
   assert(data != null, 'home data missing');
 });
 
 step('GET /activities', async () => {
-  const data = await request('GET', 'activities');
+  const data = await http.request('GET', 'activities');
   const list = Array.isArray(data) ? data : data?.items ?? data?.activities;
   assert(Array.isArray(list) && list.length > 0, 'activities list should be non-empty');
 });
 
 step(`GET /activities/${activityId}`, async (ctx) => {
-  const data = await request('GET', `activities/${ctx.activityId}?${ctx.q}`);
+  const data = await http.request('GET', `activities/${ctx.activityId}?${ctx.q}`);
   assert(data?.legacyId === ctx.activityId || data?.id != null, 'activity detail missing');
 });
 
 step('GET /posts/popular', async (ctx) => {
-  const data = await request('GET', `posts/popular?limit=5&${ctx.q}`);
+  const data = await http.request('GET', `posts/popular?limit=5&${ctx.q}`);
   const list = Array.isArray(data) ? data : data?.items;
   assert(Array.isArray(list), 'popular posts should be an array');
 });
 
 step(`GET /posts?activityLegacyId=${activityId}`, async (ctx) => {
-  const data = await request(
+  const data = await http.request(
     'GET',
     `posts?activityLegacyId=${ctx.activityId}&limit=5&${ctx.q}`,
   );
@@ -142,40 +88,40 @@ step(`GET /posts?activityLegacyId=${activityId}`, async (ctx) => {
 });
 
 step('GET /profile', async (ctx) => {
-  await request(
+  await http.request(
     'GET',
     `profile?${ctx.q}&activityLegacyId=${ctx.activityId}`,
   );
 });
 
 step('GET /users/me', async (ctx) => {
-  const data = await request('GET', `users/me?${ctx.q}`);
+  const data = await http.request('GET', `users/me?${ctx.q}`);
   assert(data?.id || data?.name, 'users/me should return profile fields');
 });
 
 step('PATCH /users/me', async (ctx) => {
-  await request('PATCH', `users/me?${ctx.q}`, {
+  await http.request('PATCH', `users/me?${ctx.q}`, {
     body: { bio: `smoke ${new Date().toISOString()}` },
   });
 });
 
 step(`POST /activities/${activityId}/register`, async (ctx) => {
-  const data = await request('POST', `activities/${ctx.activityId}/register?${ctx.q}`);
+  const data = await http.request('POST', `activities/${ctx.activityId}/register?${ctx.q}`);
   assert(data?.ok === true, 'register should return ok: true');
 });
 
 step(`GET /activities/${activityId}/itinerary/schedule`, async (ctx) => {
-  const data = await request(
+  const data = await http.request(
     'GET',
     `activities/${ctx.activityId}/itinerary/schedule?${ctx.q}`,
   );
   assert(Array.isArray(data?.djs) && data.djs.length > 0, 'schedule.djs should be non-empty');
-  ctx.djIds = data.djs.slice(0, 2).map(d => d.id);
+  ctx.djIds = data.djs.slice(0, 2).map((d) => d.id);
   assert(ctx.djIds.every(Boolean), 'could not pick DJ ids from schedule');
 });
 
 step(`POST /activities/${activityId}/itinerary/generate`, async (ctx) => {
-  const data = await request('POST', `activities/${ctx.activityId}/itinerary/generate?${ctx.q}`, {
+  const data = await http.request('POST', `activities/${ctx.activityId}/itinerary/generate?${ctx.q}`, {
     body: { selectedDjIds: ctx.djIds },
   });
   assert(data?.itinerary?.days?.length > 0, 'generate should return itinerary.days');
@@ -185,7 +131,7 @@ step(`POST /activities/${activityId}/itinerary/generate`, async (ctx) => {
 step(`POST /activities/${activityId}/itinerary/save`, async (ctx) => {
   const gen = ctx.generateResult;
   assert(gen?.itinerary, 'missing generate result for save');
-  const data = await request('POST', `activities/${ctx.activityId}/itinerary/save?${ctx.q}`, {
+  const data = await http.request('POST', `activities/${ctx.activityId}/itinerary/save?${ctx.q}`, {
     body: {
       eventMeta: gen.itinerary.eventMeta,
       days: gen.itinerary.days,
@@ -196,7 +142,7 @@ step(`POST /activities/${activityId}/itinerary/save`, async (ctx) => {
 });
 
 step(`GET /activities/${activityId}/itinerary/saved`, async (ctx) => {
-  const data = await request(
+  const data = await http.request(
     'GET',
     `activities/${ctx.activityId}/itinerary/saved?${ctx.q}`,
   );
@@ -205,7 +151,7 @@ step(`GET /activities/${activityId}/itinerary/saved`, async (ctx) => {
 });
 
 step(`GET /activities/${activityId}/travel-plan/saved`, async (ctx) => {
-  const data = await request(
+  const data = await http.request(
     'GET',
     `activities/${ctx.activityId}/travel-plan/saved?${ctx.q}`,
   );
@@ -214,7 +160,7 @@ step(`GET /activities/${activityId}/travel-plan/saved`, async (ctx) => {
 });
 
 step(`POST /activities/${activityId}/travel-plan/save`, async (ctx) => {
-  const data = await request(
+  const data = await http.request(
     'POST',
     `activities/${ctx.activityId}/travel-plan/save?${ctx.q}`,
     {
@@ -237,12 +183,18 @@ step(`POST /activities/${activityId}/travel-plan/save`, async (ctx) => {
   assert(data?.ok === true, 'travel-plan save should return ok: true');
 });
 
+step(`POST travel-guide/generate-async + poll`, async (ctx) => {
+  const token = ctx.bearerToken ?? (await resolveSmokeJwt());
+  ctx.bearerToken = token;
+  await smokeTravelGuideGenerateAsync(http, ctx.activityId, token);
+});
+
 step('GET /notifications', async (ctx) => {
-  await request('GET', `notifications?${ctx.q}`);
+  await http.request('GET', `notifications?${ctx.q}`);
 });
 
 step('GET /notifications/unread-count', async (ctx) => {
-  const data = await request('GET', `notifications/unread-count?${ctx.q}`);
+  const data = await http.request('GET', `notifications/unread-count?${ctx.q}`);
   const n = typeof data === 'number' ? data : data?.count;
   assert(typeof n === 'number', 'unread-count should be a number');
 });
@@ -252,7 +204,7 @@ step('POST /reports (post)', async (ctx) => {
     console.log('    ↷ skip — no postId');
     return;
   }
-  const data = await request('POST', `reports?${ctx.q}`, {
+  const data = await http.request('POST', `reports?${ctx.q}`, {
     body: {
       targetType: 'post',
       targetId: ctx.postId,
@@ -270,7 +222,7 @@ step('POST /reports duplicate → 409', async (ctx) => {
     console.log('    ↷ skip — no postId');
     return;
   }
-  await request('POST', `reports?${ctx.q}`, {
+  await http.request('POST', `reports?${ctx.q}`, {
     body: {
       targetType: 'post',
       targetId: ctx.postId,
@@ -282,7 +234,7 @@ step('POST /reports duplicate → 409', async (ctx) => {
 });
 
 step(`DELETE /activities/${activityId}/register (cleanup)`, async (ctx) => {
-  await request('DELETE', `activities/${ctx.activityId}/register?${ctx.q}`);
+  await http.request('DELETE', `activities/${ctx.activityId}/register?${ctx.q}`);
 });
 
 async function main() {
@@ -320,7 +272,7 @@ async function main() {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error(err);
   process.exit(1);
 });

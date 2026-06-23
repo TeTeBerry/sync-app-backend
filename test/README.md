@@ -63,14 +63,26 @@ CI=true npm test -- --watchman=false
 Requires a running API (`npm run dev` / `dev:all` or Docker `app`):
 
 ```bash
-npm run smoke:api           # hit http://localhost:3000/api
+npm run smoke:api           # full regression (20+ steps)
 npm run smoke:api:wait      # wait for :3000, then smoke
 
+npm run smoke:golden        # CI golden path (4 REST steps)
+npm run smoke:golden:wait
+
+npm run smoke:suite         # golden REST + WS ping (needs AI_CHAT_WS_ENABLED on server)
+npm run smoke:suite:wait    # used by GitHub Actions smoke job
+
 # remote / staging
-SMOKE_API_BASE=https://your-host/api SMOKE_ACTIVITY_ID=4 npm run smoke:api
+SMOKE_API_BASE=https://your-host/api SMOKE_ACTIVITY_ID=4 npm run smoke:golden
 ```
 
-Script: `scripts/smoke-api.mjs` — health, home, activities, profile, user, register, itinerary, notifications, register cleanup.
+| Script | Coverage |
+|--------|----------|
+| `scripts/smoke-golden.mjs` | health, activities, ops-seed posts, travel-guide generate-async poll |
+| `scripts/smoke-api.mjs` | golden steps + itinerary, travel-plan, notifications, reports, … |
+| `scripts/smoke-ai-ws.mjs` | JWT ping; `SMOKE_WS_MODE=golden` → Case A only |
+
+Golden path requires ops seed posts: `MONGODB_URI=… npm run db:seed-ops-buddy-posts`
 
 ### AI WebSocket smoke
 

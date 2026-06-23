@@ -12,7 +12,9 @@
  *   SMOKE_USER_ID    Smoke user externalId (default smoke-ws-user)
  *   SMOKE_USER_NAME  Display name when minting JWT (default Smoke WS)
  *   JWT_SECRET       Must match backend (from .env)
- *   MONGODB_URI      Used when minting JWT (upsert smoke user + tv)
+ *   MONGODB_URI          Used when minting JWT (upsert smoke user + tv)
+ *   SMOKE_WS_MODE        `golden` → Case A only (JWT ping); default runs A+B+C
+ *   AI_CHAT_WS_ENABLED   When unset/false in suite context, skip with exit 0
  */
 
 import WebSocket from 'ws';
@@ -24,6 +26,12 @@ const SESSION_EXPIRED = '登录已过期，请重新登录';
 const baseUrl = (process.env.SMOKE_API_BASE || DEFAULT_BASE).replace(/\/$/, '');
 const wsUrl = `${baseUrl.replace(/^http/, 'ws')}/ai/chat/ws`;
 const anonymousUserId = process.env.SMOKE_USER_ID || 'smoke-ws-user';
+const goldenMode = process.env.SMOKE_WS_MODE === 'golden';
+
+function isAiChatWsEnabled() {
+  const v = process.env.AI_CHAT_WS_ENABLED;
+  return v === 'true' || v === '1';
+}
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -169,9 +177,20 @@ async function caseAnonymous() {
 }
 
 async function main() {
-  console.log(`WS smoke → ${wsUrl}`);
+  if (goldenMode && !isAiChatWsEnabled()) {
+    console.log('↷ skip WS smoke — AI_CHAT_WS_ENABLED is not true');
+    return;
+  }
+
+  console.log(`WS smoke → ${wsUrl}${goldenMode ? ' (golden)' : ''}`);
   const token = await resolveSmokeJwt();
   await caseValidJwt(token);
+
+  if (goldenMode) {
+    console.log('smoke-ai-ws: golden ping passed');
+    return;
+  }
+
   await delay(300);
   await caseInvalidJwt();
   await delay(300);

@@ -54,3 +54,51 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  smoke:
+    runs-on: ubuntu-latest
+    needs: build
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    env:
+      MONGODB_URI: mongodb://127.0.0.1:27017/sync-smoke-ci
+      REDIS_URL: redis://127.0.0.1:6379
+      JWT_SECRET: sync-dev-jwt-secret-change-me
+      AMAP_KEY: ci-smoke-placeholder
+      AI_CHAT_WS_ENABLED: "true"
+      NODE_ENV: development
+      DISABLE_DEV_MOCK_POSTS: "true"
+      SMOKE_USER_ID: smoke-golden-user
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci --legacy-peer-deps
+
+      - name: Build
+        run: npm run build
+
+      - name: Wait for MongoDB
+        run: npm run wait:mongo
+
+      - name: Seed ops buddy posts
+        run: npm run db:seed-ops-buddy-posts
+
+      - name: Start API server
+        run: node dist/src/main &
+
+      - name: Golden-path smoke suite
+        run: npm run smoke:suite:wait
