@@ -19,6 +19,7 @@ import {
   formatProductionConfigFailure,
 } from './config/validate-production-config';
 import { ConfigService } from '@nestjs/config';
+import { setupSwaggerUi } from './common/swagger/swagger-document.util';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
@@ -68,6 +69,12 @@ async function bootstrap() {
   app.useGlobalInterceptors(new TransformInterceptor());
 
   const port = process.env.PORT || 3000;
+
+  if (!IS_PRODUCTION) {
+    setupSwaggerUi(app);
+    logger.log(`📖 Swagger UI: http://localhost:${port}/api/docs`);
+  }
+
   const mongoUri =
     process.env.MONGODB_URI ?? process.env.MONGO_URI ?? '(default)';
 

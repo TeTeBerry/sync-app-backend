@@ -10,9 +10,28 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import { Public } from '../../common/auth/public.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
+import {
+  ApiOkEnvelopeArrayResponse,
+  ApiOkEnvelopeResponse,
+} from '../../common/swagger/api-response.decorator';
+import {
+  ActivityHealthDto,
+  ActivityRegistrationResultDto,
+  ActivityResolveResultDto,
+  ActivityUnregisterResultDto,
+  ActivityWechatUpdateOptInResultDto,
+  BackendActivityDto,
+  CatalogLineupArtistDto,
+} from '../../common/swagger/dto/activity.swagger.dto';
 import {
   LINEUP_CATALOG_PORT,
   type ILineupCatalogPort,
@@ -22,6 +41,7 @@ import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ActivityService } from './activity.service';
 import { ActivityLookupService } from './activity-lookup.service';
 
+@ApiTags('activities')
 @Controller('activities')
 export class ActivityController {
   constructor(
@@ -34,12 +54,19 @@ export class ActivityController {
 
   @Public()
   @Get('health')
+  @ApiOperation({ summary: 'Activity module health check' })
+  @ApiOkEnvelopeResponse(ActivityHealthDto)
   health() {
     return this.activityService.health();
   }
 
   @Public()
   @Get()
+  @ApiOperation({ summary: 'List activities or paginate by lineup artist' })
+  @ApiQuery({ name: 'skip', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'lineupArtistId', required: false, type: String })
+  @ApiOkEnvelopeArrayResponse(BackendActivityDto)
   list(
     @Query('skip') skipRaw?: string,
     @Query('limit') limitRaw?: string,
@@ -64,23 +91,33 @@ export class ActivityController {
 
   @Public()
   @Get('resolve')
+  @ApiOperation({ summary: 'Resolve activity by keyword' })
+  @ApiQuery({ name: 'keyword', required: true, type: String })
+  @ApiOkEnvelopeResponse(ActivityResolveResultDto)
   resolve(@Query('keyword') keyword: string) {
     return this.activityService.resolveActivityByKeyword(keyword ?? '');
   }
 
   @Public()
   @Get('lineup-artists')
+  @ApiOperation({ summary: 'List ranked lineup artists catalog' })
+  @ApiOkEnvelopeArrayResponse(CatalogLineupArtistDto)
   listLineupArtists() {
     return this.lineupCatalog.listCatalogLineupArtistsRanked();
   }
 
   @Public()
   @Get(':legacyId')
+  @ApiOperation({ summary: 'Get activity detail by legacyId' })
+  @ApiOkEnvelopeResponse(BackendActivityDto)
   getByLegacyId(@Param('legacyId', ParseIntPipe) legacyId: number) {
     return this.activityService.findByLegacyId(legacyId);
   }
 
   @Patch(':legacyId')
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Update activity metadata' })
+  @ApiOkEnvelopeResponse(BackendActivityDto)
   update(
     @Param('legacyId', ParseIntPipe) legacyId: number,
     @Body() body: UpdateActivityDto,
@@ -89,6 +126,9 @@ export class ActivityController {
   }
 
   @Post(':legacyId/register')
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Register current user for activity' })
+  @ApiOkEnvelopeResponse(ActivityRegistrationResultDto)
   register(
     @Param('legacyId', ParseIntPipe) legacyId: number,
     @CurrentActor() actor: RequestActor,
@@ -97,6 +137,9 @@ export class ActivityController {
   }
 
   @Post(':legacyId/register/wechat-updates')
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Opt in to WeChat activity update notifications' })
+  @ApiOkEnvelopeResponse(ActivityWechatUpdateOptInResultDto)
   optInWechatActivityUpdates(
     @Param('legacyId', ParseIntPipe) legacyId: number,
     @CurrentActor() actor: RequestActor,
@@ -105,6 +148,9 @@ export class ActivityController {
   }
 
   @Delete(':legacyId/register')
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Unregister current user from activity' })
+  @ApiOkEnvelopeResponse(ActivityUnregisterResultDto)
   unregister(
     @Param('legacyId', ParseIntPipe) legacyId: number,
     @CurrentActor() actor: RequestActor,
