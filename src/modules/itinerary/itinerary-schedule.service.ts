@@ -51,6 +51,16 @@ import {
   type ItineraryConflict,
   type PerformanceSlot,
 } from './domain/itinerary-conflict.util';
+import type { ActivityLookupRecord } from '../activity/ports/activity-lookup.port';
+import {
+  compareActivityDateAsc,
+  extractYearFromText,
+  isActivityEnded,
+} from '../../common/utils/activity-date.util';
+import {
+  artistIdFromLineupName,
+  truncateCatalogProfileSummary,
+} from './utils/lineup-artist-id.util';
 
 export interface ItineraryDjDto {
   id: string;
@@ -74,13 +84,31 @@ export interface ArtistPerformanceHit {
   genreLabel: string;
 }
 
+export interface CatalogLineupArtistNextActivityDto {
+  legacyId: number;
+  name: string;
+  date: string;
+  area?: string;
+}
+
 export interface CatalogLineupArtistDto {
   id: string;
   name: string;
   genreLabel: string;
   activityCount: number;
   thumbnail?: string;
+  nextActivity?: CatalogLineupArtistNextActivityDto;
 }
+
+export interface CatalogLineupArtistDetailDto extends CatalogLineupArtistDto {
+  profileSummary?: string;
+}
+
+type CatalogLineupArtistEntryInternal = {
+  artistName: string;
+  genreLabel: string;
+  activityIds: Set<number>;
+};
 
 export interface ItineraryScheduleDto {
   activityLegacyId: number;
@@ -450,12 +478,105 @@ export class ItineraryScheduleService implements OnModuleInit {
 
   /**
    * Unique lineup artists across all activities in the catalog, ranked by
-   * how many activities each artist appears on.
+   * upcoming appearances first, then activity count.
    */
   async listCatalogLineupArtistsRanked(): Promise<CatalogLineupArtistDto[]> {
-    const activities = await this.activityLookup.findAll();
-    if (!activities.length) {
+    const index = await this.buildCatalogLineupArtistIndex();
+    if (!index.entries.length) {
       return [];
+    }
+
+    const ranked = index.entries
+      .map((entry) => this.toCatalogLineupArtistDto(entry, index))
+      .filter((entry) => Boolean(entry.thumbnail?.trim()));
+
+    return ranked.sort((a, b) => this.compareCatalogLineupArtists(a, b));
+  }
+
+  async resolveCatalogLineupArtistById(
+    id: string,
+  ): Promise<CatalogLineupArtistDto> {
+    const slug = id.trim();
+    if (!slug) {
+      throw new NotFoundException('Artist not found');
+    }
+
+    const index = await this.buildCatalogLineupArtistIndex();
+    const entry = index.entries.find(
+      (item) => artistIdFromLineupName(item.artistName) === slug,
+    );
+    if (!entry) {
+      throw new NotFoundException('Artist not found');
+    }
+
+    const dto = this.toCatalogLineupArtistDto(entry, index);
+    if (!dto.thumbnail?.trim()) {
+      throw new NotFoundException('Artist not found');
+    }
+
+    return dto;
+  }
+
+  async getCatalogLineupArtistDetail(
+    id: string,
+  ): Promise<CatalogLineupArtistDetailDto> {
+    const artist = await this.resolveCatalogLineupArtistById(id);
+    const catalog = await this.djService.lookupForLineupArtists([artist.name]);
+    const profileSummary = truncateCatalogProfileSummary(
+      catalog.get(artist.name)?.profile,
+    );
+
+    return {
+      ...artist,
+      ...(profileSummary ? { profileSummary } : {}),
+    };
+  }
+
+  async listActivitiesForLineupArtist(
+    id: string,
+  ): Promise<ActivityLookupRecord[]> {
+    const artist = await this.resolveCatalogLineupArtistById(id);
+    const hits = await this.findArtistLineupMemberships({
+      artistName: artist.name,
+    });
+    if (!hits.length) {
+      return [];
+    }
+
+    const legacyIds = [...new Set(hits.map((hit) => hit.activityLegacyId))];
+    const recordsById = await this.activityLookup.findByLegacyIds(legacyIds);
+    const records = legacyIds
+      .map((legacyId) => recordsById.get(legacyId))
+      .filter((record): record is ActivityLookupRecord => Boolean(record));
+
+    return records.sort((a, b) =>
+      compareActivityDateAsc(
+        { date: a.date, title: a.name },
+        { date: b.date, title: b.name },
+      ),
+    );
+  }
+
+  private async buildCatalogLineupArtistIndex(): Promise<{
+    activities: ActivityLookupRecord[];
+    activitiesByLegacyId: Map<number, ActivityLookupRecord>;
+    entries: CatalogLineupArtistEntryInternal[];
+    catalogByLineupName: Map<string, DjCatalogItem>;
+    avatarUrlsByKey: Map<string, string>;
+  }> {
+    const activities = await this.activityLookup.findAll();
+    const activitiesByLegacyId = new Map(
+      activities.map((activity) => [activity.legacyId, activity]),
+    );
+
+    if (!activities.length) {
+      return {
+        activities,
+        activitiesByLegacyId,
+        entries: [],
+        catalogByLineupName: new Map(),
+        avatarUrlsByKey: new Map(),
+      };
     }
 
     const legacyIds = activities.map((activity) => activity.legacyId);
@@ -465,14 +586,7 @@ export class ItineraryScheduleService implements OnModuleInit {
       .lean()
       .exec();
 
-    const byArtist = new Map<
-      string,
-      {
-        artistName: string;
-        genreLabel: string;
-        activityIds: Set<number>;
-      }
-    >();
+    const byArtist = new Map<string, CatalogLineupArtistEntryInternal>();
 
     for (const activity of activities) {
       for (const artist of this.collectLineupArtistsForActivity(
@@ -496,39 +610,114 @@ export class ItineraryScheduleService implements OnModuleInit {
       }
     }
 
-    if (!byArtist.size) {
-      return [];
+    const entries = [...byArtist.values()];
+    const artistNames = entries.map((entry) => entry.artistName);
+    const [catalogByLineupName, avatarUrlsByKey] = entries.length
+      ? await Promise.all([
+          this.djService.lookupForLineupArtists(artistNames),
+          this.lineupArtistAvatarService.findAvatarUrlsByArtistNames(
+            artistNames,
+          ),
+        ])
+      : [new Map<string, DjCatalogItem>(), new Map<string, string>()];
+
+    return {
+      activities,
+      activitiesByLegacyId,
+      entries,
+      catalogByLineupName,
+      avatarUrlsByKey,
+    };
+  }
+
+  private toCatalogLineupArtistDto(
+    entry: CatalogLineupArtistEntryInternal,
+    index: {
+      activitiesByLegacyId: Map<number, ActivityLookupRecord>;
+      catalogByLineupName: Map<string, DjCatalogItem>;
+      avatarUrlsByKey: Map<string, string>;
+    },
+  ): CatalogLineupArtistDto {
+    const catalog = index.catalogByLineupName.get(entry.artistName);
+    const genreLabel = catalog
+      ? formatDiscogsStyleLabel(catalog)
+      : entry.genreLabel;
+    const nameKey = entry.artistName.trim().toLowerCase();
+    const nextActivity = this.pickNextActivityForArtist(
+      entry.activityIds,
+      index.activitiesByLegacyId,
+    );
+
+    return {
+      id: artistIdFromLineupName(entry.artistName),
+      name: entry.artistName,
+      genreLabel,
+      activityCount: entry.activityIds.size,
+      thumbnail: index.avatarUrlsByKey.get(nameKey),
+      ...(nextActivity ? { nextActivity } : {}),
+    };
+  }
+
+  private pickNextActivityForArtist(
+    activityIds: Set<number>,
+    activitiesByLegacyId: Map<number, ActivityLookupRecord>,
+    now = new Date(),
+  ): CatalogLineupArtistNextActivityDto | undefined {
+    const upcoming = [...activityIds]
+      .map((legacyId) => activitiesByLegacyId.get(legacyId))
+      .filter((activity): activity is ActivityLookupRecord => Boolean(activity))
+      .filter(
+        (activity) =>
+          !isActivityEnded(activity.date, {
+            yearHint: extractYearFromText(activity.name),
+            now,
+          }),
+      )
+      .sort((a, b) =>
+        compareActivityDateAsc(
+          { date: a.date, title: a.name },
+          { date: b.date, title: b.name },
+        ),
+      );
+
+    const next = upcoming[0];
+    if (!next) {
+      return undefined;
     }
 
-    const artistNames = [...byArtist.values()].map((entry) => entry.artistName);
-    const [catalogByLineupName, avatarUrlsByKey] = await Promise.all([
-      this.djService.lookupForLineupArtists(artistNames),
-      this.lineupArtistAvatarService.findAvatarUrlsByArtistNames(artistNames),
-    ]);
+    return {
+      legacyId: next.legacyId,
+      name: next.name?.trim() || `活动 ${next.legacyId}`,
+      date: next.date?.trim() || '',
+      ...(next.area?.trim() ? { area: next.area.trim() } : {}),
+    };
+  }
 
-    const ranked = [...byArtist.values()]
-      .map((entry) => {
-        const catalog = catalogByLineupName.get(entry.artistName);
-        const genreLabel = catalog
-          ? formatDiscogsStyleLabel(catalog)
-          : entry.genreLabel;
-        const nameKey = entry.artistName.trim().toLowerCase();
-        return {
-          id: this.artistIdFromName(entry.artistName),
-          name: entry.artistName,
-          genreLabel,
-          activityCount: entry.activityIds.size,
-          thumbnail: avatarUrlsByKey.get(nameKey),
-        };
-      })
-      .filter((entry) => Boolean(entry.thumbnail?.trim()));
+  private compareCatalogLineupArtists(
+    a: CatalogLineupArtistDto,
+    b: CatalogLineupArtistDto,
+  ): number {
+    const aHasUpcoming = Boolean(a.nextActivity);
+    const bHasUpcoming = Boolean(b.nextActivity);
+    if (aHasUpcoming !== bHasUpcoming) {
+      return aHasUpcoming ? -1 : 1;
+    }
 
-    return ranked.sort((a, b) => {
-      if (b.activityCount !== a.activityCount) {
-        return b.activityCount - a.activityCount;
+    if (aHasUpcoming && bHasUpcoming && a.nextActivity && b.nextActivity) {
+      const byDate = compareActivityDateAsc(
+        { date: a.nextActivity.date, title: a.nextActivity.name },
+        { date: b.nextActivity.date, title: b.nextActivity.name },
+      );
+      if (byDate !== 0) {
+        return byDate;
       }
-      return a.name.localeCompare(b.name, 'zh');
-    });
+    }
+
+    if (b.activityCount !== a.activityCount) {
+      return b.activityCount - a.activityCount;
+    }
+
+    return a.name.localeCompare(b.name, 'zh');
   }
 
   /** Find activities where an artist appears on the announced lineup (not timetable-only). */
@@ -839,15 +1028,5 @@ export class ItineraryScheduleService implements OnModuleInit {
       endTime: p.endTime,
       stageLabel: p.stageLabel,
     }));
-  }
-
-  private artistIdFromName(name: string): string {
-    return name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/&/g, 'and')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
   }
 }

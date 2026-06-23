@@ -17,6 +17,7 @@ describe('ItineraryScheduleService discogs styles', () => {
   };
   const activityLookup = {
     findAll: jest.fn(),
+    findByLegacyIds: jest.fn(),
   };
   const cache = {
     getScheduleCache: jest.fn().mockResolvedValue(null),
@@ -372,5 +373,184 @@ describe('ItineraryScheduleService discogs styles', () => {
     );
     expect(artists.some((item) => item.name === 'SHARED ACT')).toBe(true);
     expect(artists.some((item) => item.name === 'DJ SNAKE')).toBe(true);
+  });
+
+  it('ranks artists with upcoming shows before higher activity counts', async () => {
+    activityLookup.findAll.mockResolvedValue([
+      {
+        legacyId: 8,
+        name: 'EDC Korea 2030',
+        date: '10/03-04',
+      },
+      {
+        legacyId: 99,
+        name: 'New Fest 2020',
+        date: '12/01-02',
+      },
+    ]);
+    performanceModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([
+            {
+              activityLegacyId: 99,
+              artistName: 'SHARED ACT',
+              genreLabel: 'Techno',
+            },
+          ]),
+        }),
+      }),
+    });
+    djService.lookupForLineupArtists.mockResolvedValue(new Map());
+    lineupArtistAvatarService.findAvatarUrlsByArtistNames.mockResolvedValue(
+      new Map([
+        ['shared act', 'https://cdn.example/shared.jpg'],
+        ['dj snake', 'https://cdn.example/snake.jpg'],
+      ]),
+    );
+
+    const artists = await service.listCatalogLineupArtistsRanked();
+
+    expect(artists[0]?.name).toBe('DJ SNAKE');
+    expect(artists[0]?.nextActivity?.legacyId).toBe(8);
+    expect(artists.some((item) => item.name === 'SHARED ACT')).toBe(true);
+  });
+
+  it('resolves catalog lineup artist by slug id', async () => {
+    activityLookup.findAll.mockResolvedValue([
+      {
+        legacyId: 8,
+        name: 'EDC Korea 2030',
+        date: '10/03-04',
+      },
+    ]);
+    performanceModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
+    djService.lookupForLineupArtists.mockResolvedValue(
+      new Map([
+        [
+          'DJ SNAKE',
+          {
+            discogsId: 9,
+            name: 'DJ Snake',
+            profile: 'International DJ profile text',
+            genres: ['Electronic'],
+            styles: ['EDM'],
+          },
+        ],
+      ]),
+    );
+    lineupArtistAvatarService.findAvatarUrlsByArtistNames.mockResolvedValue(
+      new Map([['dj snake', 'https://cdn.example/snake.jpg']]),
+    );
+
+    const artist = await service.getCatalogLineupArtistDetail('dj-snake');
+
+    expect(artist.name).toBe('DJ SNAKE');
+    expect(artist.profileSummary).toContain('International DJ');
+  });
+
+  it('throws when artist slug is unknown', async () => {
+    activityLookup.findAll.mockResolvedValue([]);
+    performanceModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
+    lineupArtistAvatarService.findAvatarUrlsByArtistNames.mockResolvedValue(
+      new Map(),
+    );
+
+    await expect(
+      service.resolveCatalogLineupArtistById('missing-artist'),
+    ).rejects.toThrow('Artist not found');
+  });
+
+  it('lists activities for lineup artist sorted by date ascending', async () => {
+    activityLookup.findAll.mockResolvedValue([
+      {
+        legacyId: 8,
+        name: 'EDC Korea 2030',
+        date: '10/03-04',
+        area: '韩国',
+        lineupPublished: true,
+      },
+      {
+        legacyId: 99,
+        name: 'New Fest 2030',
+        date: '12/01-02',
+        area: '泰国',
+        lineupPublished: false,
+      },
+    ]);
+    performanceModel.find.mockImplementation(
+      (filter: { activityLegacyId?: { $in?: number[] } }) => {
+        const legacyIds = filter?.activityLegacyId?.$in ?? [];
+        const rows = [
+          {
+            activityLegacyId: 8,
+            artistName: 'DJ SNAKE',
+            genreLabel: 'EDM',
+          },
+          {
+            activityLegacyId: 99,
+            artistName: 'DJ SNAKE',
+            genreLabel: 'EDM',
+          },
+        ].filter((row) => legacyIds.includes(row.activityLegacyId));
+
+        return {
+          select: jest.fn().mockReturnValue({
+            lean: jest.fn().mockReturnValue({
+              exec: jest.fn().mockResolvedValue(rows),
+            }),
+          }),
+          lean: jest.fn().mockReturnValue({
+            exec: jest.fn().mockResolvedValue(rows),
+          }),
+        };
+      },
+    );
+    djService.lookupForLineupArtists.mockResolvedValue(new Map());
+    lineupArtistAvatarService.findAvatarUrlsByArtistNames.mockResolvedValue(
+      new Map([['dj snake', 'https://cdn.example/snake.jpg']]),
+    );
+    activityLookup.findByLegacyIds.mockResolvedValue(
+      new Map([
+        [
+          8,
+          {
+            legacyId: 8,
+            name: 'EDC Korea 2030',
+            date: '10/03-04',
+            area: '韩国',
+            lineupPublished: true,
+          },
+        ],
+        [
+          99,
+          {
+            legacyId: 99,
+            name: 'New Fest 2030',
+            date: '12/01-02',
+            area: '泰国',
+            lineupPublished: false,
+          },
+        ],
+      ]),
+    );
+
+    const activities = await service.listActivitiesForLineupArtist('dj-snake');
+
+    expect(activities.map((item) => item.legacyId)).toEqual([8, 99]);
+    expect(activities[0]?.lineupPublished).toBe(true);
+    expect(activities[1]?.lineupPublished).toBe(false);
   });
 });

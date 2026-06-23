@@ -25,6 +25,7 @@ import { ActivityModule } from '../activity/activity.module';
 import { AuthModule } from '../auth/auth.module';
 import { DjModule } from '../dj/dj.module';
 import { ItineraryController } from './itinerary.controller';
+import { ArtistController } from './artist.controller';
 import { ItineraryService } from './itinerary.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
 import { ItineraryGenerationService } from './itinerary-generation.service';
@@ -48,7 +49,7 @@ import { LineupArtistAvatarService } from './lineup-artist-avatar.service';
       { name: LineupArtistAvatar.name, schema: LineupArtistAvatarSchema },
     ]),
   ],
-  controllers: [ItineraryController],
+  controllers: [ItineraryController, ArtistController],
   providers: [
     ItineraryService,
     ItineraryScheduleService,

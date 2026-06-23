@@ -35,7 +35,17 @@ export class ActivityController {
 
   @Public()
   @Get()
-  list(@Query('skip') skipRaw?: string, @Query('limit') limitRaw?: string) {
+  list(
+    @Query('skip') skipRaw?: string,
+    @Query('limit') limitRaw?: string,
+    @Query('lineupArtistId') lineupArtistId?: string,
+  ) {
+    if (lineupArtistId?.trim()) {
+      return this.itineraryScheduleService.listActivitiesForLineupArtist(
+        lineupArtistId.trim(),
+      );
+    }
+
     if (skipRaw != null || limitRaw != null) {
       const skip = Number(skipRaw);
       const limit = Number(limitRaw);
