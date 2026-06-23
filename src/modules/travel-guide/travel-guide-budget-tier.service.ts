@@ -18,6 +18,7 @@ import {
   parseActivityDayCount,
 } from './domain/parse-activity-days.util';
 import { buildTravelGuideBudgetItems } from './domain/travel-guide-budget-estimate.util';
+import { applyTravelGuideAccommodationPreference } from './domain/travel-guide-accommodation-preference.util';
 import { travelGuideRegionKind } from './domain/travel-guide-international.util';
 import type {
   TravelGuideBudgetTier,
@@ -91,10 +92,14 @@ export class TravelGuideBudgetTierService {
       accommodationNights,
       activity,
     );
+    updatedPlan = applyTravelGuideAccommodationPreference(
+      updatedPlan,
+      accommodationNights,
+    );
 
     try {
       const mapCtx = await this.poiCollector.collect(activity, dto);
-      if (mapCtx) {
+      if (mapCtx && accommodationNights > 0) {
         const ranked = this.poiRanker.rank(mapCtx, dto);
         if (ranked.hotels.length > 0) {
           const mapPayload = mapCandidatesToLlmFallback(mapCtx, ranked, {
@@ -106,28 +111,31 @@ export class TravelGuideBudgetTierService {
             activity,
           });
 
-          updatedPlan = {
-            ...saved.plan,
-            budgetLabel: budgetTierLabel(body.budgetTier),
-            accommodation: {
-              title: saved.plan.accommodation.title,
-              hotels: mapPayload.hotels,
-              schemes: mapPayload.accommodationSchemes,
+          updatedPlan = applyTravelGuideAccommodationPreference(
+            {
+              ...saved.plan,
+              budgetLabel: budgetTierLabel(body.budgetTier),
+              accommodation: {
+                title: saved.plan.accommodation.title,
+                hotels: mapPayload.hotels,
+                schemes: mapPayload.accommodationSchemes,
+              },
+              budget: {
+                title: saved.plan.budget?.title ?? '预算参考（全程 · 合计）',
+                items:
+                  mapPayload.budgetItems ??
+                  buildTravelGuideBudgetItems({
+                    budgetTier: body.budgetTier,
+                    headcount: dto.headcount,
+                    accommodationNights,
+                    interCity: Boolean(mapCtx.interCity),
+                    regionKind: travelGuideRegionKind(activity),
+                    selfDrive: Boolean(dto.selfDrive),
+                  }),
+              },
             },
-            budget: {
-              title: saved.plan.budget?.title ?? '预算参考（全程 · 合计）',
-              items:
-                mapPayload.budgetItems ??
-                buildTravelGuideBudgetItems({
-                  budgetTier: body.budgetTier,
-                  headcount: dto.headcount,
-                  accommodationNights,
-                  interCity: Boolean(mapCtx.interCity),
-                  regionKind: travelGuideRegionKind(activity),
-                  selfDrive: Boolean(dto.selfDrive),
-                }),
-            },
-          };
+            accommodationNights,
+          );
         }
       }
     } catch (error) {
@@ -172,7 +180,7 @@ function buildDtoFromSavedForm(
   if (!Number.isFinite(headcount) || headcount <= 0) {
     throw new BadRequestException('攻略表单人数无效');
   }
-  if (!Number.isFinite(accommodationNights) || accommodationNights <= 0) {
+  if (!Number.isFinite(accommodationNights) || accommodationNights < 0) {
     throw new BadRequestException('攻略表单住宿晚数无效');
   }
 

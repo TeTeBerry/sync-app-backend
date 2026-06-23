@@ -320,7 +320,7 @@ export function buildTravelGuidePlan(input: {
 
   const schemes = input.llm?.accommodationSchemes?.length
     ? input.llm.accommodationSchemes
-    : mapSourcedOnly
+    : mapSourcedOnly || accommodationNights <= 0
       ? undefined
       : buildAccommodationSchemes(
           activity.location ?? '',
@@ -338,7 +338,7 @@ export function buildTravelGuidePlan(input: {
           note: s.note,
           bookingHint: s.bookingHint,
         }))
-      : mapSourcedOnly
+      : mapSourcedOnly || accommodationNights <= 0
         ? []
         : buildHotels(
             activity.location ?? '',

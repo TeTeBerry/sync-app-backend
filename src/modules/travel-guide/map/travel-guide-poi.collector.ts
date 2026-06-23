@@ -5,7 +5,10 @@ import { TravelGuideGeoCacheService } from './travel-guide-geo-cache.service';
 import { getAllHotPathFallbackPois } from './travel-guide-hot-path-pois.data';
 import { isTravelGuideAbroad } from '../domain/travel-guide-international.util';
 import { filterDomesticTransportHints } from '../domain/travel-guide-departure-airport.util';
-import { resolveTravelGuideBudgetTier } from '../domain/parse-activity-days.util';
+import {
+  parseActivityDayCount,
+  resolveTravelGuideBudgetTier,
+} from '../domain/parse-activity-days.util';
 import { destinationCityFromActivityLocation } from './travel-guide-intercity.util';
 import {
   AFTERPARTY_SEARCH_KEYWORD,
@@ -47,10 +50,13 @@ export class TravelGuidePoiCollector {
       activity.location,
     );
     const abroad = isTravelGuideAbroad(activity);
+    const accommodationNights =
+      dto.accommodationNights ?? parseActivityDayCount(activity.date);
     const poiSearchTasks = buildPoiSearchTasks(
       Boolean(dto.selfDrive),
       dto.budgetTier,
       abroad,
+      accommodationNights,
     );
 
     const [departure, transport, poiBatches] = await Promise.all([
@@ -132,17 +138,23 @@ function buildPoiSearchTasks(
   selfDrive: boolean,
   budgetTier: GenerateTravelGuideDto['budgetTier'],
   abroad: boolean,
+  accommodationNights: number,
 ): PoiSearchTask[] {
-  const hotelKeywords = hotelSearchKeywordsForBudgetTier(
-    resolveTravelGuideBudgetTier(budgetTier),
-    {
-      abroad,
-    },
-  );
-  const tasks: PoiSearchTask[] = hotelKeywords.map((keyword) => ({
-    keyword,
-    kind: 'hotel' as const,
-  }));
+  const tasks: PoiSearchTask[] = [];
+  if (accommodationNights > 0) {
+    const hotelKeywords = hotelSearchKeywordsForBudgetTier(
+      resolveTravelGuideBudgetTier(budgetTier),
+      {
+        abroad,
+      },
+    );
+    tasks.push(
+      ...hotelKeywords.map((keyword) => ({
+        keyword,
+        kind: 'hotel' as const,
+      })),
+    );
+  }
   if (selfDrive) {
     tasks.push(
       ...PARKING_KEYWORDS.map((keyword) => ({

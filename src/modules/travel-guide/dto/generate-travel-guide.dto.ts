@@ -42,7 +42,7 @@ export class GenerateTravelGuideDto {
 
   @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   @Max(7)
   accommodationNights?: number;
 }

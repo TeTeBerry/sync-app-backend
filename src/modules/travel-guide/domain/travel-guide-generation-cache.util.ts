@@ -71,6 +71,9 @@ export function isFuzzyTravelGuideParamsMatch(
   if (exact.departure !== candidate.departure) return false;
   if (exact.departureCity !== candidate.departureCity) return false;
   if (Math.abs(exact.headcount - candidate.headcount) > 2) return false;
+  if (exact.accommodationNights === 0 || candidate.accommodationNights === 0) {
+    return exact.accommodationNights === candidate.accommodationNights;
+  }
   if (Math.abs(exact.accommodationNights - candidate.accommodationNights) > 1)
     return false;
   return true;

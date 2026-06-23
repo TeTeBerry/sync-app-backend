@@ -35,6 +35,10 @@ import {
   TRAVEL_GUIDE_PREPARING_MESSAGE,
 } from './domain/travel-guide-support.util';
 import { sanitizeLlmTravelGuidePayload } from './domain/travel-guide-payload-normalize.util';
+import {
+  applyTravelGuideAccommodationPreference,
+  stripLlmAccommodationPayload,
+} from './domain/travel-guide-accommodation-preference.util';
 import { TravelGuidePoiCollector } from './map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from './map/travel-guide-poi.ranker';
 import { TravelGuideGenerationCacheService } from './travel-guide-generation-cache.service';
@@ -79,6 +83,22 @@ const TRAVEL_GUIDE_MAP_JSON_SYSTEM = [
   '- documentItems 仅当 isAbroad=true 时输出，含护照、签证/签注、返程票、保险等入境必备。',
   '- budgetItems 须含：机票/城际交通(若跨城)、门票、住宿(按用户 budgetTier 与晚数)、市内/会场交通、餐饮、现金/杂费、合计参考；各项 range 为本次出行合计金额（非人均），合计项 label 写「合计参考（全员）」或「合计参考（单人）」并在 note 注明是否含人均；range 用「约 ¥X–Y」格式。',
   '- interCity 为 true 时：transportLines 只写出发地→目的地城市；venueTransportOptions 只写抵目的地后的接驳；禁止把全程写成一种方式。',
+  '不要输出天气。',
+].join('');
+
+const TRAVEL_GUIDE_MAP_JSON_SYSTEM_NO_STAY = [
+  '你是电音节出行攻略助手。用户本次不出宿，仅需交通、散场与预算参考（不含住宿）。',
+  '交通/散场候选来自境内高德地图周边检索，或境外/港澳台活动的运营精选 POI（candidates 列表）。',
+  '请完成：1) 按距离筛选；2) 按推荐分选取最优；3) 将数据润色为生动中文攻略。',
+  '输出 JSON（不要 markdown），字段：',
+  'transportLines, accommodationSchemes(空数组), hotels(空数组), parkingLines(仅自驾), nightlifeSpots, tipItems,',
+  'documentItems(仅出国/港澳台), ticketChannels, essentials{network,payment,apps}, venueTransportOptions, budgetItems。',
+  '硬性规则：',
+  '- accommodationSchemes 与 hotels 必须输出空数组，禁止推荐酒店或住宿方案。',
+  '- 散场 nightlifeSpots 输出 candidates.nightlife 前 6 项，每项含 name/note/reason。',
+  '- transportLines 必须是字符串数组；仅写城际/国际段（从出发地到目的地城市）。',
+  '- venueTransportOptions 仅写目的地市内最后一段（机场/车站 → 会场）。',
+  '- budgetItems 须含：机票/城际交通(若跨城)、门票、市内/会场交通、餐饮、现金/杂费、合计参考；禁止含住宿项。',
   '不要输出天气。',
 ].join('');
 
@@ -145,6 +165,7 @@ export class TravelGuideGenerationService {
 
     const generationDto: GenerateTravelGuideDto = {
       ...dto,
+      accommodationNights,
       budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
     };
 
@@ -159,6 +180,10 @@ export class TravelGuideGenerationService {
       this.logger.log(
         `travel guide cache hit activity=${activityLegacyId} key=${cacheKey.slice(0, 8)}`,
       );
+      const plan = applyTravelGuideAccommodationPreference(
+        cachedPlan,
+        accommodationNights,
+      );
       this.userProfileSync.applyTravelGuideHints(actor, {
         departure: dto.departure,
         departureCity: dto.departureCity,
@@ -168,14 +193,18 @@ export class TravelGuideGenerationService {
         accommodationNights,
         actor.resolvedUserId,
         activityLegacyId,
-        cachedPlan,
+        plan,
       );
-      return guideId ? { plan: cachedPlan, guideId } : { plan: cachedPlan };
+      return guideId ? { plan, guideId } : { plan };
     }
 
     // Fuzzy cache: try similar params before generating
     const fuzzyPlan = await this.generationCache.findSimilarPlan(cacheParams);
     if (fuzzyPlan) {
+      const plan = applyTravelGuideAccommodationPreference(
+        fuzzyPlan,
+        accommodationNights,
+      );
       this.userProfileSync.applyTravelGuideHints(actor, {
         departure: dto.departure,
         departureCity: dto.departureCity,
@@ -185,9 +214,9 @@ export class TravelGuideGenerationService {
         accommodationNights,
         actor.resolvedUserId,
         activityLegacyId,
-        fuzzyPlan,
+        plan,
       );
-      return guideId ? { plan: fuzzyPlan, guideId } : { plan: fuzzyPlan };
+      return guideId ? { plan, guideId } : { plan };
     }
 
     await this.travelGuideGuard.assertCanGenerate(
@@ -206,14 +235,18 @@ export class TravelGuideGenerationService {
         (await this.generationCache.findPlan(cacheKey)) ??
         (await this.generationCache.findSimilarPlan(cacheParams));
       if (racingPlan) {
+        const plan = applyTravelGuideAccommodationPreference(
+          racingPlan,
+          accommodationNights,
+        );
         const guideId = await this.persistSavedPlanIfRequested(
           dto,
           accommodationNights,
           actor.resolvedUserId,
           activityLegacyId,
-          racingPlan,
+          plan,
         );
-        return guideId ? { plan: racingPlan, guideId } : { plan: racingPlan };
+        return guideId ? { plan, guideId } : { plan };
       }
       throw new ServiceUnavailableException(
         '相同参数的攻略正在生成中，请稍后再试',
@@ -229,7 +262,11 @@ export class TravelGuideGenerationService {
       }
 
       const ranked = this.poiRanker.rank(mapCtx, generationDto);
-      this.assertRankedCandidates(ranked, Boolean(generationDto.selfDrive));
+      this.assertRankedCandidates(
+        ranked,
+        Boolean(generationDto.selfDrive),
+        accommodationNights,
+      );
 
       const llmPayload = await this.buildPayloadFromMap(
         activity,
@@ -239,17 +276,20 @@ export class TravelGuideGenerationService {
         ranked,
       );
 
-      const plan = buildTravelGuidePlan({
-        activity,
-        departure: generationDto.departure.trim(),
-        headcount: generationDto.headcount,
-        budgetTier: generationDto.budgetTier!,
+      const plan = applyTravelGuideAccommodationPreference(
+        buildTravelGuidePlan({
+          activity,
+          departure: generationDto.departure.trim(),
+          headcount: generationDto.headcount,
+          budgetTier: generationDto.budgetTier!,
+          accommodationNights,
+          selfDrive: generationDto.selfDrive,
+          llm: llmPayload,
+          mapSourcedOnly: true,
+          interCity: Boolean(mapCtx.interCity),
+        }),
         accommodationNights,
-        selfDrive: generationDto.selfDrive,
-        llm: llmPayload,
-        mapSourcedOnly: true,
-        interCity: Boolean(mapCtx.interCity),
-      });
+      );
 
       await this.generationCache.savePlan(
         cacheKey,
@@ -305,8 +345,9 @@ export class TravelGuideGenerationService {
   private assertRankedCandidates(
     ranked: TravelGuideRankedCandidates,
     selfDrive: boolean,
+    accommodationNights: number,
   ): void {
-    if (!ranked.hotels.length) {
+    if (accommodationNights > 0 && !ranked.hotels.length) {
       throw new BadRequestException(
         '场馆附近未检索到符合预算的酒店推荐，请调整预算档位或稍后重试',
       );
@@ -341,12 +382,24 @@ export class TravelGuideGenerationService {
 
     if (
       !this.travelGuideLlmPolishEnabled ||
-      !this.isValidMapSourcedPayload(mapPayload, Boolean(dto.selfDrive))
+      !this.isValidMapSourcedPayload(
+        mapPayload,
+        Boolean(dto.selfDrive),
+        accommodationNights,
+      )
     ) {
-      if (!this.isValidMapSourcedPayload(mapPayload, Boolean(dto.selfDrive))) {
+      if (
+        !this.isValidMapSourcedPayload(
+          mapPayload,
+          Boolean(dto.selfDrive),
+          accommodationNights,
+        )
+      ) {
         throw new ServiceUnavailableException('攻略内容生成失败，请稍后重试');
       }
-      return mapPayload;
+      return accommodationNights > 0
+        ? mapPayload
+        : stripLlmAccommodationPayload(mapPayload);
     }
 
     const polished = await this.tryPolishWithAi(
@@ -358,7 +411,7 @@ export class TravelGuideGenerationService {
     );
 
     const polishedOrMap = polished ?? mapPayload;
-    const payload = {
+    const merged = {
       ...polishedOrMap,
       hotels: mergeRankedHotelsWithLlmPolish(
         mapPayload.hotels,
@@ -398,8 +451,16 @@ export class TravelGuideGenerationService {
         ? polishedOrMap.budgetItems
         : mapPayload.budgetItems,
     };
+    const payload =
+      accommodationNights > 0 ? merged : stripLlmAccommodationPayload(merged);
 
-    if (!this.isValidMapSourcedPayload(payload, Boolean(dto.selfDrive))) {
+    if (
+      !this.isValidMapSourcedPayload(
+        payload,
+        Boolean(dto.selfDrive),
+        accommodationNights,
+      )
+    ) {
       throw new ServiceUnavailableException('攻略内容生成失败，请稍后重试');
     }
 
@@ -472,14 +533,25 @@ export class TravelGuideGenerationService {
     });
 
     try {
+      const systemPrompt =
+        accommodationNights > 0
+          ? TRAVEL_GUIDE_MAP_JSON_SYSTEM
+          : TRAVEL_GUIDE_MAP_JSON_SYSTEM_NO_STAY;
       const result = await this.llmService.invokeJson<LlmTravelGuidePayload>(
-        TRAVEL_GUIDE_MAP_JSON_SYSTEM,
+        systemPrompt,
         user,
         this.travelGuideLlmTimeoutMs,
         { reasoningEffort: this.travelGuideReasoningEffort },
       );
       const sanitized = sanitizeLlmTravelGuidePayload(result);
-      if (!this.isValidMapSourcedPayload(sanitized, dto.selfDrive)) return null;
+      if (
+        !this.isValidMapSourcedPayload(
+          sanitized,
+          dto.selfDrive,
+          accommodationNights,
+        )
+      )
+        return null;
       return sanitized;
     } catch (error) {
       this.logger.warn(
@@ -492,11 +564,14 @@ export class TravelGuideGenerationService {
   private isValidMapSourcedPayload(
     result: LlmTravelGuidePayload | null,
     selfDrive?: boolean,
+    accommodationNights = 1,
   ): result is LlmTravelGuidePayload {
     if (!result?.transportLines?.length) return false;
-    const hasHotels =
-      result.accommodationSchemes?.length === 2 || result.hotels?.length >= 2;
-    if (!hasHotels) return false;
+    if (accommodationNights > 0) {
+      const hasHotels =
+        result.accommodationSchemes?.length === 2 || result.hotels?.length >= 2;
+      if (!hasHotels) return false;
+    }
     if (!result.nightlifeSpots?.length) return false;
     if (!result.ticketChannels?.length) return false;
     if (!result.budgetItems?.length) return false;

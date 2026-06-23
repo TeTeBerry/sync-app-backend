@@ -280,28 +280,36 @@ export function mapCandidatesToLlmFallback(
   const destCity = destinationCityFromActivityLocation(input.activity.location);
   const regionKind = travelGuideRegionKind(input.activity);
   const interCity = Boolean(ctx.interCity);
+  const needsAccommodation = input.accommodationNights > 0;
 
-  const picks = ranked.accommodationPicks ?? {
-    nearby: ranked.hotels[0]!,
-    cityCenter: ranked.hotels[1] ?? ranked.hotels[0]!,
-  };
+  const picks = needsAccommodation
+    ? (ranked.accommodationPicks ?? {
+        nearby: ranked.hotels[0]!,
+        cityCenter: ranked.hotels[1] ?? ranked.hotels[0]!,
+      })
+    : undefined;
 
-  const schemes = accommodationSchemesFromRanked(
-    picks,
-    nightLabel,
-    room,
-    ranked.hotelPriceBand,
-    input.activity,
-  );
+  const schemes =
+    needsAccommodation && picks
+      ? accommodationSchemesFromRanked(
+          picks,
+          nightLabel,
+          room,
+          ranked.hotelPriceBand,
+          input.activity,
+        )
+      : [];
 
-  const hotels = hotelsFromRanked(
-    ranked.hotels,
-    nightLabel,
-    room,
-    ranked.hotelPriceBand,
-    input.activity,
-    picks,
-  );
+  const hotels = needsAccommodation
+    ? hotelsFromRanked(
+        ranked.hotels,
+        nightLabel,
+        room,
+        ranked.hotelPriceBand,
+        input.activity,
+        picks,
+      )
+    : [];
 
   const documentItems =
     regionKind !== 'domestic'
@@ -335,11 +343,16 @@ export function mapCandidatesToLlmFallback(
       ? buildParkingLinesFromMap(ranked.parking, ctx.venue.title)
       : undefined,
     nightlifeSpots: nightlifeFromRanked(ranked.nightlife, ctx.eventEndHour),
-    tipItems: [
-      '以上交通、住宿与散场点位来自高德地图周边检索，并结合预算与距离智能排序。',
-      '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
-      '酒店与餐厅评分以地图平台展示为准，下单前建议在 OTA 再确认价格与房态。',
-    ],
+    tipItems: needsAccommodation
+      ? [
+          '以上交通、住宿与散场点位来自高德地图周边检索，并结合预算与距离智能排序。',
+          '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
+          '酒店与餐厅评分以地图平台展示为准，下单前建议在 OTA 再确认价格与房态。',
+        ]
+      : [
+          '以上交通与散场点位来自高德地图周边检索，并结合距离智能排序。',
+          '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
+        ],
     documentItems,
     ticketChannels: buildTicketChannels(input.activity),
     essentials,

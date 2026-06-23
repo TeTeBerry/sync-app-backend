@@ -128,6 +128,21 @@ describe('travel guide enhanced sections', () => {
     expect(labels).toContain('合计参考（全员）');
   });
 
+  it('omits accommodation from budget when nights are zero', () => {
+    const items = buildTravelGuideBudgetItems({
+      budgetTier: 'standard',
+      headcount: 2,
+      accommodationNights: 0,
+      interCity: false,
+      regionKind: 'domestic',
+      selfDrive: false,
+    });
+    const labels = items.map((i) => i.label);
+    expect(labels).not.toContain('住宿');
+    expect(labels).toContain('门票');
+    expect(labels).toContain('合计参考（全员）');
+  });
+
   it('mapCandidatesToLlmFallback includes tickets, budget and venue transport', () => {
     const ctx: TravelGuideMapContext = {
       venue: { title: 'Rhythm Park', address: 'Phuket', lat: 7.8, lng: 98.3 },

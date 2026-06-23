@@ -91,13 +91,16 @@ export function buildTravelGuideBudgetItems(input: {
     note: '以官方渠道为准；VIP/多日票会更高，早鸟通常更划算。',
   });
 
-  items.push({
-    label: '住宿',
-    range: formatRange(hotelMin, hotelMax),
-    note: `按您选择的${budgetTier === 'economy' ? '经济' : budgetTier === 'comfort' ? '豪华' : '舒适'}档 · ${accommodationNights} 晚 · ${rooms} 间房估算。`,
-  });
+  if (accommodationNights > 0) {
+    items.push({
+      label: '住宿',
+      range: formatRange(hotelMin, hotelMax),
+      note: `按您选择的${budgetTier === 'economy' ? '经济' : budgetTier === 'comfort' ? '豪华' : '舒适'}档 · ${accommodationNights} 晚 · ${rooms} 间房估算。`,
+    });
+  }
 
-  const transitDays = Math.max(accommodationNights, 2);
+  const transitDays =
+    accommodationNights > 0 ? Math.max(accommodationNights, 2) : 1;
   const transitMin =
     regionKind === 'overseas'
       ? 120 * headcount * transitDays
