@@ -1,9 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import {
-  isAiShortcutTag,
-  normalizeAiShortcutInput,
-} from '../../common/utils/demo-owner.util';
 import { ActivityService } from '../../modules/activity/activity.service';
 import {
   IPostQueryPort,
@@ -134,13 +130,7 @@ export class BuddyContextService {
     }
 
     const parts: string[] = [];
-    if (isAiShortcutTag(input)) {
-      parts.push(normalizeAiShortcutInput(input));
-    } else if (
-      input &&
-      !isShortContextReply(input) &&
-      !isExactQuickReply(input)
-    ) {
+    if (input && !isShortContextReply(input) && !isExactQuickReply(input)) {
       parts.push(input);
     }
 
@@ -254,10 +244,6 @@ export class BuddyContextService {
   ): string[] {
     const tags = new Set<string>();
     const sourceText = [bodyForIntent, input].filter(Boolean).join('\n');
-
-    if (isAiShortcutTag(input)) {
-      tags.add(normalizeAiShortcutInput(input));
-    }
 
     for (const tag of inferIntentTagsFromText(bodyForIntent, input)) {
       tags.add(tag);

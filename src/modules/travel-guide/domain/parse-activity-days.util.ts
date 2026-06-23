@@ -1,5 +1,5 @@
 /** Infer festival day count from catalog date strings like `06/13-14` or `12/11-13`. */
-import type { TravelGuideBudgetTier } from './travel-guide.types';
+import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
 
 export function resolveTravelGuideBudgetTier(
   tier?: TravelGuideBudgetTier | null,

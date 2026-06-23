@@ -1,9 +1,9 @@
 import type { Activity } from '../../../database/schemas/activity.schema';
 import type {
-  LlmTravelGuidePayload,
   TravelGuideBudgetTier,
   TravelGuidePlan,
-} from './travel-guide.types';
+} from '@sync/travel-guide-contracts';
+import type { LlmTravelGuidePayload } from './travel-guide-llm.types';
 import {
   budgetTierHotelNightRanges,
   budgetTierLabel,

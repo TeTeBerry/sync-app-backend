@@ -193,13 +193,6 @@ export function buildBodySearchTermsFromParsed(
   return [...new Set(terms)];
 }
 
-/** @deprecated Use buildBodySearchTermsFromParsed */
-export function buildSearchTermsFromParsed(
-  parsed: BuddyPostSearchParsedFields,
-): string[] {
-  return buildBodySearchTermsFromParsed(parsed);
-}
-
 export function buildBuddyPostSearchDisplayTerms(
   parsed: BuddyPostSearchParsedFields,
   criteria: BuddyPostSearchCriteria,
@@ -580,14 +573,6 @@ export function scoreBuddyPostSearchCriteria(
   return total;
 }
 
-/** @deprecated Use scoreBuddyPostSearchCriteria */
-export function scoreBuddyPostKeywordMatch(
-  post: PostRecord,
-  searchTerms: string[],
-): number {
-  return scoreBuddyPostSearchCriteria(post, { searchTerms });
-}
-
 /** Secondary ranking signal from the viewer's saved match profile. */
 export function scoreBuddyPostPreferenceMatch(
   post: PostRecord,
@@ -666,12 +651,4 @@ export function rankBuddyPostsBySearch(
 
     return comparePostsByCreatedAtDesc(right, left);
   });
-}
-
-/** @deprecated Prefer rankBuddyPostsBySearch with BuddyPostSearchCriteria */
-export function filterBuddyPostsBySearchTerms(
-  posts: PostRecord[],
-  searchTerms: string[],
-): PostRecord[] {
-  return rankBuddyPostsBySearch(posts, { searchTerms });
 }

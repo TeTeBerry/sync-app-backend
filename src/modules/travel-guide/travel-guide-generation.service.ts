@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
-import type { TravelGuidePlan } from './domain/travel-guide.types';
+import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 import { TravelGuideGenerationOrchestrator } from './travel-guide-generation-orchestrator.service';
 
 @Injectable()

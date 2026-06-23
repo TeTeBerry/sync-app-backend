@@ -1,5 +1,5 @@
 import type { Activity } from '../../../database/schemas/activity.schema';
-import type { TravelGuideVenueTransportOption } from './travel-guide.types';
+import type { TravelGuideVenueTransportOption } from '@sync/travel-guide-contracts';
 import {
   type TravelGuideRegionKind,
   travelGuideRegionKind,

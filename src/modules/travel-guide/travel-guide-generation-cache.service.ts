@@ -6,7 +6,7 @@ import {
   TravelGuideGenerationCache,
   TravelGuideGenerationCacheDocument,
 } from '../../database/schemas/travel-guide-generation-cache.schema';
-import type { TravelGuidePlan } from './domain/travel-guide.types';
+import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 import {
   buildTravelGuideGenerationCacheKey,
   type TravelGuideGenerationCacheParams,

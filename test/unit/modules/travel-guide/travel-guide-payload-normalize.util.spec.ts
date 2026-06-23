@@ -37,7 +37,7 @@ describe('travel-guide-payload-normalize', () => {
       hotels: [{ name: '酒店A', note: '¥400/晚' }],
       nightlifeSpots: [{ name: '酒吧B', note: '散场友好' }],
       tipItems: ['提示'],
-    } as unknown as import('@src/modules/travel-guide/domain/travel-guide.types').LlmTravelGuidePayload);
+    } as unknown as import('@src/modules/travel-guide/domain/travel-guide-llm.types').LlmTravelGuidePayload);
     expect(out?.transportLines).toEqual(['路线一', '路线二']);
     expect(out?.hotels[0]?.name).toBe('酒店A');
   });

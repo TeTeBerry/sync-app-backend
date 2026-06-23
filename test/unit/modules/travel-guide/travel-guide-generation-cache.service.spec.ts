@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { TravelGuideGenerationCache } from '@src/database/schemas/travel-guide-generation-cache.schema';
 import { TravelGuideGenerationCacheService } from '@src/modules/travel-guide/travel-guide-generation-cache.service';
-import type { TravelGuidePlan } from '@src/modules/travel-guide/domain/travel-guide.types';
+import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 
 describe('TravelGuideGenerationCacheService', () => {
   let service: TravelGuideGenerationCacheService;

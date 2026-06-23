@@ -20,7 +20,7 @@ import {
   parseActivityDayCount,
   resolveTravelGuideBudgetTier,
 } from './domain/parse-activity-days.util';
-import type { TravelGuidePlan } from './domain/travel-guide.types';
+import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 import {
   resolveTravelGuideSupported,
   TRAVEL_GUIDE_PREPARING_MESSAGE,

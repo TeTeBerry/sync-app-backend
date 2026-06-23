@@ -12,6 +12,7 @@
     "prebuild": "rimraf dist",
     "build": "nest build",
     "postbuild": "node scripts/sync-contract-dist.mjs",
+    "clean:contracts": "rm -rf packages/*/dist",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "typecheck:scripts": "tsc -p tsconfig.scripts.json --noEmit",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

@@ -1,5 +1,5 @@
 import { applyTravelGuideAccommodationPreference } from '../../../../src/modules/travel-guide/domain/travel-guide-accommodation-preference.util';
-import type { TravelGuidePlan } from '../../../../src/modules/travel-guide/domain/travel-guide.types';
+import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 import { isFuzzyTravelGuideParamsMatch } from '../../../../src/modules/travel-guide/domain/travel-guide-generation-cache.util';
 
 const basePlan: TravelGuidePlan = {

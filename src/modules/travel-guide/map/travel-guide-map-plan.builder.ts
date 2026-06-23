@@ -1,11 +1,11 @@
 import type { Activity } from '../../../database/schemas/activity.schema';
 import type {
-  LlmTravelGuidePayload,
   TravelGuideAccommodationScheme,
   TravelGuideHotelItem,
   TravelGuideSpotItem,
   TravelGuideTicketChannel,
-} from '../domain/travel-guide.types';
+} from '@sync/travel-guide-contracts';
+import type { LlmTravelGuidePayload } from '../domain/travel-guide-llm.types';
 import { buildTravelGuideBudgetItems } from '../domain/travel-guide-budget-estimate.util';
 import {
   buildTravelGuideDocumentItems,

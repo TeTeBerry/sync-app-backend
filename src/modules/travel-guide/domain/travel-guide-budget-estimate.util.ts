@@ -1,5 +1,7 @@
-import type { TravelGuideBudgetTier } from './travel-guide.types';
-import type { TravelGuideBudgetItem } from './travel-guide.types';
+import type {
+  TravelGuideBudgetTier,
+  TravelGuideBudgetItem,
+} from '@sync/travel-guide-contracts';
 import { budgetTierHotelNightRanges } from './parse-activity-days.util';
 import type { TravelGuideRegionKind } from './travel-guide-international.util';
 

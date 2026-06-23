@@ -23,7 +23,7 @@ import { travelGuideRegionKind } from './domain/travel-guide-international.util'
 import type {
   TravelGuideBudgetTier,
   TravelGuidePlan,
-} from './domain/travel-guide.types';
+} from '@sync/travel-guide-contracts';
 import { mapCandidatesToLlmFallback } from './map/travel-guide-map-plan.builder';
 import { TravelGuidePoiCollector } from './map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from './map/travel-guide-poi.ranker';

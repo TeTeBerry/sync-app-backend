@@ -1,12 +1,12 @@
 import type {
-  LlmTravelGuidePayload,
   TravelGuideAccommodationScheme,
   TravelGuideBudgetItem,
   TravelGuideHotelItem,
   TravelGuideSpotItem,
   TravelGuideTicketChannel,
   TravelGuideVenueTransportOption,
-} from './travel-guide.types';
+} from '@sync/travel-guide-contracts';
+import type { LlmTravelGuidePayload } from './travel-guide-llm.types';
 
 /** Coerce LLM / JSON drift into a single display line. */
 export function coerceGuideLine(value: unknown): string | null {

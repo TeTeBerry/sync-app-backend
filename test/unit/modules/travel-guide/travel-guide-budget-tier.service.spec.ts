@@ -7,7 +7,7 @@ import { AmapMapService } from '@src/modules/travel-guide/map/amap.service';
 import { TravelGuidePoiCollector } from '@src/modules/travel-guide/map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from '@src/modules/travel-guide/map/travel-guide-poi.ranker';
 import { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
-import type { TravelGuidePlan } from '@src/modules/travel-guide/domain/travel-guide.types';
+import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 
 const testActor = {
   clientUserId: 'wx_test',

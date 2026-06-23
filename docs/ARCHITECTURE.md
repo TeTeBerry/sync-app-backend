@@ -47,6 +47,10 @@ AppModule
 
 详见 [`modules/activity-experience/README.md`](../src/modules/activity-experience/README.md)。
 
+### Workspace 契约包（`packages/*-contracts`）
+
+`@sync/*-contracts` 源码在 `packages/*/`，编译产物同步到 `packages/*/dist`（`npm run build` 的 `postbuild`）。本地 `dist` 已在 `.gitignore`，可随时 `npm run clean:contracts` 清理；下次 `npm run build` 会重建。
+
 ### 读端口层
 
 | 模块 / 端口 | 用途 |

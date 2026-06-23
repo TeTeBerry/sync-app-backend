@@ -4,7 +4,6 @@ import {
   UserProfileAgent,
   type UserProfileSyncResult,
 } from '../agents/user-profile.agent';
-import { isAiShortcutTag } from '../../common/utils/demo-owner.util';
 import { mustForceCreatePostIntent } from '../policy/chat-turn-policy';
 import { AgentTurnHandler } from './handlers/agent-turn.handler';
 import { ReadOnlyTurnHandler } from './handlers/read-only-turn.handler';
@@ -165,10 +164,6 @@ export class AiTurnPipeline {
     actor: ChatRequestDto['actor'],
   ): Promise<UserProfileSyncResult | null> {
     if (kind !== 'create_post') {
-      return null;
-    }
-
-    if (isAiShortcutTag(input)) {
       return null;
     }
 

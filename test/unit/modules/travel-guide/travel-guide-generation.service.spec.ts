@@ -14,7 +14,7 @@ import { TravelGuideGuardService } from '@src/modules/travel-guide/travel-guide-
 import { TravelGuideSavedPlanService } from '@src/modules/travel-guide/travel-guide-saved-plan.service';
 import { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
-import type { TravelGuidePlan } from '@src/modules/travel-guide/domain/travel-guide.types';
+import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 
 const testActor = {
   clientUserId: 'wx_test',

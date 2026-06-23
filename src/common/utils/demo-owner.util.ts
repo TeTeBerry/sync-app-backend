@@ -1,12 +1,3 @@
-/** AI shortcut tags (reserved; currently unused). */
-export const AI_SHORTCUT_TAGS = [] as const;
-
-export const AI_SHORTCUT_TAG_ALIASES: Record<string, string> = {};
-
-export function normalizeAiShortcutInput(input: string): string {
-  return input.trim();
-}
-
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -79,9 +70,5 @@ export function isResourceOwnedByClient(
   if (name && record.authorName && authorNameMatches(record.authorName, name)) {
     return true;
   }
-  return false;
-}
-
-export function isAiShortcutTag(_input: string): boolean {
   return false;
 }

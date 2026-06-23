@@ -52,8 +52,6 @@ export function shouldRunAgentFirst(params: {
   input: string;
   conversationState: ConversationState;
   routed?: ResolvedChatIntent;
-  /** @deprecated Prefer `routed` */
-  routedKind?: string;
 }): boolean {
   if (!params.agentEnabled) {
     return false;
@@ -80,7 +78,7 @@ export function shouldRunAgentFirst(params: {
     return false;
   }
 
-  const routedKind = params.routed?.kind ?? params.routedKind;
+  const routedKind = params.routed?.kind;
   if (routedKind === 'create_post' || routedKind === 'activity_enter') {
     return false;
   }

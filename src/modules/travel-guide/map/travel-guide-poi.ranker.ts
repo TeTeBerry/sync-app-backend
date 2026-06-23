@@ -4,7 +4,7 @@ import {
   budgetTierHotelNightRanges,
   resolveTravelGuideBudgetTier,
 } from '../domain/parse-activity-days.util';
-import type { TravelGuideBudgetTier } from '../domain/travel-guide.types';
+import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
 import { isAfterpartyMapPoi } from './travel-guide-afterparty.constants';
 import type {
   RankedMapPoi,

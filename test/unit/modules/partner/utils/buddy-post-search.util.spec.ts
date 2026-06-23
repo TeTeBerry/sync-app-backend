@@ -2,8 +2,6 @@ import {
   buddyPostMatchesSearchCriteria,
   buddyPostMatchesSearchTerms,
   buildBodySearchTermsFromParsed,
-  buildSearchTermsFromParsed,
-  filterBuddyPostsBySearchTerms,
   fuzzyTextMatches,
   isBudgetBuddySearchTerm,
   isConfidentRuleBuddySearchParse,
@@ -68,13 +66,13 @@ describe('buddy-post-search.util', () => {
     });
     const rows = [newer, older];
 
-    const filtered = filterBuddyPostsBySearchTerms(rows, ['Techno']);
+    const filtered = rankBuddyPostsBySearch(rows, { searchTerms: ['Techno'] });
     expect(filtered.map((row) => String(row._id))).toEqual(['newer']);
   });
 
   it('builds search terms from parsed fields', () => {
     expect(
-      buildSearchTermsFromParsed({
+      buildBodySearchTermsFromParsed({
         eventName: 'EDC 韩国',
         date: '10.3',
         genre: 'Techno',
@@ -110,7 +108,7 @@ describe('buddy-post-search.util', () => {
       }),
     ];
 
-    const filtered = filterBuddyPostsBySearchTerms(rows, ['EDC']);
+    const filtered = rankBuddyPostsBySearch(rows, { searchTerms: ['EDC'] });
     expect(filtered.map((row) => String(row._id))).toEqual(['match']);
   });
 

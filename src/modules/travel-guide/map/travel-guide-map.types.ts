@@ -1,4 +1,4 @@
-import type { TravelGuideBudgetTier } from '../domain/travel-guide.types';
+import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
 
 export type MapPoiKind =
   | 'hotel'
