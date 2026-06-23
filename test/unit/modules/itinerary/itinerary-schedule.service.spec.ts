@@ -1,4 +1,8 @@
 import { ItineraryScheduleService } from '@src/modules/itinerary/itinerary-schedule.service';
+import { ItineraryConflictService } from '@src/modules/itinerary/itinerary-conflict.service';
+import { DiscogsGenreEnrichmentService } from '@src/modules/itinerary/discogs-genre-enrichment.service';
+import { LineupCatalogService } from '@src/modules/itinerary/lineup-catalog.service';
+import { ArtistProfileResolver } from '@src/modules/itinerary/artist-profile-resolver.service';
 
 describe('ItineraryScheduleService discogs styles', () => {
   const performanceModel = {
@@ -103,14 +107,29 @@ describe('ItineraryScheduleService discogs styles', () => {
       }),
     });
 
+    const conflictService = new ItineraryConflictService();
+    const discogsGenre = new DiscogsGenreEnrichmentService(djService as never);
+    const lineupCatalog = new LineupCatalogService(
+      performanceModel as never,
+      activityLookup as never,
+      djService as never,
+      lineupArtistAvatarService as never,
+      discogsGenre,
+    );
+    const artistProfileResolver = new ArtistProfileResolver(
+      lineupCatalog,
+      djService as never,
+    );
+
     service = new ItineraryScheduleService(
       performanceModel as never,
       sessionModel as never,
       activityService as never,
-      activityLookup as never,
       cache as never,
-      djService as never,
-      lineupArtistAvatarService as never,
+      conflictService,
+      discogsGenre,
+      lineupCatalog,
+      artistProfileResolver,
     );
   });
 

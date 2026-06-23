@@ -28,6 +28,10 @@ import { ItineraryController } from './itinerary.controller';
 import { ArtistController } from './artist.controller';
 import { ItineraryService } from './itinerary.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
+import { ItineraryConflictService } from './itinerary-conflict.service';
+import { DiscogsGenreEnrichmentService } from './discogs-genre-enrichment.service';
+import { LineupCatalogService } from './lineup-catalog.service';
+import { ArtistProfileResolver } from './artist-profile-resolver.service';
 import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryCacheService } from './itinerary-cache.service';
 import { LineupArtistAvatarService } from './lineup-artist-avatar.service';
@@ -53,6 +57,10 @@ import { LineupArtistAvatarService } from './lineup-artist-avatar.service';
   providers: [
     ItineraryService,
     ItineraryScheduleService,
+    ItineraryConflictService,
+    DiscogsGenreEnrichmentService,
+    LineupCatalogService,
+    ArtistProfileResolver,
     ItineraryGenerationService,
     ItineraryCacheService,
     LineupArtistAvatarService,

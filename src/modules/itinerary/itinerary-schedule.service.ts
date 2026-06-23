@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Inject,
-  NotFoundException,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
@@ -16,20 +11,10 @@ import {
 } from '../../database/schemas/festival-session.schema';
 import { ActivityService } from '../activity/activity.service';
 import {
-  ACTIVITY_LOOKUP_PORT,
-  type IActivityLookupPort,
-} from '../activity/ports/activity-lookup.port';
-import {
-  formatDiscogsStyleLabel,
-  mergeDiscogsStyleLabels,
-} from '../dj/discogs-style-label.util';
-import { DjService } from '../dj/dj.service';
-import type { DjCatalogItem } from '../dj/dj.types';
-import {
-  expandFestivalArtistName,
-  matchLineupArtistToCatalog,
-  SEED_ONLY_LINEUP_ARTISTS,
-} from '../dj/lineup-name-match.util';
+  hasItineraryCatalogSeed,
+  resolveLineupDjs,
+} from './domain/itinerary-catalog.util';
+import { ItineraryCacheService } from './itinerary-cache.service';
 import {
   ALL_ARTIST_PERFORMANCE_SEED,
   ALL_FESTIVAL_SESSION_SEED_COMBINED,
@@ -37,116 +22,28 @@ import {
   STORM_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
-  ITINERARY_TOMORROWLAND_THAILAND_ACTIVITY_LEGACY_ID,
 } from './itinerary.seed';
-import {
-  hasItineraryCatalogSeed,
-  resolveItineraryCatalogSeed,
-  resolveLineupDjs,
-} from './domain/itinerary-catalog.util';
-import { ItineraryCacheService } from './itinerary-cache.service';
-import { LineupArtistAvatarService } from './lineup-artist-avatar.service';
-import {
-  detectPerformanceConflicts,
-  type ItineraryConflict,
-  type PerformanceSlot,
-} from './domain/itinerary-conflict.util';
+import { ItineraryConflictService } from './itinerary-conflict.service';
+import { DiscogsGenreEnrichmentService } from './discogs-genre-enrichment.service';
+import { LineupCatalogService } from './lineup-catalog.service';
+import { ArtistProfileResolver } from './artist-profile-resolver.service';
+import type {
+  ArtistPerformanceHit,
+  CatalogLineupArtistDetailDto,
+  CatalogLineupArtistDto,
+  ItineraryDjDto,
+  ItineraryScheduleDto,
+} from './itinerary-schedule.types';
 import type { ActivityLookupRecord } from '../activity/ports/activity-lookup.port';
-import {
-  compareActivityDateAsc,
-  extractYearFromText,
-  isActivityEnded,
-} from '../../common/utils/activity-date.util';
-import { artistIdFromLineupName } from './utils/lineup-artist-id.util';
-import { buildArtistProfileDetailFromCatalog } from './utils/artist-profile-detail.util';
 
-export interface ItineraryDjDto {
-  id: string;
-  name: string;
-  genre: string;
-  genreLabel: string;
-  stage: string;
-  popularity: number;
-  avatarSeed: string;
-  genreColor: string;
-}
-
-export interface ArtistPerformanceHit {
-  activityLegacyId: number;
-  activityName: string;
-  artistName: string;
-  dateLabel: string;
-  stageLabel: string;
-  startTime: string;
-  endTime: string;
-  genreLabel: string;
-}
-
-export interface CatalogLineupArtistNextActivityDto {
-  legacyId: number;
-  name: string;
-  date: string;
-  area?: string;
-}
-
-export interface CatalogLineupArtistDto {
-  id: string;
-  name: string;
-  genreLabel: string;
-  activityCount: number;
-  thumbnail?: string;
-  nextActivity?: CatalogLineupArtistNextActivityDto;
-}
-
-export interface CatalogLineupArtistDetailDto extends CatalogLineupArtistDto {
-  profileSummary?: string;
-  profileFull?: string;
-  representativeTracks?: string[];
-}
-
-type CatalogLineupArtistEntryInternal = {
-  artistName: string;
-  genreLabel: string;
-  activityIds: Set<number>;
-};
-
-export interface ItineraryScheduleDto {
-  activityLegacyId: number;
-  eventMeta: string;
-  sessions: Array<{
-    dateKey: string;
-    label: string;
-    bannerDateLabel: string;
-  }>;
-  djs: ItineraryDjDto[];
-  performances: Array<{
-    artistId: string;
-    artistName: string;
-    dateKey: string;
-    dateLabel: string;
-    genre: string;
-    genreLabel: string;
-    stage: string;
-    stageLabel: string;
-    startTime: string;
-    endTime: string;
-    startMinutes: number;
-    endMinutes: number;
-    popularity: number;
-    avatarSeed: string;
-    genreColor: string;
-  }>;
-  conflicts: ItineraryConflict[];
-  /** False when only lineup is published without official performance slots. */
-  schedulePublished: boolean;
-}
-
-const DISCOGS_STYLE_ACTIVITY_LEGACY_IDS = new Set([
-  STORM_ACTIVITY_LEGACY_ID,
-  ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
-  ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
-  ITINERARY_TOMORROWLAND_THAILAND_ACTIVITY_LEGACY_ID,
-]);
+export type {
+  ArtistPerformanceHit,
+  CatalogLineupArtistDetailDto,
+  CatalogLineupArtistDto,
+  CatalogLineupArtistNextActivityDto,
+  ItineraryDjDto,
+  ItineraryScheduleDto,
+} from './itinerary-schedule.types';
 
 @Injectable()
 export class ItineraryScheduleService implements OnModuleInit {
@@ -156,11 +53,11 @@ export class ItineraryScheduleService implements OnModuleInit {
     @InjectModel(FestivalSession.name)
     private readonly sessionModel: Model<FestivalSessionDocument>,
     private readonly activityService: ActivityService,
-    @Inject(ACTIVITY_LOOKUP_PORT)
-    private readonly activityLookup: IActivityLookupPort,
     private readonly cache: ItineraryCacheService,
-    private readonly djService: DjService,
-    private readonly lineupArtistAvatarService: LineupArtistAvatarService,
+    private readonly conflictService: ItineraryConflictService,
+    private readonly discogsGenre: DiscogsGenreEnrichmentService,
+    private readonly lineupCatalog: LineupCatalogService,
+    private readonly artistProfileResolver: ArtistProfileResolver,
   ) {}
 
   async onModuleInit() {
@@ -287,20 +184,23 @@ export class ItineraryScheduleService implements OnModuleInit {
     }
 
     const eventMeta = activity.name;
-    const styledPerformances = await this.applyDiscogsStylesToPerformances(
-      activityLegacyId,
-      performances as ArtistPerformance[],
-    );
+    const styledPerformances =
+      await this.discogsGenre.applyDiscogsStylesToPerformances(
+        activityLegacyId,
+        performances as ArtistPerformance[],
+      );
     const schedulePublished = styledPerformances.length > 0;
     const djs = schedulePublished
       ? this.aggregateDjs(styledPerformances)
-      : await this.applyDiscogsStylesToLineupDjs(
+      : await this.discogsGenre.applyDiscogsStylesToLineupDjs(
           activityLegacyId,
           resolveLineupDjs(activityLegacyId),
         );
-    const slots = this.toPerformanceSlots(styledPerformances);
     const conflicts = options?.selectedDjIds?.length
-      ? detectPerformanceConflicts(slots, options.selectedDjIds)
+      ? this.conflictService.detectConflicts(
+          styledPerformances,
+          options.selectedDjIds,
+        )
       : [];
 
     const dto: ItineraryScheduleDto = {
@@ -385,472 +285,40 @@ export class ItineraryScheduleService implements OnModuleInit {
     };
   }
 
-  detectConflicts(
-    performances: ArtistPerformance[],
-    selectedDjIds: string[],
-  ): ItineraryConflict[] {
-    return detectPerformanceConflicts(
-      this.toPerformanceSlots(performances),
-      selectedDjIds,
-    );
+  detectConflicts(performances: ArtistPerformance[], selectedDjIds: string[]) {
+    return this.conflictService.detectConflicts(performances, selectedDjIds);
   }
 
-  private aggregateDjs(performances: ArtistPerformance[]): ItineraryDjDto[] {
-    const map = new Map<string, ItineraryDjDto>();
-    for (const p of performances) {
-      const existing = map.get(p.artistId);
-      if (!existing || p.popularity > existing.popularity) {
-        map.set(p.artistId, {
-          id: p.artistId,
-          name: p.artistName,
-          genre: p.genre,
-          genreLabel: p.genreLabel,
-          stage: p.stage,
-          popularity: p.popularity,
-          avatarSeed: p.avatarSeed,
-          genreColor: p.genreColor,
-        });
-      }
-    }
-    return [...map.values()].sort((a, b) => b.popularity - a.popularity);
+  listLineupArtistsForActivities(activityLegacyIds: number[]) {
+    return this.lineupCatalog.listLineupArtistsForActivities(activityLegacyIds);
   }
 
-  /**
-   * Unique artists on announced lineups for existing activities.
-   * Only `activityLegacyIds` present in the activity catalog are considered.
-   */
-  async listLineupArtistsForActivities(
-    activityLegacyIds: number[],
-  ): Promise<Array<{ artistName: string; genreLabel: string }>> {
-    const requested = [
-      ...new Set(activityLegacyIds.filter((id) => Number.isFinite(id))),
-    ];
-    if (!requested.length) {
-      return [];
-    }
-
-    const activities = await this.activityLookup.findAll();
-    const existingIds = new Set(
-      activities.map((activity) => activity.legacyId),
-    );
-    const targetActivities = activities.filter((activity) =>
-      requested.includes(activity.legacyId),
-    );
-    if (!targetActivities.length) {
-      return [];
-    }
-
-    const legacyIds = targetActivities
-      .map((activity) => activity.legacyId)
-      .filter((id) => existingIds.has(id));
-    const performances = await this.performanceModel
-      .find({ activityLegacyId: { $in: legacyIds } })
-      .select('activityLegacyId artistName genreLabel')
-      .lean()
-      .exec();
-
-    const byName = new Map<
-      string,
-      { artistName: string; genreLabel: string }
-    >();
-    const addArtist = (artistName: string, genreLabel: string) => {
-      const trimmed = artistName.trim();
-      if (!trimmed) return;
-      const key = trimmed.toLowerCase();
-      if (byName.has(key)) return;
-      byName.set(key, {
-        artistName: trimmed,
-        genreLabel: genreLabel.trim() || 'Electronic',
-      });
-    };
-
-    for (const activity of targetActivities) {
-      for (const artist of this.collectLineupArtistsForActivity(
-        activity.legacyId,
-        performances,
-      )) {
-        addArtist(artist.artistName, artist.genreLabel);
-      }
-    }
-
-    return [...byName.values()];
+  listCatalogLineupArtistsRanked(): Promise<CatalogLineupArtistDto[]> {
+    return this.lineupCatalog.listCatalogLineupArtistsRanked();
   }
 
-  /**
-   * Unique lineup artists across all activities in the catalog, ranked by
-   * upcoming appearances first, then activity count.
-   */
-  async listCatalogLineupArtistsRanked(): Promise<CatalogLineupArtistDto[]> {
-    const index = await this.buildCatalogLineupArtistIndex();
-    if (!index.entries.length) {
-      return [];
-    }
-
-    const ranked = index.entries
-      .map((entry) => this.toCatalogLineupArtistDto(entry, index))
-      .filter((entry) => Boolean(entry.thumbnail?.trim()));
-
-    return ranked.sort((a, b) => this.compareCatalogLineupArtists(a, b));
-  }
-
-  async resolveCatalogLineupArtistById(
+  resolveCatalogLineupArtistById(
     id: string,
     options?: { requireThumbnail?: boolean },
   ): Promise<CatalogLineupArtistDto> {
-    const slug = id.trim();
-    if (!slug) {
-      throw new NotFoundException('Artist not found');
-    }
-
-    const index = await this.buildCatalogLineupArtistIndex();
-    const entry = index.entries.find(
-      (item) => artistIdFromLineupName(item.artistName) === slug,
-    );
-    if (!entry) {
-      throw new NotFoundException('Artist not found');
-    }
-
-    const dto = this.toCatalogLineupArtistDto(entry, index);
-    if (options?.requireThumbnail !== false && !dto.thumbnail?.trim()) {
-      throw new NotFoundException('Artist not found');
-    }
-
-    return dto;
+    return this.lineupCatalog.resolveCatalogLineupArtistById(id, options);
   }
 
-  async getCatalogLineupArtistDetail(
+  getCatalogLineupArtistDetail(
     id: string,
   ): Promise<CatalogLineupArtistDetailDto> {
-    const artist = await this.resolveCatalogLineupArtistById(id, {
-      requireThumbnail: false,
-    });
-    const catalog = await this.djService.lookupForLineupArtists([artist.name]);
-    const catalogItem = catalog.get(artist.name);
-    const displayProfile = catalogItem
-      ? await this.djService.resolveProfileForDisplay(
-          catalogItem.discogsId,
-          catalogItem.profile,
-        )
-      : undefined;
-    const profileDetail = buildArtistProfileDetailFromCatalog(
-      catalogItem
-        ? {
-            ...catalogItem,
-            ...(displayProfile ? { profile: displayProfile } : {}),
-          }
-        : undefined,
-    );
-
-    return {
-      ...artist,
-      ...profileDetail,
-      ...(profileDetail.representativeTracks.length
-        ? { representativeTracks: profileDetail.representativeTracks }
-        : {}),
-    };
+    return this.artistProfileResolver.getCatalogLineupArtistDetail(id);
   }
 
-  async listActivitiesForLineupArtist(
-    id: string,
-  ): Promise<ActivityLookupRecord[]> {
-    const artist = await this.resolveCatalogLineupArtistById(id, {
-      requireThumbnail: false,
-    });
-    const hits = await this.findArtistLineupMemberships({
-      artistName: artist.name,
-    });
-    if (!hits.length) {
-      return [];
-    }
-
-    const legacyIds = [...new Set(hits.map((hit) => hit.activityLegacyId))];
-    const recordsById = await this.activityLookup.findByLegacyIds(legacyIds);
-    const records = legacyIds
-      .map((legacyId) => recordsById.get(legacyId))
-      .filter((record): record is ActivityLookupRecord => Boolean(record));
-
-    return records.sort((a, b) =>
-      compareActivityDateAsc(
-        { date: a.date, title: a.name },
-        { date: b.date, title: b.name },
-      ),
-    );
+  listActivitiesForLineupArtist(id: string): Promise<ActivityLookupRecord[]> {
+    return this.lineupCatalog.listActivitiesForLineupArtist(id);
   }
 
-  private async buildCatalogLineupArtistIndex(): Promise<{
-    activities: ActivityLookupRecord[];
-    activitiesByLegacyId: Map<number, ActivityLookupRecord>;
-    entries: CatalogLineupArtistEntryInternal[];
-    catalogByLineupName: Map<string, DjCatalogItem>;
-    catalog: DjCatalogItem[];
-    avatarUrlsByKey: Map<string, string>;
-  }> {
-    const activities = await this.activityLookup.findAll();
-    const activitiesByLegacyId = new Map(
-      activities.map((activity) => [activity.legacyId, activity]),
-    );
-
-    if (!activities.length) {
-      return {
-        activities,
-        activitiesByLegacyId,
-        entries: [],
-        catalogByLineupName: new Map(),
-        catalog: [],
-        avatarUrlsByKey: new Map(),
-      };
-    }
-
-    const legacyIds = activities.map((activity) => activity.legacyId);
-    const performances = await this.performanceModel
-      .find({ activityLegacyId: { $in: legacyIds } })
-      .select('activityLegacyId artistName genreLabel')
-      .lean()
-      .exec();
-
-    const byArtist = new Map<string, CatalogLineupArtistEntryInternal>();
-
-    for (const activity of activities) {
-      for (const artist of this.collectLineupArtistsForActivity(
-        activity.legacyId,
-        performances,
-      )) {
-        const key = artist.artistName.trim().toLowerCase();
-        if (!key) {
-          continue;
-        }
-        let entry = byArtist.get(key);
-        if (!entry) {
-          entry = {
-            artistName: artist.artistName.trim(),
-            genreLabel: artist.genreLabel,
-            activityIds: new Set<number>(),
-          };
-          byArtist.set(key, entry);
-        }
-        entry.activityIds.add(activity.legacyId);
-      }
-    }
-
-    const entries = [...byArtist.values()];
-    const artistNames = entries.map((entry) => entry.artistName);
-    const [catalogByLineupName, catalog, avatarUrlsByKey] = entries.length
-      ? await Promise.all([
-          this.djService.lookupForLineupArtists(artistNames),
-          this.djService.loadCatalog(),
-          this.lineupArtistAvatarService.findAvatarUrlsByArtistNames(
-            artistNames,
-          ),
-        ])
-      : [new Map<string, DjCatalogItem>(), [], new Map<string, string>()];
-
-    return {
-      activities,
-      activitiesByLegacyId,
-      entries,
-      catalogByLineupName,
-      catalog,
-      avatarUrlsByKey,
-    };
-  }
-
-  private toCatalogLineupArtistDto(
-    entry: CatalogLineupArtistEntryInternal,
-    index: {
-      activitiesByLegacyId: Map<number, ActivityLookupRecord>;
-      catalogByLineupName: Map<string, DjCatalogItem>;
-      catalog: DjCatalogItem[];
-      avatarUrlsByKey: Map<string, string>;
-    },
-  ): CatalogLineupArtistDto {
-    const genreLabel = this.resolveDiscogsGenreLabel(
-      entry.artistName,
-      entry.genreLabel,
-      index.catalogByLineupName,
-      index.catalog,
-    );
-    const nameKey = entry.artistName.trim().toLowerCase();
-    const nextActivity = this.pickNextActivityForArtist(
-      entry.activityIds,
-      index.activitiesByLegacyId,
-    );
-
-    return {
-      id: artistIdFromLineupName(entry.artistName),
-      name: entry.artistName,
-      genreLabel,
-      activityCount: entry.activityIds.size,
-      thumbnail: index.avatarUrlsByKey.get(nameKey),
-      ...(nextActivity ? { nextActivity } : {}),
-    };
-  }
-
-  private pickNextActivityForArtist(
-    activityIds: Set<number>,
-    activitiesByLegacyId: Map<number, ActivityLookupRecord>,
-    now = new Date(),
-  ): CatalogLineupArtistNextActivityDto | undefined {
-    const upcoming = [...activityIds]
-      .map((legacyId) => activitiesByLegacyId.get(legacyId))
-      .filter((activity): activity is ActivityLookupRecord => Boolean(activity))
-      .filter(
-        (activity) =>
-          !isActivityEnded(activity.date, {
-            yearHint: extractYearFromText(activity.name),
-            now,
-          }),
-      )
-      .sort((a, b) =>
-        compareActivityDateAsc(
-          { date: a.date, title: a.name },
-          { date: b.date, title: b.name },
-        ),
-      );
-
-    const next = upcoming[0];
-    if (!next) {
-      return undefined;
-    }
-
-    return {
-      legacyId: next.legacyId,
-      name: next.name?.trim() || `活动 ${next.legacyId}`,
-      date: next.date?.trim() || '',
-      ...(next.area?.trim() ? { area: next.area.trim() } : {}),
-    };
-  }
-
-  private compareCatalogLineupArtists(
-    a: CatalogLineupArtistDto,
-    b: CatalogLineupArtistDto,
-  ): number {
-    const aHasUpcoming = Boolean(a.nextActivity);
-    const bHasUpcoming = Boolean(b.nextActivity);
-    if (aHasUpcoming !== bHasUpcoming) {
-      return aHasUpcoming ? -1 : 1;
-    }
-
-    if (aHasUpcoming && bHasUpcoming && a.nextActivity && b.nextActivity) {
-      const byDate = compareActivityDateAsc(
-        { date: a.nextActivity.date, title: a.nextActivity.name },
-        { date: b.nextActivity.date, title: b.nextActivity.name },
-      );
-      if (byDate !== 0) {
-        return byDate;
-      }
-    }
-
-    if (b.activityCount !== a.activityCount) {
-      return b.activityCount - a.activityCount;
-    }
-
-    return a.name.localeCompare(b.name, 'zh');
-  }
-
-  /** Find activities where an artist appears on the announced lineup (not timetable-only). */
-  async findArtistLineupMemberships(params: {
+  findArtistLineupMemberships(params: {
     artistName: string;
     activityLegacyId?: number;
   }): Promise<ArtistPerformanceHit[]> {
-    const keyword = params.artistName.trim();
-    if (!keyword) {
-      return [];
-    }
-
-    const pattern = new RegExp(
-      keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-      'i',
-    );
-    const activities = await this.activityLookup.findAll();
-    const targets =
-      params.activityLegacyId != null && !Number.isNaN(params.activityLegacyId)
-        ? activities.filter(
-            (activity) => activity.legacyId === params.activityLegacyId,
-          )
-        : activities;
-
-    if (!targets.length) {
-      return [];
-    }
-
-    const legacyIds = targets.map((activity) => activity.legacyId);
-    const performances = await this.performanceModel
-      .find({ activityLegacyId: { $in: legacyIds } })
-      .select('activityLegacyId artistName genreLabel')
-      .lean()
-      .exec();
-
-    const hits: ArtistPerformanceHit[] = [];
-    for (const activity of targets) {
-      const artists = this.collectLineupArtistsForActivity(
-        activity.legacyId,
-        performances,
-      );
-      for (const artist of artists) {
-        if (!pattern.test(artist.artistName)) {
-          continue;
-        }
-        hits.push({
-          activityLegacyId: activity.legacyId,
-          activityName: activity.name?.trim() || `活动 ${activity.legacyId}`,
-          artistName: artist.artistName,
-          dateLabel: activity.date?.trim() || '',
-          stageLabel: '官宣阵容',
-          startTime: '',
-          endTime: '',
-          genreLabel: artist.genreLabel,
-        });
-      }
-    }
-
-    return hits;
-  }
-
-  private collectLineupArtistsForActivity(
-    activityLegacyId: number,
-    performances: Array<{
-      activityLegacyId: number;
-      artistName?: string;
-      genreLabel?: string;
-    }>,
-  ): Array<{ artistName: string; genreLabel: string }> {
-    const byName = new Map<
-      string,
-      { artistName: string; genreLabel: string }
-    >();
-    const addArtist = (artistName: string, genreLabel: string) => {
-      const trimmed = artistName.trim();
-      if (!trimmed) return;
-      const key = trimmed.toLowerCase();
-      if (byName.has(key)) return;
-      byName.set(key, {
-        artistName: trimmed,
-        genreLabel: genreLabel.trim() || 'Electronic',
-      });
-    };
-
-    const beforeCount = byName.size;
-
-    for (const perf of performances) {
-      if (perf.activityLegacyId !== activityLegacyId) {
-        continue;
-      }
-      addArtist(perf.artistName ?? '', perf.genreLabel ?? '');
-    }
-
-    for (const dj of resolveLineupDjs(activityLegacyId)) {
-      addArtist(dj.name, dj.genreLabel);
-    }
-
-    if (byName.size === beforeCount) {
-      const { performances: seedPerformances } =
-        resolveItineraryCatalogSeed(activityLegacyId);
-      for (const perf of seedPerformances) {
-        addArtist(perf.artistName, perf.genreLabel);
-      }
-    }
-
-    return [...byName.values()];
+    return this.lineupCatalog.findArtistLineupMemberships(params);
   }
 
   async findArtistPerformances(params: {
@@ -900,7 +368,7 @@ export class ItineraryScheduleService implements OnModuleInit {
       const activityPerfs = performances.filter(
         (perf) => perf.activityLegacyId === activityId,
       );
-      const styled = await this.applyDiscogsStylesToPerformances(
+      const styled = await this.discogsGenre.applyDiscogsStylesToPerformances(
         activityId,
         activityPerfs as ArtistPerformance[],
       );
@@ -926,134 +394,23 @@ export class ItineraryScheduleService implements OnModuleInit {
     }));
   }
 
-  private async applyDiscogsStylesToLineupDjs(
-    activityLegacyId: number,
-    djs: ItineraryDjDto[],
-  ): Promise<ItineraryDjDto[]> {
-    if (
-      !DISCOGS_STYLE_ACTIVITY_LEGACY_IDS.has(activityLegacyId) ||
-      !djs.length
-    ) {
-      return djs;
-    }
-
-    const lookupNames = [
-      ...new Set(
-        djs.flatMap((dj) => [dj.name, ...expandFestivalArtistName(dj.name)]),
-      ),
-    ];
-    const catalogByLineupName =
-      await this.djService.lookupForLineupArtists(lookupNames);
-    const catalog = await this.djService.loadCatalog();
-
-    return djs.map((dj) => ({
-      ...dj,
-      genreLabel: this.resolveDiscogsGenreLabel(
-        dj.name,
-        dj.genreLabel,
-        catalogByLineupName,
-        catalog,
-      ),
-    }));
-  }
-
-  private async applyDiscogsStylesToPerformances(
-    activityLegacyId: number,
-    performances: ArtistPerformance[],
-  ): Promise<ArtistPerformance[]> {
-    if (
-      !DISCOGS_STYLE_ACTIVITY_LEGACY_IDS.has(activityLegacyId) ||
-      !performances.length
-    ) {
-      return performances;
-    }
-
-    const lookupNames = [
-      ...new Set(
-        performances.flatMap((perf) => [
-          perf.artistName,
-          ...expandFestivalArtistName(perf.artistName),
-        ]),
-      ),
-    ];
-    const catalogByLineupName =
-      await this.djService.lookupForLineupArtists(lookupNames);
-    const catalog = await this.djService.loadCatalog();
-
-    return performances.map((perf) => ({
-      ...perf,
-      genreLabel: this.resolveDiscogsGenreLabel(
-        perf.artistName,
-        perf.genreLabel,
-        catalogByLineupName,
-        catalog,
-      ),
-    }));
-  }
-
-  private resolveDiscogsGenreLabel(
-    artistName: string,
-    seedGenreLabel: string,
-    catalogByLineupName: Map<string, DjCatalogItem>,
-    catalog: DjCatalogItem[],
-  ): string {
-    const trimmed = artistName.trim();
-    if (trimmed === '国内艺人') {
-      return '国内艺人';
-    }
-    if (SEED_ONLY_LINEUP_ARTISTS.has(trimmed.toUpperCase())) {
-      return this.fallbackGenreLabel(seedGenreLabel);
-    }
-
-    const b2bParts = expandFestivalArtistName(trimmed);
-    if (b2bParts.length > 1) {
-      const partItems = b2bParts
-        .map(
-          (part) =>
-            catalogByLineupName.get(part) ??
-            matchLineupArtistToCatalog(part, catalog),
-        )
-        .filter((item): item is DjCatalogItem => Boolean(item));
-      const merged = mergeDiscogsStyleLabels(partItems);
-      if (merged !== '风格待补充') {
-        return merged;
+  private aggregateDjs(performances: ArtistPerformance[]): ItineraryDjDto[] {
+    const map = new Map<string, ItineraryDjDto>();
+    for (const p of performances) {
+      const existing = map.get(p.artistId);
+      if (!existing || p.popularity > existing.popularity) {
+        map.set(p.artistId, {
+          id: p.artistId,
+          name: p.artistName,
+          genre: p.genre,
+          genreLabel: p.genreLabel,
+          stage: p.stage,
+          popularity: p.popularity,
+          avatarSeed: p.avatarSeed,
+          genreColor: p.genreColor,
+        });
       }
     }
-
-    const catalogItem =
-      catalogByLineupName.get(trimmed) ??
-      matchLineupArtistToCatalog(trimmed, catalog);
-    if (!catalogItem) {
-      return this.fallbackGenreLabel(seedGenreLabel);
-    }
-
-    const discogsLabel = formatDiscogsStyleLabel(catalogItem);
-    if (discogsLabel === '风格待补充') {
-      return this.fallbackGenreLabel(seedGenreLabel);
-    }
-    return discogsLabel;
-  }
-
-  private fallbackGenreLabel(seedGenreLabel: string): string {
-    const trimmed = seedGenreLabel?.trim();
-    if (trimmed && trimmed !== '风格待补充') {
-      return trimmed;
-    }
-    return '风格待补充';
-  }
-
-  private toPerformanceSlots(
-    performances: ArtistPerformance[],
-  ): PerformanceSlot[] {
-    return performances.map((p) => ({
-      artistId: p.artistId,
-      artistName: p.artistName,
-      dateKey: p.dateKey,
-      startMinutes: p.startMinutes,
-      endMinutes: p.endMinutes,
-      startTime: p.startTime,
-      endTime: p.endTime,
-      stageLabel: p.stageLabel,
-    }));
+    return [...map.values()].sort((a, b) => b.popularity - a.popularity);
   }
 }

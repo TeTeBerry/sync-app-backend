@@ -24,12 +24,15 @@ import { AmapMapService } from './map/amap.service';
 import { TravelGuideGeoCacheService } from './map/travel-guide-geo-cache.service';
 import { TravelGuidePoiCollector } from './map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from './map/travel-guide-poi.ranker';
+import { TravelGuidePoiPipeline } from './map/travel-guide-poi.pipeline';
 import { TravelGuideVenueCacheSeedService } from './map/travel-guide-venue-cache.seed';
 import { TravelGuideController } from './travel-guide.controller';
 import { TravelGuideMapController } from './travel-guide-map.controller';
 import { TravelGuideGenerationCacheService } from './travel-guide-generation-cache.service';
 import { TravelGuideGenerationJobService } from './travel-guide-generation-job.service';
 import { TravelGuideGenerationService } from './travel-guide-generation.service';
+import { TravelGuideGenerationOrchestrator } from './travel-guide-generation-orchestrator.service';
+import { TravelGuideLlmPolishService } from './travel-guide-llm-polish.service';
 import { TravelGuideBudgetTierService } from './travel-guide-budget-tier.service';
 import { TravelGuideGuardService } from './travel-guide-guard.service';
 import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
@@ -63,6 +66,9 @@ import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
     TravelGuideVenueCacheSeedService,
     TravelGuidePoiCollector,
     TravelGuidePoiRanker,
+    TravelGuidePoiPipeline,
+    TravelGuideLlmPolishService,
+    TravelGuideGenerationOrchestrator,
     TravelGuideGenerationCacheService,
     TravelGuideGenerationJobService,
     TravelGuideGenerationService,

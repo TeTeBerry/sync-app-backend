@@ -1,6 +1,9 @@
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { TravelGuideGenerationService } from '@src/modules/travel-guide/travel-guide-generation.service';
+import { TravelGuideGenerationOrchestrator } from '@src/modules/travel-guide/travel-guide-generation-orchestrator.service';
+import { TravelGuideLlmPolishService } from '@src/modules/travel-guide/travel-guide-llm-polish.service';
+import { TravelGuidePoiPipeline } from '@src/modules/travel-guide/map/travel-guide-poi.pipeline';
 import { ActivityService } from '@src/modules/activity/activity.service';
 import { LlmService } from '@src/infra/llm/llm.service';
 import { AmapMapService } from '@src/modules/travel-guide/map/amap.service';
@@ -59,6 +62,9 @@ describe('TravelGuideGenerationService cache', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         TravelGuideGenerationService,
+        TravelGuideGenerationOrchestrator,
+        TravelGuidePoiPipeline,
+        TravelGuideLlmPolishService,
         {
           provide: ConfigService,
           useValue: {
@@ -83,7 +89,11 @@ describe('TravelGuideGenerationService cache', () => {
         { provide: TravelGuidePoiRanker, useValue: { rank: jest.fn() } },
         {
           provide: TravelGuideGenerationCacheService,
-          useValue: { findPlan, savePlan },
+          useValue: {
+            findPlan,
+            findSimilarPlan: jest.fn().mockResolvedValue(null),
+            savePlan,
+          },
         },
         {
           provide: TravelGuideSavedPlanService,
