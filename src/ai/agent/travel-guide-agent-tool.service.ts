@@ -1,7 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ActivityService } from '../../modules/activity/activity.service';
-import { TravelGuideGenerationJobService } from '../../modules/travel-guide/travel-guide-generation-job.service';
+import {
+  ITravelGuidePort,
+  TRAVEL_GUIDE_PORT,
+} from '../../modules/travel-guide/ports/travel-guide-agent.port';
 import { parseActivityDayCount } from '../../modules/travel-guide/domain/parse-activity-days.util';
 import {
   clearActiveTask,
@@ -40,7 +43,8 @@ export class TravelGuideAgentToolService {
 
   constructor(
     private readonly activityService: ActivityService,
-    private readonly generationJobService: TravelGuideGenerationJobService,
+    @Inject(TRAVEL_GUIDE_PORT)
+    private readonly travelGuide: ITravelGuidePort,
     private readonly sseBuilder: AiStreamEventBuilder,
   ) {}
 
@@ -154,7 +158,7 @@ export class TravelGuideAgentToolService {
         accommodationNights: form.accommodationNights,
       };
 
-      const { jobId } = await this.generationJobService.createJob(
+      const { jobId } = await this.travelGuide.createGenerationJob(
         legacyId,
         {
           guideId,

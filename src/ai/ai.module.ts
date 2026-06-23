@@ -4,16 +4,15 @@ import { AuthModule } from '../modules/auth/auth.module';
 import { MediaSecurityModule } from '../modules/media-security/media-security.module';
 import { ActivityModule } from '../modules/activity/activity.module';
 import { ChatModule } from '../modules/chat/chat.module';
-import { PartnerModule } from '../modules/partner/partner.module';
+import { PartnerAgentPortsModule } from '../modules/partner/partner-agent-ports.module';
+import { ItineraryAgentPortsModule } from '../modules/itinerary/itinerary-agent-ports.module';
 import { HandlerModule } from './handlers/handler.module';
 import { OrchestrationModule } from './orchestration/orchestration.module';
 import { InfraLlmModule } from '../infra/llm/llm.module';
 import { AgentsModule } from './agents/agents.module';
-import { PostAgentAdaptersModule } from './adapters/post-agent-adapters.module';
 import { BuddyModule } from './buddy/buddy.module';
 import { IntentRouterModule } from './intent/intent-router.module';
 import { DjInfoModule } from './dj/dj-info.module';
-import { ItineraryModule } from '../modules/itinerary/itinerary.module';
 import { ChatAgentModule } from './agent/chat-agent.module';
 import { AiRateLimitService } from './ai-rate-limit.service';
 import { AiTurnPipeline } from './orchestration/ai-turn.pipeline';
@@ -32,7 +31,7 @@ import { AiChatWsServer } from './ws/ai-chat-ws.server';
     MediaSecurityModule,
     ActivityModule,
     ChatModule,
-    PartnerModule,
+    PartnerAgentPortsModule,
     HandlerModule,
     OrchestrationModule,
     InfraLlmModule,
@@ -40,7 +39,7 @@ import { AiChatWsServer } from './ws/ai-chat-ws.server';
     IntentRouterModule,
     BuddyModule,
     DjInfoModule,
-    ItineraryModule,
+    ItineraryAgentPortsModule,
     ChatAgentModule,
   ],
   providers: [

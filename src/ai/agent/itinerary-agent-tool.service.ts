@@ -1,6 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { ItineraryService } from '../../modules/itinerary/itinerary.service';
+import {
+  IItineraryPort,
+  ITINERARY_PORT,
+} from '../../modules/itinerary/ports/itinerary-agent.port';
 import { PersonalityTestService } from '../../modules/personality-test/personality-test.service';
 import {
   clearActiveTask,
@@ -34,7 +37,7 @@ export class ItineraryAgentToolService {
   private readonly logger = new Logger(ItineraryAgentToolService.name);
 
   constructor(
-    private readonly itineraryService: ItineraryService,
+    @Inject(ITINERARY_PORT) private readonly itinerary: IItineraryPort,
     private readonly personalityTest: PersonalityTestService,
     private readonly sseBuilder: AiStreamEventBuilder,
   ) {}
@@ -51,7 +54,7 @@ export class ItineraryAgentToolService {
       };
     }
 
-    const schedule = await this.itineraryService.getSchedule(legacyId, {});
+    const schedule = await this.itinerary.getSchedule(legacyId, {});
 
     return {
       ok: true,
@@ -111,7 +114,7 @@ export class ItineraryAgentToolService {
     }
 
     const sink = asSink(runtime);
-    const schedule = await this.itineraryService.getSchedule(legacyId, {});
+    const schedule = await this.itinerary.getSchedule(legacyId, {});
 
     let djIds = [...(selectedDjIds ?? [])].filter(Boolean);
     if (!djIds.length) {
@@ -186,7 +189,7 @@ export class ItineraryAgentToolService {
 
     const sink = asSink(runtime);
     try {
-      const result = await this.itineraryService.generate(
+      const result = await this.itinerary.generate(
         legacyId,
         { selectedDjIds: ids, dateKey },
         input.dto.actor,

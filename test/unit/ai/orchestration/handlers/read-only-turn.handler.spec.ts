@@ -8,7 +8,7 @@ describe('ReadOnlyTurnHandler', () => {
       replyText: '🎤 TML 阵容 DJ\n· Artist A',
     }),
   };
-  const itineraryService = {
+  const itineraryPort = {
     getSchedule: jest.fn().mockResolvedValue({
       eventMeta: 'Tomorrowland Thailand',
       djs: [{ id: '1', name: 'Martin Garrix' }],
@@ -33,7 +33,7 @@ describe('ReadOnlyTurnHandler', () => {
   };
   const handler = new ReadOnlyTurnHandler(
     djInfoService as never,
-    itineraryService as never,
+    itineraryPort as never,
     activityService as never,
     new AiStreamEventBuilder(),
   );
@@ -91,7 +91,7 @@ describe('ReadOnlyTurnHandler', () => {
     });
 
     expect(result?.events.some((event) => event.type === 'delta')).toBe(true);
-    expect(itineraryService.getSchedule).toHaveBeenCalledWith(1, {});
+    expect(itineraryPort.getSchedule).toHaveBeenCalledWith(1, {});
     expect(baseCtx.sink.setReply).toHaveBeenCalledWith(
       expect.stringContaining('官方演出表已发布'),
     );

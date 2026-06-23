@@ -1,7 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DjInfoService } from '../../dj/dj-info.service';
 import { buildItineraryScheduleOverviewReply } from '../../agent/itinerary-schedule-reply.util';
-import { ItineraryService } from '../../../modules/itinerary/itinerary.service';
+import {
+  IItineraryPort,
+  ITINERARY_PORT,
+} from '../../../modules/itinerary/ports/itinerary-agent.port';
 import { ActivityService } from '../../../modules/activity/activity.service';
 import { buildDjInfoSuggestedReplies } from '../../dj/dj-info-suggested-replies.util';
 import { buildItineraryCollectPrompt } from '../../agent/itinerary-chat-slots.util';
@@ -26,7 +29,7 @@ export class ReadOnlyTurnHandler {
 
   constructor(
     private readonly djInfoService: DjInfoService,
-    private readonly itineraryService: ItineraryService,
+    @Inject(ITINERARY_PORT) private readonly itinerary: IItineraryPort,
     private readonly activityService: ActivityService,
     private readonly sseBuilder: AiStreamEventBuilder,
   ) {}
@@ -139,10 +142,7 @@ export class ReadOnlyTurnHandler {
       return [];
     }
 
-    const schedule = await this.itineraryService.getSchedule(
-      activityLegacyId,
-      {},
-    );
+    const schedule = await this.itinerary.getSchedule(activityLegacyId, {});
     const replyText = buildItineraryScheduleOverviewReply(schedule);
     ctx.sink.setReply(replyText);
 

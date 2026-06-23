@@ -1,11 +1,21 @@
-import { Injectable } from '@nestjs/common';
-import { PostService } from '../../modules/partner/post.service';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  IPostQueryPort,
+  POST_QUERY_PORT,
+} from '../../modules/partner/ports/post-query.port';
+import {
+  IPostWritePort,
+  POST_WRITE_PORT,
+} from '../../modules/partner/ports/post-write.port';
 import type { ChatAgentRuntime, ChatAgentTurnInput } from './agent.types';
 import type { ChatAgentToolExecutionResult } from './tools/chat-agent-tool.types';
 
 @Injectable()
 export class PostCommentAgentToolService {
-  constructor(private readonly postService: PostService) {}
+  constructor(
+    @Inject(POST_QUERY_PORT) private readonly postQuery: IPostQueryPort,
+    @Inject(POST_WRITE_PORT) private readonly postWrite: IPostWritePort,
+  ) {}
 
   async listComments(
     input: ChatAgentTurnInput,
@@ -20,7 +30,7 @@ export class PostCommentAgentToolService {
       };
     }
 
-    const page = await this.postService.listComments(trimmedId, { limit: 5 });
+    const page = await this.postQuery.listComments(trimmedId, { limit: 5 });
     const items = page.items ?? [];
     if (!items.length) {
       return {
@@ -66,11 +76,7 @@ export class PostCommentAgentToolService {
     }
 
     try {
-      await this.postService.addComment(
-        trimmedId,
-        trimmedBody,
-        input.dto.actor,
-      );
+      await this.postWrite.addComment(trimmedId, trimmedBody, input.dto.actor);
       const reply = '评论已发送 ✅';
       runtime.setReply(reply);
       return {

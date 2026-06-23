@@ -72,8 +72,8 @@ describe('CreatePostFromChatUseCase self-post custom body', () => {
         findOwnerActivePostForActivity: jest
           .fn()
           .mockResolvedValue(overrides?.existingPost ?? null),
-        createPost,
       } as never,
+      { createPost } as never,
       {
         shouldAttemptPostCreation: () => true,
         resolveActivity: jest.fn().mockResolvedValue(activity),

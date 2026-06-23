@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ActivityModule } from '../../modules/activity/activity.module';
-import { ItineraryModule } from '../../modules/itinerary/itinerary.module';
-import { PartnerModule } from '../../modules/partner/partner.module';
+import { PartnerAgentPortsModule } from '../../modules/partner/partner-agent-ports.module';
+import { ItineraryAgentPortsModule } from '../../modules/itinerary/itinerary-agent-ports.module';
+import { TravelGuideAgentPortsModule } from '../../modules/travel-guide/travel-guide-agent-ports.module';
 import { PersonalityTestModule } from '../../modules/personality-test/personality-test.module';
 import { ProfileModule } from '../../modules/profile/profile.module';
-import { TravelGuideModule } from '../../modules/travel-guide/travel-guide.module';
 import { BuddyModule } from '../buddy/buddy.module';
 import { DjInfoModule } from '../dj/dj-info.module';
 import { InfraLlmModule } from '../../infra/llm/llm.module';
@@ -56,11 +56,11 @@ import { TravelGuideGenerateTool } from './tools/travel-guide-generate.tool';
     DjInfoModule,
     InfraLlmModule,
     BuddyModule,
-    TravelGuideModule,
-    ItineraryModule,
+    PartnerAgentPortsModule,
+    ItineraryAgentPortsModule,
+    TravelGuideAgentPortsModule,
     PersonalityTestModule,
     ProfileModule,
-    PartnerModule,
   ],
   providers: [
     AiStreamEventBuilder,

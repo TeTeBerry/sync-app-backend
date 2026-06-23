@@ -1,7 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { CreatePostDto } from '../../modules/partner/dto/create-post.dto';
-import { PostService } from '../../modules/partner/post.service';
+import {
+  IPostQueryPort,
+  POST_QUERY_PORT,
+} from '../../modules/partner/ports/post-query.port';
+import {
+  IPostWritePort,
+  POST_WRITE_PORT,
+} from '../../modules/partner/ports/post-write.port';
 import { NoticeAgent, RiskAgent, TextParseAgent } from '../agents';
 import type { ConversationState } from '../conversation';
 import {
@@ -52,7 +59,8 @@ export class CreatePostFromChatUseCase {
     private readonly textParseAgent: TextParseAgent,
     private readonly riskAgent: RiskAgent,
     private readonly noticeAgent: NoticeAgent,
-    private readonly postService: PostService,
+    @Inject(POST_QUERY_PORT) private readonly postQuery: IPostQueryPort,
+    @Inject(POST_WRITE_PORT) private readonly postWrite: IPostWritePort,
     private readonly buddyContext: BuddyContextService,
     private readonly accountRisk: AccountRiskService,
   ) {}
@@ -134,7 +142,7 @@ export class CreatePostFromChatUseCase {
       actor.clientUserId &&
       !skipExistingPostGuidance
     ) {
-      const existing = await this.postService.findOwnerActivePostForActivity(
+      const existing = await this.postQuery.findOwnerActivePostForActivity(
         resolvedActivity.legacyId,
         actor,
       );
@@ -314,7 +322,7 @@ export class CreatePostFromChatUseCase {
       tags,
     };
 
-    const post = await this.postService.createPost(dto, actor, {
+    const post = await this.postWrite.createPost(dto, actor, {
       skipRiskCheck: true,
     });
     const activityLabel = resolvedActivity?.name ?? '活动';

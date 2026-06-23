@@ -43,7 +43,7 @@ AppModule
 | Travel plan | `travel-plan/` | 行程计划保存、票据识别 |
 | Itinerary | `itinerary/` | 电音时间表生成/保存 |
 | Travel guide | `travel-guide/` | 高德 POI + 出行攻略生成 |
-| Festival plan | `festival-plan-progress` | AI 本场计划进度 BFF |
+| Festival plan | `festival-plan-progress` | AI 本场计划进度 BFF（`@Controller('activities/:legacyId/festival-plan-progress')`） |
 
 详见 [`modules/activity-experience/README.md`](../src/modules/activity-experience/README.md)。
 
@@ -53,6 +53,11 @@ AppModule
 |-------------|------|
 | `UserRepositoryModule` + `USER_REPOSITORY` | 用户持久化 |
 | `ActivityLookupModule` + `ACTIVITY_LOOKUP_PORT` | 活动只读查询；选择记录 / BFF |
+| `PartnerReadModule` + `POST_READ_PORT` | 组队帖 BFF 只读（Home / Profile） |
+| `PartnerAgentPortsModule` + `POST_QUERY_PORT` / `POST_WRITE_PORT` | AI agent 发帖 / 评论 |
+| `ItineraryAgentPortsModule` + `ITINERARY_PORT` | AI agent 演出日程 / 生成 |
+| `TravelGuideAgentPortsModule` + `TRAVEL_GUIDE_PORT` | AI agent 攻略异步生成 |
+| `PostAgentAdaptersModule` + `POST_MODERATION_PORT` / `POST_NOTIFICATION_PORT` | Partner 发帖风控 / 通知（AI 实现） |
 
 > LLM：`infra/llm/InfraLlmModule` — 文本经混元 JSON；视觉经千问 VL。详见 [LLM.md](./LLM.md)。
 
@@ -81,6 +86,19 @@ AppModule
 ```
 
 **前端对齐能力**：活动绑定与快捷芯片、DJ 信息、出行攻略（agent 工具 + REST 表单）、聊天组队发帖、行程/性格测试/活动选择/评论等 agent 工具与 stream 事件。
+
+### AI Port 层（US-ARCH-14）
+
+AI 工具与 turn handler **不得**直接 import 完整 `PartnerModule` / `ItineraryModule` / `TravelGuideModule`；通过 slim module 注入 port：
+
+| 方向 | Port | 绑定模块 |
+|------|------|----------|
+| Partner → AI（出站） | `POST_MODERATION_PORT`, `POST_NOTIFICATION_PORT` | `PostAgentAdaptersModule` |
+| AI → Partner（入站） | `POST_QUERY_PORT`, `POST_WRITE_PORT` | `PartnerAgentPortsModule` |
+| AI → Itinerary | `ITINERARY_PORT` | `ItineraryAgentPortsModule` |
+| AI → TravelGuide | `TRAVEL_GUIDE_PORT` | `TravelGuideAgentPortsModule` |
+
+`AppModule` 在 `AiModule` 之前注册上述 adapter / agent-ports module。
 
 ### 会话状态机（ConversationState）
 

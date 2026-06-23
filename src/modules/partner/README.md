@@ -9,7 +9,7 @@ REST 路径仍为 `/api/posts`（资源名不变）。
 - `PostService` — 读列表、详情、评论、属主查询
 - `PostWriteService` — 创建 / 删帖（`PartnerWriteModule` 导出）
 - `PartnerRepositoryModule` — `POST_REPOSITORY` 端口
-- `ports/` — `POST_MODERATION_PORT`、`POST_NOTIFICATION_PORT`（由 `PostAgentAdaptersModule` 注入）
+- `ports/` — `POST_MODERATION_PORT`、`POST_NOTIFICATION_PORT`（由 `PostAgentAdaptersModule` 注入）；`POST_QUERY_PORT`、`POST_WRITE_PORT`（由 `PartnerAgentPortsModule` 导出，供 AI 消费）
 
 ## 帖子 HTTP 接口（当前）
 

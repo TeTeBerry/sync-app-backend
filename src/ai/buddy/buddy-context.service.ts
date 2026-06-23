@@ -1,11 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import {
   isAiShortcutTag,
   normalizeAiShortcutInput,
 } from '../../common/utils/demo-owner.util';
 import { ActivityService } from '../../modules/activity/activity.service';
-import { PostService } from '../../modules/partner/post.service';
+import {
+  IPostQueryPort,
+  POST_QUERY_PORT,
+} from '../../modules/partner/ports/post-query.port';
 import type { RecommendedPostCard } from '@sync/chat-contracts';
 import { inferAuthorGenderFromPost } from '../../common/utils/infer-author-gender.util';
 
@@ -40,7 +43,7 @@ interface ResolvedActivity {
 @Injectable()
 export class BuddyContextService {
   constructor(
-    private readonly postService: PostService,
+    @Inject(POST_QUERY_PORT) private readonly postQuery: IPostQueryPort,
     private readonly activityService: ActivityService,
   ) {}
 
@@ -186,7 +189,7 @@ export class BuddyContextService {
     const cards: RecommendedPostCard[] = [];
 
     for (const match of matches) {
-      const post = await this.postService.findPostById(match.postId);
+      const post = await this.postQuery.findPostById(match.postId);
       if (!post) {
         cards.push({
           postId: match.postId,
