@@ -562,6 +562,7 @@ export class ItineraryScheduleService implements OnModuleInit {
     activitiesByLegacyId: Map<number, ActivityLookupRecord>;
     entries: CatalogLineupArtistEntryInternal[];
     catalogByLineupName: Map<string, DjCatalogItem>;
+    catalog: DjCatalogItem[];
     avatarUrlsByKey: Map<string, string>;
   }> {
     const activities = await this.activityLookup.findAll();
@@ -575,6 +576,7 @@ export class ItineraryScheduleService implements OnModuleInit {
         activitiesByLegacyId,
         entries: [],
         catalogByLineupName: new Map(),
+        catalog: [],
         avatarUrlsByKey: new Map(),
       };
     }
@@ -612,20 +614,22 @@ export class ItineraryScheduleService implements OnModuleInit {
 
     const entries = [...byArtist.values()];
     const artistNames = entries.map((entry) => entry.artistName);
-    const [catalogByLineupName, avatarUrlsByKey] = entries.length
+    const [catalogByLineupName, catalog, avatarUrlsByKey] = entries.length
       ? await Promise.all([
           this.djService.lookupForLineupArtists(artistNames),
+          this.djService.loadCatalog(),
           this.lineupArtistAvatarService.findAvatarUrlsByArtistNames(
             artistNames,
           ),
         ])
-      : [new Map<string, DjCatalogItem>(), new Map<string, string>()];
+      : [new Map<string, DjCatalogItem>(), [], new Map<string, string>()];
 
     return {
       activities,
       activitiesByLegacyId,
       entries,
       catalogByLineupName,
+      catalog,
       avatarUrlsByKey,
     };
   }
@@ -635,13 +639,16 @@ export class ItineraryScheduleService implements OnModuleInit {
     index: {
       activitiesByLegacyId: Map<number, ActivityLookupRecord>;
       catalogByLineupName: Map<string, DjCatalogItem>;
+      catalog: DjCatalogItem[];
       avatarUrlsByKey: Map<string, string>;
     },
   ): CatalogLineupArtistDto {
-    const catalog = index.catalogByLineupName.get(entry.artistName);
-    const genreLabel = catalog
-      ? formatDiscogsStyleLabel(catalog)
-      : entry.genreLabel;
+    const genreLabel = this.resolveDiscogsGenreLabel(
+      entry.artistName,
+      entry.genreLabel,
+      index.catalogByLineupName,
+      index.catalog,
+    );
     const nameKey = entry.artistName.trim().toLowerCase();
     const nextActivity = this.pickNextActivityForArtist(
       entry.activityIds,

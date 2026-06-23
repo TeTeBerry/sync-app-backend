@@ -29,7 +29,7 @@ export const KNOWLEDGE_DOCUMENTS: Document[] = [
   }),
   new Document({
     pageContent:
-      'Tomorrowland Thailand 2026（tomorrowland）2026 年 12 月 11 日至 13 日，地点泰国芭提雅 Wisdom Valley。首批官宣阵容：Swedish House Mafia、Martin Garrix、Dimitri Vegas & Like Mike、Afrojack、Nervo、Lost Frequencies（阵容持续更新中）。别名：tomorrowland、tml泰国、明日世界。',
+      'Tomorrowland Thailand 2026（tomorrowland）2026 年 12 月 11 日至 13 日，地点泰国芭提雅 Wisdom Valley。全阵容已官宣（116 位艺人），主要 headliner 包括 Swedish House Mafia、Martin Garrix、Dimitri Vegas & Like Mike、Steve Aoki、Afrojack、Alan Walker、Infected Mushroom、Vini Vici、Alok、R3HAB 等；官方演出时间表尚未发布。别名：tomorrowland、tml泰国、明日世界。',
     metadata: { topic: 'activity', code: 'tomorrowland' },
   }),
   new Document({

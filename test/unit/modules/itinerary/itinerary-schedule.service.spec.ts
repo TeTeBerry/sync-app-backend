@@ -245,7 +245,7 @@ describe('ItineraryScheduleService discogs styles', () => {
     expect(artists).toEqual([]);
   });
 
-  it('serves Tomorrowland Thailand partial lineup from seed', async () => {
+  it('serves Tomorrowland Thailand full lineup from seed', async () => {
     activityService.findByLegacyId.mockResolvedValue({
       legacyId: 1,
       name: 'Tomorrowland Thailand 2026',
@@ -272,14 +272,18 @@ describe('ItineraryScheduleService discogs styles', () => {
 
     const schedule = await service.getSchedule(1, {});
 
-    expect(schedule.djs.map((dj) => dj.name)).toEqual([
-      'SWEDISH HOUSE MAFIA',
-      'MARTIN GARRIX',
-      'DIMITRI VEGAS & LIKE MIKE',
-      'AFROJACK',
-      'NERVO',
-      'LOST FREQUENCIES',
-    ]);
+    expect(schedule.djs).toHaveLength(116);
+    expect(schedule.djs.map((dj) => dj.name)).toEqual(
+      expect.arrayContaining([
+        'SWEDISH HOUSE MAFIA',
+        'MARTIN GARRIX',
+        'DIMITRI VEGAS & LIKE MIKE',
+        'STEVE AOKI',
+        'AFROJACK',
+        'INFECTED MUSHROOM',
+        'VINI VICI',
+      ]),
+    );
     expect(schedule.schedulePublished).toBe(false);
   });
 
@@ -373,6 +377,52 @@ describe('ItineraryScheduleService discogs styles', () => {
     );
     expect(artists.some((item) => item.name === 'SHARED ACT')).toBe(true);
     expect(artists.some((item) => item.name === 'DJ SNAKE')).toBe(true);
+  });
+
+  it('falls back to seed genreLabel in artist tab when Discogs has no styles', async () => {
+    activityLookup.findAll.mockResolvedValue([
+      {
+        legacyId: 1,
+        name: 'Tomorrowland Thailand 2026',
+        date: '12/11-13',
+      },
+    ]);
+    performanceModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
+    djService.lookupForLineupArtists.mockResolvedValue(
+      new Map([
+        [
+          'AFROJACK',
+          {
+            discogsId: 99,
+            name: 'Afrojack',
+            genres: [],
+            styles: [],
+          },
+        ],
+      ]),
+    );
+    djService.loadCatalog.mockResolvedValue([
+      {
+        discogsId: 99,
+        name: 'Afrojack',
+        genres: [],
+        styles: [],
+      },
+    ]);
+    lineupArtistAvatarService.findAvatarUrlsByArtistNames.mockResolvedValue(
+      new Map([['afrojack', 'https://cdn.example/afrojack.jpg']]),
+    );
+
+    const artists = await service.listCatalogLineupArtistsRanked();
+    const afrojack = artists.find((item) => item.name === 'AFROJACK');
+
+    expect(afrojack?.genreLabel).toBe('Big Room · Dutch House');
   });
 
   it('ranks artists with upcoming shows before higher activity counts', async () => {
