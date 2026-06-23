@@ -1,4 +1,3 @@
-/** @deprecated Import from `@src/shared/travel-guide` instead. */
 export type {
   TravelGuideBudgetTier,
   TravelGuideHotelItem,
@@ -8,13 +7,17 @@ export type {
   TravelGuideVenueTransportOption,
   TravelGuideBudgetItem,
   TravelGuidePlan,
+} from './types';
+
+export type {
   AiGuidePlanFormValues,
   GenerateTravelGuidePayload,
-  GenerateTravelGuideResult,
-  TravelGuidePlanReadResult,
   TravelGuidePlaceSuggestion,
   TravelGuideGenerationJobStatus,
-  TravelGuideGenerationJobResult,
-} from '@src/shared/travel-guide';
+} from './dto';
 
-export type { LlmTravelGuidePayload } from './travel-guide-llm.types';
+export type {
+  GenerateTravelGuideResult,
+  TravelGuidePlanReadResult,
+  TravelGuideGenerationJobResult,
+} from './responses';

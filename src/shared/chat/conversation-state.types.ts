@@ -1,5 +1,8 @@
 export const CONVERSATION_STATE_VERSION = 1;
 
+export type { TravelGuideBudgetTier } from '../travel-guide';
+import type { TravelGuideBudgetTier } from '../travel-guide';
+
 export type ConversationFlow =
   | 'idle'
   | 'publish_confirm'
@@ -12,8 +15,6 @@ export interface PublishDraftState {
   /** User explicitly chose self-post / custom body — skip existing-post gate on confirm */
   fromSelfPost?: boolean;
 }
-
-export type TravelGuideBudgetTier = 'economy' | 'standard' | 'comfort';
 
 export interface TravelGuideTaskSlots {
   departure?: string;

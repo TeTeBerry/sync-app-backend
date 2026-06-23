@@ -1,12 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import type { TravelGuidePlan } from '../../modules/travel-guide/domain/travel-guide.types';
+import type {
+  TravelGuidePlan,
+  AiGuidePlanFormValues,
+} from '../../shared/travel-guide';
+import type { TravelGuideGenerationJobStatus } from '../../shared/travel-guide';
 
-export type TravelGuideGenerationJobStatus =
-  | 'pending'
-  | 'running'
-  | 'completed'
-  | 'failed';
+export type { TravelGuideGenerationJobStatus };
 
 @Schema({ collection: 'travel_guide_generation_jobs', timestamps: true })
 export class TravelGuideGenerationJob {

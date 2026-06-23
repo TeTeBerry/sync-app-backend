@@ -31,6 +31,7 @@ describe('PostWriteService', () => {
 
   const activityLookup = {
     findByLegacyId: jest.fn(),
+    refreshCache: jest.fn().mockResolvedValue(undefined),
   } as unknown as IActivityLookupPort;
 
   const postNotification = {
@@ -272,7 +273,9 @@ describe('PostWriteService.updatePost', () => {
     resolveProfile: jest.fn(),
   } as unknown as UserService;
 
-  const activityLookup = {} as unknown as IActivityLookupPort;
+  const activityLookup = {
+    refreshCache: jest.fn().mockResolvedValue(undefined),
+  } as unknown as IActivityLookupPort;
 
   const postNotification = {} as unknown as IPostNotificationPort;
 

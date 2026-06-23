@@ -9,6 +9,7 @@ import {
 } from '../interfaces/post.repository.interface';
 import type { PostPageCursor } from '../domain/post-cursor.util';
 import type { PostRecord } from '../interfaces/post.repository.interface';
+import type { BuddyPostAiSearchResult } from '@src/shared/partner';
 import { BuddyPostSearchParseService } from './buddy-post-search-parse.service';
 import { PostQueryService } from './post-query.service';
 import {
@@ -38,7 +39,7 @@ export class PostSearchService {
     query: string,
     activityLegacyId: number,
     actor: RequestActor,
-  ) {
+  ): Promise<BuddyPostAiSearchResult> {
     const trimmed = query.trim();
     if (!trimmed) {
       throw new BadRequestException('请输入检索需求');

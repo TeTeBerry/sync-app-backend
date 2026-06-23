@@ -29,6 +29,8 @@
     "db:sync-catalog:all": "node scripts/sync-activity-catalog-all.mjs",
     "db:clean-dirty": "node scripts/clean-dirty-data.mjs",
     "db:clean-dirty:dry-run": "node scripts/clean-dirty-data.mjs --dry-run",
+    "db:migrate-partner": "node scripts/migrate-partner-legacy.mjs",
+    "db:migrate-partner:dry-run": "node scripts/migrate-partner-legacy.mjs --dry-run",
     "db:reset-attendees": "node scripts/reset-attendees.mjs",
     "db:reset-attendees:dry-run": "node scripts/reset-attendees.mjs --dry-run",
     "db:seed-itinerary": "node scripts/seed-itinerary-catalog.mjs",

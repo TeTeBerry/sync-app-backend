@@ -2,10 +2,8 @@ import type {
   RecommendedActivityCard,
   RecommendedPostCard,
 } from './chat-cards.types';
-import type {
-  ConversationState,
-  TravelGuideBudgetTier,
-} from './conversation-state.types';
+import type { ConversationState } from './conversation-state.types';
+import type { TravelGuideBudgetTier } from '../travel-guide';
 import type { ClientActionStreamEvent } from './client-action.types';
 import type { ItineraryConflict, ItineraryDay } from '../itinerary/types';
 

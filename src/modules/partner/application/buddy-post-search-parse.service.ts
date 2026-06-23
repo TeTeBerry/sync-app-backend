@@ -3,7 +3,7 @@ import { LlmService } from '../../../infra/llm/llm.service';
 import {
   isConfidentRuleBuddySearchParse,
   parseBuddyPostSearchQuery,
-  type BuddyPostSearchParsed,
+  type BuddyPostSearchParsedFields,
 } from '../utils/buddy-post-search.util';
 import {
   buildBuddyPostSearchParseSystemPrompt,
@@ -15,7 +15,7 @@ import {
 export type BuddyPostSearchParseSource = 'rule' | 'llm';
 
 export type BuddyPostSearchParseOutcome = {
-  parsed: BuddyPostSearchParsed;
+  parsed: BuddyPostSearchParsedFields;
   source: BuddyPostSearchParseSource;
 };
 
@@ -46,7 +46,9 @@ export class BuddyPostSearchParseService {
   }
 
   /** Explicit LLM parse for zero-result retry after a confident rule parse. */
-  async tryLlmParse(query: string): Promise<BuddyPostSearchParsed | null> {
+  async tryLlmParse(
+    query: string,
+  ): Promise<BuddyPostSearchParsedFields | null> {
     if (!this.llmService.enabled) return null;
 
     const llmParsed =

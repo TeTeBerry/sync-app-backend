@@ -12,11 +12,14 @@ import type { RequestActor } from '../../common/auth/request-actor.types';
 import {
   TravelGuideGenerationJob,
   TravelGuideGenerationJobDocument,
-  type TravelGuideGenerationJobStatus,
 } from '../../database/schemas/travel-guide-generation-job.schema';
+import type { TravelGuideGenerationJobStatus } from '@src/shared/travel-guide';
 import { ActivityService } from '../activity/activity.service';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
-import type { TravelGuidePlan } from './domain/travel-guide.types';
+import type {
+  TravelGuideGenerationJobResult,
+  TravelGuidePlan,
+} from '@src/shared/travel-guide';
 import { parseActivityDayCount } from './domain/parse-activity-days.util';
 import {
   buildTravelGuideGenerationCacheKey,
@@ -31,12 +34,7 @@ const ACTIVE_JOB_STATUSES: TravelGuideGenerationJobStatus[] = [
   'running',
 ];
 
-export type TravelGuideGenerationJobView = {
-  jobId: string;
-  status: TravelGuideGenerationJobStatus;
-  plan?: TravelGuidePlan;
-  errorMessage?: string;
-};
+export type TravelGuideGenerationJobView = TravelGuideGenerationJobResult;
 
 @Injectable()
 export class TravelGuideGenerationJobService {

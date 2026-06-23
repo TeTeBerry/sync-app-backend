@@ -2,15 +2,10 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
-  Logger,
   NotFoundException,
-  OnModuleInit,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { isPostOwnedByActor } from '../../common/auth/actor-query.util';
-import { Post, PostDocument } from '../../database/schemas/post.schema';
 import {
   ACTIVITY_LOOKUP_PORT,
   type IActivityLookupPort,
@@ -32,14 +27,10 @@ import { PostDevMockSeedService } from './application/post-dev-mock-seed.service
 import { TML_THAILAND_LEGACY_ID } from './data/dev-mock-buddy-posts.util';
 
 @Injectable()
-export class PostService implements OnModuleInit {
-  private readonly logger = new Logger(PostService.name);
-
+export class PostService {
   constructor(
     @Inject(POST_REPOSITORY)
     private readonly repository: IPostRepository,
-    @InjectModel(Post.name)
-    private readonly postModel: Model<PostDocument>,
     @Inject(ACTIVITY_LOOKUP_PORT)
     private readonly activityLookup: IActivityLookupPort,
     private readonly postWrite: PostWriteService,
@@ -49,40 +40,6 @@ export class PostService implements OnModuleInit {
     private readonly userService: UserService,
     private readonly devMockSeed: PostDevMockSeedService,
   ) {}
-
-  async onModuleInit(): Promise<void> {
-    try {
-      await this.migrateLegacyPostStatus();
-    } catch (error) {
-      this.logger.warn(
-        `Legacy post status migration failed: ${(error as Error).message}`,
-      );
-    }
-
-    try {
-      await this.migrateRemoveLegacyPostCounters();
-    } catch (error) {
-      this.logger.warn(
-        `Legacy post counter migration failed: ${(error as Error).message}`,
-      );
-    }
-
-    try {
-      await this.purgeLegacyCollections();
-    } catch (error) {
-      this.logger.warn(
-        `Legacy collection cleanup failed: ${(error as Error).message}`,
-      );
-    }
-
-    try {
-      await this.purgePostsForRemovedActivities();
-    } catch (error) {
-      this.logger.warn(
-        `Expired activity post cleanup failed: ${(error as Error).message}`,
-      );
-    }
-  }
 
   listPopular(limit = 20, actor: RequestActor) {
     return this.postQuery.listPopular(limit, actor);
@@ -197,79 +154,5 @@ export class PostService implements OnModuleInit {
   ): Promise<boolean> {
     const profile = await this.userService.resolveProfile(actor);
     return isPostOwnedByActor(post, actor, profile?.name);
-  }
-
-  /** Legacy completed/recruiting posts are normalized to active. */
-  private async migrateLegacyPostStatus(): Promise<void> {
-    const completed = await this.postModel.updateMany(
-      { status: 'completed' },
-      { $set: { status: 'active' } },
-    );
-    const recruiting = await this.postModel.updateMany(
-      { status: 'recruiting' },
-      { $set: { status: 'active' } },
-    );
-    const migrated =
-      (completed.modifiedCount ?? 0) + (recruiting.modifiedCount ?? 0);
-    if (migrated > 0) {
-      this.logger.log(`Migrated ${migrated} legacy post statuses to active`);
-    }
-  }
-
-  private async migrateRemoveLegacyPostCounters(): Promise<void> {
-    const result = await this.postModel.updateMany(
-      { likes: { $exists: true } },
-      { $unset: { likes: '' } },
-    );
-    if (result.modifiedCount > 0) {
-      this.logger.log(
-        `Removed likes from ${result.modifiedCount} legacy posts`,
-      );
-    }
-
-    try {
-      await this.postModel.collection.dropIndex(
-        'status_1_likes_-1_createdAt_-1',
-      );
-    } catch {
-      // Index may already be dropped.
-    }
-  }
-
-  private async purgeLegacyCollections(): Promise<void> {
-    const db = this.postModel.db;
-    const legacyCollections = [
-      'userblocks',
-      'postapplications',
-      'postapplicationmessages',
-      'postlikes',
-    ];
-
-    for (const name of legacyCollections) {
-      try {
-        await db.dropCollection(name);
-        this.logger.log(`Dropped legacy collection ${name}`);
-      } catch (error) {
-        const codeName = (error as { codeName?: string }).codeName;
-        if (codeName !== 'NamespaceNotFound') {
-          this.logger.warn(
-            `Failed to drop ${name}: ${(error as Error).message}`,
-          );
-        }
-      }
-    }
-  }
-
-  private async purgePostsForRemovedActivities(): Promise<void> {
-    const activities = await this.activityLookup.findAll();
-    const validLegacyIds = activities.map((activity) => activity.legacyId);
-    const result = await this.postModel.deleteMany({
-      activityLegacyId: { $exists: true, $nin: validLegacyIds },
-    });
-    if (result.deletedCount > 0) {
-      this.logger.log(
-        `Purged ${result.deletedCount} posts tied to removed activities`,
-      );
-    }
   }
 }

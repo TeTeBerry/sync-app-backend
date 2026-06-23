@@ -84,6 +84,8 @@ curl -s http://localhost:8000/api/v1/heartbeat
 | `npm run smoke:api` | REST smoke against running server |
 | `npm run smoke:ws` | AI WebSocket smoke |
 | `npm run db:reset` | Clear AI chat history (keeps activity seeds) |
+| `npm run db:migrate-partner` | One-off partner/post legacy DB migrations (run before first deploy after upgrade) |
+| `npm run db:migrate-partner:dry-run` | Preview partner legacy migrations without writing |
 | `npm run db:seed-itinerary` | Seed festival lineup catalog |
 
 See `package.json` for DB maintenance and media scripts.

@@ -20,7 +20,7 @@ AppModule
 ├── NotificationModule
 ├── ChatModule               # AI 会话持久化
 ├── AccountRiskModule        # 账号风控与限制
-├── shared/                  # 前后端契约（chat、travel-plan、itinerary）
+├── shared/                  # 前后端契约（chat、travel-plan、itinerary、travel-guide、partner）
 └── AiModule                 # WebSocket 对话 + 单轮编排（AiTurnPipeline）
     ├── AgentsModule         # NoticeAgent（活动更新等系统通知）
     ├── OrchestrationModule  # AiTurnPipeline + DeterministicReply
@@ -121,6 +121,15 @@ AppModule
 | **MongoDB** | user, activity, activity-registration, chat, notification, account-risk-event, posts, travel-guide jobs… |
 | **Redis** | `heat:global`、`heat:activity:{legacyId}`（不可用则降级） |
 | **Chroma** | `sync_knowledge`（活动 RAG，可选） |
+
+### DB 维护脚本（非启动时执行）
+
+应用启动**不会**自动跑数据迁移。组队帖相关 legacy 清理见 `scripts/migrate-partner-legacy.mjs`：
+
+```bash
+npm run db:migrate-partner:dry-run   # 预览
+CONFIRM=1 npm run db:migrate-partner # 升级后首次 deploy 前执行一次
+```
 
 ---
 

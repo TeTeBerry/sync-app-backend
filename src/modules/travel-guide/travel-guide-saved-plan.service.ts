@@ -7,17 +7,15 @@ import {
   TravelGuideSavedPlanDocument,
 } from '../../database/schemas/travel-guide-saved-plan.schema';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
-import type { TravelGuidePlan } from './domain/travel-guide.types';
-import type { TravelGuideBudgetTier } from './domain/travel-guide.types';
+import type {
+  AiGuidePlanFormValues,
+  TravelGuideBudgetTier,
+  TravelGuidePlan,
+  TravelGuidePlanReadResult,
+} from '@src/shared/travel-guide';
 import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cache.service';
 
-export type TravelGuideSavedPlanView = {
-  guideId: string;
-  activityLegacyId: number;
-  form: Record<string, unknown>;
-  plan: TravelGuidePlan;
-  createdAt: string;
-};
+export type TravelGuideSavedPlanView = TravelGuidePlanReadResult;
 
 @Injectable()
 export class TravelGuideSavedPlanService {
@@ -165,7 +163,7 @@ export class TravelGuideSavedPlanService {
 function buildSavedPlanForm(
   dto: GenerateTravelGuideDto,
   accommodationNights: number,
-): Record<string, unknown> {
+): AiGuidePlanFormValues {
   return {
     departure: dto.departure.trim(),
     ...(dto.departureCity?.trim()

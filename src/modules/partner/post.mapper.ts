@@ -2,6 +2,11 @@ import {
   formatDateLabel,
   formatTimeAgo,
 } from '../../common/utils/day-time.util';
+import type {
+  EventDetailPost,
+  PostCommentItem,
+  ProfilePostItem,
+} from '@src/shared/partner';
 import { PostRecord } from './interfaces/post.repository.interface';
 
 const LIST_BODY_PREVIEW_MAX = 280;
@@ -57,7 +62,7 @@ export class PostMapper {
     };
   }
 
-  static toEventDetailItem(post: PostRecord) {
+  static toEventDetailItem(post: PostRecord): EventDetailPost {
     const createdAt =
       post.createdAt instanceof Date
         ? post.createdAt.toISOString()
@@ -83,7 +88,7 @@ export class PostMapper {
   }
 
   /** List variant: no full body, uses bodyPreview. */
-  static toEventDetailListItem(post: PostRecord) {
+  static toEventDetailListItem(post: PostRecord): EventDetailPost {
     const createdAt =
       post.createdAt instanceof Date
         ? post.createdAt.toISOString()
@@ -122,7 +127,7 @@ export class PostMapper {
       body: string;
       time: string;
     }>;
-  }) {
+  }): PostCommentItem {
     return {
       id: String(comment._id),
       userId: comment.userId,
@@ -134,7 +139,7 @@ export class PostMapper {
     };
   }
 
-  static toProfileItem(post: PostRecord) {
+  static toProfileItem(post: PostRecord): ProfilePostItem {
     return {
       id: String(post._id),
       title: post.eventTitle,
@@ -146,7 +151,7 @@ export class PostMapper {
   }
 
   /** List variant: no full content, uses contentPreview. */
-  static toProfileListItem(post: PostRecord) {
+  static toProfileListItem(post: PostRecord): ProfilePostItem {
     return {
       id: String(post._id),
       title: post.eventTitle,

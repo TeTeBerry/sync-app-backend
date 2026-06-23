@@ -1,6 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import type { TravelGuidePlan } from '../../modules/travel-guide/domain/travel-guide.types';
+import type {
+  TravelGuidePlan,
+  AiGuidePlanFormValues,
+} from '../../shared/travel-guide';
 
 @Schema({ collection: 'travel_guide_saved_plans', timestamps: true })
 export class TravelGuideSavedPlan {
@@ -15,7 +18,7 @@ export class TravelGuideSavedPlan {
 
   /** 生成表单（不含 guideId） */
   @Prop({ type: Object, required: true })
-  form!: Record<string, unknown>;
+  form!: AiGuidePlanFormValues;
 
   @Prop({ type: Object, required: true })
   plan!: TravelGuidePlan;

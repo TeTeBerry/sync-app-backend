@@ -9,16 +9,14 @@ import {
   resolveDepartureCity,
 } from './departure-city.util';
 
-export type BuddyPostSearchParsed = {
-  departureCity?: string;
-  eventName?: string;
-  date?: string;
-  genre?: string;
-  peopleCount?: string;
-  extraKeywords?: string[];
-  /** LLM: user wants posts still recruiting, not already full. */
-  preferOpenRecruit?: boolean;
-};
+import type { BuddyPostSearchParsed } from '@src/shared/partner';
+
+export type { BuddyPostSearchParsed } from '@src/shared/partner';
+
+export type BuddyPostSearchParsedFields = Omit<
+  BuddyPostSearchParsed,
+  'searchTerms'
+>;
 
 export type BuddyPostSearchCriteria = {
   departureCity?: string;
@@ -29,7 +27,7 @@ export type BuddyPostSearchCriteria = {
 };
 
 export type BuddyPostSearchResult = {
-  parsed: BuddyPostSearchParsed & { searchTerms: string[] };
+  parsed: BuddyPostSearchParsed;
   items: PostRecord[];
   totalMatched: number;
   totalScanned: number;
@@ -175,7 +173,7 @@ const SEARCH_STOP_WORDS = new Set([
 ]);
 
 export function buildBodySearchTermsFromParsed(
-  parsed: BuddyPostSearchParsed,
+  parsed: BuddyPostSearchParsedFields,
 ): string[] {
   const terms: string[] = [];
   const push = (value?: string) => {
@@ -197,13 +195,13 @@ export function buildBodySearchTermsFromParsed(
 
 /** @deprecated Use buildBodySearchTermsFromParsed */
 export function buildSearchTermsFromParsed(
-  parsed: BuddyPostSearchParsed,
+  parsed: BuddyPostSearchParsedFields,
 ): string[] {
   return buildBodySearchTermsFromParsed(parsed);
 }
 
 export function buildBuddyPostSearchDisplayTerms(
-  parsed: BuddyPostSearchParsed,
+  parsed: BuddyPostSearchParsedFields,
   criteria: BuddyPostSearchCriteria,
 ): string[] {
   const terms = [...criteria.searchTerms, ...(criteria.softSearchTerms ?? [])];
@@ -293,7 +291,7 @@ const COMPLEX_BUDDY_SEARCH_MARKERS =
 /** True when the query is essentially a departure-city filter (e.g. 杭州出发). */
 export function isSimpleCityOnlyBuddySearch(
   query: string,
-  ruleParsed: BuddyPostSearchParsed,
+  ruleParsed: BuddyPostSearchParsedFields,
 ): boolean {
   if (!ruleParsed.departureCity?.trim()) return false;
   if (ruleParsed.genre || ruleParsed.date || ruleParsed.peopleCount)
@@ -314,7 +312,7 @@ export function isSimpleCityOnlyBuddySearch(
  */
 export function isConfidentRuleBuddySearchParse(
   query: string,
-  ruleParsed: BuddyPostSearchParsed,
+  ruleParsed: BuddyPostSearchParsedFields,
 ): boolean {
   const trimmed = query.trim();
   if (!trimmed) return false;
@@ -361,7 +359,7 @@ export function shouldRetryBuddySearchWithLlm(
   query: string,
   source: 'rule' | 'llm',
   matchCount: number,
-  ruleParsed: BuddyPostSearchParsed,
+  ruleParsed: BuddyPostSearchParsedFields,
 ): boolean {
   if (source !== 'rule' || matchCount > 0) return false;
   if (!isConfidentRuleBuddySearchParse(query, ruleParsed)) return false;
@@ -372,7 +370,7 @@ export function shouldRetryBuddySearchWithLlm(
 /** Rule-based keyword parse — LLM fallback when disabled. */
 export function parseBuddyPostSearchQuery(
   query: string,
-): BuddyPostSearchParsed {
+): BuddyPostSearchParsedFields {
   const trimmed = query.trim();
   if (!trimmed) return {};
 
@@ -405,7 +403,7 @@ export function parseBuddyPostSearchQuery(
   else if (peopleMatch?.[0]) remainder = remainder.replace(peopleMatch[0], ' ');
 
   const extraKeywords = tokenizeRawBuddySearchQuery(remainder);
-  const parsed: BuddyPostSearchParsed = {
+  const parsed: BuddyPostSearchParsedFields = {
     departureCity,
     date,
     genre,
@@ -425,7 +423,7 @@ export function parseBuddyPostSearchQuery(
 
   if (!buildBodySearchTermsFromParsed(parsed).length && !parsed.departureCity) {
     const fromRaw = tokenizeRawBuddySearchQuery(parseTarget || trimmed);
-    const fallback: BuddyPostSearchParsed = fromRaw.length
+    const fallback: BuddyPostSearchParsedFields = fromRaw.length
       ? { extraKeywords: fromRaw }
       : parseTarget
         ? { extraKeywords: [parseTarget] }
@@ -449,7 +447,7 @@ export function parseBuddyPostSearchQuery(
 }
 
 export function resolveBuddyPostSearchCriteria(
-  parsed: BuddyPostSearchParsed,
+  parsed: BuddyPostSearchParsedFields,
   rawQuery: string,
 ): BuddyPostSearchCriteria {
   const bodyTerms = buildBodySearchTermsFromParsed(parsed);
@@ -501,7 +499,7 @@ export function resolveBuddyPostSearchCriteria(
 
 /** Flat term list for API display / legacy callers. */
 export function resolveBuddyPostSearchTerms(
-  parsed: BuddyPostSearchParsed,
+  parsed: BuddyPostSearchParsedFields,
   rawQuery: string,
 ): string[] {
   const criteria = resolveBuddyPostSearchCriteria(parsed, rawQuery);

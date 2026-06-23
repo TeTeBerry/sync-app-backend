@@ -44,6 +44,7 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
 
   const activityLookup = {
     findByLegacyId: jest.fn(),
+    refreshCache: jest.fn().mockResolvedValue(undefined),
   } as unknown as IActivityLookupPort;
 
   const postNotification = {

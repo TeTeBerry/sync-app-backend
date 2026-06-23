@@ -3,7 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { getModelToken } from '@nestjs/mongoose';
 import { TravelGuideSavedPlanService } from '@src/modules/travel-guide/travel-guide-saved-plan.service';
 import { TravelGuideSavedPlan } from '@src/database/schemas/travel-guide-saved-plan.schema';
-import type { TravelGuidePlan } from '@src/modules/travel-guide/domain/travel-guide.types';
+import type { TravelGuidePlan } from '@src/shared/travel-guide';
+import { BffReadCacheInvalidationService } from '@src/infra/cache/bff-read-cache.service';
 
 const plan: TravelGuidePlan = {
   activityName: 'Storm',
@@ -48,6 +49,10 @@ describe('TravelGuideSavedPlanService', () => {
         {
           provide: getModelToken(TravelGuideSavedPlan.name),
           useValue: { updateOne, findOne },
+        },
+        {
+          provide: BffReadCacheInvalidationService,
+          useValue: { invalidateFestivalPlanForUser: jest.fn() },
         },
       ],
     }).compile();

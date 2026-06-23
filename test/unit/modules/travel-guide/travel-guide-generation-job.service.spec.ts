@@ -5,6 +5,7 @@ import { TravelGuideGenerationJob } from '@src/database/schemas/travel-guide-gen
 import { ActivityService } from '@src/modules/activity/activity.service';
 import { TravelGuideGenerationJobService } from '@src/modules/travel-guide/travel-guide-generation-job.service';
 import { TravelGuideGenerationService } from '@src/modules/travel-guide/travel-guide-generation.service';
+import { BffReadCacheInvalidationService } from '@src/infra/cache/bff-read-cache.service';
 import type { RequestActor } from '@src/common/auth/request-actor.types';
 
 const actor: RequestActor = {
@@ -48,6 +49,10 @@ describe('TravelGuideGenerationJobService', () => {
         },
         { provide: TravelGuideGenerationService, useValue: generationService },
         { provide: ActivityService, useValue: activityService },
+        {
+          provide: BffReadCacheInvalidationService,
+          useValue: { invalidateFestivalPlanForUser: jest.fn() },
+        },
       ],
     }).compile();
 

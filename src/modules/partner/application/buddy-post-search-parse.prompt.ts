@@ -1,4 +1,4 @@
-import type { BuddyPostSearchParsed } from '../utils/buddy-post-search.util';
+import type { BuddyPostSearchParsedFields } from '../utils/buddy-post-search.util';
 import { normalizeCityName } from '../utils/departure-city.util';
 
 export interface LlmBuddyPostSearchParseResult {
@@ -103,10 +103,10 @@ export function buildBuddyPostSearchParseUserPrompt(query: string): string {
 
 export function llmParseToBuddyPostSearchParsed(
   parsed: LlmBuddyPostSearchParseResult | null | undefined,
-): BuddyPostSearchParsed | null {
+): BuddyPostSearchParsedFields | null {
   if (!parsed) return null;
 
-  const result: BuddyPostSearchParsed = {};
+  const result: BuddyPostSearchParsedFields = {};
   const departureCity =
     normalizeCityName(parsed.departureCity?.trim()) ??
     parsed.departureCity?.trim();

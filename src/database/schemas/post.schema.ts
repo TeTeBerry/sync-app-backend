@@ -1,9 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-export type PostDocument = HydratedDocument<Post>;
+import type { PostRecruitStatus, PostStatus } from '../../shared/partner';
 
-export type PostStatus = 'active' | 'hidden';
-export type PostRecruitStatus = 'open' | 'full';
+export type { PostRecruitStatus, PostStatus };
+export type PostDocument = HydratedDocument<Post>;
 
 @Schema({ timestamps: true })
 export class Post {
