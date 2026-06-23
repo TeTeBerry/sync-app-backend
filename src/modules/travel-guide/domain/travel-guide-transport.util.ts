@@ -18,7 +18,9 @@ export interface DestinationTransportProfile {
   thailand: boolean;
   bangkok: boolean;
   phuket: boolean;
-  /** 目的地是否有城市轨道交通（国内地铁、曼谷 BTS/MRT 等） */
+  korea: boolean;
+  japan: boolean;
+  /** 目的地是否有城市轨道交通（国内地铁、曼谷 BTS/MRT、仁川 AREX 等） */
   hasUrbanRail: boolean;
   /** 是否可用高铁/动车作为城际方式（仅中国大陆/部分港澳台线路） */
   hasHighSpeedRail: boolean;
@@ -133,6 +135,34 @@ export function resolveVenueTransportCapabilities(
           available: !profile.bangkok,
           label: '双条车 / 当地小巴 / 出租车',
         },
+        taxiShuttle: { available: true, label: '出租车 / 酒店 Shuttle' },
+        selfDrive: input.selfDrive,
+        forbiddenInVenue: baseForbidden,
+      };
+    }
+    if (profile.korea) {
+      return {
+        airportArrival: input.interCity,
+        rideHail: { available: true, label: 'Kakao T 网约车' },
+        urbanRail: {
+          available: true,
+          label: 'AREX 机场铁路 + 仁川地铁 1 号线',
+        },
+        localMinibus: { available: false, label: '' },
+        taxiShuttle: { available: true, label: '出租车 / 酒店 Shuttle' },
+        selfDrive: input.selfDrive,
+        forbiddenInVenue: baseForbidden,
+      };
+    }
+    if (profile.japan) {
+      return {
+        airportArrival: input.interCity,
+        rideHail: { available: true, label: 'Uber Japan / Japan Taxi' },
+        urbanRail: {
+          available: true,
+          label: '山手线 / 东京 Metro / 临海线',
+        },
+        localMinibus: { available: false, label: '' },
         taxiShuttle: { available: true, label: '出租车 / 酒店 Shuttle' },
         selfDrive: input.selfDrive,
         forbiddenInVenue: baseForbidden,
@@ -334,6 +364,14 @@ export function resolveDestinationTransportProfile(
     );
   const bangkok = /曼谷|bangkok/.test(corpus);
   const phuket = /普吉|phuket|patong/.test(corpus);
+  const korea =
+    /韩国|korea|仁川|incheon|首尔|seoul|永宗|yeongjong|edckorea|edc korea|s2o/.test(
+      corpus,
+    );
+  const japan =
+    /日本|japan|东京|tokyo|台场|odaiba|海の森|羽田|haneda|成田|narita|wdjf|ultra japan|有明|ariake/.test(
+      corpus,
+    );
 
   let hasUrbanRail = false;
   if (regionKind === 'domestic') {
@@ -341,6 +379,10 @@ export function resolveDestinationTransportProfile(
   } else if (regionKind === 'hmt') {
     hasUrbanRail = resolveHmtHasUrbanRail(corpus);
   } else if (regionKind === 'overseas' && bangkok) {
+    hasUrbanRail = true;
+  } else if (regionKind === 'overseas' && korea) {
+    hasUrbanRail = true;
+  } else if (regionKind === 'overseas' && japan) {
     hasUrbanRail = true;
   }
 
@@ -350,6 +392,8 @@ export function resolveDestinationTransportProfile(
     thailand,
     bangkok,
     phuket,
+    korea,
+    japan,
     hasUrbanRail,
     hasHighSpeedRail: regionKind === 'domestic' || regionKind === 'hmt',
   };
@@ -402,6 +446,16 @@ export function buildInterCityTransportLines(
       lines.push(
         '入境需准备护照、返程机票与酒店订单；落地签/免签政策以入境当日官方为准。',
         '抵目的地机场后的 Grab、Shuttle 等接驳见下方「会场接驳」。',
+      );
+    } else if (profile.korea) {
+      lines.push(
+        '入境需准备护照、签证/K-ETA（如适用）、返程机票与酒店订单；以入境当日韩国官方为准。',
+        '抵仁川 ICN 后的 AREX、Kakao T 等接驳见下方「会场接驳」。',
+      );
+    } else if (profile.japan) {
+      lines.push(
+        '入境需准备护照、Visit Japan Web 入境审查（如适用）、返程机票与酒店订单；以入境当日日本官方为准。',
+        '抵羽田/成田后的京急/成田特快、东京 Metro 等接驳见下方「会场接驳」。',
       );
     } else {
       lines.push(

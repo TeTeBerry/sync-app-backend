@@ -228,6 +228,416 @@ export const TRAVEL_GUIDE_HOT_ACTIVITIES: HotActivityMapProfile[] = [
       ),
     ],
   },
+  {
+    activityLegacyId: 8,
+    activityCode: 'edc-korea',
+    venue: {
+      title: 'Inspire Entertainment Resort',
+      address: 'Incheon, South Korea',
+      lat: 37.466757,
+      lng: 126.390594,
+    },
+    readableAddress:
+      '韩国仁川·Inspire Entertainment Resort（永宗岛，近仁川国际机场 ICN）',
+    hubRoutes: [
+      hubRoute(
+        'icn-airport',
+        '仁川国际机场',
+        {
+          title: '仁川国际机场',
+          address: 'Incheon, South Korea',
+          lat: 37.4602,
+          lng: 126.4407,
+        },
+        ['仁川机场', '仁川国际机场', 'ICN', 'Incheon Airport', '인천공항'],
+        {
+          distanceM: 12_000,
+          durationSec: 1_800,
+          durationMin: 30,
+          distanceKm: 12,
+        },
+        'AREX 机场铁路至仁川站转地铁 1 号线永宗方向，或 Kakao T 约 25–40 分钟；活动日建议提前预约接驳',
+      ),
+      hubRoute(
+        'gmp-airport',
+        '金浦国际机场',
+        {
+          title: '金浦国际机场',
+          address: 'Seoul, South Korea',
+          lat: 37.5583,
+          lng: 126.7906,
+        },
+        ['金浦机场', 'GMP', 'Gimpo'],
+        {
+          distanceM: 55_000,
+          durationSec: 4_200,
+          durationMin: 70,
+          distanceKm: 55,
+        },
+        '多用于韩国国内线；国际旅客建议优先飞抵仁川 ICN',
+      ),
+      hubRoute(
+        'incheon-station',
+        '仁川站（AREX）',
+        {
+          title: '仁川站',
+          address: 'Incheon, South Korea',
+          lat: 37.4764,
+          lng: 126.6169,
+        },
+        ['仁川站', 'AREX', '机场铁路'],
+        {
+          distanceM: 22_000,
+          durationSec: 2_400,
+          durationMin: 40,
+          distanceKm: 22,
+        },
+        'AREX 直达仁川机场 T1/T2；转地铁 1 号线往永宗岛方向至会场附近',
+      ),
+    ],
+    interCityOrigins: [
+      interCityOrigin(
+        '上海',
+        ['上海', '魔都', 'shanghai', '浦东', '虹桥', '上海虹桥', '上海浦东'],
+        'icn-airport',
+        [
+          '城际：建议航班（浦东/虹桥 → 仁川 ICN）约 2–2.5 小时；电音节期间提前 2–8 周关注票价。',
+        ],
+      ),
+      interCityOrigin(
+        '北京',
+        ['北京', '帝都', 'beijing', '首都机场', '大兴机场'],
+        'icn-airport',
+        [
+          '城际：建议航班（首都/大兴 → 仁川 ICN）约 2–2.5 小时；早鸟票量紧俏建议尽早预订。',
+        ],
+      ),
+      interCityOrigin('深圳', ['深圳', '宝安机场', 'SZX'], 'icn-airport', [
+        '城际：建议航班（深圳宝安 → 仁川 ICN）约 3.5–4 小时；可经香港/上海中转比价。',
+      ]),
+      interCityOrigin('广州', ['广州', '白云', 'CAN'], 'icn-airport', [
+        '城际：建议航班（广州白云 → 仁川 ICN）约 3.5–4 小时；活动周房价与机票波动大。',
+      ]),
+      interCityOrigin('杭州', ['杭州', '萧山', 'HGH'], 'icn-airport', [
+        '城际：建议航班（萧山 → 仁川 ICN）约 2–2.5 小时；或高铁至上海后飞 ICN。',
+      ]),
+      interCityOrigin(
+        '成都',
+        ['成都', '双流', '天府', 'CTU', 'TFU'],
+        'icn-airport',
+        [
+          '城际：建议航班（双流/天府 → 仁川 ICN）约 3–3.5 小时；留意直飞与经停时刻。',
+        ],
+      ),
+    ],
+  },
+  {
+    activityLegacyId: 3,
+    activityCode: 's2o',
+    venue: {
+      title: 'Seoul Land',
+      address: 'Gwacheon, Gyeonggi, South Korea',
+      lat: 37.421,
+      lng: 126.9893,
+    },
+    readableAddress:
+      '韩国首尔·首尔乐园 Seoul Land（果川，地铁 4 号线首尔大公园站）',
+    hubRoutes: [
+      hubRoute(
+        'icn-airport',
+        '仁川国际机场',
+        {
+          title: '仁川国际机场',
+          address: 'Incheon, South Korea',
+          lat: 37.4602,
+          lng: 126.4407,
+        },
+        ['仁川机场', '仁川国际机场', 'ICN', 'Incheon Airport', '인천공항'],
+        {
+          distanceM: 58_000,
+          durationSec: 5_400,
+          durationMin: 90,
+          distanceKm: 58,
+        },
+        'AREX 至首尔站转地铁 4 号线至首尔大公园站，或 Kakao T 约 70–90 分钟；活动日建议提前预约接驳',
+      ),
+      hubRoute(
+        'gmp-airport',
+        '金浦国际机场',
+        {
+          title: '金浦国际机场',
+          address: 'Seoul, South Korea',
+          lat: 37.5583,
+          lng: 126.7906,
+        },
+        ['金浦机场', 'GMP', 'Gimpo'],
+        {
+          distanceM: 28_000,
+          durationSec: 3_000,
+          durationMin: 50,
+          distanceKm: 28,
+        },
+        '机场铁路或 Kakao T 约 40–60 分钟；国际旅客仍建议优先飞抵仁川 ICN',
+      ),
+      hubRoute(
+        'seoul-station',
+        '首尔站',
+        {
+          title: '首尔站',
+          address: 'Seoul, South Korea',
+          lat: 37.5547,
+          lng: 126.9707,
+        },
+        ['首尔站', 'Seoul Station', '首尔'],
+        {
+          distanceM: 18_000,
+          durationSec: 2_400,
+          durationMin: 40,
+          distanceKm: 18,
+        },
+        '地铁 4 号线至首尔大公园站，再步行或园区接驳至首尔乐园会场',
+      ),
+    ],
+    interCityOrigins: [
+      interCityOrigin(
+        '上海',
+        ['上海', '魔都', 'shanghai', '浦东', '虹桥', '上海虹桥', '上海浦东'],
+        'icn-airport',
+        [
+          '城际：建议航班（浦东/虹桥 → 仁川 ICN）约 2–2.5 小时；电音节期间提前 2–8 周关注票价。',
+        ],
+      ),
+      interCityOrigin(
+        '北京',
+        ['北京', '帝都', 'beijing', '首都机场', '大兴机场'],
+        'icn-airport',
+        [
+          '城际：建议航班（首都/大兴 → 仁川 ICN）约 2–2.5 小时；早鸟票量紧俏建议尽早预订。',
+        ],
+      ),
+      interCityOrigin('深圳', ['深圳', '宝安机场', 'SZX'], 'icn-airport', [
+        '城际：建议航班（深圳宝安 → 仁川 ICN）约 3.5–4 小时；可经香港/上海中转比价。',
+      ]),
+      interCityOrigin('广州', ['广州', '白云', 'CAN'], 'icn-airport', [
+        '城际：建议航班（广州白云 → 仁川 ICN）约 3.5–4 小时；活动周房价与机票波动大。',
+      ]),
+      interCityOrigin('杭州', ['杭州', '萧山', 'HGH'], 'icn-airport', [
+        '城际：建议航班（萧山 → 仁川 ICN）约 2–2.5 小时；或高铁至上海后飞 ICN。',
+      ]),
+      interCityOrigin(
+        '成都',
+        ['成都', '双流', '天府', 'CTU', 'TFU'],
+        'icn-airport',
+        [
+          '城际：建议航班（双流/天府 → 仁川 ICN）约 3–3.5 小时；留意直飞与经停时刻。',
+        ],
+      ),
+    ],
+  },
+  {
+    activityLegacyId: 6,
+    activityCode: 'world-dj-festival',
+    venue: {
+      title: '海の森水上競技場',
+      address: 'Tokyo, Japan',
+      lat: 35.6348,
+      lng: 139.7945,
+    },
+    readableAddress: '日本东京·海の森水上競技場（东京湾临海区域）',
+    hubRoutes: [
+      hubRoute(
+        'hnd-airport',
+        '羽田国际机场',
+        {
+          title: '羽田国际机场',
+          address: 'Tokyo, Japan',
+          lat: 35.5494,
+          lng: 139.7798,
+        },
+        ['羽田机场', '羽田国际机场', 'HND', 'Haneda'],
+        {
+          distanceM: 12_000,
+          durationSec: 1_800,
+          durationMin: 30,
+          distanceKm: 12,
+        },
+        '京急线至品川转临海线，或 Monorail/出租车约 25–40 分钟；活动日建议提前预约接驳',
+      ),
+      hubRoute(
+        'nrt-airport',
+        '成田国际机场',
+        {
+          title: '成田国际机场',
+          address: 'Narita, Japan',
+          lat: 35.772,
+          lng: 140.3929,
+        },
+        ['成田机场', '成田国际机场', 'NRT', 'Narita'],
+        {
+          distanceM: 75_000,
+          durationSec: 5_400,
+          durationMin: 90,
+          distanceKm: 75,
+        },
+        "成田特快 N'EX 至东京站再转地铁/临海线，约 60–90 分钟",
+      ),
+      hubRoute(
+        'tokyo-station',
+        '东京站',
+        {
+          title: '东京站',
+          address: 'Tokyo, Japan',
+          lat: 35.6812,
+          lng: 139.7671,
+        },
+        ['东京站', 'Tokyo Station', '东京'],
+        {
+          distanceM: 10_000,
+          durationSec: 1_500,
+          durationMin: 25,
+          distanceKm: 10,
+        },
+        'JR 山手线至新桥/品川后转临海线，或会场 Shuttle 接驳',
+      ),
+    ],
+    interCityOrigins: [
+      interCityOrigin(
+        '上海',
+        ['上海', '魔都', 'shanghai', '浦东', '虹桥', '上海虹桥', '上海浦东'],
+        'hnd-airport',
+        [
+          '城际：建议航班（浦东/虹桥 → 羽田 HND）约 2.5–3 小时；成田 NRT 备选，电音节期间提前 2–8 周关注票价。',
+        ],
+      ),
+      interCityOrigin(
+        '北京',
+        ['北京', '帝都', 'beijing', '首都机场', '大兴机场'],
+        'hnd-airport',
+        [
+          '城际：建议航班（首都/大兴 → 羽田 HND）约 3–3.5 小时；早鸟票量紧俏建议尽早预订。',
+        ],
+      ),
+      interCityOrigin('深圳', ['深圳', '宝安机场', 'SZX'], 'hnd-airport', [
+        '城际：建议航班（深圳宝安 → 羽田 HND）约 3.5–4 小时；可经上海/香港中转比价。',
+      ]),
+      interCityOrigin('广州', ['广州', '白云', 'CAN'], 'hnd-airport', [
+        '城际：建议航班（广州白云 → 羽田 HND）约 3.5–4 小时；活动周房价与机票波动大。',
+      ]),
+      interCityOrigin('杭州', ['杭州', '萧山', 'HGH'], 'hnd-airport', [
+        '城际：建议航班（萧山 → 羽田 HND）约 2.5–3 小时；或高铁至上海后飞 HND。',
+      ]),
+      interCityOrigin(
+        '成都',
+        ['成都', '双流', '天府', 'CTU', 'TFU'],
+        'hnd-airport',
+        [
+          '城际：建议航班（双流/天府 → 羽田 HND）约 4–4.5 小时；留意直飞与经停时刻。',
+        ],
+      ),
+    ],
+  },
+  {
+    activityLegacyId: 11,
+    activityCode: 'ultra-japan',
+    venue: {
+      title: 'Odaiba Ultra Park',
+      address: 'Odaiba, Tokyo, Japan',
+      lat: 35.6258,
+      lng: 139.7751,
+    },
+    readableAddress: '日本东京·台场（お台場，临海线台场/东京 Teleport 站）',
+    hubRoutes: [
+      hubRoute(
+        'hnd-airport',
+        '羽田国际机场',
+        {
+          title: '羽田国际机场',
+          address: 'Tokyo, Japan',
+          lat: 35.5494,
+          lng: 139.7798,
+        },
+        ['羽田机场', '羽田国际机场', 'HND', 'Haneda'],
+        {
+          distanceM: 15_000,
+          durationSec: 2_100,
+          durationMin: 35,
+          distanceKm: 15,
+        },
+        'Monorail 至滨松町转临海线至台场站，或出租车约 25–40 分钟',
+      ),
+      hubRoute(
+        'nrt-airport',
+        '成田国际机场',
+        {
+          title: '成田国际机场',
+          address: 'Narita, Japan',
+          lat: 35.772,
+          lng: 140.3929,
+        },
+        ['成田机场', '成田国际机场', 'NRT', 'Narita'],
+        {
+          distanceM: 78_000,
+          durationSec: 5_400,
+          durationMin: 90,
+          distanceKm: 78,
+        },
+        "成田特快 N'EX 至东京站再转临海线至台场，约 70–90 分钟",
+      ),
+      hubRoute(
+        'tokyo-station',
+        '东京站',
+        {
+          title: '东京站',
+          address: 'Tokyo, Japan',
+          lat: 35.6812,
+          lng: 139.7671,
+        },
+        ['东京站', 'Tokyo Station', '东京'],
+        {
+          distanceM: 12_000,
+          durationSec: 1_800,
+          durationMin: 30,
+          distanceKm: 12,
+        },
+        'JR 山手线至新桥转临海线至台场站，步行或短驳至会场',
+      ),
+    ],
+    interCityOrigins: [
+      interCityOrigin(
+        '上海',
+        ['上海', '魔都', 'shanghai', '浦东', '虹桥', '上海虹桥', '上海浦东'],
+        'hnd-airport',
+        [
+          '城际：建议航班（浦东/虹桥 → 羽田 HND）约 2.5–3 小时；成田 NRT 备选，电音节期间提前 2–8 周关注票价。',
+        ],
+      ),
+      interCityOrigin(
+        '北京',
+        ['北京', '帝都', 'beijing', '首都机场', '大兴机场'],
+        'hnd-airport',
+        [
+          '城际：建议航班（首都/大兴 → 羽田 HND）约 3–3.5 小时；早鸟票量紧俏建议尽早预订。',
+        ],
+      ),
+      interCityOrigin('深圳', ['深圳', '宝安机场', 'SZX'], 'hnd-airport', [
+        '城际：建议航班（深圳宝安 → 羽田 HND）约 3.5–4 小时；可经上海/香港中转比价。',
+      ]),
+      interCityOrigin('广州', ['广州', '白云', 'CAN'], 'hnd-airport', [
+        '城际：建议航班（广州白云 → 羽田 HND）约 3.5–4 小时；活动周房价与机票波动大。',
+      ]),
+      interCityOrigin('杭州', ['杭州', '萧山', 'HGH'], 'hnd-airport', [
+        '城际：建议航班（萧山 → 羽田 HND）约 2.5–3 小时；或高铁至上海后飞 HND。',
+      ]),
+      interCityOrigin(
+        '成都',
+        ['成都', '双流', '天府', 'CTU', 'TFU'],
+        'hnd-airport',
+        [
+          '城际：建议航班（双流/天府 → 羽田 HND）约 4–4.5 小时；留意直飞与经停时刻。',
+        ],
+      ),
+    ],
+  },
 ];
 
 export function findHotActivityProfile(

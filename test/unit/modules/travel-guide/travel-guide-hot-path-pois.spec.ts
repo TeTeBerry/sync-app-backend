@@ -41,4 +41,34 @@ describe('travel-guide-hot-path-pois', () => {
     ).toBe(true);
     expect(hotels.some((h) => /北京|北清路|合生汇/.test(h.name))).toBe(false);
   });
+
+  it('provides EDC Korea fallback hotels and nightlife near Incheon', () => {
+    const hotels = getHotPathFallbackPois(8, 'hotel', '酒店');
+    const nightlife = getHotPathFallbackPois(8, 'nightlife_food', '夜宵');
+    expect(hotels.length).toBeGreaterThanOrEqual(3);
+    expect(
+      hotels.some((h) =>
+        /Incheon|Yeongjong|Paradise|Hyatt/i.test(`${h.name} ${h.address}`),
+      ),
+    ).toBe(true);
+    expect(nightlife.length).toBeGreaterThanOrEqual(1);
+
+    const all = getAllHotPathFallbackPois(8);
+    expect(all.some((p) => p.kind === 'hotel')).toBe(true);
+    expect(all.some((p) => p.kind.startsWith('nightlife'))).toBe(true);
+  });
+
+  it('provides S2O Korea fallback hotels near Seoul Land', () => {
+    const hotels = getHotPathFallbackPois(3, 'hotel', '酒店');
+    expect(hotels.length).toBeGreaterThanOrEqual(4);
+    expect(hotels.some((h) => /Seoul|Lotte|Gangnam/i.test(h.name))).toBe(true);
+  });
+
+  it('provides WDJF and Ultra Japan fallback hotels in Tokyo', () => {
+    const wdjf = getHotPathFallbackPois(6, 'hotel', '酒店');
+    const ultra = getHotPathFallbackPois(11, 'hotel', '酒店');
+    expect(wdjf.length).toBeGreaterThanOrEqual(4);
+    expect(ultra.length).toBeGreaterThanOrEqual(4);
+    expect(wdjf.some((h) => /Tokyo|Daiba|Ariake/i.test(h.name))).toBe(true);
+  });
 });

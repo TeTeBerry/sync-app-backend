@@ -30,6 +30,10 @@ import type {
   TravelGuidePlan,
 } from './domain/travel-guide.types';
 import { isTravelGuideAbroad } from './domain/travel-guide-international.util';
+import {
+  resolveTravelGuideSupported,
+  TRAVEL_GUIDE_PREPARING_MESSAGE,
+} from './domain/travel-guide-support.util';
 import { sanitizeLlmTravelGuidePayload } from './domain/travel-guide-payload-normalize.util';
 import { TravelGuidePoiCollector } from './map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from './map/travel-guide-poi.ranker';
@@ -52,9 +56,9 @@ import type { TravelGuideMapLlmInput } from './map/travel-guide-map.types';
 import type { TravelGuideMapContext } from './map/travel-guide-map.types';
 import type { TravelGuideRankedCandidates } from './map/travel-guide-map.types';
 
-/** 仅允许基于高德地图候选数据做 AI 润色，禁止无 POI 上下文的生成 */
+/** 仅允许基于候选 POI 数据做 AI 润色，禁止无 POI 上下文的生成 */
 const TRAVEL_GUIDE_MAP_JSON_SYSTEM = [
-  '你是电音节出行攻略助手。交通/酒店/散场候选均来自高德地图周边检索。',
+  '你是电音节出行攻略助手。交通/酒店/散场候选来自境内高德地图周边检索，或境外/港澳台活动的运营精选 POI（candidates 列表）。',
   '请完成：1) 按预算与距离筛选；2) 按推荐分选取最优；3) 将数据润色为生动中文攻略。',
   '输出 JSON（不要 markdown），字段：',
   'transportLines, accommodationSchemes, hotels, parkingLines(仅自驾), nightlifeSpots, tipItems,',
@@ -125,6 +129,10 @@ export class TravelGuideGenerationService {
       await this.activityService.findByLegacyId(activityLegacyId);
     if (!activity) {
       throw new NotFoundException(`Activity ${activityLegacyId} not found`);
+    }
+
+    if (!resolveTravelGuideSupported(activity)) {
+      throw new BadRequestException(TRAVEL_GUIDE_PREPARING_MESSAGE);
     }
 
     await assertUserUgcTexts(

@@ -13,6 +13,18 @@ const thailandActivity = {
   region: 'overseas' as const,
 };
 
+const koreaActivity = {
+  name: 'EDC Korea 2026',
+  location: '韩国·仁川',
+  region: 'overseas' as const,
+};
+
+const japanActivity = {
+  name: 'Ultra Japan 2026',
+  location: '日本·东京 台场',
+  region: 'overseas' as const,
+};
+
 describe('travel-guide-transport.util', () => {
   it('splits international travel from venue shuttle for Thailand', () => {
     const interCityLines = buildInterCityTransportLines({
@@ -47,6 +59,88 @@ describe('travel-guide-transport.util', () => {
     expect(
       venueOptions.some((o) => o.lines.join(' ').match(/双条车|Grab|Shuttle/i)),
     ).toBe(true);
+  });
+
+  it('splits international travel from venue shuttle for Korea', () => {
+    const interCityLines = buildInterCityTransportLines({
+      departure: '上海',
+      venueTitle: 'Inspire Entertainment Resort',
+      venueReadableAddress: '韩国仁川·Inspire Entertainment Resort',
+      selfDrive: false,
+      interCity: true,
+      transportHints: [],
+      destinationCity: '仁川',
+      activity: koreaActivity,
+    });
+
+    expect(interCityLines.join(' ')).toMatch(/国际|航班|浦东|仁川/);
+    expect(interCityLines.join(' ')).not.toMatch(/乘高铁|动车至|地铁\/公交至/);
+
+    const venueOptions = buildVenueTransportOptions({
+      departure: '上海',
+      venueTitle: 'Inspire Entertainment Resort',
+      venueReadableAddress: '韩国仁川·Inspire Entertainment Resort',
+      selfDrive: false,
+      interCity: true,
+      transportHints: ['AREX 机场铁路'],
+      destinationCity: '仁川',
+      activity: koreaActivity,
+    });
+
+    expect(venueOptions.some((o) => /Kakao T|AREX/i.test(o.label))).toBe(true);
+    expect(venueOptions.some((o) => /高铁|BTS/.test(o.label))).toBe(false);
+  });
+
+  it('resolves korea transport profile with urban rail', () => {
+    const profile = resolveDestinationTransportProfile({
+      destinationCity: '仁川',
+      activity: koreaActivity,
+    });
+    expect(profile.korea).toBe(true);
+    expect(profile.hasUrbanRail).toBe(true);
+  });
+
+  it('splits international travel from venue shuttle for Japan', () => {
+    const interCityLines = buildInterCityTransportLines({
+      departure: '上海',
+      venueTitle: 'Odaiba Ultra Park',
+      venueReadableAddress: '日本东京·台场',
+      selfDrive: false,
+      interCity: true,
+      transportHints: [],
+      destinationCity: '东京',
+      activity: japanActivity,
+    });
+
+    expect(interCityLines.join(' ')).toMatch(/国际|航班|浦东|羽田|成田/);
+    expect(interCityLines.join(' ')).toMatch(/Visit Japan Web|日本官方/);
+
+    const venueOptions = buildVenueTransportOptions({
+      departure: '上海',
+      venueTitle: 'Odaiba Ultra Park',
+      venueReadableAddress: '日本东京·台场',
+      selfDrive: false,
+      interCity: true,
+      transportHints: ['临海线至台场站'],
+      destinationCity: '东京',
+      activity: japanActivity,
+    });
+
+    expect(venueOptions.some((o) => /Uber|Metro|临海线/i.test(o.label))).toBe(
+      true,
+    );
+    expect(venueOptions.some((o) => /高铁|BTS|Kakao/.test(o.label))).toBe(
+      false,
+    );
+  });
+
+  it('resolves japan transport profile with urban rail', () => {
+    const profile = resolveDestinationTransportProfile({
+      destinationCity: '东京',
+      activity: japanActivity,
+    });
+    expect(profile.japan).toBe(true);
+    expect(profile.hasUrbanRail).toBe(true);
   });
 
   it('uses rail/flight for domestic inter-city transport', () => {

@@ -62,4 +62,31 @@ describe('overseas transport uses departure airport not rail', () => {
       'HKT',
     );
   });
+  it('resolves ICN destination airport for Korea', () => {
+    const profile = resolveDestinationTransportProfile({
+      destinationCity: '仁川',
+      activity: {
+        name: 'EDC Korea 2026',
+        location: '韩国·仁川',
+        region: 'overseas',
+      },
+    });
+    expect(resolveDestinationAirportLabel(profile, '韩国·仁川')).toContain(
+      'ICN',
+    );
+  });
+
+  it('resolves HND/NRT destination airport for Japan', () => {
+    const profile = resolveDestinationTransportProfile({
+      destinationCity: '东京',
+      activity: {
+        name: 'Ultra Japan 2026',
+        location: '日本·东京 台场',
+        region: 'overseas',
+      },
+    });
+    expect(resolveDestinationAirportLabel(profile, '日本·东京 台场')).toMatch(
+      /HND|NRT/,
+    );
+  });
 });

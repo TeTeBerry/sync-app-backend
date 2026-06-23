@@ -53,6 +53,8 @@ const DEPARTURE_AIRPORTS: Record<string, AirportInfo> = {
   中山: { name: '广州白云/深圳宝安国际机场', iata: 'CAN/SZX' },
   香港: { name: '香港国际机场', iata: 'HKG' },
   澳门: { name: '澳门国际机场', iata: 'MFM' },
+  首尔: { name: '仁川/金浦国际机场', iata: 'ICN/GMP' },
+  东京: { name: '羽田/成田国际机场', iata: 'HND/NRT' },
 };
 
 export function resolveDepartureCityLabel(
@@ -103,6 +105,18 @@ export function resolveDestinationAirportLabel(
       return '曼谷素万那普/廊曼机场（BKK/DMK）';
     }
     return '曼谷/普吉等主要机场';
+  }
+
+  if (/韩国|korea|仁川|incheon|首尔|seoul|永宗|yeongjong/.test(corpus)) {
+    return '仁川国际机场（ICN）';
+  }
+
+  if (
+    /日本|japan|东京|tokyo|台场|odaiba|海の森|羽田|haneda|成田|narita/.test(
+      corpus,
+    )
+  ) {
+    return '羽田/成田国际机场（HND/NRT）';
   }
 
   if (profile.regionKind === 'hmt') {

@@ -28,6 +28,33 @@ export function travelGuideHotelBookingHint(
     : '携程 / 美团';
 }
 
+function overseasCorpus(
+  activity: Pick<Activity, 'name' | 'location' | 'region'>,
+  destinationCity?: string,
+): string {
+  const dest =
+    destinationCity?.trim() ||
+    destinationCityFromActivityLocation(activity.location) ||
+    '';
+  return `${activity.name} ${activity.location ?? ''} ${dest}`.toLowerCase();
+}
+
+export function isThailandOverseasCorpus(corpus: string): boolean {
+  return /泰国|thailand|普吉|phuket|曼谷|bangkok|芭提雅|pattaya/.test(corpus);
+}
+
+export function isKoreaOverseasCorpus(corpus: string): boolean {
+  return /韩国|korea|仁川|incheon|首尔|seoul|永宗|yeongjong|edckorea|edc korea|s2o/.test(
+    corpus,
+  );
+}
+
+export function isJapanOverseasCorpus(corpus: string): boolean {
+  return /日本|japan|东京|tokyo|台场|odaiba|海の森|羽田|haneda|成田|narita|wdjf|ultra japan|有明|ariake/.test(
+    corpus,
+  );
+}
+
 export function buildTravelGuideDocumentItems(input: {
   activity: Pick<Activity, 'name' | 'location' | 'region'>;
   destinationCity?: string;
@@ -49,16 +76,20 @@ export function buildTravelGuideDocumentItems(input: {
   }
 
   if (kind === 'overseas') {
-    const lower =
-      `${input.activity.name} ${input.activity.location ?? ''} ${dest}`.toLowerCase();
-    const thailand =
-      /泰国|thailand|普吉|phuket|曼谷|bangkok|芭提雅|pattaya/.test(lower);
+    const lower = overseasCorpus(input.activity, input.destinationCity);
+    const thailand = isThailandOverseasCorpus(lower);
+    const korea = isKoreaOverseasCorpus(lower);
+    const japan = isJapanOverseasCorpus(lower);
 
     const base = [
       '护照原件（建议有效期 6 个月以上，留 2 页以上空白页）。',
       thailand
         ? '泰国签证：持有效护照可享免签/落地签政策（以入境当日官方为准），建议打印返程机票与酒店订单备查。'
-        : '签证/入境许可：按目的地要求提前办理电子签/落地签，打印酒店与返程行程单。',
+        : korea
+          ? '韩国入境：请提前确认签证/K-ETA 资格（以入境当日韩国官方为准）；打印返程机票与酒店预订单备查。'
+          : japan
+            ? '日本入境：请提前完成 Visit Japan Web 入境审查（如适用）与海关申报；打印返程机票与酒店预订单备查。'
+            : '签证/入境许可：按目的地要求提前办理电子签/落地签，打印酒店与返程行程单。',
       '返程机票行程单 + 酒店预订单（海关/入境可能抽查）。',
       '国际旅行保险（含医疗与行程变更，电音节现场建议覆盖）。',
       '常用药品与个人证件复印件（与原件分开放置）。',
@@ -68,6 +99,16 @@ export function buildTravelGuideDocumentItems(input: {
       base.push(
         '泰铢现金（落地签费、小费、夜市/摊位常用）+ Visa/Master 卡备用。',
         '泰国电话卡/eSIM（Grab、Bolt 叫车与导航必备）。',
+      );
+    } else if (korea) {
+      base.push(
+        '韩元现金 + T-money 交通卡（地铁/便利店可用）；Visa/Master 卡用于酒店预授权。',
+        '韩国电话卡/eSIM（Kakao T 叫车、Naver Map 导航必备）。',
+      );
+    } else if (japan) {
+      base.push(
+        '日元现金 + Suica/Pasmo 交通卡（地铁/便利店可用）；Visa/Master 卡用于酒店预授权。',
+        '日本电话卡/eSIM（Google Maps / Navitime 导航、Uber Japan 叫车必备）。',
       );
     } else {
       base.push(
@@ -83,7 +124,7 @@ export function buildTravelGuideDocumentItems(input: {
 }
 
 export function buildTravelGuideEssentials(input: {
-  activity: Pick<Activity, 'location' | 'region'>;
+  activity: Pick<Activity, 'name' | 'location' | 'region'>;
   destinationCity?: string;
   interCity: boolean;
 }): {
@@ -98,22 +139,31 @@ export function buildTravelGuideEssentials(input: {
     '目的地';
 
   if (kind === 'overseas') {
-    const lower = `${input.activity.location ?? ''} ${dest}`.toLowerCase();
-    const thailand =
-      /泰国|thailand|普吉|phuket|曼谷|bangkok|芭提雅|pattaya/.test(lower);
+    const lower = overseasCorpus(input.activity, input.destinationCity);
+    const thailand = isThailandOverseasCorpus(lower);
+    const korea = isKoreaOverseasCorpus(lower);
+    const japan = isJapanOverseasCorpus(lower);
 
     return {
       network: [
         thailand
           ? 'AIS/TrueMove 电话卡或 eSIM，机场/711 可购；国内可提前淘宝/eSIM 平台订购。'
-          : '目的地 eSIM/当地 SIM，活动场馆与郊区信号可能较弱，建议下载离线地图。',
+          : korea
+            ? '韩国 LG U+ / SKT / KT 电话卡或 eSIM，仁川机场柜位即买即用；提前下载 Naver Map 离线包。'
+            : japan
+              ? '日本 docomo / SoftBank / au 电话卡或 eSIM，羽田/成田柜位即买即用；提前下载 Google Maps 离线包。'
+              : '目的地 eSIM/当地 SIM，活动场馆与郊区信号可能较弱，建议下载离线地图。',
         '国际漫游包可作备用，但现场刷票/叫车更依赖当地网络。',
         '场馆内 Wi‑Fi 不稳定，关键信息（票夹、行程）建议截图保存。',
       ],
       payment: [
         thailand
           ? '泰铢现金必备（落地签、夜市、小摊）；7‑Eleven / 商场可支付宝/微信部分商户。'
-          : '当地货币现金 + Visa/Master；国内移动支付覆盖有限，勿仅依赖微信/支付宝。',
+          : korea
+            ? '韩元现金 + T-money 卡（地铁/公交/便利店）；大型商场与酒店可刷卡，小摊多现金。'
+            : japan
+              ? '日元现金 + Suica/Pasmo 卡（地铁/公交/便利店）；大型商场与酒店可刷卡，小摊多现金。'
+              : '当地货币现金 + Visa/Master；国内移动支付覆盖有限，勿仅依赖微信/支付宝。',
         '备 1–2 张国际信用卡用于酒店预授权与紧急支出。',
         '小额美元现金可作应急，汇率一般不如当地货币。',
       ],
@@ -124,12 +174,26 @@ export function buildTravelGuideEssentials(input: {
             'Klook / 官方购票 App：门票与 Shuttle 接驳。',
             '翻译 App（Google/有道）+ 汇率换算，沟通与记账更方便。',
           ]
-        : [
-            'Google Maps / Apple Maps：导航与公共交通。',
-            '当地网约车 App（如 Grab、Uber 等，按目的地选择）。',
-            '官方购票 App / 邮件票夹，入场二维码提前截图。',
-            '翻译 + 汇率 App，入境与消费更省心。',
-          ],
+        : korea
+          ? [
+              'Kakao T：韩国主流网约车，散场叫车首选。',
+              'Naver Map / Google Maps：导航与周边 POI；仁川/首尔建议 Naver 为主。',
+              'Subway Korea / Kakao Metro：地铁与 AREX 机场铁路查询。',
+              'Papago 翻译 + 官方购票 App / 邮件票夹，入场二维码提前截图。',
+            ]
+          : japan
+            ? [
+                'Uber Japan / Japan Taxi：散场叫车首选；高峰建议提前预约。',
+                'Google Maps / Navitime：导航与周边 POI；东京建议 Navitime 查换乘。',
+                '山手线 / 东京 Metro / 临海线：会场周边轨道交通查询。',
+                'Google 翻译 + 官方购票 App / 邮件票夹，入场二维码提前截图。',
+              ]
+            : [
+                'Google Maps / Apple Maps：导航与公共交通。',
+                '当地网约车 App（如 Grab、Uber 等，按目的地选择）。',
+                '官方购票 App / 邮件票夹，入场二维码提前截图。',
+                '翻译 + 汇率 App，入境与消费更省心。',
+              ],
     };
   }
 

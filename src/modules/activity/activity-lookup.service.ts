@@ -15,6 +15,7 @@ import {
 import { ActivityImageService } from './activity-image.service';
 import { buildActivityLookupCache } from './activity-lookup.cache';
 import { isActivityLineupPublished } from './utils/activity-lineup-published.util';
+import { enrichActivityLookupRecord } from '../travel-guide/domain/travel-guide-support.util';
 import type {
   ActivityListPage,
   ActivityLookupPageOptions,
@@ -97,7 +98,10 @@ export class ActivityLookupService
 
   async findAll(): Promise<ActivityLookupRecord[]> {
     await this.syncIfStale();
-    return this.activityImages.resolveRecords([...this.cache.all]);
+    const resolved = await this.activityImages.resolveRecords([
+      ...this.cache.all,
+    ]);
+    return resolved.map(enrichActivityLookupRecord);
   }
 
   async findByLegacyId(legacyId: number): Promise<ActivityLookupRecord | null> {
@@ -107,7 +111,7 @@ export class ActivityLookupService
       return null;
     }
     const [resolved] = await this.activityImages.resolveRecords([record]);
-    return resolved ?? null;
+    return resolved ? enrichActivityLookupRecord(resolved) : null;
   }
 
   async findByLegacyIds(
@@ -121,7 +125,7 @@ export class ActivityLookupService
     const map = new Map<number, ActivityLookupRecord>();
     for (const record of resolved) {
       if (record.legacyId != null) {
-        map.set(record.legacyId, record);
+        map.set(record.legacyId, enrichActivityLookupRecord(record));
       }
     }
     return map;
@@ -138,7 +142,7 @@ export class ActivityLookupService
       return null;
     }
     const [resolved] = await this.activityImages.resolveRecords([record]);
-    return resolved ?? null;
+    return resolved ? enrichActivityLookupRecord(resolved) : null;
   }
 
   async findPage(
@@ -151,9 +155,11 @@ export class ActivityLookupService
       Math.max(options?.limit ?? DEFAULT_PAGE_LIMIT, 1),
       MAX_PAGE_LIMIT,
     );
-    const items = await this.activityImages.resolveRecords(
-      this.cache.all.slice(skip, skip + limit),
-    );
+    const items = (
+      await this.activityImages.resolveRecords(
+        this.cache.all.slice(skip, skip + limit),
+      )
+    ).map(enrichActivityLookupRecord);
 
     return { items, total, skip, limit };
   }
@@ -176,7 +182,10 @@ export class ActivityLookupService
       .aggregate<{
         _id: number;
         count: number;
-      }>([{ $match: PUBLIC_RECRUIT_POST_MATCH }, { $group: { _id: '$activityLegacyId', count: { $sum: 1 } } }])
+      }>([
+        { $match: PUBLIC_RECRUIT_POST_MATCH },
+        { $group: { _id: '$activityLegacyId', count: { $sum: 1 } } },
+      ])
       .exec();
     return new Map(rows.map((row) => [row._id, row.count]));
   }

@@ -6,6 +6,8 @@ export type ActivityLookupRecord = Activity & {
   lineupPublished?: boolean;
   /** Public recruit posts visible on activity feed. */
   recruitPostCount?: number;
+  /** Whether AI travel guide generation is supported for this activity. */
+  travelGuideSupported?: boolean;
 };
 
 export interface ActivityListPage {

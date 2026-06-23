@@ -1,6 +1,7 @@
 import { buildTravelGuideBudgetItems } from '../../../../src/modules/travel-guide/domain/travel-guide-budget-estimate.util';
 import {
   buildTravelGuideDocumentItems,
+  buildTravelGuideEssentials,
   isTravelGuideAbroad,
 } from '../../../../src/modules/travel-guide/domain/travel-guide-international.util';
 import {
@@ -46,6 +47,46 @@ describe('travel guide enhanced sections', () => {
     });
     expect(docs.some((d) => d.includes('护照'))).toBe(true);
     expect(docs.some((d) => d.includes('泰铢'))).toBe(true);
+  });
+
+  it('builds Korea-specific documents and essentials for EDC Korea', () => {
+    const activity = {
+      name: 'EDC Korea 2026',
+      location: '韩国·仁川',
+      region: 'overseas' as const,
+    };
+    const docs = buildTravelGuideDocumentItems({ activity });
+    expect(docs.some((d) => /K-ETA|韩国入境/.test(d))).toBe(true);
+    expect(docs.some((d) => /T-money|韩元/.test(d))).toBe(true);
+    expect(docs.some((d) => /Kakao T|Naver Map/.test(d))).toBe(true);
+
+    const essentials = buildTravelGuideEssentials({
+      activity,
+      interCity: true,
+    });
+    expect(essentials.apps.some((a) => /Kakao T/.test(a))).toBe(true);
+    expect(essentials.apps.some((a) => /Naver Map|AREX/.test(a))).toBe(true);
+    expect(essentials.payment.some((p) => /T-money/.test(p))).toBe(true);
+  });
+
+  it('builds Japan-specific documents and essentials for WDJF', () => {
+    const activity = {
+      name: 'World DJ Festival Japan 2026',
+      location: '日本·东京 海の森水上競技場',
+      region: 'overseas' as const,
+    };
+    const docs = buildTravelGuideDocumentItems({ activity });
+    expect(docs.some((d) => /Visit Japan Web|日本入境/.test(d))).toBe(true);
+    expect(docs.some((d) => /Suica|Pasmo|日元/.test(d))).toBe(true);
+
+    const essentials = buildTravelGuideEssentials({
+      activity,
+      interCity: true,
+    });
+    expect(essentials.apps.some((a) => /Uber Japan|Navitime/.test(a))).toBe(
+      true,
+    );
+    expect(essentials.payment.some((p) => /Suica|Pasmo/.test(p))).toBe(true);
   });
 
   it('picks nearby and city center accommodation schemes', () => {

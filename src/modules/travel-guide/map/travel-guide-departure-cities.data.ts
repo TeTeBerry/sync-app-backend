@@ -47,4 +47,6 @@ export const TRAVEL_GUIDE_DEPARTURE_CITIES = [
   '澳门',
   '芭提雅',
   '普吉岛',
+  '首尔',
+  '东京',
 ] as const;
