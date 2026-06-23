@@ -185,7 +185,15 @@ export class DjInfoService {
       catalog.items,
     );
     if (best) {
-      const localized = await this.djLocaleService.localizeCatalogItem(best);
+      const profile = await this.djService.resolveProfileForDisplay(
+        best.discogsId,
+        best.profile,
+      );
+      const localized = {
+        ...best,
+        country: this.djLocaleService.localizeCountry(best.country),
+        profile,
+      };
       return { replyText: formatDjProfileReply(localized) };
     }
 

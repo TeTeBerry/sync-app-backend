@@ -34,6 +34,7 @@ describe('DjService catalog cache', () => {
   const service = new DjService(
     djModel as never,
     jsonCache as never,
+    { localizeProfile: jest.fn() } as never,
     config as never,
   );
 

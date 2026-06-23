@@ -119,6 +119,12 @@ export class AmapMapService {
   readonly enabled: boolean;
   private readonly key: string;
   private readonly limiter: MapApiRateLimiter;
+  private readonly suggestionCache = new Map<
+    string,
+    { expiresAt: number; value: PlaceSuggestion[] }
+  >();
+  private static readonly SUGGESTION_CACHE_TTL_MS = 10 * 60 * 1000;
+  private static readonly SUGGESTION_CACHE_MAX = 300;
 
   constructor(private readonly config: ConfigService) {
     this.key = this.config.get<string>('amap.key') ?? '';
@@ -181,12 +187,21 @@ export class AmapMapService {
     limit?: number;
   }): Promise<PlaceSuggestion[]> {
     if (!this.enabled) return [];
+    const keyword = input.keyword.trim();
+    const region = input.region?.trim() ?? '';
+    const limit = input.limit ?? 10;
+    const cacheKey = `${region}|${keyword}`;
+    const cached = this.suggestionCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value.slice(0, limit);
+    }
+
     const query = new URLSearchParams({
-      keywords: input.keyword.trim(),
+      keywords: keyword,
       key: this.key,
       output: 'JSON',
     });
-    if (input.region?.trim()) query.set('city', input.region.trim());
+    if (region) query.set('city', region);
     if (input.location) {
       query.set(
         'location',
@@ -197,7 +212,10 @@ export class AmapMapService {
     const data = await this.getJson<InputTipsResponse>(
       `${BASE}${AMAP_WS.inputTips}?${query.toString()}`,
     );
-    if (!data || data.status !== '1' || !data.tips?.length) return [];
+    if (!data || data.status !== '1' || !data.tips?.length) {
+      this.storeSuggestionCache(cacheKey, []);
+      return [];
+    }
 
     const suggestions: PlaceSuggestion[] = [];
     for (const item of data.tips) {
@@ -215,9 +233,21 @@ export class AmapMapService {
         lat: loc?.lat,
         lng: loc?.lng,
       });
-      if (suggestions.length >= (input.limit ?? 10)) break;
+      if (suggestions.length >= limit) break;
     }
+    this.storeSuggestionCache(cacheKey, suggestions);
     return suggestions;
+  }
+
+  private storeSuggestionCache(key: string, value: PlaceSuggestion[]): void {
+    if (this.suggestionCache.size >= AmapMapService.SUGGESTION_CACHE_MAX) {
+      const oldest = this.suggestionCache.keys().next().value;
+      if (oldest) this.suggestionCache.delete(oldest);
+    }
+    this.suggestionCache.set(key, {
+      value,
+      expiresAt: Date.now() + AmapMapService.SUGGESTION_CACHE_TTL_MS,
+    });
   }
 
   async searchNearbyPois(input: {

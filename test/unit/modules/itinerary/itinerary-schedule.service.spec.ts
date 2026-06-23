@@ -53,6 +53,9 @@ describe('ItineraryScheduleService discogs styles', () => {
         ['SOTA', catalog[2]],
       ]),
     ),
+    resolveProfileForDisplay: jest.fn(
+      async (_discogsId: number, profile?: string) => profile ?? '',
+    ),
   };
   const lineupArtistAvatarService = {
     findAvatarUrlsByArtistNames: jest.fn().mockResolvedValue(new Map()),
@@ -502,7 +505,87 @@ describe('ItineraryScheduleService discogs styles', () => {
     const artist = await service.getCatalogLineupArtistDetail('dj-snake');
 
     expect(artist.name).toBe('DJ SNAKE');
+    expect(djService.resolveProfileForDisplay).toHaveBeenCalledWith(
+      9,
+      'International DJ profile text',
+    );
     expect(artist.profileSummary).toContain('International DJ');
+    expect(artist.profileFull).toBe('International DJ profile text');
+  });
+
+  it('returns artist detail without thumbnail when requireThumbnail is false', async () => {
+    activityLookup.findAll.mockResolvedValue([
+      {
+        legacyId: 1,
+        name: 'Tomorrowland Thailand',
+        date: '12/11-13',
+        lineupPublished: true,
+      },
+    ]);
+    performanceModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
+    djService.lookupForLineupArtists.mockResolvedValue(
+      new Map([
+        [
+          'AFROJACK',
+          {
+            discogsId: 10,
+            name: 'Afrojack',
+            profile: 'Dutch DJ profile',
+            genres: ['House'],
+            styles: ['Big Room'],
+            representativeWorks: [
+              {
+                releaseId: 1,
+                title: 'Take Over Control',
+                tracks: ['Take Over Control'],
+              },
+            ],
+          },
+        ],
+      ]),
+    );
+    lineupArtistAvatarService.findAvatarUrlsByArtistNames.mockResolvedValue(
+      new Map(),
+    );
+
+    const artist = await service.getCatalogLineupArtistDetail('afrojack');
+
+    expect(artist.name).toBe('AFROJACK');
+    expect(artist.thumbnail).toBeUndefined();
+    expect(artist.profileFull).toBe('Dutch DJ profile');
+    expect(artist.representativeTracks).toEqual(['Take Over Control']);
+  });
+
+  it('still requires thumbnail when resolving for ranked list lookups', async () => {
+    activityLookup.findAll.mockResolvedValue([
+      {
+        legacyId: 1,
+        name: 'Tomorrowland Thailand',
+        date: '12/11-13',
+        lineupPublished: true,
+      },
+    ]);
+    performanceModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
+    djService.lookupForLineupArtists.mockResolvedValue(new Map());
+    lineupArtistAvatarService.findAvatarUrlsByArtistNames.mockResolvedValue(
+      new Map(),
+    );
+
+    await expect(
+      service.resolveCatalogLineupArtistById('afrojack'),
+    ).rejects.toThrow('Artist not found');
   });
 
   it('throws when artist slug is unknown', async () => {

@@ -6,6 +6,8 @@ import { RedisMemoryJsonCacheService } from '../../infra/cache/redis-memory-json
 import { Dj, DjDocument } from '../../database/schemas/dj.schema';
 import type { DjCatalogItem, DjSearchResult } from './dj.types';
 import { matchLineupArtistToCatalog } from './lineup-name-match.util';
+import { DjLocaleService } from './dj-locale.service';
+import { hasCjkText } from './dj-country-zh.util';
 
 const DEFAULT_LIMIT = 8;
 const MAX_LIMIT = 30;
@@ -43,6 +45,7 @@ export class DjService implements OnApplicationBootstrap {
   constructor(
     @InjectModel(Dj.name) private readonly djModel: Model<DjDocument>,
     private readonly jsonCache: RedisMemoryJsonCacheService,
+    private readonly djLocaleService: DjLocaleService,
     config: ConfigService,
   ) {
     this.dataKey = config.get<string>('catalog.dj.dataKey') ?? 'catalog:dj:v1';
@@ -75,6 +78,49 @@ export class DjService implements OnApplicationBootstrap {
     }
     const doc = await this.djModel.findOne({ discogsId }).lean().exec();
     return doc ? toCatalogItem(doc) : null;
+  }
+
+  /**
+   * Returns Chinese profile when available; translates via LLM once and persists
+   * to `profileZh` keyed by source `profile` text.
+   */
+  async resolveProfileForDisplay(
+    discogsId: number,
+    profile?: string,
+  ): Promise<string> {
+    const source = profile?.trim() ?? '';
+    if (!source) {
+      return '';
+    }
+    if (hasCjkText(source)) {
+      return source;
+    }
+    if (!Number.isFinite(discogsId) || discogsId <= 0) {
+      return source;
+    }
+
+    const doc = await this.djModel
+      .findOne({ discogsId })
+      .select('profileZh profileZhSource')
+      .lean()
+      .exec();
+
+    const cachedZh = doc?.profileZh?.trim();
+    if (cachedZh && doc?.profileZhSource === source) {
+      return cachedZh;
+    }
+
+    const translated = await this.djLocaleService.localizeProfile(source);
+    const resolved = translated?.trim() || source;
+
+    if (resolved !== source && hasCjkText(resolved)) {
+      await this.djModel.updateOne(
+        { discogsId },
+        { $set: { profileZh: resolved, profileZhSource: source } },
+      );
+    }
+
+    return resolved;
   }
 
   async searchByName(

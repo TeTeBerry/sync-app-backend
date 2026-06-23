@@ -57,10 +57,8 @@ import {
   extractYearFromText,
   isActivityEnded,
 } from '../../common/utils/activity-date.util';
-import {
-  artistIdFromLineupName,
-  truncateCatalogProfileSummary,
-} from './utils/lineup-artist-id.util';
+import { artistIdFromLineupName } from './utils/lineup-artist-id.util';
+import { buildArtistProfileDetailFromCatalog } from './utils/artist-profile-detail.util';
 
 export interface ItineraryDjDto {
   id: string;
@@ -102,6 +100,8 @@ export interface CatalogLineupArtistDto {
 
 export interface CatalogLineupArtistDetailDto extends CatalogLineupArtistDto {
   profileSummary?: string;
+  profileFull?: string;
+  representativeTracks?: string[];
 }
 
 type CatalogLineupArtistEntryInternal = {
@@ -495,6 +495,7 @@ export class ItineraryScheduleService implements OnModuleInit {
 
   async resolveCatalogLineupArtistById(
     id: string,
+    options?: { requireThumbnail?: boolean },
   ): Promise<CatalogLineupArtistDto> {
     const slug = id.trim();
     if (!slug) {
@@ -510,7 +511,7 @@ export class ItineraryScheduleService implements OnModuleInit {
     }
 
     const dto = this.toCatalogLineupArtistDto(entry, index);
-    if (!dto.thumbnail?.trim()) {
+    if (options?.requireThumbnail !== false && !dto.thumbnail?.trim()) {
       throw new NotFoundException('Artist not found');
     }
 
@@ -520,22 +521,41 @@ export class ItineraryScheduleService implements OnModuleInit {
   async getCatalogLineupArtistDetail(
     id: string,
   ): Promise<CatalogLineupArtistDetailDto> {
-    const artist = await this.resolveCatalogLineupArtistById(id);
+    const artist = await this.resolveCatalogLineupArtistById(id, {
+      requireThumbnail: false,
+    });
     const catalog = await this.djService.lookupForLineupArtists([artist.name]);
-    const profileSummary = truncateCatalogProfileSummary(
-      catalog.get(artist.name)?.profile,
+    const catalogItem = catalog.get(artist.name);
+    const displayProfile = catalogItem
+      ? await this.djService.resolveProfileForDisplay(
+          catalogItem.discogsId,
+          catalogItem.profile,
+        )
+      : undefined;
+    const profileDetail = buildArtistProfileDetailFromCatalog(
+      catalogItem
+        ? {
+            ...catalogItem,
+            ...(displayProfile ? { profile: displayProfile } : {}),
+          }
+        : undefined,
     );
 
     return {
       ...artist,
-      ...(profileSummary ? { profileSummary } : {}),
+      ...profileDetail,
+      ...(profileDetail.representativeTracks.length
+        ? { representativeTracks: profileDetail.representativeTracks }
+        : {}),
     };
   }
 
   async listActivitiesForLineupArtist(
     id: string,
   ): Promise<ActivityLookupRecord[]> {
-    const artist = await this.resolveCatalogLineupArtistById(id);
+    const artist = await this.resolveCatalogLineupArtistById(id, {
+      requireThumbnail: false,
+    });
     const hits = await this.findArtistLineupMemberships({
       artistName: artist.name,
     });

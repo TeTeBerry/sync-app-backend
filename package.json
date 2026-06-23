@@ -47,6 +47,8 @@
     "db:sync-lineup-avatars:dry-run": "node scripts/sync-lineup-artist-avatars-cloud.mjs --missing-only --dry-run",
     "db:report-lineup-avatar-gaps": "node scripts/report-lineup-avatar-gaps.mjs",
     "db:translate-dj-locale": "node scripts/translate-dj-locale.mjs",
+    "db:translate-dj-locale:all": "node scripts/translate-dj-locale-all.mjs",
+    "db:sync-dj-profile-locale:all": "node scripts/sync-dj-profile-locale-all.mjs",
     "dev": "npm run wait:mongo && npm run stop:dev && nest build && nest start --watch",
     "dev:all": "npm run infra:up:cn && npm run wait:mongo && npm run stop:dev && nest build && nest start --watch",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",

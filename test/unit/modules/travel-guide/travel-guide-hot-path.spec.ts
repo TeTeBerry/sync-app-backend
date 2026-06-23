@@ -10,6 +10,19 @@ describe('travel-guide-hot-path', () => {
     expect(profile?.venue.title).toContain('国际会展中心');
   });
 
+  it('resolves TML Shanghai venue at Bund tech exhibition hall', () => {
+    const profile = findHotActivityProfile(16);
+    expect(profile?.activityCode).toBe('tomorrowland-shanghai');
+    expect(profile?.venue.title).toContain('外滩大会新址科技展馆');
+    expect(profile?.readableAddress).toContain('龙华东路130号');
+  });
+
+  it('matches TML Shanghai inter-city origin from 深圳', () => {
+    const profile = findHotActivityProfile(16)!;
+    const inter = matchHotInterCityRoute(profile, '深圳');
+    expect(inter?.origin.originLabel).toBe('深圳');
+  });
+
   it('matches hub route by airport alias', () => {
     const profile = findHotActivityProfile(4)!;
     const hub = matchHotHubRoute(profile, '宝安机场');

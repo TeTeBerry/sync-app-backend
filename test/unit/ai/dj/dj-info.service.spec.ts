@@ -4,9 +4,13 @@ describe('DjInfoService', () => {
   const djService = {
     searchByName: jest.fn(),
     searchByStyles: jest.fn(),
+    resolveProfileForDisplay: jest.fn(
+      async (_discogsId: number, profile?: string) => profile ?? '',
+    ),
   };
   const djLocaleService = {
     localizeCatalogItem: jest.fn(async (item: unknown) => item),
+    localizeCountry: jest.fn((country?: string) => country ?? ''),
   };
   const scheduleService = {
     getSchedule: jest.fn(),

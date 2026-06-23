@@ -26,6 +26,14 @@ export class Dj {
   @Prop({ default: '' })
   profile?: string;
 
+  /** Cached Chinese translation of `profile` (LLM). */
+  @Prop({ default: '' })
+  profileZh?: string;
+
+  /** Source `profile` text used when `profileZh` was generated (cache invalidation). */
+  @Prop({ default: '' })
+  profileZhSource?: string;
+
   @Prop({ type: [String], default: [] })
   genres!: string[];
 

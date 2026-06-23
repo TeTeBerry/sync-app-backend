@@ -638,6 +638,150 @@ export const TRAVEL_GUIDE_HOT_ACTIVITIES: HotActivityMapProfile[] = [
       ),
     ],
   },
+  {
+    activityLegacyId: 16,
+    activityCode: 'tomorrowland-shanghai',
+    venue: {
+      title: '外滩大会新址科技展馆',
+      address: '上海市黄浦区龙华东路130号',
+      lat: 31.1906,
+      lng: 121.4842,
+    },
+    readableAddress:
+      '上海市黄浦区·外滩大会新址科技展馆（龙华东路130号，近世博会博物馆站）',
+    hubRoutes: [
+      hubRoute(
+        'expo-museum-metro',
+        '世博会博物馆站',
+        {
+          title: '世博会博物馆站',
+          address: '上海市黄浦区蒙自路',
+          lat: 31.1853,
+          lng: 121.4818,
+        },
+        ['世博会博物馆', '世博博物馆', '13号线世博博物馆'],
+        {
+          distanceM: 800,
+          durationSec: 600,
+          distanceKm: 0.8,
+          durationMin: 10,
+        },
+        '地铁13号线世博会博物馆站步行约8–12分钟至场馆',
+      ),
+      hubRoute(
+        'shanghai-hongqiao-rail',
+        '上海虹桥站',
+        {
+          title: '上海虹桥站',
+          address: '上海市闵行区',
+          lat: 31.1949,
+          lng: 121.3202,
+        },
+        ['上海虹桥站', '虹桥站', '虹桥火车站'],
+        {
+          distanceM: 18_000,
+          durationSec: 2_100,
+          distanceKm: 18,
+          durationMin: 35,
+        },
+        '地铁10号线转13号线至世博会博物馆站，或打车约30–40分钟',
+      ),
+      hubRoute(
+        'sha-airport',
+        '上海虹桥国际机场',
+        {
+          title: '上海虹桥国际机场',
+          address: '上海市长宁区',
+          lat: 31.1979,
+          lng: 121.3364,
+        },
+        ['虹桥机场', '上海虹桥', 'SHA'],
+        {
+          distanceM: 20_000,
+          durationSec: 2_400,
+          distanceKm: 20,
+          durationMin: 40,
+        },
+        '地铁10号线转13号线，或网约车约35–50分钟',
+      ),
+      hubRoute(
+        'pvg-airport',
+        '上海浦东国际机场',
+        {
+          title: '上海浦东国际机场',
+          address: '上海市浦东新区',
+          lat: 31.1443,
+          lng: 121.8083,
+        },
+        ['浦东机场', '上海浦东', 'PVG'],
+        {
+          distanceM: 45_000,
+          durationSec: 3_600,
+          distanceKm: 45,
+          durationMin: 60,
+        },
+        '地铁2号线转13号线，或磁浮+地铁约70–90分钟',
+      ),
+      hubRoute(
+        'shanghai-rail',
+        '上海站',
+        {
+          title: '上海站',
+          address: '上海市静安区',
+          lat: 31.2496,
+          lng: 121.4558,
+        },
+        ['上海站', '上海火车站'],
+        {
+          distanceM: 8_500,
+          durationSec: 1_500,
+          distanceKm: 8.5,
+          durationMin: 25,
+        },
+        '地铁1号线转13号线，或打车约20–30分钟',
+      ),
+    ],
+    interCityOrigins: [
+      interCityOrigin(
+        '深圳',
+        ['深圳', '宝安机场', 'SZX', '深圳北站'],
+        'sha-airport',
+        [
+          '城际：建议航班（深圳宝安 → 上海虹桥/浦东）约 2.5–3 小时，或高铁（深圳北 → 上海虹桥）约 7–8 小时。',
+        ],
+      ),
+      interCityOrigin(
+        '北京',
+        ['北京', '首都机场', '大兴机场', 'PEK', 'PKX'],
+        'pvg-airport',
+        [
+          '城际：建议航班（首都/大兴 → 上海虹桥/浦东）约 2–2.5 小时；高铁至上海虹桥约 4.5–5.5 小时。',
+        ],
+      ),
+      interCityOrigin(
+        '广州',
+        ['广州', '白云', 'CAN', '广州南'],
+        'sha-airport',
+        [
+          '城际：建议航班（广州白云 → 上海虹桥/浦东）约 2.5 小时，或高铁（广州南 → 上海虹桥）约 7 小时。',
+        ],
+      ),
+      interCityOrigin(
+        '杭州',
+        ['杭州', '萧山', 'HGH', '杭州东'],
+        'shanghai-hongqiao-rail',
+        [
+          '城际：建议高铁（杭州东 → 上海虹桥）约 1 小时，或航班（萧山 → 虹桥/浦东）约 1 小时。',
+        ],
+      ),
+      interCityOrigin(
+        '成都',
+        ['成都', '双流', '天府', 'CTU', 'TFU'],
+        'pvg-airport',
+        ['城际：建议航班（双流/天府 → 上海虹桥/浦东）约 2.5–3 小时。'],
+      ),
+    ],
+  },
 ];
 
 export function findHotActivityProfile(

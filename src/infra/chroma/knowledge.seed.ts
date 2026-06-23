@@ -34,7 +34,7 @@ export const KNOWLEDGE_DOCUMENTS: Document[] = [
   }),
   new Document({
     pageContent:
-      'The Magic Of Tomorrowland 上海 2026（tomorrowland-shanghai）2026 年 10 月 17 日至 18 日，地点上海（具体场馆待定），主题 Planaxis · 海底幻境。别名：tomorrowland shanghai、tml上海、明日世界上海、the magic of tomorrowland。',
+      'The Magic Of Tomorrowland 上海 2026（tomorrowland-shanghai）2026 年 10 月 17 日至 18 日，地点上海外滩大会新址科技展馆（黄浦区龙华东路130号，Hero Dome），主题 Planaxis · 海底幻境。别名：tomorrowland shanghai、tml上海、明日世界上海、the magic of tomorrowland。',
     metadata: { topic: 'activity', code: 'tomorrowland-shanghai' },
   }),
   new Document({

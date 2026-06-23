@@ -50,9 +50,11 @@ describe('travel-guide-support.util', () => {
     ).toBe(true);
     expect(
       resolveTravelGuideSupported({
-        legacyId: 99,
-        region: undefined,
-        location: '上海·某场馆',
+        legacyId: 16,
+        region: 'domestic',
+        location: '上海·外滩大会新址科技展馆',
+        latitude: 31.1906,
+        longitude: 121.4842,
       }),
     ).toBe(true);
   });

@@ -11,6 +11,12 @@ describe('travel-guide-hot-path-pois', () => {
     expect(nightlife.length).toBeGreaterThanOrEqual(1);
   });
 
+  it('provides TML Shanghai fallback nightlife near expo park', () => {
+    const nightlife = getHotPathFallbackPois(16, 'nightlife_food', '夜宵');
+    expect(nightlife.length).toBeGreaterThanOrEqual(1);
+    expect(nightlife.some((p) => /海底捞|很久以前/.test(p.name))).toBe(true);
+  });
+
   it('returns full set for collector merge', () => {
     const all = getAllHotPathFallbackPois(4);
     expect(all.some((p) => p.kind === 'hotel')).toBe(false);
