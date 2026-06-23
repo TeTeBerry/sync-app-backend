@@ -1,4 +1,4 @@
-import { enterPublishConfirmState } from '@src/shared/chat/conversation-state.types';
+import { enterPublishConfirmState } from '@sync/chat-contracts/conversation-state.types';
 import {
   applyFlowSwitch,
   resetToIdle,

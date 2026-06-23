@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DjInfoService } from '../../dj/dj-info.service';
 import { AiStreamEventBuilder } from '../../presentation/ai-stream-event.builder';
-import type { AiStreamEvent } from '../../../shared/chat';
+import type { AiStreamEvent } from '@sync/chat-contracts';
 import type { TurnHandlerContext } from './turn-handler.types';
 
 @Injectable()

@@ -15,7 +15,7 @@ import { DjInfoResolverService } from './dj-info-resolver.service';
 import { buildDjInfoSuggestedReplies } from './dj-info-suggested-replies.util';
 import type { DjInfoStructuredQuery } from './dj-info-structured.types';
 import type { DjCatalogItem } from '../../modules/dj/dj.types';
-import type { ChatMessageDto } from '../../shared/chat';
+import type { ChatMessageDto } from '@sync/chat-contracts';
 
 const LIST_LIMIT = 8;
 

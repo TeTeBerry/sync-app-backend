@@ -1,7 +1,7 @@
 import {
   getAllHotPathFallbackPois,
   getHotPathFallbackPois,
-} from '@src/modules/travel-guide/map/travel-guide-hot-path-pois.data';
+} from '@src/data/travel-guide/travel-guide-hot-path-pois.data';
 
 describe('travel-guide-hot-path-pois', () => {
   it('provides storm activity fallback nightlife (hotels come from Amap only)', () => {

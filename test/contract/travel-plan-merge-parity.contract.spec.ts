@@ -3,7 +3,7 @@ import {
   mergeTravelPlanNodes,
   sortTravelPlanNodes,
   type TravelPlanNodeRecord,
-} from '@src/shared/travel-plan';
+} from '@sync/travel-plan-contracts';
 
 const activityNodes: TravelPlanNodeRecord[] = [
   {

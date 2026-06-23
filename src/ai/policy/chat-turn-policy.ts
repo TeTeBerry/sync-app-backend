@@ -9,7 +9,7 @@ import {
   isActiveItineraryTask,
   isActiveTravelGuideTask,
 } from '../conversation';
-import type { ChatMessageDto } from '../../shared/chat';
+import type { ChatMessageDto } from '@sync/chat-contracts';
 import type { ChatRequestDto } from '../presentation/chat-request.dto';
 
 export function isPostingFlowState(flow: ConversationState['flow']): boolean {

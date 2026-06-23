@@ -24,28 +24,14 @@ import {
   DEV_PROFILE_STORM_LEGACY_ID,
   shouldInjectDevProfileStorm,
 } from './utils/dev-profile-storm-activity.util';
+import type {
+  ProfileActivityItem,
+  ProfileSummary,
+} from '@sync/profile-contracts';
 
-export interface ProfileSummaryDto {
-  name: string;
-  handle: string;
-  location: string;
-  bio: string;
-  avatar: string;
-  stats: {
-    events: number;
-    posts: number;
-  };
-}
+export type ProfileSummaryDto = ProfileSummary;
 
-export interface ProfileActivityItemDto {
-  id: string;
-  title: string;
-  date: string;
-  location: string;
-  image: string;
-  status: 'registered' | 'attended';
-  activityLegacyId: string;
-}
+export type ProfileActivityItemDto = ProfileActivityItem;
 
 @Injectable()
 export class ProfileSummaryService {

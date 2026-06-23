@@ -14,7 +14,7 @@ import {
   AiStreamEventBuilder,
   type ReplySink,
 } from '../../presentation/ai-stream-event.builder';
-import type { AiStreamEvent } from '../../../shared/chat';
+import type { AiStreamEvent } from '@sync/chat-contracts';
 import type { AgentTurnResult, TurnHandlerContext } from './turn-handler.types';
 
 const TRAVEL_GUIDE_SHEET_REPLY =

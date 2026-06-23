@@ -1,5 +1,5 @@
 import type { ChatAgentTurnInput } from '../agent.types';
-import type { AiStreamEvent } from '../../../shared/chat';
+import type { AiStreamEvent } from '@sync/chat-contracts';
 
 export interface ChatAgentToolDefinition {
   name: string;

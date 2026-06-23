@@ -8,7 +8,7 @@ import {
   enterCollectPostBodyState,
   enterPublishConfirmState,
 } from '../conversation';
-import { ChatMessageDto } from '../../shared/chat';
+import { ChatMessageDto } from '@sync/chat-contracts';
 import { parseConversationContext } from '../conversation/conversation-context.parser';
 import {
   buildExistingPostGuidanceReply,

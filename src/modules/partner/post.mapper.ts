@@ -6,7 +6,7 @@ import type {
   EventDetailPost,
   PostCommentItem,
   ProfilePostItem,
-} from '@src/shared/partner';
+} from '@sync/partner-contracts';
 import { PostRecord } from './interfaces/post.repository.interface';
 
 const LIST_BODY_PREVIEW_MAX = 280;

@@ -1,4 +1,4 @@
-import type { AiStreamEvent } from '../../shared/chat';
+import type { AiStreamEvent } from '@sync/chat-contracts';
 
 /** Client → server (simple Taro payload) */
 export type AiChatWsSimpleClientMessage = {

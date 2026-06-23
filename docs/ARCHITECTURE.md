@@ -20,7 +20,7 @@ AppModule
 ├── NotificationModule
 ├── ChatModule               # AI 会话持久化
 ├── AccountRiskModule        # 账号风控与限制
-├── shared/                  # 前后端契约（chat、travel-plan、itinerary、travel-guide、partner）
+├── packages/*-contracts/    # 前后端 workspace 契约包（@sync/*-contracts）
 └── AiModule                 # WebSocket 对话 + 单轮编排（AiTurnPipeline）
     ├── AgentsModule         # NoticeAgent（活动更新等系统通知）
     ├── OrchestrationModule  # AiTurnPipeline + DeterministicReply

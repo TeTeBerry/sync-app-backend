@@ -10,7 +10,7 @@ import {
   TravelGuideGenerationJob,
   TravelGuideGenerationJobDocument,
 } from '../../database/schemas/travel-guide-generation-job.schema';
-import type { FestivalPlanProgressDto } from '../../shared/festival-plan';
+import type { FestivalPlanProgressDto } from '@sync/festival-plan-contracts';
 import { ItineraryService } from '../itinerary/itinerary.service';
 import { NotificationService } from '../notification/notification.service';
 import { PostQueryService } from '../partner/application/post-query.service';

@@ -1,4 +1,5 @@
 import {
+  Inject,
   BadRequestException,
   HttpException,
   HttpStatus,
@@ -13,7 +14,10 @@ import {
   ItineraryGenerationLogDocument,
 } from '../../database/schemas/itinerary-generation-log.schema';
 import type { ItineraryDay } from '../../database/schemas/user-itinerary.schema';
-import { ActivityService } from '../activity/activity.service';
+import {
+  ACTIVITY_LOOKUP_PORT,
+  type IActivityLookupPort,
+} from '../activity/ports/activity-lookup.port';
 import { buildFallbackItinerary } from './domain/itinerary-fallback.builder';
 import type { ItineraryConflict } from './domain/itinerary-conflict.util';
 import { ItineraryCacheService } from './itinerary-cache.service';
@@ -35,7 +39,8 @@ export class ItineraryGenerationService {
   constructor(
     @InjectModel(ItineraryGenerationLog.name)
     private readonly logModel: Model<ItineraryGenerationLogDocument>,
-    private readonly activityService: ActivityService,
+    @Inject(ACTIVITY_LOOKUP_PORT)
+    private readonly activityLookup: IActivityLookupPort,
     private readonly scheduleService: ItineraryScheduleService,
     private readonly cache: ItineraryCacheService,
   ) {}
@@ -98,7 +103,7 @@ export class ItineraryGenerationService {
         return { ...cached, cached: true };
       }
 
-      const activity = await this.activityService.findByLegacyId(
+      const activity = await this.activityLookup.findByLegacyId(
         input.activityLegacyId,
       );
       if (!activity) {

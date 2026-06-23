@@ -17,17 +17,15 @@ import { assertUserUgcRemoteImageUrl } from '../../common/media/user-ugc-image.u
 import { WechatMiniService } from './wechat-mini.service';
 import { WechatContentSecurityService } from './wechat-content-security.service';
 import { generatePersonalityRaverAvatarKey } from '../personality-test/utils/personality-raver-avatar.util';
+import type { AuthLoginResult } from '@sync/profile-contracts';
+
+export type { AuthLoginResult } from '@sync/profile-contracts';
 
 export interface AuthTokenPayload {
   sub: string;
   name: string;
   /** Session version; bumped on logout to revoke older JWTs. */
   tv?: number;
-}
-
-export interface AuthLoginResult {
-  accessToken: string;
-  user: UserMeDto;
 }
 
 const DEFAULT_WECHAT_NAME = '微信用户';

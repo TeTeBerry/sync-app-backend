@@ -12,7 +12,7 @@ import type {
   TravelGuideBudgetTier,
   TravelGuidePlan,
   TravelGuidePlanReadResult,
-} from '@src/shared/travel-guide';
+} from '@sync/travel-guide-contracts';
 import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cache.service';
 
 export type TravelGuideSavedPlanView = TravelGuidePlanReadResult;

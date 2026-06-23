@@ -7,7 +7,7 @@ import {
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
   STORM_ACTIVITY_LEGACY_ID,
-} from '@src/modules/itinerary/itinerary.seed';
+} from '@src/data/itinerary/itinerary.seed';
 
 describe('itinerary-catalog.util', () => {
   it('recognizes catalog activities', () => {

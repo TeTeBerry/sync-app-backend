@@ -13,13 +13,13 @@ import {
   TravelGuideGenerationJob,
   TravelGuideGenerationJobDocument,
 } from '../../database/schemas/travel-guide-generation-job.schema';
-import type { TravelGuideGenerationJobStatus } from '@src/shared/travel-guide';
+import type { TravelGuideGenerationJobStatus } from '@sync/travel-guide-contracts';
 import { ActivityService } from '../activity/activity.service';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
 import type {
   TravelGuideGenerationJobResult,
   TravelGuidePlan,
-} from '@src/shared/travel-guide';
+} from '@sync/travel-guide-contracts';
 import { parseActivityDayCount } from './domain/parse-activity-days.util';
 import {
   buildTravelGuideGenerationCacheKey,

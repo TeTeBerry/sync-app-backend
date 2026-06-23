@@ -22,7 +22,7 @@ describe('TravelGuidePoiCollector', () => {
       expect(input.abroad).toBe(true);
       expect(input.activityLegacyId).toBe(8);
       const { getHotPathFallbackPois } =
-        await import('@src/modules/travel-guide/map/travel-guide-hot-path-pois.data');
+        await import('@src/data/travel-guide/travel-guide-hot-path-pois.data');
       return getHotPathFallbackPois(
         input.activityLegacyId,
         input.kind,

@@ -1,4 +1,7 @@
-import type { MapPoiKind, RawMapPoi } from './travel-guide-map.types';
+import type {
+  MapPoiKind,
+  RawMapPoi,
+} from '@src/modules/travel-guide/map/travel-guide-map.types';
 import { findHotActivityProfile } from './travel-guide-hot-path.data';
 
 /**

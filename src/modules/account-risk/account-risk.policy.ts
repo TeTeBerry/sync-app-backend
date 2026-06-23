@@ -19,7 +19,7 @@ export const ACCOUNT_RISK_RESTRICT_DAYS = 7;
 export const ACCOUNT_RISK_SCALPER_HEAVY_RESTRICT_DAYS = 14;
 export const ACCOUNT_RISK_BAN_DAYS = 30;
 
-export type AccountRiskStatus = 'normal' | 'restricted' | 'banned';
+export type { AccountRiskStatus } from '@sync/profile-contracts';
 
 export const ACCOUNT_RISK_VIOLATION_TYPES_FOR_ESCALATION: ViolationType[] = [
   'scalper',

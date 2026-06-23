@@ -1,7 +1,7 @@
 export const CONVERSATION_STATE_VERSION = 1;
 
-export type { TravelGuideBudgetTier } from '../travel-guide';
-import type { TravelGuideBudgetTier } from '../travel-guide';
+export type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
+import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
 
 export type ConversationFlow =
   | 'idle'

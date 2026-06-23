@@ -3,9 +3,12 @@ import type {
   RecommendedPostCard,
 } from './chat-cards.types';
 import type { ConversationState } from './conversation-state.types';
-import type { TravelGuideBudgetTier } from '../travel-guide';
+import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
 import type { ClientActionStreamEvent } from './client-action.types';
-import type { ItineraryConflict, ItineraryDay } from '../itinerary/types';
+import type {
+  ItineraryConflict,
+  ItineraryDay,
+} from '@sync/itinerary-contracts/types';
 
 export interface TravelGuideChatForm {
   departure: string;

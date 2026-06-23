@@ -49,12 +49,12 @@
 | 2 | EDC China | 阳澄湖半岛、苏州北站/硕放机场路线 |
 | 5 | EDC Thailand | Rhythm Park、普吉机场路线 |
 
-数据文件：`map/travel-guide-hot-path.data.ts`  
+数据文件：`src/data/travel-guide/travel-guide-hot-path.data.ts`  
 启动时 `TravelGuideVenueCacheSeedService` 同步至 Mongo 集合 `travel_guide_venue_cache`。
 
 ### POI 兜底（配额用尽时）
 
-高德 `place/around` 返回空或日配额用尽时，热门活动使用 `travel-guide-hot-path-pois.data.ts` 内预置停车/夜宵 POI（**不含酒店**，酒店必须来自高德检索或报错）。
+高德 `place/around` 返回空或日配额用尽时，热门活动使用 `src/data/travel-guide/travel-guide-hot-path-pois.data.ts` 内预置停车/夜宵 POI（**不含酒店**，酒店必须来自高德检索或报错）。
 
 ### 内存缓存
 

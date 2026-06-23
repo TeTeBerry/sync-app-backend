@@ -13,8 +13,8 @@ import type {
   AiStreamEvent,
   RecommendedActivityCard,
   RecommendedPostCard,
-} from '../../shared/chat';
-import type { ClientActionSheet } from '../../shared/chat/client-action.types';
+} from '@sync/chat-contracts';
+import type { ClientActionSheet } from '@sync/chat-contracts/client-action.types';
 
 export interface ReplySink {
   setReply: (text: string) => void;

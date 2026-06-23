@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { RequestActor } from '../common/auth/request-actor.types';
-import { ChatMessageDto } from '../shared/chat';
+import { ChatMessageDto } from '@sync/chat-contracts';
 import type { ConversationState } from './conversation';
 import { CreatePostFromChatUseCase } from './buddy/create-post-from-chat.use-case';
 import type { PostIntentCreateAttempt } from './buddy/buddy.types';

@@ -1,4 +1,4 @@
-import type { ChatMessageDto } from '../../shared/chat';
+import type { ChatMessageDto } from '@sync/chat-contracts';
 import type { DjInfoStructuredQuery } from './dj-info-structured.types';
 import { resolveHomeFestivalShortcutCode } from '../utils/festival-shortcut.util';
 

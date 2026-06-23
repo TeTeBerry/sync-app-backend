@@ -9,7 +9,7 @@ import {
 } from '../interfaces/post.repository.interface';
 import type { PostPageCursor } from '../domain/post-cursor.util';
 import type { PostRecord } from '../interfaces/post.repository.interface';
-import type { BuddyPostAiSearchResult } from '@src/shared/partner';
+import type { BuddyPostAiSearchResult } from '@sync/partner-contracts';
 import { BuddyPostSearchParseService } from './buddy-post-search-parse.service';
 import { PostQueryService } from './post-query.service';
 import {

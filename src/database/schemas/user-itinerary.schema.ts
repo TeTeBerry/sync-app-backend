@@ -6,7 +6,7 @@ import type {
   ItineraryTimelineDotColor,
   ItineraryTimelineItem,
   ItineraryTimelinePill,
-} from '../../shared/itinerary';
+} from '@sync/itinerary-contracts';
 
 export type {
   ItineraryDay,

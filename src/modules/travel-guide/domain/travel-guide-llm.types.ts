@@ -5,7 +5,7 @@ import type {
   TravelGuideSpotItem,
   TravelGuideTicketChannel,
   TravelGuideVenueTransportOption,
-} from '@src/shared/travel-guide';
+} from '@sync/travel-guide-contracts';
 
 export interface LlmTravelGuidePayload {
   transportLines: string[];

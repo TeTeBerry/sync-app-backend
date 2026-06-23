@@ -1,5 +1,5 @@
 import { TravelGuidePoiRanker } from '../../../../src/modules/travel-guide/map/travel-guide-poi.ranker';
-import { getHotPathFallbackPois } from '../../../../src/modules/travel-guide/map/travel-guide-hot-path-pois.data';
+import { getHotPathFallbackPois } from '@src/data/travel-guide/travel-guide-hot-path-pois.data';
 import type {
   RawMapPoi,
   TravelGuideMapContext,

@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import type { PostRecruitStatus, PostStatus } from '../../shared/partner';
+import type { PostRecruitStatus, PostStatus } from '@sync/partner-contracts';
 
 export type { PostRecruitStatus, PostStatus };
 export type PostDocument = HydratedDocument<Post>;

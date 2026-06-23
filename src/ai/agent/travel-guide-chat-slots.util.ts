@@ -1,5 +1,5 @@
-import type { TravelGuideTaskSlots } from '../../shared/chat/conversation-state.types';
-import type { TravelGuideBudgetTier } from '../../shared/chat/conversation-state.types';
+import type { TravelGuideTaskSlots } from '@sync/chat-contracts/conversation-state.types';
+import type { TravelGuideBudgetTier } from '@sync/chat-contracts/conversation-state.types';
 
 export type TravelGuideSlotKey =
   | 'departure'

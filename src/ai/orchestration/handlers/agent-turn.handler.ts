@@ -8,7 +8,7 @@ import type {
   ChatAgentTurnResult,
   ChatAgentRuntime,
 } from '../../agent/agent.types';
-import type { AiStreamEvent } from '../../../shared/chat';
+import type { AiStreamEvent } from '@sync/chat-contracts';
 import type { AgentTurnResult, TurnHandlerContext } from './turn-handler.types';
 import { shouldEmitPrepGuidance } from './prep-guidance.util';
 

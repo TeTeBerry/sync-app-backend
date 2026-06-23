@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Inject,
   Param,
   ParseIntPipe,
   Patch,
@@ -12,7 +13,10 @@ import {
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import { Public } from '../../common/auth/public.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import { ItineraryScheduleService } from '../itinerary/itinerary-schedule.service';
+import {
+  LINEUP_CATALOG_PORT,
+  type ILineupCatalogPort,
+} from '../itinerary/ports/lineup-catalog.port';
 import { ActivityRegistrationService } from './registration/activity-registration.service';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ActivityService } from './activity.service';
@@ -24,7 +28,8 @@ export class ActivityController {
     private readonly activityService: ActivityService,
     private readonly activityLookup: ActivityLookupService,
     private readonly registrationService: ActivityRegistrationService,
-    private readonly itineraryScheduleService: ItineraryScheduleService,
+    @Inject(LINEUP_CATALOG_PORT)
+    private readonly lineupCatalog: ILineupCatalogPort,
   ) {}
 
   @Public()
@@ -41,7 +46,7 @@ export class ActivityController {
     @Query('lineupArtistId') lineupArtistId?: string,
   ) {
     if (lineupArtistId?.trim()) {
-      return this.itineraryScheduleService.listActivitiesForLineupArtist(
+      return this.lineupCatalog.listActivitiesForLineupArtist(
         lineupArtistId.trim(),
       );
     }
@@ -66,7 +71,7 @@ export class ActivityController {
   @Public()
   @Get('lineup-artists')
   listLineupArtists() {
-    return this.itineraryScheduleService.listCatalogLineupArtistsRanked();
+    return this.lineupCatalog.listCatalogLineupArtistsRanked();
   }
 
   @Public()

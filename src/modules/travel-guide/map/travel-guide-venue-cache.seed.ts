@@ -5,7 +5,7 @@ import {
   TravelGuideVenueCache,
   TravelGuideVenueCacheDocument,
 } from '../../../database/schemas/travel-guide-venue-cache.schema';
-import { TRAVEL_GUIDE_HOT_ACTIVITIES } from './travel-guide-hot-path.data';
+import { TRAVEL_GUIDE_HOT_ACTIVITIES } from '@src/data/travel-guide/travel-guide-hot-path.data';
 
 /** 将 Hot Path 场馆与枢纽路线写入 MongoDB，供多实例共享与运维查看 */
 @Injectable()

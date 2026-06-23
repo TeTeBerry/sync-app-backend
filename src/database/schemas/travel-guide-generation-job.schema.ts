@@ -3,8 +3,8 @@ import { HydratedDocument } from 'mongoose';
 import type {
   TravelGuidePlan,
   AiGuidePlanFormValues,
-} from '../../shared/travel-guide';
-import type { TravelGuideGenerationJobStatus } from '../../shared/travel-guide';
+} from '@sync/travel-guide-contracts';
+import type { TravelGuideGenerationJobStatus } from '@sync/travel-guide-contracts';
 
 export type { TravelGuideGenerationJobStatus };
 

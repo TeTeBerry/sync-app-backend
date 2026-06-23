@@ -9,7 +9,7 @@ import {
 } from '../presentation/ai-stream-event.builder';
 import type { UserProfileSyncResult } from '../agents/user-profile.agent';
 import type { ChatRequestDto } from '../presentation/chat-request.dto';
-import type { ChatMessageDto, AiStreamEvent } from '../../shared/chat';
+import type { ChatMessageDto, AiStreamEvent } from '@sync/chat-contracts';
 import type { AiTurnTimings } from './handlers/turn-handler.types';
 
 export interface PostingTurnParams {

@@ -35,6 +35,7 @@ describe('FeedbackService', () => {
     expect(feedbackModel.create).toHaveBeenCalledWith({
       userId: 'demo-mia',
       content: '活动页加载很慢，希望优化',
+      type: 'general',
     });
   });
 });

@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
@@ -9,7 +14,14 @@ import {
   FestivalSession,
   FestivalSessionDocument,
 } from '../../database/schemas/festival-session.schema';
-import { ActivityService } from '../activity/activity.service';
+import {
+  ACTIVITY_LOOKUP_PORT,
+  type IActivityLookupPort,
+} from '../activity/ports/activity-lookup.port';
+import {
+  ACTIVITY_CATALOG_REFRESH_PORT,
+  type IActivityCatalogRefreshPort,
+} from '../activity/ports/activity-catalog-refresh.port';
 import {
   hasItineraryCatalogSeed,
   resolveLineupDjs,
@@ -22,7 +34,7 @@ import {
   STORM_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
-} from './itinerary.seed';
+} from '@src/data/itinerary/itinerary.seed';
 import { ItineraryConflictService } from './itinerary-conflict.service';
 import { DiscogsGenreEnrichmentService } from './discogs-genre-enrichment.service';
 import { LineupCatalogService } from './lineup-catalog.service';
@@ -52,7 +64,10 @@ export class ItineraryScheduleService implements OnModuleInit {
     private readonly performanceModel: Model<ArtistPerformanceDocument>,
     @InjectModel(FestivalSession.name)
     private readonly sessionModel: Model<FestivalSessionDocument>,
-    private readonly activityService: ActivityService,
+    @Inject(ACTIVITY_LOOKUP_PORT)
+    private readonly activityLookup: IActivityLookupPort,
+    @Inject(ACTIVITY_CATALOG_REFRESH_PORT)
+    private readonly catalogRefresh: IActivityCatalogRefreshPort,
     private readonly cache: ItineraryCacheService,
     private readonly conflictService: ItineraryConflictService,
     private readonly discogsGenre: DiscogsGenreEnrichmentService,
@@ -114,7 +129,7 @@ export class ItineraryScheduleService implements OnModuleInit {
     await Promise.all(
       activityIds.map((legacyId) => this.cache.invalidateSchedule(legacyId)),
     );
-    await this.activityService.refreshActivityLookupCache();
+    await this.catalogRefresh.refreshAfterLineupCatalogChange();
   }
 
   private async pruneStalePerformances(
@@ -145,8 +160,7 @@ export class ItineraryScheduleService implements OnModuleInit {
       return cached;
     }
 
-    const activity =
-      await this.activityService.findByLegacyId(activityLegacyId);
+    const activity = await this.activityLookup.findByLegacyId(activityLegacyId);
     if (!activity) {
       throw new NotFoundException(`Activity ${activityLegacyId} not found`);
     }
@@ -351,16 +365,12 @@ export class ItineraryScheduleService implements OnModuleInit {
     const activityIds = [
       ...new Set(performances.map((perf) => perf.activityLegacyId)),
     ];
-    const activities = await Promise.all(
-      activityIds.map((id) => this.activityService.findByLegacyId(id)),
-    );
+    const activityMap = await this.activityLookup.findByLegacyIds(activityIds);
     const activityNameById = new Map(
-      activities
-        .filter((item): item is NonNullable<typeof item> => item != null)
-        .map((item) => [
-          item.legacyId,
-          item.name?.trim() || `活动 ${item.legacyId}`,
-        ]),
+      [...activityMap.values()].map((item) => [
+        item.legacyId,
+        item.name?.trim() || `活动 ${item.legacyId}`,
+      ]),
     );
 
     const styledByActivity = new Map<number, Map<string, string>>();

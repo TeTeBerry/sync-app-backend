@@ -17,7 +17,7 @@ describe('isPostOwnedByActor', () => {
   it('allows delete when profile name matches legacy authorName', () => {
     const actor = toRequestActor('wx_user_a', 'JWT Name');
     const owned = isPostOwnedByActor(
-      { userId: 'legacy-session-id', authorName: 'Berry Chen' },
+      { authorName: 'Berry Chen' },
       actor,
       'Berry',
     );

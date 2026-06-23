@@ -3,7 +3,7 @@ export interface PostIntentCreateResult {
   postId: string;
   activityLegacyId?: number;
   replyText: string;
-  createdPost?: import('../../shared/chat').RecommendedPostCard;
+  createdPost?: import('@sync/chat-contracts').RecommendedPostCard;
 }
 
 export interface PostIntentRejectedResult {

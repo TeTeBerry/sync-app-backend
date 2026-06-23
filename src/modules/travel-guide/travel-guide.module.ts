@@ -27,6 +27,7 @@ import { TravelGuidePoiRanker } from './map/travel-guide-poi.ranker';
 import { TravelGuidePoiPipeline } from './map/travel-guide-poi.pipeline';
 import { TravelGuideVenueCacheSeedService } from './map/travel-guide-venue-cache.seed';
 import { TravelGuideController } from './travel-guide.controller';
+import { TravelGuideGlobalController } from './travel-guide-global.controller';
 import { TravelGuideMapController } from './travel-guide-map.controller';
 import { TravelGuideGenerationCacheService } from './travel-guide-generation-cache.service';
 import { TravelGuideGenerationJobService } from './travel-guide-generation-job.service';
@@ -59,7 +60,11 @@ import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
       },
     ]),
   ],
-  controllers: [TravelGuideController, TravelGuideMapController],
+  controllers: [
+    TravelGuideController,
+    TravelGuideGlobalController,
+    TravelGuideMapController,
+  ],
   providers: [
     AmapMapService,
     TravelGuideGeoCacheService,

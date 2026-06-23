@@ -1,4 +1,4 @@
-import { ChatMessageDto } from '../../shared/chat';
+import { ChatMessageDto } from '@sync/chat-contracts';
 import {
   compareActivityDateAsc,
   extractYearFromText,

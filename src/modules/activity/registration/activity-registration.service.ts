@@ -12,6 +12,11 @@ import {
   IActivityRegistrationRepository,
 } from './interfaces/activity-registration.repository.interface';
 import { BffReadCacheInvalidationService } from '../../../infra/cache/bff-read-cache.service';
+import type {
+  ActivityRegistrationResult,
+  ActivityUnregisterResult,
+  ActivityWechatUpdateOptInResult,
+} from '@sync/activity-contracts';
 
 function resolveActorAuthorName(
   actor: RequestActor,
@@ -20,28 +25,12 @@ function resolveActorAuthorName(
   return actor.displayName?.trim() || fallbackName?.trim() || undefined;
 }
 
-export interface ActivityRegistrationResultDto {
-  ok: true;
-  activityLegacyId: number;
-  status: 'registered';
-  alreadyRegistered?: boolean;
-  /** Total registrations for this activity after this request. */
-  attendees: number;
-}
+export type ActivityRegistrationResultDto = ActivityRegistrationResult;
 
-export interface ActivityUnregisterResultDto {
-  ok: true;
-  activityLegacyId: number;
-  wasRegistered?: boolean;
-  /** Total registrations for this activity after this request. */
-  attendees: number;
-}
+export type ActivityUnregisterResultDto = ActivityUnregisterResult;
 
-export interface ActivityWechatUpdateOptInResultDto {
-  ok: true;
-  activityLegacyId: number;
-  wechatActivityUpdateOptIn: true;
-}
+export type ActivityWechatUpdateOptInResultDto =
+  ActivityWechatUpdateOptInResult;
 
 @Injectable()
 export class ActivityRegistrationService {

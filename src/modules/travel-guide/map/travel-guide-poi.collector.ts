@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { Activity } from '../../../database/schemas/activity.schema';
 import type { GenerateTravelGuideDto } from '../dto/generate-travel-guide.dto';
 import { TravelGuideGeoCacheService } from './travel-guide-geo-cache.service';
-import { getAllHotPathFallbackPois } from './travel-guide-hot-path-pois.data';
+import { getAllHotPathFallbackPois } from '@src/data/travel-guide/travel-guide-hot-path-pois.data';
 import { isTravelGuideAbroad } from '../domain/travel-guide-international.util';
 import { filterDomesticTransportHints } from '../domain/travel-guide-departure-airport.util';
 import {

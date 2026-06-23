@@ -1,5 +1,5 @@
 import type { ConversationState } from '../conversation';
-import { ChatMessageDto } from '../../shared/chat';
+import { ChatMessageDto } from '@sync/chat-contracts';
 
 /** Embedded in assistant confirmation replies so later turns can detect pending publish. */
 export const PUBLISH_CONFIRM_PROMPT_MARKER = '【发布确认】';

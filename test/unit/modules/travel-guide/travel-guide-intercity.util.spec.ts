@@ -6,7 +6,7 @@ import {
 import {
   findHotActivityProfile,
   matchHotInterCityRoute,
-} from '../../../../src/modules/travel-guide/map/travel-guide-hot-path.data';
+} from '@src/data/travel-guide/travel-guide-hot-path.data';
 import { buildTransportLinesFromMap } from '../../../../src/modules/travel-guide/map/travel-guide-map-plan.builder';
 
 describe('travel-guide-intercity', () => {

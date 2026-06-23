@@ -1,8 +1,8 @@
-import type { ChatMessageDto } from '../../shared/chat';
+import type { ChatMessageDto } from '@sync/chat-contracts';
 import type { ConversationState } from '../conversation';
 import type { ChatRequestDto } from '../presentation/chat-request.dto';
 import type { ResolvedChatIntent } from '../intent/chat-intent.types';
-import type { AiStreamEvent } from '../../shared/chat';
+import type { AiStreamEvent } from '@sync/chat-contracts';
 
 export interface ChatAgentRuntime {
   getState: () => ConversationState;

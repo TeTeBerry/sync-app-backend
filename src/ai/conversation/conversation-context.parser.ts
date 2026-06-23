@@ -1,4 +1,4 @@
-import { ChatMessageDto } from '../../shared/chat';
+import { ChatMessageDto } from '@sync/chat-contracts';
 import {
   ACTIVITY_PICKER_PROMPT,
   findAssistantBeforeIndex,

@@ -4,7 +4,7 @@ import { HydratedDocument } from 'mongoose';
 import type {
   TravelPlanCategory,
   TravelPlanNodeRecord,
-} from '../../shared/travel-plan';
+} from '@sync/travel-plan-contracts';
 
 export type { TravelPlanCategory, TravelPlanNodeRecord };
 

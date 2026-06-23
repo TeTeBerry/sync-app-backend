@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import type { RecognizeTravelPlanReceiptResult } from '../../shared/travel-plan';
+import type { RecognizeTravelPlanReceiptResult } from '@sync/travel-plan-contracts';
 
 export type TravelPlanReceiptRecognizeJobStatus =
   | 'pending'

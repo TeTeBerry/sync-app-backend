@@ -1,7 +1,7 @@
 import type {
   DrivingRouteSummary,
   GeocodedPlace,
-} from './travel-guide-map.types';
+} from '@src/modules/travel-guide/map/travel-guide-map.types';
 
 /** 交通枢纽 → 场馆 预计算路线（Hot Path，避免实时 direction 调用） */
 export interface HotHubRoute {

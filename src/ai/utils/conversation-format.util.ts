@@ -1,4 +1,4 @@
-import { ChatMessageDto } from '../../shared/chat';
+import { ChatMessageDto } from '@sync/chat-contracts';
 
 export const RECENT_TURN_LIMIT = 12;
 

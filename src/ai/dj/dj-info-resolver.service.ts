@@ -8,7 +8,7 @@ import {
   type LlmDjInfoResolveResult,
 } from './dj-info-resolver.prompt';
 import type { DjInfoStructuredQuery } from './dj-info-structured.types';
-import type { ChatMessageDto } from '../../shared/chat';
+import type { ChatMessageDto } from '@sync/chat-contracts';
 
 @Injectable()
 export class DjInfoResolverService {

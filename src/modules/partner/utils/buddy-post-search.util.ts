@@ -9,9 +9,9 @@ import {
   resolveDepartureCity,
 } from './departure-city.util';
 
-import type { BuddyPostSearchParsed } from '@src/shared/partner';
+import type { BuddyPostSearchParsed } from '@sync/partner-contracts';
 
-export type { BuddyPostSearchParsed } from '@src/shared/partner';
+export type { BuddyPostSearchParsed } from '@sync/partner-contracts';
 
 export type BuddyPostSearchParsedFields = Omit<
   BuddyPostSearchParsed,

@@ -9,7 +9,7 @@ import {
   type UserMatchProfile,
 } from '../../modules/user/user-profile-hints.util';
 import { LlmService } from '../../infra/llm/llm.service';
-import { ChatMessageDto } from '../../shared/chat';
+import { ChatMessageDto } from '@sync/chat-contracts';
 import { formatConversationHistory } from '../utils/conversation-format.util';
 import {
   buildKnownFactsSummary,

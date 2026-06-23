@@ -6,7 +6,7 @@ import {
 } from '../../common/utils/demo-owner.util';
 import { ActivityService } from '../../modules/activity/activity.service';
 import { PostService } from '../../modules/partner/post.service';
-import type { RecommendedPostCard } from '../../shared/chat';
+import type { RecommendedPostCard } from '@sync/chat-contracts';
 import { inferAuthorGenderFromPost } from '../../common/utils/infer-author-gender.util';
 
 const POST_CARD_SNIPPET_MAX = 56;
@@ -25,7 +25,7 @@ import {
   isAwaitingPublishConfirmation,
   isPublishConfirmIntent,
 } from '../publish/publish-confirm.util';
-import { ChatMessageDto } from '../../shared/chat';
+import { ChatMessageDto } from '@sync/chat-contracts';
 import { isTicketResaleIntent } from './activity-scope-guard.util';
 import { inferIntentTagsFromText } from './infer-intent-tags.util';
 import { extractActivityLookupKeywords } from './resolve-activity-from-chat.util';

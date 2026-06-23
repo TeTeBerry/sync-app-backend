@@ -16,14 +16,14 @@ import {
   findHotActivityProfile,
   matchHotHubRoute,
   matchHotInterCityRoute,
-} from './travel-guide-hot-path.data';
+} from '@src/data/travel-guide/travel-guide-hot-path.data';
 import {
   buildGenericInterCityHints,
   destinationCityFromActivityLocation,
   isInterCityByDistance,
 } from './travel-guide-intercity.util';
 import { isTravelGuideAbroad } from '../domain/travel-guide-international.util';
-import { getHotPathFallbackPois } from './travel-guide-hot-path-pois.data';
+import { getHotPathFallbackPois } from '@src/data/travel-guide/travel-guide-hot-path-pois.data';
 import {
   findDepartureCityAnchor,
   resolveDepartureGeocodeTargets,

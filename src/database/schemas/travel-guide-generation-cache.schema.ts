@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import type { TravelGuidePlan } from '../../shared/travel-guide';
+import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 
 @Schema({ collection: 'travel_guide_generation_cache', timestamps: true })
 export class TravelGuideGenerationCache {

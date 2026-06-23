@@ -22,7 +22,7 @@ import {
   mergeTravelPlanNodes,
   normalizeHiddenActivityNodeIds,
   sortTravelPlanNodes,
-} from '../../shared/travel-plan';
+} from '@sync/travel-plan-contracts';
 import { normalizeTravelPlanNodesForSave } from './domain/travel-plan-save-normalize.util';
 import type { SaveTravelPlanDto } from './dto/save-travel-plan.dto';
 

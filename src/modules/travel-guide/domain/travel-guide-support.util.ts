@@ -1,8 +1,8 @@
 import type { Activity } from '../../../database/schemas/activity.schema';
 import type { ActivityLookupRecord } from '../../activity/ports/activity-lookup.port';
 import { isTravelGuideAbroad } from './travel-guide-international.util';
-import { findHotActivityProfile } from '../map/travel-guide-hot-path.data';
-import { getHotPathFallbackPois } from '../map/travel-guide-hot-path-pois.data';
+import { findHotActivityProfile } from '@src/data/travel-guide/travel-guide-hot-path.data';
+import { getHotPathFallbackPois } from '@src/data/travel-guide/travel-guide-hot-path-pois.data';
 
 export const TRAVEL_GUIDE_PREPARING_MESSAGE = '该场出行攻略筹备中，敬请期待';
 

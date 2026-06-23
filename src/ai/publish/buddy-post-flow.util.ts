@@ -1,5 +1,5 @@
 import type { ConversationState } from '../conversation';
-import { ChatMessageDto } from '../../shared/chat';
+import { ChatMessageDto } from '@sync/chat-contracts';
 
 /** 助手已请用户填写组队帖正文，等待下一条用户消息 */
 export const SELF_POST_COLLECT_BODY_MARKER = '【填写组队帖】';

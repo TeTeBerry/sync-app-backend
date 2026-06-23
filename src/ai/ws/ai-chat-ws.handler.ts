@@ -15,7 +15,7 @@ import {
 import { AiService, mapAiErrorToUserMessage } from '../ai.service';
 import { resolveWsChatActor } from './ai-chat-ws-actor';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
-import type { AiStreamEvent } from '../../shared/chat';
+import type { AiStreamEvent } from '@sync/chat-contracts';
 import { createRequestId } from '../utils/log-ai-turn.util';
 import type {
   AiChatWsClientMessage,

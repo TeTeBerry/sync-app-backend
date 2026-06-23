@@ -8,7 +8,7 @@ import {
   CONVERSATION_STATE_VERSION,
   createIdleState,
   type ConversationState,
-} from '../../shared/chat';
+} from '@sync/chat-contracts';
 import { Chat, ChatDocument } from '../../database/schemas/chat.schema';
 
 /** Max user/assistant turns sent to LLM intent + buddy pipelines per request. */

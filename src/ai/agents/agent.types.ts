@@ -1,5 +1,5 @@
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import { ChatMessageDto } from '../../shared/chat';
+import { ChatMessageDto } from '@sync/chat-contracts';
 
 /** TextParseAgent 结构化输出 */
 export interface ParsedPostDraft {

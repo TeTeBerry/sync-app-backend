@@ -1,4 +1,4 @@
-import { parseTimeToMinutes } from './domain/time-minutes.util';
+import { parseTimeToMinutes } from '@src/modules/itinerary/domain/time-minutes.util';
 import {
   EDC_THAILAND_ARTIST_PERFORMANCE_SEED,
   EDC_THAILAND_FESTIVAL_SESSION_SEED,

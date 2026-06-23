@@ -1,5 +1,6 @@
 # compiled output
 /dist
+/packages/*/dist
 /uploads/*
 !uploads/.gitkeep
 /node_modules

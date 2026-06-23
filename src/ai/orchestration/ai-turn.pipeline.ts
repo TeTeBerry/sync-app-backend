@@ -15,8 +15,8 @@ import type {
 } from './handlers/turn-handler.types';
 import { logAiTurn } from '../utils/log-ai-turn.util';
 import { ChatRequestDto } from '../presentation/chat-request.dto';
-import { ChatMessageDto } from '../../shared/chat';
-import type { AiStreamEvent } from '../../shared/chat';
+import { ChatMessageDto } from '@sync/chat-contracts';
+import type { AiStreamEvent } from '@sync/chat-contracts';
 import { type ReplySink } from '../presentation/ai-stream-event.builder';
 import type { ConversationState } from '../conversation';
 

@@ -1,4 +1,4 @@
-/** @deprecated Import from `@src/shared/travel-guide` instead. */
+/** @deprecated Import from `@sync/travel-guide-contracts` instead. */
 export type {
   TravelGuideBudgetTier,
   TravelGuideHotelItem,
@@ -15,6 +15,6 @@ export type {
   TravelGuidePlaceSuggestion,
   TravelGuideGenerationJobStatus,
   TravelGuideGenerationJobResult,
-} from '@src/shared/travel-guide';
+} from '@sync/travel-guide-contracts';
 
 export type { LlmTravelGuidePayload } from './travel-guide-llm.types';

@@ -1,7 +1,7 @@
 import {
   filterUserTravelPlanNodes,
   normalizeHiddenActivityNodeIds,
-} from '@src/shared/travel-plan';
+} from '@sync/travel-plan-contracts';
 
 describe('shared travel-plan merge.util', () => {
   it('normalizeHiddenActivityNodeIds keeps activity ids only', () => {

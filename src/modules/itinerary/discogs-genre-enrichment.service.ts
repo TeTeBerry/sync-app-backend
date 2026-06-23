@@ -16,7 +16,7 @@ import {
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
   ITINERARY_TOMORROWLAND_THAILAND_ACTIVITY_LEGACY_ID,
   STORM_ACTIVITY_LEGACY_ID,
-} from './itinerary.seed';
+} from '@src/data/itinerary/itinerary.seed';
 import type { ItineraryDjDto } from './itinerary-schedule.types';
 
 const DISCOGS_STYLE_ACTIVITY_LEGACY_IDS = new Set([

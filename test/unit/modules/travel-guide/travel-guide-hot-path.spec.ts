@@ -2,7 +2,7 @@ import {
   findHotActivityProfile,
   matchHotHubRoute,
   matchHotInterCityRoute,
-} from '../../../../src/modules/travel-guide/map/travel-guide-hot-path.data';
+} from '@src/data/travel-guide/travel-guide-hot-path.data';
 
 describe('travel-guide-hot-path', () => {
   it('resolves storm venue without API', () => {

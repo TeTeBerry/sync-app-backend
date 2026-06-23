@@ -1,4 +1,4 @@
-import type { ChatMessageDto } from '../../shared/chat';
+import type { ChatMessageDto } from '@sync/chat-contracts';
 import type { Activity } from '../../database/schemas/activity.schema';
 import type { ConversationState } from '../conversation';
 import type { OpenAiChatMessage } from './agent-llm.service';

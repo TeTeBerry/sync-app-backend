@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import type { ChatMessageDto, ConversationState } from '../../shared/chat';
+import type { ChatMessageDto, ConversationState } from '@sync/chat-contracts';
 
 export type ChatDocument = HydratedDocument<Chat>;
 

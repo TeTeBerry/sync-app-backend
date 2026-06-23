@@ -30,7 +30,7 @@ export function loadEdcThailandFallbackNames() {
     '..',
     '..',
     'src',
-    'modules',
+    'data',
     'itinerary',
     'edc-thailand-itinerary.seed.ts',
   );
@@ -67,7 +67,7 @@ export function loadEdcKoreaFallbackNames() {
     '..',
     '..',
     'src',
-    'modules',
+    'data',
     'itinerary',
     'edc-korea-itinerary.seed.ts',
   );
@@ -96,7 +96,7 @@ export function loadTomorrowlandThailandFallbackNames() {
     '..',
     '..',
     'src',
-    'modules',
+    'data',
     'itinerary',
     'tomorrowland-thailand-itinerary.seed.ts',
   );

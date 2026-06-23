@@ -1,5 +1,5 @@
 // src/modules/activity/activity.module.ts
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AgentsModule } from '../../ai/agents/agents.module';
 import { InfraChromaModule } from '../../infra/chroma/chroma.module';
@@ -14,10 +14,10 @@ import {
   ActivityRegistrationSchema,
 } from '../../database/schemas/activity-registration.schema';
 import { NotificationModule } from '../notification/notification.module';
-import { ItineraryModule } from '../itinerary/itinerary.module';
+import { LineupCatalogModule } from '../itinerary/lineup-catalog.module';
 import { UserModule } from '../user/user.module';
 import { ActivityLookupModule } from './activity-lookup.module';
-import { ActivityCatalogRefreshService } from './activity-catalog-refresh.service';
+import { ActivityCatalogRefreshModule } from './activity-catalog-refresh.module';
 import { ActivityController } from './activity.controller';
 import { ActivityService } from './activity.service';
 import { ActivityRegistrationRepository } from './registration/activity-registration.repository';
@@ -26,9 +26,10 @@ import { ACTIVITY_REGISTRATION_REPOSITORY } from './registration/interfaces/acti
 
 @Module({
   imports: [
-    forwardRef(() => ItineraryModule),
+    LineupCatalogModule,
     UserModule,
     ActivityLookupModule,
+    ActivityCatalogRefreshModule,
     AgentsModule,
     NotificationModule,
     InfraChromaModule,
@@ -45,7 +46,6 @@ import { ACTIVITY_REGISTRATION_REPOSITORY } from './registration/interfaces/acti
   controllers: [ActivityController],
   providers: [
     ActivityService,
-    ActivityCatalogRefreshService,
     ActivityRegistrationRepository,
     {
       provide: ACTIVITY_REGISTRATION_REPOSITORY,
@@ -58,6 +58,7 @@ import { ACTIVITY_REGISTRATION_REPOSITORY } from './registration/interfaces/acti
     ActivityRegistrationService,
     ACTIVITY_REGISTRATION_REPOSITORY,
     ActivityLookupModule,
+    ActivityCatalogRefreshModule,
   ],
 })
 export class ActivityModule {}

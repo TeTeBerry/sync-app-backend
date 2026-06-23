@@ -1,7 +1,7 @@
 import {
   formatClockTime,
   normalizeItineraryDaysForSave,
-} from '@src/shared/itinerary';
+} from '@sync/itinerary-contracts';
 
 describe('itinerary-save-normalize.util', () => {
   it('extracts HH:mm from a time range', () => {

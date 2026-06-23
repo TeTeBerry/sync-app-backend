@@ -1,0 +1,21 @@
+{
+  "name": "@sync/chat-contracts",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./index.ts",
+  "dependencies": {
+    "@sync/itinerary-contracts": "workspace:*",
+    "@sync/travel-guide-contracts": "workspace:*"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./*.ts",
+      "default": "./dist/*.js"
+    }
+  }
+}

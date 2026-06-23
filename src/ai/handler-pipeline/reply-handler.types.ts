@@ -11,4 +11,4 @@ export type {
   ReplyPlanner,
 } from './handler-pipeline.types';
 
-export { ChatMessageDto } from '../../shared/chat';
+export { ChatMessageDto } from '@sync/chat-contracts';

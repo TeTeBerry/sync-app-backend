@@ -1,6 +1,6 @@
-import type { AiStreamEvent } from '../../src/shared/chat/ai-stream-event.types';
-import type { RecommendedPostCard } from '../../src/shared/chat/chat-cards.types';
-import { CONVERSATION_STATE_VERSION } from '../../src/shared/chat/conversation-state.types';
+import type { AiStreamEvent } from '@sync/chat-contracts/ai-stream-event.types';
+import type { RecommendedPostCard } from '@sync/chat-contracts/chat-cards.types';
+import { CONVERSATION_STATE_VERSION } from '@sync/chat-contracts/conversation-state.types';
 
 const STREAM_EVENT_TYPES: AiStreamEvent['type'][] = [
   'delta',

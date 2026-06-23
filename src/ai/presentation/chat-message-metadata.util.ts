@@ -2,8 +2,8 @@ import type {
   AiStreamEvent,
   RecommendedActivityCard,
   RecommendedPostCard,
-} from '../../shared/chat';
-import type { ChatMessageDto } from '../../shared/chat/chat-message.dto';
+} from '@sync/chat-contracts';
+import type { ChatMessageDto } from '@sync/chat-contracts/chat-message.dto';
 
 export interface ChatMessageImageContext {
   source?: string;

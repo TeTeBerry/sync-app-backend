@@ -1,4 +1,9 @@
 import type { ItineraryConflict } from './domain/itinerary-conflict.util';
+import type {
+  CatalogLineupArtist,
+  CatalogLineupArtistDetail,
+  CatalogLineupArtistNextActivity,
+} from '@sync/activity-contracts';
 
 export interface ItineraryDjDto {
   id: string;
@@ -22,27 +27,12 @@ export interface ArtistPerformanceHit {
   genreLabel: string;
 }
 
-export interface CatalogLineupArtistNextActivityDto {
-  legacyId: number;
-  name: string;
-  date: string;
-  area?: string;
-}
+export type CatalogLineupArtistNextActivityDto =
+  CatalogLineupArtistNextActivity;
 
-export interface CatalogLineupArtistDto {
-  id: string;
-  name: string;
-  genreLabel: string;
-  activityCount: number;
-  thumbnail?: string;
-  nextActivity?: CatalogLineupArtistNextActivityDto;
-}
+export type CatalogLineupArtistDto = CatalogLineupArtist;
 
-export interface CatalogLineupArtistDetailDto extends CatalogLineupArtistDto {
-  profileSummary?: string;
-  profileFull?: string;
-  representativeTracks?: string[];
-}
+export type CatalogLineupArtistDetailDto = CatalogLineupArtistDetail;
 
 export type CatalogLineupArtistEntryInternal = {
   artistName: string;

@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CloudModule } from '../../infra/cloud/cloud.module';
 import {
@@ -17,11 +17,8 @@ import {
   ItineraryGenerationLog,
   ItineraryGenerationLogSchema,
 } from '../../database/schemas/itinerary-generation-log.schema';
-import {
-  LineupArtistAvatar,
-  LineupArtistAvatarSchema,
-} from '../../database/schemas/lineup-artist-avatar.schema';
-import { ActivityModule } from '../activity/activity.module';
+import { ActivityCatalogRefreshModule } from '../activity/activity-catalog-refresh.module';
+import { ActivityLookupModule } from '../activity/activity-lookup.module';
 import { AuthModule } from '../auth/auth.module';
 import { DjModule } from '../dj/dj.module';
 import { ItineraryController } from './itinerary.controller';
@@ -29,16 +26,16 @@ import { ArtistController } from './artist.controller';
 import { ItineraryService } from './itinerary.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
 import { ItineraryConflictService } from './itinerary-conflict.service';
-import { DiscogsGenreEnrichmentService } from './discogs-genre-enrichment.service';
-import { LineupCatalogService } from './lineup-catalog.service';
 import { ArtistProfileResolver } from './artist-profile-resolver.service';
 import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryCacheService } from './itinerary-cache.service';
-import { LineupArtistAvatarService } from './lineup-artist-avatar.service';
+import { LineupCatalogModule } from './lineup-catalog.module';
 
 @Module({
   imports: [
-    forwardRef(() => ActivityModule),
+    ActivityLookupModule,
+    ActivityCatalogRefreshModule,
+    LineupCatalogModule,
     AuthModule,
     CloudModule,
     DjModule,
@@ -50,7 +47,6 @@ import { LineupArtistAvatarService } from './lineup-artist-avatar.service';
         name: ItineraryGenerationLog.name,
         schema: ItineraryGenerationLogSchema,
       },
-      { name: LineupArtistAvatar.name, schema: LineupArtistAvatarSchema },
     ]),
   ],
   controllers: [ItineraryController, ArtistController],
@@ -58,12 +54,9 @@ import { LineupArtistAvatarService } from './lineup-artist-avatar.service';
     ItineraryService,
     ItineraryScheduleService,
     ItineraryConflictService,
-    DiscogsGenreEnrichmentService,
-    LineupCatalogService,
     ArtistProfileResolver,
     ItineraryGenerationService,
     ItineraryCacheService,
-    LineupArtistAvatarService,
   ],
   exports: [ItineraryService, ItineraryScheduleService],
 })

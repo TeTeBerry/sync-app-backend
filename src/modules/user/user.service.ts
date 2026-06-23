@@ -23,23 +23,10 @@ import { assertUserUgcImageRef } from '../../common/media/user-ugc-image.util';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import { MediaSecurityCheckService } from '../media-security/media-security-check.service';
 import { AccountRiskService } from '../account-risk/account-risk.service';
-import type { AccountRiskPublicStatus } from '../account-risk/account-risk.service';
+import type { CurrentUser } from '@sync/profile-contracts';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 
-export interface UserMeDto {
-  id: string;
-  name: string;
-  handle: string;
-  location: string;
-  bio: string;
-  avatar: string;
-  city?: string;
-  favorGenres?: string[];
-  budgetLevel?: string;
-  notificationsEnabled?: boolean;
-  privacyLevel?: 'public' | 'private';
-  accountRisk?: AccountRiskPublicStatus;
-}
+export type UserMeDto = CurrentUser;
 
 const EMPTY_PROFILE_DEFAULTS = {
   name: '用户',

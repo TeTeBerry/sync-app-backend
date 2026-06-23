@@ -1,6 +1,6 @@
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import type { ConversationState } from '../conversation';
-import type { ChatMessageDto } from '../../shared/chat';
+import type { ChatMessageDto } from '@sync/chat-contracts';
 
 export interface DeterministicReplyResult {
   text: string;

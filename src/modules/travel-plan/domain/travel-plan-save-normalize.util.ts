@@ -1,4 +1,4 @@
-import type { TravelPlanBillLineItem } from '../../../shared/travel-plan/types';
+import type { TravelPlanBillLineItem } from '@sync/travel-plan-contracts/types';
 import type { TravelPlanNodeRecord } from '../../../database/schemas/user-travel-plan.schema';
 import type {
   TravelPlanBillLineItemDto,

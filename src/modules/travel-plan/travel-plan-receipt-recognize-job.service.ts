@@ -16,7 +16,7 @@ import {
   TravelPlanReceiptRecognizeJobDocument,
   type TravelPlanReceiptRecognizeJobStatus,
 } from '../../database/schemas/travel-plan-receipt-recognize-job.schema';
-import type { RecognizeTravelPlanReceiptResult } from '../../shared/travel-plan';
+import type { RecognizeTravelPlanReceiptResult } from '@sync/travel-plan-contracts';
 import type { RecognizeTravelPlanReceiptDto } from './dto/recognize-travel-plan-receipt.dto';
 import { TravelPlanReceiptRecognizeService } from './travel-plan-receipt-recognize.service';
 

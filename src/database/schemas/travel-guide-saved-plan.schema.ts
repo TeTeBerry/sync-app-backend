@@ -3,7 +3,7 @@ import { HydratedDocument } from 'mongoose';
 import type {
   TravelGuidePlan,
   AiGuidePlanFormValues,
-} from '../../shared/travel-guide';
+} from '@sync/travel-guide-contracts';
 
 @Schema({ collection: 'travel_guide_saved_plans', timestamps: true })
 export class TravelGuideSavedPlan {

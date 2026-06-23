@@ -1,4 +1,4 @@
-import type { ChatMessageDto } from '../../shared/chat';
+import type { ChatMessageDto } from '@sync/chat-contracts';
 
 export interface LlmDjInfoResolveResult {
   intent?: string;

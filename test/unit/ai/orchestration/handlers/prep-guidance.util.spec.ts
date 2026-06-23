@@ -1,5 +1,5 @@
 import { shouldEmitPrepGuidance } from '@src/ai/orchestration/handlers/prep-guidance.util';
-import { createIdleState } from '@src/shared/chat/conversation-state.types';
+import { createIdleState } from '@sync/chat-contracts/conversation-state.types';
 
 describe('shouldEmitPrepGuidance', () => {
   const idleState = createIdleState();

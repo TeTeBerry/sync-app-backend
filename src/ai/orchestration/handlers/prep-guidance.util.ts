@@ -1,5 +1,5 @@
-import type { AiStreamEvent } from '../../../shared/chat';
-import type { ConversationState } from '../../../shared/chat/conversation-state.types';
+import type { AiStreamEvent } from '@sync/chat-contracts';
+import type { ConversationState } from '@sync/chat-contracts/conversation-state.types';
 
 const BLOCKING_FLOW: ConversationState['flow'][] = [
   'collect_post_body',

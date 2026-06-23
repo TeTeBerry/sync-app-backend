@@ -12,7 +12,7 @@ import {
   AiStreamEventBuilder,
   type ReplySink,
 } from '../presentation/ai-stream-event.builder';
-import type { TravelGuideChatForm } from '../../shared/chat';
+import type { TravelGuideChatForm } from '@sync/chat-contracts';
 import type { ChatAgentRuntime, ChatAgentTurnInput } from './agent.types';
 import type { ChatAgentToolExecutionResult } from './tools/chat-agent-tool.types';
 import {

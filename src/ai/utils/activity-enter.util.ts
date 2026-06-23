@@ -1,6 +1,6 @@
 import type { Activity } from '../../database/schemas/activity.schema';
-import { ChatMessageDto } from '../../shared/chat';
-import type { RecommendedActivityCard } from '../../shared/chat';
+import { ChatMessageDto } from '@sync/chat-contracts';
+import type { RecommendedActivityCard } from '@sync/chat-contracts';
 import {
   ACTIVITY_PICKER_PROMPT,
   findAssistantBeforeIndex,

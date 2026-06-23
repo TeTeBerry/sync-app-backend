@@ -28,6 +28,10 @@ import {
 } from '../../database/schemas/activity-registration.schema';
 import { ACTIVITY_SEED } from './activity.seed';
 import { ActivityLookupService } from './activity-lookup.service';
+import {
+  ACTIVITY_CATALOG_REFRESH_PORT,
+  type IActivityCatalogRefreshPort,
+} from './ports/activity-catalog-refresh.port';
 
 export interface CreateActivityInput {
   name: string;
@@ -79,6 +83,8 @@ export class ActivityService implements OnModuleInit {
     @InjectModel(ActivityRegistration.name)
     private registrationModel: Model<ActivityRegistrationDocument>,
     private readonly activityLookup: ActivityLookupService,
+    @Inject(ACTIVITY_CATALOG_REFRESH_PORT)
+    private readonly catalogRefresh: IActivityCatalogRefreshPort,
     @Optional() private readonly chromaService?: ChromaService,
     @Optional() private readonly noticeAgent?: NoticeAgent,
     @Optional()
@@ -477,22 +483,7 @@ export class ActivityService implements OnModuleInit {
   }
 
   async refreshActivityLookupCache(): Promise<void> {
-    const beforeRecords = await this.activityLookup.findAll();
-    const previousLineup = new Map(
-      beforeRecords.map((record) => [record.legacyId, record.lineupPublished]),
-    );
-
-    await this.refreshLookupCache();
-
-    const afterRecords = await this.activityLookup.findAll();
-    for (const record of afterRecords) {
-      if (
-        previousLineup.get(record.legacyId) === false &&
-        record.lineupPublished === true
-      ) {
-        void this.notifyActivityUpdate(record, '阵容已官宣');
-      }
-    }
+    await this.catalogRefresh.refreshAfterLineupCatalogChange();
   }
 
   private async refreshLookupCache(): Promise<void> {

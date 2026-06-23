@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { getModelToken } from '@nestjs/mongoose';
 import { TravelGuideSavedPlanService } from '@src/modules/travel-guide/travel-guide-saved-plan.service';
 import { TravelGuideSavedPlan } from '@src/database/schemas/travel-guide-saved-plan.schema';
-import type { TravelGuidePlan } from '@src/shared/travel-guide';
+import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 import { BffReadCacheInvalidationService } from '@src/infra/cache/bff-read-cache.service';
 
 const plan: TravelGuidePlan = {

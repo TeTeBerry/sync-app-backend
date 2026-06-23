@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { FestivalPlanProgressDto } from '../../shared/festival-plan';
+import type { FestivalPlanProgressDto } from '@sync/festival-plan-contracts';
 import { RedisMemoryJsonCacheService } from './redis-memory-json-cache.service';
 
 export type HomeSummaryCachePayload = Record<string, unknown>;

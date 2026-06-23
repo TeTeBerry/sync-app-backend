@@ -25,19 +25,18 @@ import {
   ACCOUNT_RISK_SCALPER_REPORT_RESTRICT_COUNT,
   ACCOUNT_RISK_SCALPER_RESTRICT_COUNT,
   ACCOUNT_RISK_VIOLATION_WINDOW_DAYS,
-  AccountRiskStatus,
+  type AccountRiskStatus,
   shouldEscalateAccountRisk,
 } from './account-risk.policy';
+import type {
+  AccountRiskPublicStatus,
+  AccountRiskReasonCode,
+} from '@sync/profile-contracts';
 
-export type AccountRiskReasonCode = 'scalper' | 'content' | 'reports';
-
-export interface AccountRiskPublicStatus {
-  status: AccountRiskStatus;
-  postBlockedUntil?: string;
-  message?: string;
-  reasonCode?: AccountRiskReasonCode;
-  appealHint?: string;
-}
+export type {
+  AccountRiskPublicStatus,
+  AccountRiskReasonCode,
+} from '@sync/profile-contracts';
 
 const APPEAL_HINT =
   '如认为误判，可在「设置 → 申诉说明」查看流程并提交反馈，我们将在 1–3 个工作日内复核。';

@@ -1,153 +1,70 @@
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
-import { KNOWLEDGE_DOCUMENTS } from '../../infra/chroma/knowledge.seed';
-import { LlmService } from '../../infra/llm/llm.service';
-import { RedisService } from '../../redis/redis.service';
-import { ActivityService } from './activity.service';
-import { UpdateActivityDto } from './dto/update-activity.dto';
-
-const REFRESH_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000;
-const REDIS_LAST_REFRESH_KEY = 'activity:catalog:last_refresh';
-const DAILY_CHECK_MS = 24 * 60 * 60 * 1000;
-
-type LlmCatalogPatch = {
-  changed?: boolean;
-  name?: string;
-  date?: string;
-  location?: string;
-  image?: string;
-  hot?: boolean;
-  reason?: string;
-};
-
-function knowledgeForCode(code: string): string {
-  return KNOWLEDGE_DOCUMENTS.filter(
-    (doc) => String(doc.metadata?.code ?? '') === code,
-  )
-    .map((doc) => doc.pageContent)
-    .join('\n');
-}
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { NoticeAgent } from '../../ai/agents/notice.agent';
+import type { Activity } from '../../database/schemas/activity.schema';
+import {
+  ACTIVITY_REGISTRATION_REPOSITORY,
+  type IActivityRegistrationRepository,
+} from './registration/interfaces/activity-registration.repository.interface';
+import {
+  ACTIVITY_LOOKUP_PORT,
+  type IActivityLookupPort,
+} from './ports/activity-lookup.port';
+import type { IActivityCatalogRefreshPort } from './ports/activity-catalog-refresh.port';
 
 @Injectable()
-export class ActivityCatalogRefreshService implements OnApplicationBootstrap {
-  private readonly logger = new Logger(ActivityCatalogRefreshService.name);
-  private lastRefreshAt = 0;
-  private refreshInFlight = false;
-
+export class ActivityCatalogRefreshService implements IActivityCatalogRefreshPort {
   constructor(
-    private readonly activityService: ActivityService,
-    private readonly llmService: LlmService,
-    private readonly redisService: RedisService,
+    @Inject(ACTIVITY_LOOKUP_PORT)
+    private readonly activityLookup: IActivityLookupPort,
+    @Optional() private readonly noticeAgent?: NoticeAgent,
+    @Optional()
+    @Inject(ACTIVITY_REGISTRATION_REPOSITORY)
+    private readonly registrationRepository?: IActivityRegistrationRepository,
   ) {}
 
-  async onApplicationBootstrap() {
-    await this.loadLastRefreshAt();
-    void this.refreshIfDue();
-    setInterval(() => void this.refreshIfDue(), DAILY_CHECK_MS);
-  }
+  async refreshAfterLineupCatalogChange(): Promise<void> {
+    const beforeRecords = await this.activityLookup.findAll();
+    const previousLineup = new Map(
+      beforeRecords.map((record) => [record.legacyId, record.lineupPublished]),
+    );
 
-  async refreshIfDue(
-    force = false,
-  ): Promise<{ refreshed: boolean; updated: number }> {
-    if (this.refreshInFlight) {
-      return { refreshed: false, updated: 0 };
-    }
+    await this.activityLookup.refreshCache();
 
-    if (!force && Date.now() - this.lastRefreshAt < REFRESH_INTERVAL_MS) {
-      return { refreshed: false, updated: 0 };
-    }
-
-    if (!this.llmService.enabled) {
-      this.logger.warn('LLM disabled, skip activity catalog refresh');
-      return { refreshed: false, updated: 0 };
-    }
-
-    this.refreshInFlight = true;
-    try {
-      const updated = await this.refreshCatalog();
-      this.lastRefreshAt = Date.now();
-      await this.persistLastRefreshAt(this.lastRefreshAt);
-      this.logger.log(`Activity catalog refresh completed, updated=${updated}`);
-      return { refreshed: true, updated };
-    } catch (error) {
-      this.logger.warn(
-        `Activity catalog refresh failed: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-      return { refreshed: false, updated: 0 };
-    } finally {
-      this.refreshInFlight = false;
+    const afterRecords = await this.activityLookup.findAll();
+    for (const record of afterRecords) {
+      if (
+        previousLineup.get(record.legacyId) === false &&
+        record.lineupPublished === true
+      ) {
+        void this.notifyActivityUpdate(record, '阵容已官宣');
+      }
     }
   }
 
-  private async refreshCatalog(): Promise<number> {
-    const activities = await this.activityService.findAll();
-    let updated = 0;
-
-    for (const activity of activities) {
-      if (!activity.code || !activity.legacyId) continue;
-
-      const knowledge = knowledgeForCode(activity.code);
-      const patch = await this.llmService.invokeJson<LlmCatalogPatch>(
-        [
-          '你是电音节活动 catalog 维护助手。',
-          '根据提供的官方知识片段，核对并更新活动字段。',
-          '仅在有可靠依据时标记 changed=true；无变化则 changed=false。',
-          '返回 JSON：{ changed, name?, date?, location?, image?, hot?, reason? }',
-          'date 格式与现有 catalog 一致，如 06/13-14；image 必须是可公开访问的 https URL。',
-        ].join('\n'),
-        [
-          `活动 code: ${activity.code}`,
-          `当前 catalog:`,
-          JSON.stringify({
-            name: activity.name,
-            date: activity.date,
-            location: activity.location,
-            image: activity.image,
-            hot: activity.hot,
-          }),
-          '',
-          '官方知识片段:',
-          knowledge || '（暂无额外知识，保持现有字段）',
-        ].join('\n'),
-      );
-
-      if (!patch?.changed) continue;
-
-      const dto: UpdateActivityDto = {};
-      if (patch.name?.trim()) dto.name = patch.name.trim();
-      if (patch.date !== undefined) dto.date = patch.date.trim();
-      if (patch.location !== undefined) dto.location = patch.location.trim();
-      if (patch.image !== undefined) dto.image = patch.image.trim();
-      if (typeof patch.hot === 'boolean') dto.hot = patch.hot;
-
-      if (Object.keys(dto).length === 0) continue;
-
-      await this.activityService.updateActivity(activity.legacyId, dto, {
-        refreshCache: false,
-      });
-      updated += 1;
+  private async notifyActivityUpdate(
+    activity: Pick<Activity, 'legacyId' | 'name' | 'date' | 'location'>,
+    changeSummary: string,
+  ): Promise<void> {
+    if (!this.noticeAgent || !this.registrationRepository) {
+      return;
     }
 
-    if (updated > 0) {
-      await this.activityService.refreshActivityLookupCache();
-    }
+    const [userIds, wechatUserIds] = await Promise.all([
+      this.registrationRepository.findRegisteredUserIds(activity.legacyId),
+      this.registrationRepository.findWechatActivityUpdateOptInUserIds(
+        activity.legacyId,
+      ),
+    ]);
+    if (!userIds.length) return;
 
-    return updated;
-  }
-
-  private async loadLastRefreshAt(): Promise<void> {
-    const raw = await this.redisService.getCacheValue(REDIS_LAST_REFRESH_KEY);
-    const parsed = Number(raw);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      this.lastRefreshAt = parsed;
-    }
-  }
-
-  private async persistLastRefreshAt(timestamp: number): Promise<void> {
-    await this.redisService.setCacheValue(
-      REDIS_LAST_REFRESH_KEY,
-      String(timestamp),
+    void this.noticeAgent.notifyActivityUpdate(
+      userIds,
+      activity.legacyId,
+      activity.name,
+      changeSummary,
+      activity.date,
+      activity.location,
+      wechatUserIds,
     );
   }
 }

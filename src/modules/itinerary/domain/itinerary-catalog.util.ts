@@ -7,10 +7,10 @@ import {
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
   ITINERARY_TOMORROWLAND_THAILAND_ACTIVITY_LEGACY_ID,
-} from '../itinerary.seed';
-import { EDC_THAILAND_LINEUP_DJ_SEED } from '../edc-thailand-itinerary.seed';
-import { EDC_KOREA_LINEUP_DJ_SEED } from '../edc-korea-itinerary.seed';
-import { TOMORROWLAND_THAILAND_LINEUP_DJ_SEED } from '../tomorrowland-thailand-itinerary.seed';
+} from '@src/data/itinerary/itinerary.seed';
+import { EDC_THAILAND_LINEUP_DJ_SEED } from '@src/data/itinerary/edc-thailand-itinerary.seed';
+import { EDC_KOREA_LINEUP_DJ_SEED } from '@src/data/itinerary/edc-korea-itinerary.seed';
+import { TOMORROWLAND_THAILAND_LINEUP_DJ_SEED } from '@src/data/itinerary/tomorrowland-thailand-itinerary.seed';
 
 export const ITINERARY_CATALOG_ACTIVITY_LEGACY_IDS = new Set([
   STORM_ACTIVITY_LEGACY_ID,

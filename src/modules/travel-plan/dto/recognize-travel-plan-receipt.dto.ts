@@ -2,7 +2,7 @@ import { IsIn, IsString, MaxLength } from 'class-validator';
 import {
   TRAVEL_PLAN_RECEIPT_CATEGORIES,
   type TravelPlanReceiptCategory,
-} from '../../../shared/travel-plan';
+} from '@sync/travel-plan-contracts';
 
 export { TRAVEL_PLAN_RECEIPT_CATEGORIES, type TravelPlanReceiptCategory };
 

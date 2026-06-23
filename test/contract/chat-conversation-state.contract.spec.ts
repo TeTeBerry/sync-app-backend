@@ -2,7 +2,7 @@ import {
   CONVERSATION_STATE_VERSION,
   type ConversationFlow,
   type ConversationState,
-} from '../../src/shared/chat/conversation-state.types';
+} from '@sync/chat-contracts/conversation-state.types';
 
 const FLOWS: ConversationFlow[] = [
   'idle',

@@ -1,7 +1,7 @@
 import type { ResolvedChatIntent } from '../../intent/chat-intent.types';
 import type { UserProfileSyncResult } from '../../agents/user-profile.agent';
 import type { ChatRequestDto } from '../../presentation/chat-request.dto';
-import type { ChatMessageDto, AiStreamEvent } from '../../../shared/chat';
+import type { ChatMessageDto, AiStreamEvent } from '@sync/chat-contracts';
 import type { ReplySink } from '../../presentation/ai-stream-event.builder';
 
 export interface AiTurnTimings {

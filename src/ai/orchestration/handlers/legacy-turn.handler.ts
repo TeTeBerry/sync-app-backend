@@ -14,7 +14,7 @@ import {
 } from '../../utils/activity-enter.util';
 import { resolveActivityId } from '../../utils/activity-id.util';
 import { resolveHomeFestivalShortcutCode } from '../../utils/festival-shortcut.util';
-import type { AiStreamEvent } from '../../../shared/chat';
+import type { AiStreamEvent } from '@sync/chat-contracts';
 import type { TurnHandlerContext } from './turn-handler.types';
 import { DjInfoTurnHandler } from './dj-info-turn.handler';
 

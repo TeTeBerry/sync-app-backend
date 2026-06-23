@@ -14,14 +14,16 @@ describe('ItineraryScheduleService discogs styles', () => {
     find: jest.fn(),
     findOneAndUpdate: jest.fn(),
   };
-  const activityService = {
+  const activityLookup = {
+    findAll: jest.fn(),
     findByLegacyId: jest
       .fn()
       .mockResolvedValue({ legacyId: 5, name: 'EDC Thailand 2026' }),
-  };
-  const activityLookup = {
-    findAll: jest.fn(),
     findByLegacyIds: jest.fn(),
+    refreshCache: jest.fn(),
+  };
+  const catalogRefresh = {
+    refreshAfterLineupCatalogChange: jest.fn().mockResolvedValue(undefined),
   };
   const cache = {
     getScheduleCache: jest.fn().mockResolvedValue(null),
@@ -124,7 +126,8 @@ describe('ItineraryScheduleService discogs styles', () => {
     service = new ItineraryScheduleService(
       performanceModel as never,
       sessionModel as never,
-      activityService as never,
+      activityLookup as never,
+      catalogRefresh as never,
       cache as never,
       conflictService,
       discogsGenre,
@@ -268,7 +271,7 @@ describe('ItineraryScheduleService discogs styles', () => {
   });
 
   it('serves Tomorrowland Thailand full lineup from seed', async () => {
-    activityService.findByLegacyId.mockResolvedValue({
+    activityLookup.findByLegacyId.mockResolvedValue({
       legacyId: 1,
       name: 'Tomorrowland Thailand 2026',
     });

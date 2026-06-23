@@ -143,7 +143,12 @@ describe('ActivityLookupService', () => {
 
     const all = await service.findAll();
 
-    expect(all).toEqual([records[0]]);
+    expect(all).toEqual([
+      expect.objectContaining({
+        ...records[0],
+        travelGuideSupported: true,
+      }),
+    ]);
     expect(model.find).toHaveBeenCalledTimes(1);
   });
 });

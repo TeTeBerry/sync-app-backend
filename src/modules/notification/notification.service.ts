@@ -13,6 +13,7 @@ import {
   buildNotificationFromTemplate,
   type NotificationTemplateKey,
 } from './notification-templates.util';
+import type { AppNotification } from '@sync/notification-contracts';
 
 export interface CreateNotificationInput {
   userId: string;
@@ -29,16 +30,7 @@ export interface CreateTemplateNotificationInput {
   meta?: NotificationMeta;
 }
 
-export interface NotificationDto {
-  id: string;
-  userId: string;
-  type: NotificationType;
-  title: string;
-  body: string;
-  read: boolean;
-  meta?: NotificationMeta;
-  createdAt: string;
-}
+export type NotificationDto = AppNotification;
 
 function resolveUserId(actor: RequestActor): string {
   return actor.resolvedUserId?.trim() || 'anonymous';
