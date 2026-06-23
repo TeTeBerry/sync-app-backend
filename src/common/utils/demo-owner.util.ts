@@ -30,25 +30,24 @@ export function buildOwnerMongoFilter(
   userId?: string,
   authorName?: string,
 ): Record<string, unknown> {
-  const clauses: Record<string, unknown>[] = [];
   const uid = userId?.trim();
-  const name = authorName?.trim();
-
   if (uid) {
-    clauses.push({ userId: uid });
-  }
-  if (name) {
-    clauses.push({ authorName: name });
-    const first = name.split(/\s+/)[0];
-    if (first) {
-      clauses.push({
-        authorName: { $regex: `^${escapeRegex(first)}`, $options: 'i' },
-      });
-    }
+    // Authenticated users are keyed by userId only — do not OR on authorName
+    // (e.g. default WeChat nicknames would leak cross-user registrations).
+    return { userId: uid };
   }
 
-  if (clauses.length === 0) {
+  const name = authorName?.trim();
+  if (!name) {
     return { _id: null };
+  }
+
+  const clauses: Record<string, unknown>[] = [{ authorName: name }];
+  const first = name.split(/\s+/)[0];
+  if (first && first !== name) {
+    clauses.push({
+      authorName: { $regex: `^${escapeRegex(first)}`, $options: 'i' },
+    });
   }
   return { $or: clauses };
 }
@@ -61,8 +60,22 @@ export function isResourceOwnedByClient(
 ): boolean {
   const uid = userId?.trim();
   const name = authorName?.trim();
+  const recordUid = record.userId?.trim();
 
-  if (uid && record.userId === uid) return true;
+  if (uid) {
+    if (recordUid) {
+      return recordUid === uid;
+    }
+    if (
+      name &&
+      record.authorName &&
+      authorNameMatches(record.authorName, name)
+    ) {
+      return true;
+    }
+    return false;
+  }
+
   if (name && record.authorName && authorNameMatches(record.authorName, name)) {
     return true;
   }

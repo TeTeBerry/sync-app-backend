@@ -131,4 +131,68 @@ describe('AuthService', () => {
       }),
     );
   });
+
+  it('assigns a cloud avatar when login has no avatarUrl', async () => {
+    const wechatMini = {
+      exchangeCode: jest.fn().mockResolvedValue({
+        openid: 'openid-2',
+        sessionKey: 'sk',
+      }),
+    };
+
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        JwtModule.register({
+          secret: 'test-secret',
+          signOptions: { expiresIn: '1h' },
+        }),
+      ],
+      providers: [
+        AuthService,
+        { provide: WechatMiniService, useValue: wechatMini },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: (key: string, fallback?: string) => {
+              if (key === 'auth.wechatMini.appId') return 'wx-test';
+              if (key === 'auth.wechatMini.appSecret') return 'secret';
+              return fallback;
+            },
+          },
+        },
+        { provide: UserService, useValue: userService },
+        {
+          provide: WechatContentSecurityService,
+          useValue: wechatContentSecurity,
+        },
+        { provide: USER_REPOSITORY, useValue: users },
+      ],
+    }).compile();
+
+    const svc = moduleRef.get(AuthService);
+
+    users.findByOpenid.mockResolvedValue(null);
+    users.upsertWechatUser.mockResolvedValue({
+      externalId: 'wx_openid-2',
+      name: '微信用户',
+      avatar: 'avatar/cat-pink-headphones.png',
+    });
+    userService.getMe.mockResolvedValue({
+      id: 'wx_openid-2',
+      name: '微信用户',
+      handle: '@openid-2',
+      location: '',
+      bio: '',
+      avatar: 'avatar/cat-pink-headphones.png',
+    });
+
+    await svc.loginWithWechatCode('code-2');
+
+    expect(users.upsertWechatUser).toHaveBeenCalledWith(
+      'openid-2',
+      expect.objectContaining({
+        avatar: expect.stringMatching(/^avatar\//),
+      }),
+    );
+  });
 });

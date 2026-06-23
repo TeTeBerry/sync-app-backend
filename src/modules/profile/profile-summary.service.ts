@@ -7,7 +7,6 @@ import {
 } from '../activity/ports/activity-lookup.port';
 import {
   ACTIVITY_REGISTRATION_REPOSITORY,
-  ActivityRegistrationQueryFilter,
   IActivityRegistrationRepository,
 } from '../activity/registration/interfaces/activity-registration.repository.interface';
 import {
@@ -25,16 +24,6 @@ import {
   DEV_PROFILE_STORM_LEGACY_ID,
   shouldInjectDevProfileStorm,
 } from './utils/dev-profile-storm-activity.util';
-
-function registrationFilterFromActor(
-  actor: RequestActor,
-): ActivityRegistrationQueryFilter {
-  const filter = ownerFilterFromActor(actor);
-  return {
-    userId: filter.userId,
-    authorName: filter.authorName?.trim() || 'Zara',
-  };
-}
 
 export interface ProfileSummaryDto {
   name: string;
@@ -74,7 +63,7 @@ export class ProfileSummaryService {
     actor: RequestActor,
     viewer?: RequestActor,
   ): Promise<ProfileSummaryDto> {
-    const filter = registrationFilterFromActor(actor);
+    const filter = ownerFilterFromActor(actor);
     const ownerExternalId = filter.userId ?? actor.clientUserId?.trim();
     const viewerId = viewer?.resolvedUserId ?? ownerExternalId;
     const isOwner =
@@ -107,13 +96,11 @@ export class ProfileSummaryService {
     const posts = ownerPosts.length;
 
     return {
-      name: profile?.name ?? 'Zara Chen',
-      handle: profile?.handle ?? '@zara',
-      location: canView ? (profile?.location ?? '上海') : '',
-      bio: canView ? (profile?.bio ?? '电音爱好者') : '',
-      avatar:
-        profile?.avatar ??
-        'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
+      name: profile?.name ?? '用户',
+      handle: profile?.handle ?? '@user',
+      location: canView ? (profile?.location ?? '') : '',
+      bio: canView ? (profile?.bio ?? '') : '',
+      avatar: profile?.avatar?.trim() ?? '',
       stats: {
         events,
         posts,
@@ -122,7 +109,7 @@ export class ProfileSummaryService {
   }
 
   async listActivities(actor: RequestActor): Promise<ProfileActivityItemDto[]> {
-    const filter = registrationFilterFromActor(actor);
+    const filter = ownerFilterFromActor(actor);
     const registrations = (
       await this.registrationRepository.findByOwner(filter)
     ).filter((registration) => registration.activityLegacyId !== 3);

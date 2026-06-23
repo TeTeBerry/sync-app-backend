@@ -16,6 +16,7 @@ import {
 import { assertUserUgcRemoteImageUrl } from '../../common/media/user-ugc-image.util';
 import { WechatMiniService } from './wechat-mini.service';
 import { WechatContentSecurityService } from './wechat-content-security.service';
+import { generatePersonalityRaverAvatarKey } from '../personality-test/utils/personality-raver-avatar.util';
 
 export interface AuthTokenPayload {
   sub: string;
@@ -208,10 +209,12 @@ export class AuthService {
   ): Promise<AuthLoginResult> {
     const session = await this.wechatMini.exchangeCode(code);
     const existing = await this.users.findByOpenid(session.openid);
-    const { name, avatar } = await this.resolveModeratedWechatProfile(
-      profile,
-      existing ?? undefined,
-    );
+    const { name, avatar: resolvedAvatar } =
+      await this.resolveModeratedWechatProfile(profile, existing ?? undefined);
+    const avatar =
+      resolvedAvatar.trim() ||
+      existing?.avatar?.trim() ||
+      generatePersonalityRaverAvatarKey();
     const externalId = existing?.externalId ?? `wx_${session.openid}`;
 
     const record = await this.users.upsertWechatUser(session.openid, {
