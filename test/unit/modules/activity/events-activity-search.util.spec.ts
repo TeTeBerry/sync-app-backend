@@ -1,5 +1,6 @@
 import {
   filterActivitiesByParsedSearch,
+  filterActivitiesForKnowledgeSearch,
   formatEventsActivitySearchParsedSummary,
   parseEventsActivitySearchQuery,
 } from '../../../../src/modules/activity/utils/events-activity-search.util';
@@ -202,5 +203,41 @@ describe('events-activity-search.util', () => {
     );
 
     expect(matched.map((item) => item.code)).toEqual(['edc-thailand']);
+  });
+});
+
+describe('filterActivitiesForKnowledgeSearch', () => {
+  const storm = activity({
+    legacyId: 4,
+    name: '风暴电音节 深圳站 2026',
+    code: 'storm',
+    date: '06/13-14',
+    location: '深圳国际会展中心',
+    area: '中国',
+    region: 'domestic',
+    alias: ['storm', '风暴'],
+  });
+  const ultraJapan = activity({
+    legacyId: 9,
+    name: 'Ultra Japan 2026',
+    code: 'ultra-japan',
+    date: '09/19-20',
+    location: '东京',
+    area: '日本',
+    region: 'overseas',
+    alias: ['ultra japan'],
+  });
+
+  it('excludes ended festivals and chroma drift outside parsed month', () => {
+    const now = new Date('2026-06-25T12:00:00');
+    const parsed = parseEventsActivitySearchQuery('9月电音节');
+
+    const filtered = filterActivitiesForKnowledgeSearch(
+      [ultraJapan, storm],
+      parsed,
+      now,
+    );
+
+    expect(filtered.map((item) => item.code)).toEqual(['ultra-japan']);
   });
 });

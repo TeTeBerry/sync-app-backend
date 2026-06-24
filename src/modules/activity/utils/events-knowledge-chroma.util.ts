@@ -1,5 +1,7 @@
 import type { Document } from '@langchain/core/documents';
+import type { EventsActivitySearchParsed } from '@sync/scene-contracts';
 import type { ActivityLookupRecord } from '../ports/activity-lookup.port';
+import { filterActivitiesForKnowledgeSearch } from './events-activity-search.util';
 
 const MAX_MERGED_ACTIVITIES = 8;
 
@@ -7,6 +9,8 @@ export function mergeChromaActivityHints(
   matched: ActivityLookupRecord[],
   chromaDocs: Document[],
   allActivities: ActivityLookupRecord[],
+  parsed: EventsActivitySearchParsed = {},
+  now = new Date(),
 ): ActivityLookupRecord[] {
   if (!chromaDocs.length) return matched;
 
@@ -23,6 +27,13 @@ export function mergeChromaActivityHints(
 
     const activity = byCode.get(code);
     if (!activity) continue;
+
+    const [eligible] = filterActivitiesForKnowledgeSearch(
+      [activity],
+      parsed,
+      now,
+    );
+    if (!eligible) continue;
 
     hinted.push(activity);
     matchedCodes.add(code);

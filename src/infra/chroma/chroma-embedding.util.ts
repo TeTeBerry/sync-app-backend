@@ -1,5 +1,3 @@
-import { env as TransformersEnv, pipeline } from '@huggingface/transformers';
-
 const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
 
 type EmbeddingPipeline = {
@@ -9,10 +7,13 @@ type EmbeddingPipeline = {
   ): Promise<{ tolist(): number[][] }>;
 };
 
+type TransformersModule = typeof import('@huggingface/transformers');
+
 let embedder: EmbeddingPipeline | null = null;
 let embedderReady = false;
 let warmupPromise: Promise<boolean> | null = null;
 let embedderLoadPromise: Promise<EmbeddingPipeline> | null = null;
+let transformersModule: TransformersModule | null = null;
 
 function resolveHuggingFaceRemoteHost(): string | null {
   const endpoint =
@@ -22,16 +23,22 @@ function resolveHuggingFaceRemoteHost(): string | null {
   return endpoint.endsWith('/') ? endpoint : `${endpoint}/`;
 }
 
-function configureTransformersEnv(): void {
+function configureTransformersEnv(env: TransformersModule['env']): void {
   const remoteHost = resolveHuggingFaceRemoteHost();
   if (remoteHost) {
-    TransformersEnv.remoteHost = remoteHost;
+    env.remoteHost = remoteHost;
   }
-  TransformersEnv.useFSCache = true;
+  env.useFSCache = true;
+}
+
+async function getTransformers(): Promise<TransformersModule> {
+  transformersModule ??= await import('@huggingface/transformers');
+  configureTransformersEnv(transformersModule.env);
+  return transformersModule;
 }
 
 async function loadEmbedder(): Promise<EmbeddingPipeline> {
-  configureTransformersEnv();
+  const { pipeline } = await getTransformers();
   const loaded = await (
     pipeline as (
       task: string,
@@ -88,7 +95,8 @@ export async function embedKnowledgeTexts(
     return embeddings;
   } catch (error) {
     const message = (error as Error).message;
-    const host = resolveHuggingFaceRemoteHost() ?? TransformersEnv.remoteHost;
+    const transformers = await getTransformers().catch(() => null);
+    const host = resolveHuggingFaceRemoteHost() ?? transformers?.env.remoteHost;
     const hint = resolveHuggingFaceRemoteHost()
       ? ''
       : ' (set HF_ENDPOINT=https://hf-mirror.com for CN networks)';

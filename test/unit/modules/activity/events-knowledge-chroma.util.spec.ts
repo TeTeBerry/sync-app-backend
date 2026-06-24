@@ -17,8 +17,18 @@ function activity(
 
 describe('mergeChromaActivityHints', () => {
   const catalog = [
-    activity({ legacyId: 1, name: 'STORM', code: 'storm' }),
-    activity({ legacyId: 8, name: 'EDC Korea', code: 'edc-korea' }),
+    activity({
+      legacyId: 1,
+      name: 'STORM',
+      code: 'storm',
+      date: '06/13-14',
+    }),
+    activity({
+      legacyId: 8,
+      name: 'EDC Korea',
+      code: 'edc-korea',
+      date: '09/12-14',
+    }),
   ];
 
   it('appends activities hinted by chroma metadata code', () => {
@@ -33,6 +43,34 @@ describe('mergeChromaActivityHints', () => {
     const merged = mergeChromaActivityHints(matched, chromaDocs, catalog);
 
     expect(merged.map((item) => item.code)).toEqual(['storm', 'edc-korea']);
+  });
+
+  it('skips chroma hints outside parsed month or already ended', () => {
+    const matched = [
+      activity({
+        legacyId: 9,
+        name: 'Ultra Japan 2026',
+        code: 'ultra-japan',
+        date: '09/19-20',
+      }),
+    ];
+    const chromaDocs = [
+      new Document({
+        pageContent: 'STORM FAQ',
+        metadata: { topic: 'activity', code: 'storm' },
+      }),
+    ];
+    const now = new Date('2026-06-25T12:00:00');
+
+    const merged = mergeChromaActivityHints(
+      matched,
+      chromaDocs,
+      catalog,
+      { month: 9 },
+      now,
+    );
+
+    expect(merged.map((item) => item.code)).toEqual(['ultra-japan']);
   });
 
   it('returns matched unchanged when chroma is empty', () => {

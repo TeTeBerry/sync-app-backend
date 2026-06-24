@@ -5,6 +5,10 @@ import type {
   KnowledgeCardSection,
 } from '@sync/scene-contracts';
 import { Document } from '@langchain/core/documents';
+import {
+  isActivityEnded,
+  extractYearFromText,
+} from '../../../common/utils/activity-date.util';
 import { ChromaService } from '../../../infra/chroma/chroma.service';
 import { LlmService } from '../../../infra/llm/llm.service';
 import { LineupCatalogService } from '../../itinerary/lineup-catalog.service';
@@ -19,6 +23,7 @@ import {
 import { resolveFestivalKnowledgeFallback } from '../utils/events-knowledge-festival-fallback.util';
 import {
   filterActivitiesByParsedSearch,
+  filterActivitiesForKnowledgeSearch,
   formatEventsActivitySearchParsedSummary,
   parseEventsActivitySearchQuery,
 } from '../utils/events-activity-search.util';
@@ -64,15 +69,16 @@ export class EventsKnowledgeSearchService {
     let parsed = parseEventsActivitySearchQuery(trimmed);
     const allActivities = await this.activityLookup.findAll();
     const now = new Date();
-    const upcoming = allActivities.filter((activity) => {
-      const year = activity.date?.match(/^(\d{4})-/);
-      if (!year) return true;
-      const endYear = Number(year[1]);
-      return endYear >= now.getFullYear() - 1;
+    const catalogPool = allActivities.filter((activity) => {
+      const yearHint =
+        extractYearFromText(activity.name) ??
+        extractYearFromText(activity.date) ??
+        String(now.getFullYear());
+      return !isActivityEnded(activity.date, { yearHint, now });
     });
-    const catalogPool = upcoming.length ? upcoming : allActivities;
+    const searchPool = catalogPool.length ? catalogPool : allActivities;
     let matchedActivities = filterActivitiesByParsedSearch(
-      catalogPool,
+      searchPool,
       parsed,
       trimmed,
     );
@@ -87,7 +93,7 @@ export class EventsKnowledgeSearchService {
     });
     const festivalFallback = resolveFestivalKnowledgeFallback({
       query: trimmed,
-      catalogPool,
+      catalogPool: searchPool,
     });
     if (!chromaDocs.length && festivalFallback.docs.length) {
       chromaDocs = rankKnowledgeDocumentsForIntent(
@@ -115,7 +121,8 @@ export class EventsKnowledgeSearchService {
       matchedActivities = mergeChromaActivityHints(
         matchedActivities,
         chromaDocs,
-        catalogPool,
+        searchPool,
+        parsed,
       );
       matchedActivities = mergeArtistMatchedActivities(
         matchedActivities,
@@ -130,14 +137,14 @@ export class EventsKnowledgeSearchService {
     parsed = enrichParsedForCompare(
       trimmed,
       parsed,
-      catalogPool,
+      searchPool,
       matchedActivities,
     );
 
     if (parsed.intent === 'compare') {
       const comparePair = resolveCompareActivities(
         trimmed,
-        catalogPool,
+        searchPool,
         matchedActivities,
       );
       if (comparePair.length >= 2) {
@@ -145,12 +152,18 @@ export class EventsKnowledgeSearchService {
       }
     }
 
+    matchedActivities = filterActivitiesForKnowledgeSearch(
+      matchedActivities,
+      parsed,
+      now,
+    );
+
     const parsedSummary = formatEventsActivitySearchParsedSummary(parsed);
     const knowledgeCard = await this.buildKnowledgeCard({
       query: trimmed,
       parsed,
       activities: matchedActivities,
-      allActivities: catalogPool,
+      allActivities: searchPool,
       chromaDocs,
       locale,
     });

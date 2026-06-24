@@ -49,7 +49,7 @@ CHROMA_URL=http://chroma:8000      # compose 内网
 
 未配置时 RAG 禁用，规则路径不受影响。
 
-`ChromaService` 通过 **HTTP API** + `@huggingface/transformers`（MiniLM）在 Node 侧生成向量。
+`ChromaService` 通过 **HTTP API** + `@huggingface/transformers`（MiniLM）在 Node 侧生成向量。生产 Docker 须 **glibc** 基础镜像（`node:20-bookworm-slim`），Alpine 缺少 `ld-linux-x86-64.so.2` 会导致 `onnxruntime-node` 启动失败。
 
 国内网络请设（Transformers 读 `env.remoteHost`，不是 HuggingFace CLI 的 `HF_ENDPOINT` 同名逻辑，但镜像站兼容）：
 

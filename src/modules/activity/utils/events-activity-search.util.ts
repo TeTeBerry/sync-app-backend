@@ -1,6 +1,7 @@
 import type { EventsActivitySearchParsed } from '@sync/scene-contracts';
 import {
   extractYearFromText,
+  isActivityEnded,
   parseActivityDateRange,
 } from '../../../common/utils/activity-date.util';
 import { resolveFestivalBrand } from '../../../ai/rag/festival-brand.util';
@@ -442,4 +443,40 @@ export function formatEventsActivitySearchParsedSummary(
   }
 
   return parts.length ? parts.join(' · ') : null;
+}
+
+/** Drop ended festivals; when parsed has month/region/etc., re-validate (blocks chroma drift). */
+export function filterActivitiesForKnowledgeSearch(
+  activities: ActivityLookupRecord[],
+  parsed: EventsActivitySearchParsed,
+  now = new Date(),
+): ActivityLookupRecord[] {
+  return activities.filter((activity) =>
+    isActivityEligibleForKnowledgeSearch(activity, parsed, now),
+  );
+}
+
+function isActivityEligibleForKnowledgeSearch(
+  activity: ActivityLookupRecord,
+  parsed: EventsActivitySearchParsed,
+  now: Date,
+): boolean {
+  const yearHint = resolveActivityYearHint(activity);
+  if (isActivityEnded(activity.date, { yearHint, now })) {
+    return false;
+  }
+
+  const hasStructuredCriteria = Boolean(
+    parsed.month ||
+    parsed.region ||
+    parsed.area ||
+    parsed.genre ||
+    parsed.keywords?.length,
+  );
+
+  if (hasStructuredCriteria) {
+    return activityMatchesParsedCriteria(activity, parsed);
+  }
+
+  return true;
 }
