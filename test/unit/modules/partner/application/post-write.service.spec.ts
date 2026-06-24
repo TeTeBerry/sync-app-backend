@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { toRequestActor } from '@src/common/auth/actor-query.util';
-import { TICKET_PUBLISH_FORBIDDEN_MESSAGE } from '@src/ai/buddy/ticket-publish-policy.util';
+import { TICKET_PUBLISH_FORBIDDEN_MESSAGE } from '@src/ai/risk/ticket-publish-policy.util';
 import { PostWriteService } from '@src/modules/partner/application/post-write.service';
 import type { IPostRepository } from '@src/modules/partner/interfaces/post.repository.interface';
 import type { UserService } from '@src/modules/user/user.service';

@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
 import {
+  IsArray,
+  IsBoolean,
   IsIn,
   IsNumber,
   IsObject,
@@ -17,6 +19,26 @@ const SCENE_IDS: SceneId[] = [
   'events_knowledge_search',
 ];
 
+class BuddyPostComposeHintsDto {
+  @IsOptional()
+  @IsString()
+  personalityType?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  favorGenres?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  setPicks?: string[];
+
+  @IsOptional()
+  @IsString()
+  prefillSummary?: string;
+}
+
 export class SceneContextDto implements SceneContext {
   @IsOptional()
   @IsString()
@@ -28,6 +50,35 @@ export class SceneContextDto implements SceneContext {
   @IsOptional()
   @IsString()
   locale?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  dateStart?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  dateEnd?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  location?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  headcount?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BuddyPostComposeHintsDto)
+  composeHints?: BuddyPostComposeHintsDto;
+
+  @IsOptional()
+  @IsBoolean()
+  regenerate?: boolean;
 
   [key: string]: unknown;
 }

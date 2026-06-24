@@ -429,6 +429,283 @@
         ]
       }
     },
+    "/api/activities/{legacyId}/set-votes": {
+      "post": {
+        "operationId": "SetVoteController_submit",
+        "summary": "Submit or update set-vote picks (max 3 DJs)",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitSetVoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "activities"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/activities/{legacyId}/set-votes/leaderboard": {
+      "get": {
+        "operationId": "SetVoteController_leaderboard",
+        "summary": "Get set-vote leaderboard for activity",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "activities"
+        ]
+      }
+    },
+    "/api/activities/{legacyId}/set-votes/me": {
+      "get": {
+        "operationId": "SetVoteController_me",
+        "summary": "Get current user set-vote for activity",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "activities"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/activities/{legacyId}/itinerary/schedule": {
+      "get": {
+        "operationId": "ItineraryController_getSchedule",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "dateKey",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "selectedDjIds",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/activities/{legacyId}/itinerary/generate": {
+      "post": {
+        "operationId": "ItineraryController_generate",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateItineraryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/activities/{legacyId}/itinerary/save": {
+      "post": {
+        "operationId": "ItineraryController_save",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveItineraryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/activities/{legacyId}/itinerary/saved": {
+      "get": {
+        "operationId": "ItineraryController_getSaved",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/artists/{id}": {
+      "get": {
+        "operationId": "ArtistController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/users/health": {
       "get": {
         "operationId": "UserController_health",
@@ -762,105 +1039,6 @@
         ]
       }
     },
-    "/api/chat/health": {
-      "get": {
-        "operationId": "ChatController_health",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/chat/sessions/{sessionId}": {
-      "get": {
-        "operationId": "ChatController_getSession",
-        "parameters": [
-          {
-            "name": "sessionId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "operationId": "ChatController_clearSession",
-        "parameters": [
-          {
-            "name": "sessionId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/chat/sessions/{sessionId}/messages": {
-      "get": {
-        "operationId": "ChatController_getSessionMessages",
-        "parameters": [
-          {
-            "name": "sessionId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "before",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/profile": {
       "get": {
         "operationId": "ProfileController_summary",
@@ -1076,64 +1254,6 @@
           },
           "201": {
             "description": ""
-          }
-        },
-        "tags": [
-          "posts"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
-    "/api/posts/ai-search": {
-      "post": {
-        "operationId": "PostController_aiSearch",
-        "summary": "Natural language buddy post search",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AiSearchPostsDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelopeDto"
-                    },
-                    {
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/BuddyPostAiSearchResultDto"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
           }
         },
         "tags": [
@@ -1496,28 +1616,70 @@
         }
       }
     },
-    "/api/activities/{legacyId}/itinerary/schedule": {
+    "/api/ai/scene-run": {
+      "post": {
+        "operationId": "SceneRunController_run",
+        "summary": "Run a single-turn Scene Agent task",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SceneRunDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelopeDto"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SceneRunResponseDto"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/reports/status": {
       "get": {
-        "operationId": "ItineraryController_getSchedule",
+        "operationId": "ReportController_status",
         "parameters": [
           {
-            "name": "legacyId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          },
-          {
-            "name": "dateKey",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "selectedDjIds",
+            "name": "targetId",
             "required": true,
             "in": "query",
             "schema": {
@@ -1539,62 +1701,16 @@
         }
       }
     },
-    "/api/activities/{legacyId}/itinerary/generate": {
+    "/api/reports": {
       "post": {
-        "operationId": "ItineraryController_generate",
-        "parameters": [
-          {
-            "name": "legacyId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
+        "operationId": "ReportController_create",
+        "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/GenerateItineraryDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/activities/{legacyId}/itinerary/save": {
-      "post": {
-        "operationId": "ItineraryController_save",
-        "parameters": [
-          {
-            "name": "legacyId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SaveItineraryDto"
+                "$ref": "#/components/schemas/CreateReportDto"
               }
             }
           }
@@ -1606,9 +1722,30 @@
         }
       }
     },
-    "/api/activities/{legacyId}/itinerary/saved": {
+    "/api/feedback": {
+      "post": {
+        "operationId": "FeedbackController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeedbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/activities/{legacyId}/travel-plan/saved": {
       "get": {
-        "operationId": "ItineraryController_getSaved",
+        "operationId": "TravelPlanController_getSaved",
         "parameters": [
           {
             "name": "legacyId",
@@ -1633,12 +1770,111 @@
         }
       }
     },
-    "/api/artists/{id}": {
-      "get": {
-        "operationId": "ArtistController_getById",
+    "/api/activities/{legacyId}/travel-plan/save": {
+      "post": {
+        "operationId": "TravelPlanController_save",
         "parameters": [
           {
-            "name": "id",
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveTravelPlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/activities/{legacyId}/travel-plan/recognize-receipt": {
+      "post": {
+        "operationId": "TravelPlanController_recognizeReceipt",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecognizeTravelPlanReceiptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/activities/{legacyId}/travel-plan/recognize-receipt-async": {
+      "post": {
+        "operationId": "TravelPlanController_recognizeReceiptAsync",
+        "summary": "",
+        "description": "小程序 callContainer 请求体 ≤100KB 且单次 ≤15s；截图 OCR 走异步任务 + 轮询。",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecognizeTravelPlanReceiptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/activities/{legacyId}/travel-plan/receipt-recognize-jobs/{jobId}": {
+      "get": {
+        "operationId": "TravelPlanController_getReceiptRecognizeJob",
+        "parameters": [
+          {
+            "name": "jobId",
             "required": true,
             "in": "path",
             "schema": {
@@ -2030,6 +2266,33 @@
         ]
       }
     },
+    "/api/activities/{legacyId}/festival-plan-progress": {
+      "get": {
+        "operationId": "FestivalPlanController_getProgress",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/personality-test/catalog": {
       "get": {
         "operationId": "PersonalityTestController_getCatalog",
@@ -2136,255 +2399,6 @@
         },
         "responses": {
           "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/reports/status": {
-      "get": {
-        "operationId": "ReportController_status",
-        "parameters": [
-          {
-            "name": "targetId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/reports": {
-      "post": {
-        "operationId": "ReportController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateReportDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/feedback": {
-      "post": {
-        "operationId": "FeedbackController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateFeedbackDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/activities/{legacyId}/travel-plan/saved": {
-      "get": {
-        "operationId": "TravelPlanController_getSaved",
-        "parameters": [
-          {
-            "name": "legacyId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/activities/{legacyId}/travel-plan/save": {
-      "post": {
-        "operationId": "TravelPlanController_save",
-        "parameters": [
-          {
-            "name": "legacyId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SaveTravelPlanDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/activities/{legacyId}/travel-plan/recognize-receipt": {
-      "post": {
-        "operationId": "TravelPlanController_recognizeReceipt",
-        "parameters": [
-          {
-            "name": "legacyId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecognizeTravelPlanReceiptDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/activities/{legacyId}/travel-plan/recognize-receipt-async": {
-      "post": {
-        "operationId": "TravelPlanController_recognizeReceiptAsync",
-        "summary": "",
-        "description": "小程序 callContainer 请求体 ≤100KB 且单次 ≤15s；截图 OCR 走异步任务 + 轮询。",
-        "parameters": [
-          {
-            "name": "legacyId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecognizeTravelPlanReceiptDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/activities/{legacyId}/travel-plan/receipt-recognize-jobs/{jobId}": {
-      "get": {
-        "operationId": "TravelPlanController_getReceiptRecognizeJob",
-        "parameters": [
-          {
-            "name": "jobId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/activities/{legacyId}/festival-plan-progress": {
-      "get": {
-        "operationId": "FestivalPlanController_getProgress",
-        "parameters": [
-          {
-            "name": "legacyId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
             "description": "",
             "content": {
               "application/json": {
@@ -2521,16 +2535,28 @@
           "name": {
             "type": "string"
           },
+          "genre": {
+            "type": "string",
+            "description": "Primary genre bucket for catalog filters"
+          },
           "genreLabel": {
             "type": "string"
           },
           "activityCount": {
             "type": "number"
+          },
+          "chineseAliases": {
+            "description": "Common Chinese nicknames",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "id",
           "name",
+          "genre",
           "genreLabel",
           "activityCount"
         ]
@@ -2639,6 +2665,172 @@
           "ok",
           "activityLegacyId",
           "attendees"
+        ]
+      },
+      "SubmitSetVoteDto": {
+        "type": "object",
+        "properties": {
+          "artistIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "syncGenres": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "artistIds"
+        ]
+      },
+      "GenerateItineraryDto": {
+        "type": "object",
+        "properties": {
+          "selectedDjIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64
+            }
+          },
+          "dateKey": {
+            "type": "string",
+            "maxLength": 32
+          }
+        },
+        "required": [
+          "selectedDjIds"
+        ]
+      },
+      "ItineraryTimelinePillDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "green",
+              "pink"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "variant"
+        ]
+      },
+      "ItineraryTimelineItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "time": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "dotColor": {
+            "type": "string",
+            "enum": [
+              "pink",
+              "cyan",
+              "purple"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "subtitle": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "timeTag": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "timeTagColor": {
+            "type": "string",
+            "enum": [
+              "pink",
+              "cyan",
+              "purple"
+            ]
+          },
+          "pill": {
+            "$ref": "#/components/schemas/ItineraryTimelinePillDto"
+          },
+          "highlighted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "time",
+          "dotColor",
+          "title"
+        ]
+      },
+      "ItineraryDayDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "bannerDateLabel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "nodeCount": {
+            "type": "number"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItineraryTimelineItemDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "bannerDateLabel",
+          "items"
+        ]
+      },
+      "SaveItineraryDto": {
+        "type": "object",
+        "properties": {
+          "eventMeta": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItineraryDayDto"
+            }
+          },
+          "selectedDjIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "eventMeta",
+          "days"
         ]
       },
       "UpdateUserMeDto": {
@@ -2813,44 +3005,6 @@
         "required": [
           "items",
           "hasMore"
-        ]
-      },
-      "BuddyPostAiSearchResultDto": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/EventDetailPostDto"
-            }
-          },
-          "totalMatched": {
-            "type": "number"
-          },
-          "totalScanned": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "items",
-          "totalMatched",
-          "totalScanned"
-        ]
-      },
-      "AiSearchPostsDto": {
-        "type": "object",
-        "properties": {
-          "query": {
-            "type": "string",
-            "minLength": 1
-          },
-          "activityLegacyId": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "query",
-          "activityLegacyId"
         ]
       },
       "PostMutationResultDto": {
@@ -3043,63 +3197,246 @@
           "body"
         ]
       },
-      "GenerateItineraryDto": {
+      "SceneRunResponseDto": {
         "type": "object",
         "properties": {
-          "selectedDjIds": {
+          "effects": {
             "type": "array",
             "items": {
-              "type": "string",
-              "maxLength": 64
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/SceneInsightLineEffectDto"
+                },
+                {
+                  "$ref": "#/components/schemas/SceneReorderPostsEffectDto"
+                }
+              ]
             }
           },
-          "dateKey": {
-            "type": "string",
-            "maxLength": 32
+          "disclaimer": {
+            "type": "string"
           }
         },
         "required": [
-          "selectedDjIds"
+          "effects"
         ]
       },
-      "ItineraryTimelinePillDto": {
+      "BuddyPostComposeHintsDto": {
         "type": "object",
         "properties": {
-          "label": {
-            "type": "string",
-            "maxLength": 64
+          "personalityType": {
+            "type": "string"
           },
-          "variant": {
+          "favorGenres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "setPicks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "prefillSummary": {
+            "type": "string"
+          }
+        }
+      },
+      "SceneContextDto": {
+        "type": "object",
+        "properties": {
+          "trigger": {
+            "type": "object"
+          },
+          "applyPreferenceRank": {
+            "type": "boolean"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "dateStart": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dateEnd": {
+            "type": "string",
+            "minLength": 1
+          },
+          "location": {
+            "type": "string",
+            "minLength": 1
+          },
+          "headcount": {
+            "type": "string",
+            "minLength": 1
+          },
+          "composeHints": {
+            "$ref": "#/components/schemas/BuddyPostComposeHintsDto"
+          },
+          "regenerate": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SceneRunDto": {
+        "type": "object",
+        "properties": {
+          "scene": {
             "type": "string",
             "enum": [
-              "green",
-              "pink"
+              "recruit_search",
+              "recruit_compose",
+              "prep_nudge",
+              "events_knowledge_search"
+            ]
+          },
+          "intent": {
+            "type": "string"
+          },
+          "activityLegacyId": {
+            "type": "number"
+          },
+          "input": {
+            "type": "string",
+            "minLength": 1
+          },
+          "context": {
+            "$ref": "#/components/schemas/SceneContextDto"
+          }
+        },
+        "required": [
+          "scene"
+        ]
+      },
+      "CreateReportDto": {
+        "type": "object",
+        "properties": {
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "post",
+              "user",
+              "comment"
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "targetUserId": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "ads",
+              "scalper",
+              "vulgar"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "targetType",
+          "targetId",
+          "category"
+        ]
+      },
+      "CreateFeedbackDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 1000
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "general",
+              "account_deletion"
             ]
           }
         },
         "required": [
-          "label",
-          "variant"
+          "content"
         ]
       },
-      "ItineraryTimelineItemDto": {
+      "TravelPlanBillLineItemDto": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
             "maxLength": 64
           },
-          "time": {
+          "title": {
             "type": "string",
-            "maxLength": 32
+            "maxLength": 120
           },
-          "dotColor": {
+          "description": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "cost": {
+            "type": "number",
+            "minimum": 0
+          },
+          "startDate": {
+            "type": "string",
+            "maxLength": 10
+          },
+          "startTime": {
+            "type": "string",
+            "maxLength": 5
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "startDate"
+        ]
+      },
+      "TravelPlanNodeDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "category": {
             "type": "string",
             "enum": [
-              "pink",
-              "cyan",
-              "purple"
+              "flight",
+              "transport",
+              "hotel",
+              "dining",
+              "event"
             ]
+          },
+          "startDate": {
+            "type": "string",
+            "maxLength": 10
+          },
+          "endDate": {
+            "type": "string",
+            "maxLength": 10
+          },
+          "startTime": {
+            "type": "string",
+            "maxLength": 5
+          },
+          "endTime": {
+            "type": "string",
+            "maxLength": 5
+          },
+          "duration": {
+            "type": "string",
+            "maxLength": 32
           },
           "title": {
             "type": "string",
@@ -3109,87 +3446,103 @@
             "type": "string",
             "maxLength": 500
           },
-          "timeTag": {
+          "detail": {
             "type": "string",
-            "maxLength": 32
+            "maxLength": 1000
           },
-          "timeTagColor": {
-            "type": "string",
-            "enum": [
-              "pink",
-              "cyan",
-              "purple"
-            ]
+          "price": {
+            "type": "number",
+            "minimum": 0
           },
-          "pill": {
-            "$ref": "#/components/schemas/ItineraryTimelinePillDto"
-          },
-          "highlighted": {
+          "confirmed": {
             "type": "boolean"
-          }
-        },
-        "required": [
-          "id",
-          "time",
-          "dotColor",
-          "title"
-        ]
-      },
-      "ItineraryDayDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "maxLength": 32
           },
-          "label": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "bannerDateLabel": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "nodeCount": {
-            "type": "number"
-          },
-          "items": {
+          "diningBills": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ItineraryTimelineItemDto"
+              "$ref": "#/components/schemas/TravelPlanBillLineItemDto"
             }
+          },
+          "transportBills": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TravelPlanBillLineItemDto"
+            }
+          },
+          "splitEnabled": {
+            "type": "boolean"
+          },
+          "splitCount": {
+            "type": "number",
+            "minimum": 2,
+            "maximum": 8
           }
         },
         "required": [
           "id",
-          "label",
-          "bannerDateLabel",
-          "items"
+          "category",
+          "startDate",
+          "endDate",
+          "title",
+          "subtitle",
+          "confirmed"
         ]
       },
-      "SaveItineraryDto": {
+      "SaveTravelPlanDto": {
         "type": "object",
         "properties": {
           "eventMeta": {
             "type": "string",
             "maxLength": 200
           },
-          "days": {
+          "nodes": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ItineraryDayDto"
+              "$ref": "#/components/schemas/TravelPlanNodeDto"
             }
           },
-          "selectedDjIds": {
+          "activityConfirmations": {
+            "type": "object"
+          },
+          "activityPriceOverrides": {
+            "type": "object"
+          },
+          "hiddenActivityNodeIds": {
             "type": "array",
             "items": {
               "type": "string"
             }
+          },
+          "splitCount": {
+            "type": "number",
+            "minimum": 2,
+            "maximum": 8
           }
         },
         "required": [
-          "eventMeta",
-          "days"
+          "nodes"
+        ]
+      },
+      "RecognizeTravelPlanReceiptDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "transport",
+              "hotel",
+              "dining",
+              "event"
+            ]
+          },
+          "image": {
+            "type": "string",
+            "maxLength": 12000000
+          }
+        },
+        "required": [
+          "category",
+          "image"
         ]
       },
       "TravelGuidePlanDto": {
@@ -3414,226 +3767,90 @@
           "answers"
         ]
       },
-      "CreateReportDto": {
+      "BuddyPostAiSearchResultDto": {
         "type": "object",
         "properties": {
-          "targetType": {
-            "type": "string",
-            "enum": [
-              "post",
-              "user",
-              "comment"
-            ]
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventDetailPostDto"
+            }
           },
-          "targetId": {
-            "type": "string",
-            "minLength": 1
+          "totalMatched": {
+            "type": "number"
           },
-          "targetUserId": {
-            "type": "string"
-          },
-          "category": {
-            "type": "string",
-            "enum": [
-              "ads",
-              "scalper",
-              "vulgar"
-            ]
-          },
-          "reason": {
-            "type": "string",
-            "maxLength": 500
+          "totalScanned": {
+            "type": "number"
           }
         },
         "required": [
-          "targetType",
-          "targetId",
-          "category"
+          "items",
+          "totalMatched",
+          "totalScanned"
         ]
       },
-      "CreateFeedbackDto": {
+      "SceneInsightLineEffectDto": {
         "type": "object",
         "properties": {
-          "content": {
-            "type": "string",
-            "minLength": 5,
-            "maxLength": 1000
-          },
           "type": {
             "type": "string",
             "enum": [
-              "general",
-              "account_deletion"
+              "insight_line"
             ]
-          }
-        },
-        "required": [
-          "content"
-        ]
-      },
-      "TravelPlanBillLineItemDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "maxLength": 64
           },
-          "title": {
-            "type": "string",
-            "maxLength": 120
+          "text": {
+            "type": "string"
           },
-          "description": {
-            "type": "string",
-            "maxLength": 200
-          },
-          "cost": {
-            "type": "number",
-            "minimum": 0
-          },
-          "startDate": {
-            "type": "string",
-            "maxLength": 10
-          },
-          "startTime": {
-            "type": "string",
-            "maxLength": 5
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "startDate"
-        ]
-      },
-      "TravelPlanNodeDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "maxLength": 64
-          },
-          "category": {
+          "variant": {
             "type": "string",
             "enum": [
-              "flight",
-              "transport",
-              "hotel",
-              "dining",
-              "event"
+              "parsed",
+              "preference"
             ]
           },
-          "startDate": {
-            "type": "string",
-            "maxLength": 10
-          },
-          "endDate": {
-            "type": "string",
-            "maxLength": 10
-          },
-          "startTime": {
-            "type": "string",
-            "maxLength": 5
-          },
-          "endTime": {
-            "type": "string",
-            "maxLength": 5
-          },
-          "duration": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "title": {
-            "type": "string",
-            "maxLength": 200
-          },
-          "subtitle": {
-            "type": "string",
-            "maxLength": 500
-          },
-          "detail": {
-            "type": "string",
-            "maxLength": 1000
-          },
-          "price": {
-            "type": "number",
-            "minimum": 0
-          },
-          "confirmed": {
+          "aiGenerated": {
             "type": "boolean"
-          },
-          "diningBills": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TravelPlanBillLineItemDto"
-            }
-          },
-          "transportBills": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TravelPlanBillLineItemDto"
-            }
           }
         },
         "required": [
-          "id",
-          "category",
-          "startDate",
-          "endDate",
-          "title",
-          "subtitle",
-          "confirmed"
+          "type",
+          "text"
         ]
       },
-      "SaveTravelPlanDto": {
+      "SceneReorderPostsEffectDto": {
         "type": "object",
         "properties": {
-          "eventMeta": {
+          "type": {
             "type": "string",
-            "maxLength": 200
+            "enum": [
+              "reorder_posts"
+            ]
           },
-          "nodes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TravelPlanNodeDto"
-            }
-          },
-          "activityConfirmations": {
-            "type": "object"
-          },
-          "activityPriceOverrides": {
-            "type": "object"
-          },
-          "hiddenActivityNodeIds": {
+          "postIds": {
             "type": "array",
             "items": {
               "type": "string"
             }
-          }
-        },
-        "required": [
-          "nodes"
-        ]
-      },
-      "RecognizeTravelPlanReceiptDto": {
-        "type": "object",
-        "properties": {
-          "category": {
-            "type": "string",
-            "enum": [
-              "transport",
-              "hotel",
-              "dining",
-              "event"
-            ]
           },
-          "image": {
-            "type": "string",
-            "maxLength": 12000000
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "totalMatched": {
+            "type": "number"
+          },
+          "totalScanned": {
+            "type": "number"
           }
         },
         "required": [
-          "category",
-          "image"
+          "type",
+          "postIds",
+          "items",
+          "totalMatched",
+          "totalScanned"
         ]
       }
     }

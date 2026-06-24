@@ -13,7 +13,7 @@
 
 ```
 test/unit/
-  ai/                    # agents, buddy, intent, orchestration, rag, utils
+  ai/                    # agents, scene, rag, risk
   auth/
   common/
   modules/
@@ -42,12 +42,13 @@ Imports use the `@src/...` alias (see `package.json` → `jest.moduleNameMapper`
 | `travel-plan-frontend-reexports.contract.spec.ts` | Travel-plan re-exports |
 | `travel-plan-merge-parity.contract.spec.ts` | Merge util parity |
 
-### AI 编排相关用例
+### Scene AI 相关用例
 
 | 文件 | 覆盖流程 |
 |------|----------|
-| `ai/intent/intent-router.rules.spec.ts` | 意图路由（攻略 / 活动进入 / DJ 信息等） |
-| `ai/orchestration/ai-turn.pipeline.spec.ts` | 单轮编排（intent → handler → 流式事件） |
+| `ai/scene/scene-run.service.spec.ts` | scene 路由与校验 |
+| `ai/scene/recruit-search.handler.spec.ts` | 招募帖 AI 搜索 |
+| `ai/scene/recruit-compose.handler.spec.ts` | 招募帖 AI 帮写 |
 
 ## Commands
 
@@ -69,7 +70,7 @@ npm run smoke:api:wait      # wait for :3000, then smoke
 npm run smoke:golden        # CI golden path (4 REST steps)
 npm run smoke:golden:wait
 
-npm run smoke:suite         # golden REST + WS ping (needs AI_CHAT_WS_ENABLED on server)
+npm run smoke:suite         # same as smoke:golden (CI merge gate)
 npm run smoke:suite:wait    # used by GitHub Actions smoke job
 
 # remote / staging
@@ -78,19 +79,7 @@ SMOKE_API_BASE=https://your-host/api SMOKE_ACTIVITY_ID=4 npm run smoke:golden
 
 | Script | Coverage |
 |--------|----------|
-| `scripts/smoke-golden.mjs` | health, activities, ops-seed posts, travel-guide generate-async poll |
+| `scripts/smoke-golden.mjs` | health, activities, ops-seed posts, travel-guide async, scene-run recruit_search |
 | `scripts/smoke-api.mjs` | golden steps + itinerary, travel-plan, notifications, reports, … |
-| `scripts/smoke-ai-ws.mjs` | JWT ping; `SMOKE_WS_MODE=golden` → Case A only |
-
-Golden path requires ops seed posts: `MONGODB_URI=… npm run db:seed-ops-buddy-posts`
-
-### AI WebSocket smoke
-
-```bash
-npm run smoke:ws
-npm run smoke:ws:wait    # wait for :3000, then smoke
-```
-
-Script: `scripts/smoke-ai-ws.mjs` — mints JWT via Mongo (`SMOKE_USER_ID` + `JWT_SECRET`) or uses `SMOKE_JWT`; covers valid JWT, invalid Bearer, anonymous WS body.
 
 Production code lives only under `src/`; specs are not co-located with sources.

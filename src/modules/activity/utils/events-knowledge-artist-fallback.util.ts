@@ -2,7 +2,7 @@ import { Document } from '@langchain/core/documents';
 import { buildDjKnowledgeDocuments } from '../../../infra/chroma/build-static-knowledge-documents.util';
 import { DJ_CHINESE_ALIASES } from '../../dj/data/dj-chinese-aliases.data';
 import { normalizeChineseAliasKey } from '../../dj/dj-chinese-aliases.util';
-import type { ItineraryScheduleService } from '../../itinerary/itinerary-schedule.service';
+import type { LineupCatalogService } from '../../itinerary/lineup-catalog.service';
 import type { ActivityLookupRecord } from '../ports/activity-lookup.port';
 
 const MAX_ARTIST_ACTIVITIES = 8;
@@ -48,15 +48,15 @@ export function buildDjAliasKnowledgeDocs(artistName: string): Document[] {
 }
 
 export async function findCatalogActivitiesForArtist(
-  scheduleService: ItineraryScheduleService,
+  lineupCatalog: LineupCatalogService,
   artistName: string,
-  catalogPool: ActivityLookupRecord[],
+  activityPool: ActivityLookupRecord[],
 ): Promise<ActivityLookupRecord[]> {
-  const hits = await scheduleService.findArtistPerformances({ artistName });
+  const hits = await lineupCatalog.findArtistLineupMemberships({ artistName });
   if (!hits.length) return [];
 
   const poolById = new Map(
-    catalogPool.map((activity) => [activity.legacyId, activity]),
+    activityPool.map((activity) => [activity.legacyId, activity]),
   );
   const seen = new Set<number>();
   const matched: ActivityLookupRecord[] = [];
@@ -71,6 +71,22 @@ export async function findCatalogActivitiesForArtist(
   }
 
   return matched;
+}
+
+export function mergeArtistKnowledgeDocuments(
+  chromaDocs: Document[],
+  artistDocs: Document[],
+): Document[] {
+  if (!artistDocs.length) return chromaDocs;
+  const withoutDj = chromaDocs.filter((doc) => doc.metadata?.topic !== 'dj');
+  return [...artistDocs, ...withoutDj];
+}
+
+export function shouldPreferLineupForArtistQuery(
+  artistName: string | null,
+  lineupActivities: ActivityLookupRecord[],
+): boolean {
+  return Boolean(artistName && lineupActivities.length);
 }
 
 export function mergeArtistMatchedActivities(
@@ -93,8 +109,8 @@ export function mergeArtistMatchedActivities(
 export async function resolveArtistKnowledgeFallback(input: {
   query: string;
   keywords?: string[];
-  catalogPool: ActivityLookupRecord[];
-  scheduleService?: ItineraryScheduleService;
+  activityPool: ActivityLookupRecord[];
+  lineupCatalog?: LineupCatalogService;
 }): Promise<{
   docs: Document[];
   activities: ActivityLookupRecord[];
@@ -109,11 +125,11 @@ export async function resolveArtistKnowledgeFallback(input: {
   }
 
   const docs = buildDjAliasKnowledgeDocs(artistName);
-  const activities = input.scheduleService
+  const activities = input.lineupCatalog
     ? await findCatalogActivitiesForArtist(
-        input.scheduleService,
+        input.lineupCatalog,
         artistName,
-        input.catalogPool,
+        input.activityPool,
       )
     : [];
 

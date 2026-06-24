@@ -9,8 +9,6 @@ import { NotificationModule } from '../../modules/notification/notification.modu
 import { InfraLlmModule } from '../../infra/llm/llm.module';
 import { NoticeAgent } from './notice.agent';
 import { RiskAgent } from './risk.agent';
-import { TextParseAgent } from './text-parse.agent';
-import { UserProfileAgent } from './user-profile.agent';
 
 @Module({
   imports: [
@@ -24,7 +22,7 @@ import { UserProfileAgent } from './user-profile.agent';
       { name: User.name, schema: UserSchema },
     ]),
   ],
-  providers: [TextParseAgent, RiskAgent, UserProfileAgent, NoticeAgent],
-  exports: [TextParseAgent, RiskAgent, UserProfileAgent, NoticeAgent],
+  providers: [RiskAgent, NoticeAgent],
+  exports: [RiskAgent, NoticeAgent],
 })
 export class AgentsModule {}

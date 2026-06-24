@@ -7,10 +7,8 @@ import {
   Patch,
   Post,
   Query,
-  Req,
   UnauthorizedException,
 } from '@nestjs/common';
-import type { Request } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -19,15 +17,12 @@ import {
 } from '@nestjs/swagger';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import { PublicApiRateLimitService } from '../../common/rate-limit/public-api-rate-limit.service';
 import { Public } from '../../common/auth/public.decorator';
 import {
   ApiOkEnvelopeArrayResponse,
   ApiOkEnvelopeResponse,
 } from '../../common/swagger/api-response.decorator';
 import {
-  BuddyPostAiComposeResultDto,
-  BuddyPostAiSearchResultDto,
   EventDetailPostDto,
   EventPostsPageDto,
   PostCommentsPageDto,
@@ -36,8 +31,6 @@ import {
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { UpdatePostRecruitDto } from './dto/update-post-recruit.dto';
-import { AiSearchPostsDto } from './dto/ai-search-posts.dto';
-import { AiComposePostsDto } from './dto/ai-compose-posts.dto';
 import { CreatePostCommentDto } from './dto/create-post-comment.dto';
 import { PostService } from './post.service';
 
@@ -46,10 +39,7 @@ const MAX_POPULAR_POSTS = 50;
 @ApiTags('posts')
 @Controller('posts')
 export class PostController {
-  constructor(
-    private readonly postService: PostService,
-    private readonly publicRateLimit: PublicApiRateLimitService,
-  ) {}
+  constructor(private readonly postService: PostService) {}
 
   @Public()
   @Get('popular')
@@ -106,45 +96,6 @@ export class PostController {
       throw new UnauthorizedException('请先登录');
     }
     return this.postService.listByOwner(actor);
-  }
-
-  @Post('ai-search')
-  @ApiBearerAuth('bearer')
-  @ApiOperation({ summary: 'Natural language buddy post search' })
-  @ApiOkEnvelopeResponse(BuddyPostAiSearchResultDto)
-  async aiSearch(
-    @Body() body: AiSearchPostsDto,
-    @CurrentActor() actor: RequestActor,
-    @Req() req: Request,
-  ) {
-    await this.publicRateLimit.assertAllowedAsync(
-      'post_ai_search',
-      req,
-      actor.resolvedUserId,
-    );
-    return this.postService.searchPostsByNaturalLanguage(
-      body.query,
-      body.activityLegacyId,
-      actor,
-      { applyPreferenceRank: body.applyPreferenceRank },
-    );
-  }
-
-  @Post('ai-compose')
-  @ApiBearerAuth('bearer')
-  @ApiOperation({ summary: 'Generate AI buddy post note candidates' })
-  @ApiOkEnvelopeResponse(BuddyPostAiComposeResultDto)
-  async aiCompose(
-    @Body() body: AiComposePostsDto,
-    @CurrentActor() actor: RequestActor,
-    @Req() req: Request,
-  ) {
-    await this.publicRateLimit.assertAllowedAsync(
-      'post_ai_compose',
-      req,
-      actor.resolvedUserId,
-    );
-    return this.postService.composeBuddyPostCandidates(body, actor);
   }
 
   @Post()

@@ -2,6 +2,7 @@ export type {
   SceneId,
   SceneTrigger,
   SceneContext,
+  RecruitComposeSceneContext,
   SceneRunRequest,
   InsightLineVariant,
   SceneEffect,

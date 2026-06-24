@@ -7,12 +7,14 @@ import type {
 import { Document } from '@langchain/core/documents';
 import { ChromaService } from '../../../infra/chroma/chroma.service';
 import { LlmService } from '../../../infra/llm/llm.service';
-import { ItineraryScheduleService } from '../../itinerary/itinerary-schedule.service';
+import { LineupCatalogService } from '../../itinerary/lineup-catalog.service';
 import { ActivityLookupService } from '../activity-lookup.service';
 import type { ActivityLookupRecord } from '../ports/activity-lookup.port';
 import {
+  mergeArtistKnowledgeDocuments,
   mergeArtistMatchedActivities,
   resolveArtistKnowledgeFallback,
+  shouldPreferLineupForArtistQuery,
 } from '../utils/events-knowledge-artist-fallback.util';
 import { resolveFestivalKnowledgeFallback } from '../utils/events-knowledge-festival-fallback.util';
 import {
@@ -51,7 +53,7 @@ export class EventsKnowledgeSearchService {
     private readonly activityLookup: ActivityLookupService,
     @Optional() private readonly chromaService?: ChromaService,
     @Optional() private readonly llmService?: LlmService,
-    @Optional() private readonly scheduleService?: ItineraryScheduleService,
+    @Optional() private readonly lineupCatalog?: LineupCatalogService,
   ) {}
 
   async search(
@@ -80,8 +82,8 @@ export class EventsKnowledgeSearchService {
     const artistFallback = await resolveArtistKnowledgeFallback({
       query: trimmed,
       keywords: parsed.keywords,
-      catalogPool,
-      scheduleService: this.scheduleService,
+      activityPool: allActivities,
+      lineupCatalog: this.lineupCatalog,
     });
     const festivalFallback = resolveFestivalKnowledgeFallback({
       query: trimmed,
@@ -93,23 +95,37 @@ export class EventsKnowledgeSearchService {
         resolveKnowledgeQueryTopics(trimmed, parsed),
       );
     }
-    if (!chromaDocs.length && artistFallback.docs.length) {
-      chromaDocs = artistFallback.docs;
-    }
+    chromaDocs = mergeArtistKnowledgeDocuments(chromaDocs, artistFallback.docs);
 
-    matchedActivities = mergeChromaActivityHints(
-      matchedActivities,
-      chromaDocs,
-      catalogPool,
-    );
-    matchedActivities = mergeArtistMatchedActivities(
-      matchedActivities,
-      artistFallback.activities,
-    );
-    matchedActivities = mergeArtistMatchedActivities(
-      matchedActivities,
-      festivalFallback.activities,
-    );
+    if (
+      shouldPreferLineupForArtistQuery(
+        artistFallback.artistName,
+        artistFallback.activities,
+      )
+    ) {
+      matchedActivities = artistFallback.activities;
+      const activityCodes = new Set(matchedActivities.map((item) => item.code));
+      chromaDocs = chromaDocs.filter((doc) => {
+        const topic = doc.metadata?.topic;
+        const code = doc.metadata?.code;
+        if (topic !== 'activity' || !code) return true;
+        return activityCodes.has(String(code));
+      });
+    } else {
+      matchedActivities = mergeChromaActivityHints(
+        matchedActivities,
+        chromaDocs,
+        catalogPool,
+      );
+      matchedActivities = mergeArtistMatchedActivities(
+        matchedActivities,
+        artistFallback.activities,
+      );
+      matchedActivities = mergeArtistMatchedActivities(
+        matchedActivities,
+        festivalFallback.activities,
+      );
+    }
 
     parsed = enrichParsedForCompare(
       trimmed,
@@ -289,7 +305,7 @@ export class EventsKnowledgeSearchService {
         : `在活动库中找到 ${activities.length} 场相关电音节。`;
       sections.push({ body: intro });
 
-      const highlights = activities.slice(0, 4).map((activity) => {
+      const highlights = activities.slice(0, 8).map((activity) => {
         const date = activity.date?.trim();
         const location = activity.location?.trim() || activity.area?.trim();
         const bits = [activity.name];
@@ -316,7 +332,7 @@ export class EventsKnowledgeSearchService {
       return {
         title: isEn ? 'Festival intel' : '电音节资讯',
         sections,
-        links: activities.slice(0, 4).map((activity) => ({
+        links: activities.slice(0, 8).map((activity) => ({
           label: activity.name,
           activityLegacyId: activity.legacyId,
         })),

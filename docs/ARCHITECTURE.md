@@ -18,21 +18,19 @@ AppModule
 ├── ProfileModule            # 个人页 BFF（摘要 / 已选活动）
 ├── HomeModule               # 首页 BFF
 ├── NotificationModule
-├── ChatModule               # AI 会话持久化
 ├── AccountRiskModule        # 账号风控与限制
 ├── packages/*-contracts/    # 前后端 workspace 契约包（@sync/*-contracts）
-└── AiModule                 # WebSocket 对话 + 单轮编排（AiTurnPipeline）
-    ├── AgentsModule         # NoticeAgent（活动更新等系统通知）
-    ├── OrchestrationModule  # AiTurnPipeline + DeterministicReply
-    ├── InfraChromaModule（活动 RAG，经 ActivityModule）
-    └── agent/               # ChatAgentOrchestrator（默认 agent-first）
+└── AiModule                 # Scene-only AI（POST /ai/scene-run）
+    ├── SceneRunModule       # recruit_search / recruit_compose / events_knowledge_search
+    ├── AgentsModule         # RiskAgent、NoticeAgent（Partner 发帖风控 / 通知）
+    └── PostAgentAdaptersModule  # POST_MODERATION_PORT / POST_NOTIFICATION_PORT
 ```
 
 | 模块 | 代码路径 | 说明 |
 |------|----------|------|
 | User | `modules/user/` | `GET/PATCH /users/me`、画像 hints 同步 |
 | Activity | `modules/activity/` | 列表 / 关键词解析 / 详情 / 活动选择记录 |
-| AiAssistant | `ai/` + `modules/chat/` | WebSocket + 意图路由 + 确定性回复 |
+| AiAssistant | `ai/scene/` | 单轮 Scene Agent（`POST /ai/scene-run`） |
 | BFF | `home/`、`profile/` | 聚合读 |
 | ActivityExperience | `modules/activity-experience/` | 活动域 API 聚合（行程 / 攻略 / 计划） |
 
@@ -58,80 +56,31 @@ AppModule
 | `UserRepositoryModule` + `USER_REPOSITORY` | 用户持久化 |
 | `ActivityLookupModule` + `ACTIVITY_LOOKUP_PORT` | 活动只读查询；选择记录 / BFF |
 | `PartnerReadModule` + `POST_READ_PORT` | 组队帖 BFF 只读（Home / Profile） |
-| `PartnerAgentPortsModule` + `POST_QUERY_PORT` / `POST_WRITE_PORT` | AI agent 发帖 / 评论 |
-| `ItineraryAgentPortsModule` + `ITINERARY_PORT` | AI agent 演出日程 / 生成 |
-| `TravelGuideAgentPortsModule` + `TRAVEL_GUIDE_PORT` | AI agent 攻略异步生成 |
 | `PostAgentAdaptersModule` + `POST_MODERATION_PORT` / `POST_NOTIFICATION_PORT` | Partner 发帖风控 / 通知（AI 实现） |
 
 > LLM：`infra/llm/InfraLlmModule` — 文本经混元 JSON；视觉经千问 VL。详见 [LLM.md](./LLM.md)。
 
 ---
 
-## AI 对话上下文（Strategy A）
+## Scene-only AI（`POST /ai/scene-run`）
 
-- 前端每轮 WS `send` 携带最近 **6 轮**（`CHAT_LLM_CONTEXT_TURNS`）user/assistant 文本，见 `buildLlmChatHistory`。
-- 后端 `ChatService.mergeChatHistory(stored.history, dto.messages)` 与 Mongo 持久化合并后，`truncateToRecentTurns(N)` 再送入 `AiTurnPipeline` / Agent。
+前端通过 [`POST /api/ai/scene-run`](../../sync-app/docs/SCENE-AGENT.md) 发起单轮 AI 任务；后端 `SceneRunService` 按 `scene` 路由到 handler：
 
-`ws://<host>/api/ai/chat/ws`（`AiChatWsServer`）将每轮 `send` 交给 `AiService.streamChat`；单轮逻辑在 `AiTurnPipeline`：
+| scene | handler | 域服务 |
+|-------|---------|--------|
+| `recruit_search` | `RecruitSearchSceneHandler` | `PostSearchService` |
+| `recruit_compose` | `RecruitComposeSceneHandler` | `BuddyPostComposeService` |
+| `events_knowledge_search` | `EventsKnowledgeSearchSceneHandler` | `EventsKnowledgeSearchService` |
 
-```
-用户消息
-  → AiService：校验、限流、会话合并
-  → AiTurnPipeline.runTurn
-       → IntentRouterService.resolve（规则快路径 + 可选 LLM JSON）
-       → AgentTurnHandler.tryRun（默认：ChatAgent 工具循环）
-       → LegacyTurnHandler（agent 关闭或 miss）
-            → create_post：PostingTurnOrchestrator
-            → activity_enter：活动卡片
-            → isDjInfoIntent：DjInfoTurnHandler
-            → 其余：DeterministicReplyService（电音节快捷等）
-  → AiStreamEventBuilder：delta / client_action / post_created / travel_guide_ready 等
-  → AiService：message_complete、ChatService.saveTurn、done
-```
+响应 `{ effects, disclaimer? }`；前端 `applySceneEffects` 消费 `search_results` / `candidates` 等 effect。
 
-**前端对齐能力**：活动绑定与快捷芯片、DJ 信息、出行攻略（agent 工具 + REST 表单）、聊天组队发帖、行程/性格测试/活动选择/评论等 agent 工具与 stream 事件。
+限流：`PublicApiRateLimitService`（`scene_run` key）。详见 [`src/ai/scene/README.md`](../src/ai/scene/README.md)。
 
-### AI Port 层（US-ARCH-14）
-
-AI 工具与 turn handler **不得**直接 import 完整 `PartnerModule` / `ItineraryModule` / `TravelGuideModule`；通过 slim module 注入 port：
-
-| 方向 | Port | 绑定模块 |
-|------|------|----------|
-| Partner → AI（出站） | `POST_MODERATION_PORT`, `POST_NOTIFICATION_PORT` | `PostAgentAdaptersModule` |
-| AI → Partner（入站） | `POST_QUERY_PORT`, `POST_WRITE_PORT` | `PartnerAgentPortsModule` |
-| AI → Itinerary | `ITINERARY_PORT` | `ItineraryAgentPortsModule` |
-| AI → TravelGuide | `TRAVEL_GUIDE_PORT` | `TravelGuideAgentPortsModule` |
-
-`AppModule` 在 `AiModule` 之前注册上述 adapter / agent-ports module。
-
-### 会话状态机（ConversationState）
-
-持久化在 MongoDB `chat.conversationState`。生产路径：
-
-| flow | 场景 |
-|------|------|
-| `idle` | 默认：活动咨询、DJ 问答、攻略引导 |
-| `collect_post_body` | 用户点「组队发帖」等后填写帖子正文 |
-| `publish_confirm` | 草稿待「确认发布」 |
-
-读取时仅将历史 `recommend_gate` 归一为 `idle`。
-
-### 性能与成本
-
-| 项 | 实现 |
-|----|------|
-| 限流 | `AiRateLimitService`（Redis 或内存 fallback） |
-| 意图缓存 | `IntentCacheService` |
-| 流式帧 | `delta` + `message_complete` + `done` |
-| 可观测 | `logAiTurn`：`ms_intent` / `ms_buddy` / `ms_total` |
-
-### AgentsModule
+### AgentsModule（Partner 发帖链路保留）
 
 | Agent | 说明 |
 |-------|------|
-| TextParseAgent | 从聊天提取组队帖草稿 |
 | RiskAgent | 发帖文本/图片风控 |
-| UserProfileAgent | 发帖时同步城市/风格等画像 |
 | NoticeAgent | 活动更新、发帖拒绝等通知 |
 
 ---
@@ -140,7 +89,7 @@ AI 工具与 turn handler **不得**直接 import 完整 `PartnerModule` / `Itin
 
 | 存储 | 用途 |
 |------|------|
-| **MongoDB** | user, activity, activity-registration, chat, notification, account-risk-event, posts, travel-guide jobs… |
+| **MongoDB** | user, activity, activity-registration, notification, account-risk-event, posts, travel-guide jobs… |
 | **Redis** | `heat:global`、`heat:activity:{legacyId}`（不可用则降级） |
 | **Chroma** | `sync_knowledge`（活动 RAG，可选） |
 
@@ -160,7 +109,7 @@ CONFIRM=1 npm run db:migrate-partner # 升级后首次 deploy 前执行一次
 详见 [AUTH.md](./AUTH.md)。
 
 - **REST**：`JwtAuthGuard` → `req.actor: RequestActor`（受保护路由需 Bearer）
-- **AI WebSocket**：`resolveWsChatActor` → `ChatRequestDto.actor`
+- **Scene AI**：`POST /ai/scene-run` 同上，经 `PublicApiRateLimitService` 限流
 - **活动上下文**：`ActivityContextMiddleware` / `X-Activity-Id`；与 body `activityLegacyId` 合并
 
 ---

@@ -20,7 +20,7 @@ import {
 import {
   isTicketPublishProhibited,
   TICKET_PUBLISH_FORBIDDEN_MESSAGE,
-} from '../../../ai/buddy/ticket-publish-policy.util';
+} from '../../../ai/risk/ticket-publish-policy.util';
 import {
   COMMENT_CONTACT_FORBIDDEN_MESSAGE,
   matchRiskRules,

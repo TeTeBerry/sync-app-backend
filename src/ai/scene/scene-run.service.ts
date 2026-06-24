@@ -7,10 +7,12 @@ import type {
 } from '@sync/scene-contracts';
 import type { SceneHandler } from './handlers/scene-handler.interface';
 import { EventsKnowledgeSearchSceneHandler } from './handlers/events-knowledge-search.handler';
+import { RecruitComposeSceneHandler } from './handlers/recruit-compose.handler';
 import { RecruitSearchSceneHandler } from './handlers/recruit-search.handler';
 
 const SUPPORTED_SCENES: SceneId[] = [
   'recruit_search',
+  'recruit_compose',
   'events_knowledge_search',
 ];
 
@@ -20,10 +22,12 @@ export class SceneRunService {
 
   constructor(
     recruitSearchHandler: RecruitSearchSceneHandler,
+    recruitComposeHandler: RecruitComposeSceneHandler,
     eventsKnowledgeSearchHandler: EventsKnowledgeSearchSceneHandler,
   ) {
     this.handlers = new Map<SceneId, SceneHandler>([
       [recruitSearchHandler.scene, recruitSearchHandler],
+      [recruitComposeHandler.scene, recruitComposeHandler],
       [eventsKnowledgeSearchHandler.scene, eventsKnowledgeSearchHandler],
     ]);
   }

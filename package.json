@@ -80,9 +80,7 @@
     "smoke:api:wait": "node scripts/wait-for-port.mjs localhost 3000 90000 API && node scripts/smoke-api.mjs",
     "smoke:golden": "node scripts/smoke-golden.mjs",
     "smoke:golden:wait": "node scripts/wait-for-port.mjs localhost 3000 90000 API && node scripts/smoke-golden.mjs",
-    "smoke:ws": "node scripts/smoke-ai-ws.mjs",
-    "smoke:ws:wait": "node scripts/wait-for-port.mjs localhost 3000 90000 API && node scripts/smoke-ai-ws.mjs",
-    "smoke:suite": "node scripts/smoke-golden.mjs && SMOKE_WS_MODE=golden node scripts/smoke-ai-ws.mjs",
+    "smoke:suite": "node scripts/smoke-golden.mjs",
     "smoke:suite:wait": "node scripts/wait-for-port.mjs localhost 3000 90000 API && npm run smoke:suite"
   },
   "dependencies": {

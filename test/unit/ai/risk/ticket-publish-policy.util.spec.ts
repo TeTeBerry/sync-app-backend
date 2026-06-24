@@ -2,7 +2,7 @@ import {
   isTicketPublishProhibited,
   isTicketResaleIntent,
   TICKET_PUBLISH_FORBIDDEN_MESSAGE,
-} from '@src/ai/buddy/ticket-publish-policy.util';
+} from '@src/ai/risk/ticket-publish-policy.util';
 
 const ASOT_HK_TICKET =
   '临时有事折价出一张6.12香港ASOT VIP Stage舞台票，需要私我哈～';

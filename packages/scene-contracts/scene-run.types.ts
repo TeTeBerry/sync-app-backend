@@ -1,6 +1,7 @@
 import type { ClientActionSheet } from '@sync/chat-contracts/client-action.types';
 import type {
   BuddyPostComposeCandidate,
+  BuddyPostComposeHints,
   BuddyPostSearchParsed,
   EventDetailPost,
 } from '@sync/partner-contracts';
@@ -62,6 +63,16 @@ export interface SceneContext {
   applyPreferenceRank?: boolean;
   locale?: string;
   [key: string]: unknown;
+}
+
+/** Context for `scene=recruit_compose` (AI buddy post note candidates). */
+export interface RecruitComposeSceneContext extends SceneContext {
+  dateStart: string;
+  dateEnd: string;
+  location: string;
+  headcount: string;
+  composeHints?: BuddyPostComposeHints;
+  regenerate?: boolean;
 }
 
 export interface SceneRunRequest {

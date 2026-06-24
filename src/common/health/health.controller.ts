@@ -12,8 +12,8 @@ export class HealthController {
     return {
       ok: true,
       ai: {
-        transport: 'websocket',
-        path: '/api/ai/chat/ws',
+        transport: 'scene-run',
+        path: '/api/ai/scene-run',
       },
       ...this.healthService.getInfraHealth(),
     };

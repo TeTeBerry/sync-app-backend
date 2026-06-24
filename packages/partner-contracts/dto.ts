@@ -30,11 +30,6 @@ export type UpdatePostRecruitPayload = {
   slotsFilled?: number;
 };
 
-export type AiSearchPostsPayload = {
-  query: string;
-  activityLegacyId: number;
-};
-
 export type BuddyPostComposeHints = {
   personalityType?: string;
   favorGenres?: string[];

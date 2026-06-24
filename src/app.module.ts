@@ -11,14 +11,10 @@ import { CacheModule } from './infra/cache/cache.module';
 import { RedisModule } from './redis/redis.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { UserModule } from './modules/user/user.module';
-import { ChatModule } from './modules/chat/chat.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { HomeModule } from './modules/home/home.module';
 import { AiModule } from './ai/ai.module';
 import { PostAgentAdaptersModule } from './ai/adapters/post-agent-adapters.module';
-import { PartnerAgentPortsModule } from './modules/partner/partner-agent-ports.module';
-import { ItineraryAgentPortsModule } from './modules/itinerary/itinerary-agent-ports.module';
-import { TravelGuideAgentPortsModule } from './modules/travel-guide/travel-guide-agent-ports.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { PartnerModule } from './modules/partner/partner.module';
 import { ReportModule } from './modules/report/report.module';
@@ -63,13 +59,9 @@ import { PublicApiRateLimitModule } from './common/rate-limit/public-api-rate-li
     AuthModule,
     AuthCoreModule,
     UserModule,
-    ChatModule,
     ProfileModule,
     HomeModule,
     PostAgentAdaptersModule,
-    PartnerAgentPortsModule,
-    ItineraryAgentPortsModule,
-    TravelGuideAgentPortsModule,
     PartnerModule,
     AiModule,
     NotificationModule,

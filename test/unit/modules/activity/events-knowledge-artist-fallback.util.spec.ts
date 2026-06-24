@@ -1,9 +1,12 @@
 import type { ActivityLookupRecord } from '../../../../src/modules/activity/ports/activity-lookup.port';
 import {
   buildDjAliasKnowledgeDocs,
+  mergeArtistKnowledgeDocuments,
   mergeArtistMatchedActivities,
   resolveArtistNameFromKnowledgeQuery,
+  shouldPreferLineupForArtistQuery,
 } from '../../../../src/modules/activity/utils/events-knowledge-artist-fallback.util';
+import { Document } from '@langchain/core/documents';
 
 describe('events-knowledge-artist-fallback.util', () => {
   const activity = (legacyId: number, name: string): ActivityLookupRecord => ({
@@ -36,5 +39,30 @@ describe('events-knowledge-artist-fallback.util', () => {
     const merged = mergeArtistMatchedActivities([left], [left, right]);
     expect(merged).toHaveLength(2);
     expect(merged.map((item) => item.legacyId)).toEqual([1, 2]);
+  });
+
+  it('prefers lineup activities for resolved artist alias queries', () => {
+    expect(
+      shouldPreferLineupForArtistQuery('Martin Garrix', [activity(1, 'EDC')]),
+    ).toBe(true);
+    expect(shouldPreferLineupForArtistQuery(null, [activity(1, 'EDC')])).toBe(
+      false,
+    );
+  });
+
+  it('replaces chroma dj docs with the resolved artist doc', () => {
+    const merged = mergeArtistKnowledgeDocuments(
+      [
+        new Document({
+          pageContent: 'Skrillex ...',
+          metadata: { topic: 'dj', code: 'skrillex' },
+        }),
+      ],
+      buildDjAliasKnowledgeDocs('Martin Garrix'),
+    );
+    expect(merged[0]?.pageContent).toContain('小马丁');
+    expect(merged.some((doc) => doc.pageContent.includes('Skrillex'))).toBe(
+      false,
+    );
   });
 });

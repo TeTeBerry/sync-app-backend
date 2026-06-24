@@ -4,7 +4,6 @@ export type {
   CreatePostPayload,
   UpdatePostPayload,
   UpdatePostRecruitPayload,
-  AiSearchPostsPayload,
   AiComposePostsPayload,
   BuddyPostComposeHints,
   CreatePostCommentPayload,

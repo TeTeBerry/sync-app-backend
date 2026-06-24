@@ -2,7 +2,7 @@
 
 NestJS API for **SYNC** — a WeChat mini program for electronic music festival discovery, activity planning, travel guides, itineraries, and structured buddy posts.
 
-**Note:** Multi-turn AI chat WebSocket (`/api/ai/chat/ws`) is **disabled by default** (`AI_CHAT_WS_ENABLED` unset or `false`). Non-chat AI APIs remain: travel guide generation, post AI search, etc.
+**Note:** AI is **Scene-only** — user-facing tasks go through `POST /api/ai/scene-run` (`recruit_search`, `recruit_compose`, `events_knowledge_search`). Multi-turn WebSocket chat has been removed.
 
 ## Features
 
@@ -10,7 +10,7 @@ NestJS API for **SYNC** — a WeChat mini program for electronic music festival 
 - **Activity selection** — `POST/DELETE /activities/:legacyId/register` records user interest (frontend auto-calls on bind / enter detail; no separate “sign up” flow)
 - **Home & profile BFF** — aggregated feeds, heat metrics, selected activities
 - **Partner posts** — template buddy posts and comments per activity
-- **AI assistant** — WebSocket streaming (`/api/ai/chat/ws`), tool-calling agent (travel guide, itinerary, posting, activity selection, profile, personality test)
+- **AI assistant** — Scene Agent (`POST /api/ai/scene-run`): recruit search/compose, events knowledge search
 - **Travel guide** — Amap POI + LLM-generated trip plans
 - **Itinerary** — festival schedule and personalized DJ itineraries
 - **Festival plan progress** — BFF for per-activity prep checklist (guide / itinerary / buddy post)
@@ -27,7 +27,6 @@ NestJS API for **SYNC** — a WeChat mini program for electronic music festival 
 | Vector RAG | Chroma (`sync_knowledge`, optional) |
 | Primary DB | MongoDB |
 | Cache | Redis (heat metrics, rate limits; optional) |
-| Real-time | WebSocket (`ws://<host>/api/ai/chat/ws`) |
 | Auth | JWT + WeChat mini program login |
 
 Architecture details: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)  
@@ -91,8 +90,7 @@ Avoid `docker compose --profile chroma up -d` without a service name — that al
 | `npm run check` | typecheck + lint + format + unit tests |
 | `npm run smoke:api` | Full REST smoke against running server |
 | `npm run smoke:golden` | CI golden path (health, activities, ops-seed posts, travel-guide async) |
-| `npm run smoke:suite` | Golden REST + AI WS ping (`AI_CHAT_WS_ENABLED=true` on server) |
-| `npm run smoke:ws` | AI WebSocket smoke (JWT / invalid / anonymous) |
+| `npm run smoke:suite` | CI golden path (same as `smoke:golden`) |
 | `npm run db:reset` | Clear AI chat history (keeps activity seeds) |
 | `npm run db:migrate-partner` | One-off partner/post legacy DB migrations (run before first deploy after upgrade) |
 | `npm run db:migrate-partner:dry-run` | Preview partner legacy migrations without writing |
@@ -124,16 +122,9 @@ Local-only uploads: `ENABLE_LOCAL_UPLOADS`, `UPLOAD_DIR`, `UPLOAD_PUBLIC_BASE_UR
 
 ## API overview
 
-### AI chat (WebSocket)
+### Scene AI (`POST /api/ai/scene-run`)
 
-Endpoint: `ws://localhost:3000/api/ai/chat/ws` (use `wss://` in production)
-
-1. Client sends `connect`: `{ "type": "connect", "sessionId?", "activityLegacyId?" }`
-2. Server replies `connected`
-3. Client sends `send` with `messages`, `activityLegacyId`; images as **`cloud://` fileIDs** (from `wx.cloud.uploadFile`)
-4. Server streams JSON frames: `delta`, `message_complete`, `activity_recommendation`, `suggested_replies`, `conversation_patch`, `travel_guide_ready`, `itinerary_ready`, `activity_registered`, `done`, `error`
-
-There is **no** `POST /api/ai/chat` HTTP/SSE endpoint.
+Single-turn tasks: `recruit_search`, `recruit_compose`, `events_knowledge_search`. See [src/ai/scene/README.md](./src/ai/scene/README.md) and [../sync-app/docs/SCENE-AGENT.md](../sync-app/docs/SCENE-AGENT.md).
 
 ### REST (selected)
 
@@ -210,7 +201,6 @@ Configure [../sync-app](../sync-app) (`.env` for local, `.env.production` for re
 
 ```env
 TARO_APP_API_BASE_URL=https://sync-backend-prd-xxxx.sh.run.tcloudbase.com/api
-TARO_APP_AI_CHAT_WS_URL=wss://sync-backend-prd-xxxx.sh.run.tcloudbase.com/api/ai/chat/ws
 TARO_APP_CLOUDBASE_ENV_ID=sync-prd-xxxx
 TARO_APP_CLOUD_RUN_SERVICE=sync-backend-prd-xxxx
 ```

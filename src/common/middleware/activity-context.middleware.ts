@@ -3,8 +3,7 @@ import { NextFunction, Request, Response } from 'express';
 import { parseActivityLegacyIdHeader } from '../activity/activity-context.util';
 
 /**
- * Parses `X-Activity-Id` for REST routes. WebSocket uses the same header on upgrade
- * (see `AiChatWsHandler`). Does not override body/query — merge at call sites.
+ * Parses `X-Activity-Id` for REST routes. Does not override body/query — merge at call sites.
  */
 @Injectable()
 export class ActivityContextMiddleware implements NestMiddleware {

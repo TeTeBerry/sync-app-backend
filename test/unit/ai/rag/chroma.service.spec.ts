@@ -5,6 +5,7 @@ jest.mock('@src/infra/chroma/chroma-embedding.util', () => ({
   embedKnowledgeTexts: jest.fn(async (texts: string[]) =>
     texts.map(() => [0.1, 0.2, 0.3]),
   ),
+  warmupKnowledgeEmbedder: jest.fn(async () => true),
 }));
 
 describe('ChromaService knowledge query', () => {

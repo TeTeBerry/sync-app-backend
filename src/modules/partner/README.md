@@ -9,7 +9,7 @@ REST 路径仍为 `/api/posts`（资源名不变）。
 - `PostService` — 读列表、详情、评论、属主查询
 - `PostWriteService` — 创建 / 删帖（`PartnerWriteModule` 导出）
 - `PartnerRepositoryModule` — `POST_REPOSITORY` 端口
-- `ports/` — `POST_MODERATION_PORT`、`POST_NOTIFICATION_PORT`（由 `PostAgentAdaptersModule` 注入）；`POST_QUERY_PORT`、`POST_WRITE_PORT`（由 `PartnerAgentPortsModule` 导出，供 AI 消费）
+- `ports/` — `POST_MODERATION_PORT`、`POST_NOTIFICATION_PORT`（由 `PostAgentAdaptersModule` 注入，供发帖风控/通知）
 
 ## 帖子 HTTP 接口（当前）
 
@@ -22,9 +22,8 @@ REST 路径仍为 `/api/posts`（资源名不变）。
 | DELETE | `/posts/:id` | 删除自己的帖 |
 | GET | `/posts/:id/comments` | 评论列表（分页） |
 | POST | `/posts/:id/comments` | 发表评论（可选 `parentCommentId` 回复） |
-| POST | `/posts/ai-search` | 自然语言搭伴检索 |
 
-**已移除**：`PATCH /posts/:id`、`POST /posts/:id/like`、`GET /posts/:id/navigation-target`
+AI 找队 / 帮写备注：`POST /api/ai/scene-run`（`recruit_search` · `recruit_compose`），见 [`docs/SCENE-AGENT.md`](../../../sync-app/docs/SCENE-AGENT.md)。
 
 通知深链由前端 `navigateFromNotification` 直接使用通知 `meta.activityLegacyId`，不再调用 `navigation-target`。
 

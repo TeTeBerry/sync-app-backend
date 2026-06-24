@@ -88,6 +88,22 @@ step(`POST travel-guide/generate-async + poll`, async (ctx) => {
   await smokeTravelGuideGenerateAsync(http, ctx.activityId, token);
 });
 
+step(`POST /ai/scene-run recruit_search`, async (ctx) => {
+  const token = ctx.bearerToken ?? (await resolveSmokeJwt());
+  ctx.bearerToken = token;
+
+  const data = await http.request('POST', 'ai/scene-run', {
+    body: {
+      scene: 'recruit_search',
+      activityLegacyId: ctx.activityId,
+      context: { query: '上海', trigger: 'search_submit' },
+    },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const effects = data?.effects ?? [];
+  assert(Array.isArray(effects), 'scene-run should return effects array');
+});
+
 step(`POST /activities/:id/set-votes + GET leaderboard`, async (ctx) => {
   const token = ctx.bearerToken ?? (await resolveSmokeJwt());
   ctx.bearerToken = token;

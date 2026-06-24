@@ -72,7 +72,6 @@ jobs:
       REDIS_URL: redis://127.0.0.1:6379
       JWT_SECRET: sync-dev-jwt-secret-change-me
       AMAP_KEY: ci-smoke-placeholder
-      AI_CHAT_WS_ENABLED: "true"
       NODE_ENV: development
       DISABLE_DEV_MOCK_POSTS: "true"
       SMOKE_USER_ID: smoke-golden-user

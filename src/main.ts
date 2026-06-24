@@ -3,8 +3,6 @@ import { json, urlencoded, static as expressStatic } from 'express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { AppModule } from './app.module';
-import { AiChatWsServer } from './ai/ws/ai-chat-ws.server';
-import { AI_CHAT_WS_PATH } from './ai/ws/ai-chat-ws.protocol';
 import { HttpExceptionFilter } from './common/filter/http-exception.filter';
 import { TransformInterceptor } from './common/interceptor/transform.interceptor';
 import { Logger, ValidationPipe } from '@nestjs/common';
@@ -80,19 +78,10 @@ async function bootstrap() {
 
   try {
     await app.listen(port);
-    const httpServer = app.getHttpServer();
-    const aiChatWsEnabled =
-      process.env.AI_CHAT_WS_ENABLED === 'true' ||
-      process.env.AI_CHAT_WS_ENABLED === '1';
-    if (aiChatWsEnabled) {
-      app.get(AiChatWsServer).attach(httpServer);
-      logger.log(`✅ AI WebSocket: ws://localhost:${port}${AI_CHAT_WS_PATH}`);
-    } else {
-      logger.log(
-        'ℹ️  AI WebSocket disabled (set AI_CHAT_WS_ENABLED=true to enable)',
-      );
-    }
     logger.log(`🚀 API: http://localhost:${port}/api`);
+    logger.log(
+      `🤖 Scene Agent: POST http://localhost:${port}/api/ai/scene-run`,
+    );
     logger.log(`📦 MongoDB: ${mongoUri.replace(/\/\/.*@/, '//***@')}`);
     const corsOrigins = parseCorsOrigins();
     const corsMessage = describeCorsPolicy(process.env.NODE_ENV, corsOrigins);
