@@ -8,6 +8,7 @@
  *   npm run db:sync-lineup-avatars -- --dry-run
  *   npm run db:sync-lineup-avatars -- --urls-file ./urls.json
  *   npm run db:sync-lineup-avatars -- --names "KANINE,SUBTRONICS"
+ *   npm run db:sync-lineup-avatars -- --activity-legacy-id 2
  */
 
 import { readFileSync } from 'node:fs';
@@ -25,6 +26,7 @@ import {
 } from './lib/lineup-avatar-cloud.mjs';
 import {
   getCrawlConfig,
+  loadActivityLineupArtistNames,
   loadAllCatalogLineupArtistNames,
   loadDotEnv,
 } from './lib/discogs-crawl.mjs';
@@ -40,6 +42,11 @@ const dryRun = args.includes('--dry-run');
 const missingOnly = args.includes('--missing-only');
 const namesArgIndex = args.indexOf('--names');
 const urlsFileIndex = args.indexOf('--urls-file');
+const activityLegacyIdArg = args.indexOf('--activity-legacy-id');
+const activityLegacyId =
+  activityLegacyIdArg >= 0
+    ? Number(args[activityLegacyIdArg + 1])
+    : Number.NaN;
 
 const explicitNames =
   namesArgIndex >= 0
@@ -102,7 +109,9 @@ async function main() {
 
   const lineupNames = explicitNames?.length
     ? explicitNames
-    : await loadAllCatalogLineupArtistNames(db, mongoConfig);
+    : Number.isFinite(activityLegacyId)
+      ? await loadActivityLineupArtistNames(db, activityLegacyId, mongoConfig)
+      : await loadAllCatalogLineupArtistNames(db, mongoConfig);
 
   const existingRows = await db
     .collection('lineup_artist_avatars')

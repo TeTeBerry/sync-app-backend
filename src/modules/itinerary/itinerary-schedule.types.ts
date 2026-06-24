@@ -11,6 +11,7 @@ export interface ItineraryDjDto {
   genre: string;
   genreLabel: string;
   stage: string;
+  stageLabel?: string;
   popularity: number;
   avatarSeed: string;
   genreColor: string;

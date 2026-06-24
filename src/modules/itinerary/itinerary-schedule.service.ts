@@ -32,6 +32,7 @@ import {
   ALL_FESTIVAL_SESSION_SEED_COMBINED,
   ARTIST_PERFORMANCE_SEED,
   STORM_ACTIVITY_LEGACY_ID,
+  ITINERARY_DEFQON1_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
 } from '@src/data/itinerary/itinerary.seed';
@@ -106,6 +107,12 @@ export class ItineraryScheduleService implements OnModuleInit {
     await this.pruneStalePerformances(
       STORM_ACTIVITY_LEGACY_ID,
       ARTIST_PERFORMANCE_SEED,
+    );
+    await this.pruneStalePerformances(
+      ITINERARY_DEFQON1_ACTIVITY_LEGACY_ID,
+      ALL_ARTIST_PERFORMANCE_SEED.filter(
+        (p) => p.activityLegacyId === ITINERARY_DEFQON1_ACTIVITY_LEGACY_ID,
+      ),
     );
     await this.pruneStalePerformances(
       ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
@@ -415,6 +422,7 @@ export class ItineraryScheduleService implements OnModuleInit {
           genre: p.genre,
           genreLabel: p.genreLabel,
           stage: p.stage,
+          stageLabel: p.stageLabel,
           popularity: p.popularity,
           avatarSeed: p.avatarSeed,
           genreColor: p.genreColor,

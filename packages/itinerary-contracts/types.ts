@@ -1,4 +1,4 @@
-export type ItineraryStage = 'main' | 'bass' | 'late' | 'outdoor';
+export type ItineraryStage = string;
 
 export type ItineraryDj = {
   id: string;
@@ -6,6 +6,8 @@ export type ItineraryDj = {
   genre: string;
   genreLabel: string;
   stage: ItineraryStage;
+  /** Human-readable stage name for filters (e.g. Blue, Magenta Night [Silent]). */
+  stageLabel?: string;
   popularity: number;
   avatarSeed: string;
   genreColor: string;

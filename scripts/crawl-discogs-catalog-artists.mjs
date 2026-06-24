@@ -7,6 +7,7 @@
  *   npm run db:crawl-catalog-artists
  *   npm run db:crawl-catalog-artists -- --dry-run
  *   npm run db:crawl-catalog-artists -- --names "GREEN VELVET,KANINE"
+ *   npm run db:crawl-catalog-artists -- --activity-legacy-id 2
  */
 
 import mongoose from 'mongoose';
@@ -16,7 +17,9 @@ import {
   createDjModel,
   crawlArtistNames,
   findMissingCatalogArtists,
+  findMissingLineupArtists,
   getCrawlConfig,
+  loadActivityLineupArtistNames,
   loadAllCatalogLineupArtistNames,
   loadDotEnv,
 } from './lib/discogs-crawl.mjs';
@@ -26,6 +29,11 @@ loadDotEnv();
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const namesArgIndex = args.indexOf('--names');
+const activityLegacyIdArg = args.indexOf('--activity-legacy-id');
+const activityLegacyId =
+  activityLegacyIdArg >= 0
+    ? Number(args[activityLegacyIdArg + 1])
+    : Number.NaN;
 const explicitNames =
   namesArgIndex >= 0
     ? args[namesArgIndex + 1]
@@ -46,10 +54,14 @@ async function main() {
   const Dj = createDjModel(mongoose);
   const discogs = createDiscogsClient(config);
 
-  const allNames = await loadAllCatalogLineupArtistNames(db, config);
+  const allNames = Number.isFinite(activityLegacyId)
+    ? await loadActivityLineupArtistNames(db, activityLegacyId, config)
+    : await loadAllCatalogLineupArtistNames(db, config);
   const targets = explicitNames?.length
     ? explicitNames
-    : await findMissingCatalogArtists(db, config);
+    : Number.isFinite(activityLegacyId)
+      ? await findMissingLineupArtists(db, allNames)
+      : await findMissingCatalogArtists(db, config);
 
   console.log('✅ MongoDB:', config.mongoUri);
   console.log(`🎤 活动目录阵容艺人 ${allNames.length} 位（B2B 已拆分）`);

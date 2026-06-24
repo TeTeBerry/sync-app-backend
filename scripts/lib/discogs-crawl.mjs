@@ -367,6 +367,36 @@ export function findDjForLineupName(lineupName, djs) {
   );
 }
 
+/** Lineup names for one festival (performances in Mongo, else seed fallback). */
+export async function loadActivityLineupArtistNames(
+  db,
+  activityLegacyId,
+  config,
+) {
+  const activity = await db
+    .collection('activities')
+    .findOne({ legacyId: activityLegacyId }, { projection: { name: 1 } });
+  const fallbackByLegacyId = CATALOG_LINEUP_FALLBACK_BY_LEGACY_ID(config);
+  const fallback = fallbackByLegacyId.get(activityLegacyId) ?? [];
+  const label = activity?.name?.trim() || `#${activityLegacyId}`;
+  const names = await loadLineupArtistNames(
+    db,
+    activityLegacyId,
+    fallback,
+    label,
+  );
+  return expandFestivalArtistNames(names);
+}
+
+export async function findMissingLineupArtists(db, expectedNames) {
+  const djs = await db
+    .collection('djs')
+    .find({})
+    .project({ name: 1, discogsId: 1 })
+    .toArray();
+  return expectedNames.filter((name) => !isLineupArtistCovered(name, djs));
+}
+
 export async function findMissingCatalogArtists(db, config) {
   const expected = await loadAllCatalogLineupArtistNames(db, config);
   const djs = await db

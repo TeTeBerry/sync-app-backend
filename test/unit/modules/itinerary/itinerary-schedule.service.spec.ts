@@ -147,6 +147,7 @@ describe('ItineraryScheduleService discogs styles', () => {
       'Big Room · Progressive House',
     );
     expect(schedule.djs[0]?.genre).toBe('Big Room');
+    expect(schedule.djs[0]?.stageLabel).toBe('主舞台');
   });
 
   it('merges B2B artist styles from split lineup names', async () => {

@@ -7,22 +7,25 @@
  *   MONGODB_URI=mongodb://127.0.0.1:27017/sync-ai node scripts/sync-personality-test-catalog.mjs
  */
 
-import { existsSync } from 'fs';
-import { createRequire } from 'module';
 import { execSync } from 'child_process';
+import { createRequire } from 'node:module';
+import {
+  requireFromDist,
+  resolveDistRoot,
+} from './lib/resolve-dist-root.mjs';
 
 const require = createRequire(import.meta.url);
 
-if (!existsSync('dist/main.js')) {
-  console.log('dist/main.js missing — building…');
+if (!resolveDistRoot()) {
+  console.log('dist missing — building…');
   execSync('nest build', { stdio: 'inherit' });
 }
 
 const { NestFactory } = require('@nestjs/core');
-const { AppModule } = require('../dist/app.module');
-const {
-  PersonalityTestCatalogService,
-} = require('../dist/modules/personality-test/personality-test-catalog.service');
+const { AppModule } = requireFromDist('app.module');
+const { PersonalityTestCatalogService } = requireFromDist(
+  'modules/personality-test/personality-test-catalog.service',
+);
 
 async function main() {
   const app = await NestFactory.createApplicationContext(AppModule, {
