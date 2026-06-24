@@ -1,6 +1,7 @@
 import type { PostRecord } from '../interfaces/post.repository.interface';
 import {
   extractProfileGenresFromText,
+  normalizeProfileBudgetLevel,
   type UserMatchProfile,
 } from '../../user/user-profile-hints.util';
 import {
@@ -573,6 +574,72 @@ export function scoreBuddyPostSearchCriteria(
   return total;
 }
 
+const BUDGET_LEVEL_TEXT_MARKERS: ReadonlyArray<{
+  level: 'low' | 'medium' | 'high';
+  patterns: RegExp[];
+}> = [
+  {
+    level: 'low',
+    patterns: [/经济/, /实惠/, /省钱/, /精打细算/],
+  },
+  {
+    level: 'medium',
+    patterns: [/舒适/, /标准/, /性价比/],
+  },
+  {
+    level: 'high',
+    patterns: [/豪华/, /高端/, /奢华/, /充裕/, /品质优先/],
+  },
+];
+
+const BUDGET_PRICE_BAND_MARKERS: ReadonlyArray<{
+  level: 'low' | 'medium' | 'high';
+  pattern: RegExp;
+}> = [
+  { level: 'low', pattern: /¥?\s*1[0-5]\d\s*[-–~]\s*¥?\s*3\d\d/ },
+  { level: 'medium', pattern: /¥?\s*3\d\d\s*[-–~]\s*¥?\s*6\d\d/ },
+  { level: 'high', pattern: /¥?\s*6\d\d\s*\+|¥?\s*[7-9]\d\d/ },
+];
+
+/** Infer budget tier from buddy post body/tags (weak ranking signal). */
+export function extractBudgetLevelFromBuddyPostText(
+  text: string,
+): 'low' | 'medium' | 'high' | undefined {
+  const trimmed = text.trim();
+  if (!trimmed) return undefined;
+
+  for (const { level, patterns } of BUDGET_LEVEL_TEXT_MARKERS) {
+    if (patterns.some((pattern) => pattern.test(trimmed))) {
+      return level;
+    }
+  }
+
+  for (const { level, pattern } of BUDGET_PRICE_BAND_MARKERS) {
+    if (pattern.test(trimmed)) {
+      return level;
+    }
+  }
+
+  return normalizeProfileBudgetLevel(trimmed) as
+    | 'low'
+    | 'medium'
+    | 'high'
+    | undefined;
+}
+
+function scoreBudgetPreferenceMatch(
+  userBudget: 'low' | 'medium' | 'high',
+  postBudget: 'low' | 'medium' | 'high',
+): number {
+  if (userBudget === postBudget) return 20;
+  const adjacent =
+    (userBudget === 'low' && postBudget === 'medium') ||
+    (userBudget === 'medium' && postBudget === 'low') ||
+    (userBudget === 'medium' && postBudget === 'high') ||
+    (userBudget === 'high' && postBudget === 'medium');
+  return adjacent ? 10 : 0;
+}
+
 /** Secondary ranking signal from the viewer's saved match profile. */
 export function scoreBuddyPostPreferenceMatch(
   post: PostRecord,
@@ -588,9 +655,8 @@ export function scoreBuddyPostPreferenceMatch(
     score += 50;
   }
 
-  const postGenres = extractProfileGenresFromText(
-    buildBuddyPostSearchText(post),
-  );
+  const postText = buildBuddyPostSearchText(post);
+  const postGenres = extractProfileGenresFromText(postText);
   const userGenres = new Set(
     (profile.favorGenres ?? []).map((genre) => genre.trim().toLowerCase()),
   );
@@ -601,6 +667,16 @@ export function scoreBuddyPostPreferenceMatch(
     }
   }
   score += Math.min(45, genreHits * 15);
+
+  const userBudget = normalizeProfileBudgetLevel(profile.budgetLevel) as
+    | 'low'
+    | 'medium'
+    | 'high'
+    | undefined;
+  const postBudget = extractBudgetLevelFromBuddyPostText(postText);
+  if (userBudget && postBudget) {
+    score += scoreBudgetPreferenceMatch(userBudget, postBudget);
+  }
 
   return score;
 }

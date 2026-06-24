@@ -7,6 +7,9 @@ import {
   ITINERARY_DEFQON1_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
+  ITINERARY_EDC_ORLANDO_ACTIVITY_LEGACY_ID,
+  ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID,
+  ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID,
   STORM_ACTIVITY_LEGACY_ID,
 } from '@src/data/itinerary/itinerary.seed';
 
@@ -21,6 +24,15 @@ describe('itinerary-catalog.util', () => {
     ).toBe(true);
     expect(
       hasItineraryCatalogSeed(ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID),
+    ).toBe(true);
+    expect(
+      hasItineraryCatalogSeed(ITINERARY_EDC_ORLANDO_ACTIVITY_LEGACY_ID),
+    ).toBe(true);
+    expect(
+      hasItineraryCatalogSeed(ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID),
+    ).toBe(true);
+    expect(
+      hasItineraryCatalogSeed(ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID),
     ).toBe(true);
     expect(hasItineraryCatalogSeed(999)).toBe(false);
   });
@@ -157,6 +169,134 @@ describe('itinerary-catalog.util', () => {
     expect(
       resolveLineupDjs(ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID).some(
         (dj) => dj.name === 'TIËSTO',
+      ),
+    ).toBe(true);
+  });
+
+  it('returns lineup DJs without performances for EDC Orlando', () => {
+    const seed = resolveItineraryCatalogSeed(
+      ITINERARY_EDC_ORLANDO_ACTIVITY_LEGACY_ID,
+    );
+
+    expect(seed.performances).toHaveLength(0);
+    expect(seed.sessions.map((session) => session.dateKey)).toEqual([
+      'nov6',
+      'nov7',
+      'nov8',
+    ]);
+    expect(
+      resolveLineupDjs(ITINERARY_EDC_ORLANDO_ACTIVITY_LEGACY_ID).length,
+    ).toBe(110);
+    expect(
+      resolveLineupDjs(ITINERARY_EDC_ORLANDO_ACTIVITY_LEGACY_ID).some(
+        (dj) => dj.name === 'MARTIN GARRIX',
+      ),
+    ).toBe(true);
+  });
+
+  it('returns Ultra Europe day 1 performances across four stages', () => {
+    const seed = resolveItineraryCatalogSeed(
+      ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID,
+      'jul11',
+    );
+
+    expect(seed.sessions).toHaveLength(1);
+    expect(seed.performances).toHaveLength(28);
+    expect(
+      seed.performances.some((perf) => perf.stageLabel === 'Ultra Main Stage'),
+    ).toBe(true);
+    expect(
+      seed.performances.some((perf) => perf.stageLabel === 'Resistance'),
+    ).toBe(true);
+    expect(
+      seed.performances.some((perf) => perf.artistName === 'ARMIN VAN BUUREN'),
+    ).toBe(true);
+    expect(
+      seed.performances.some((perf) => perf.artistName === 'CARL COX'),
+    ).toBe(true);
+  });
+
+  it('returns Ultra Europe full timetable and lineup DJs', () => {
+    const seed = resolveItineraryCatalogSeed(
+      ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID,
+    );
+
+    expect(seed.sessions.map((session) => session.dateKey)).toEqual([
+      'jul11',
+      'jul12',
+      'jul13',
+    ]);
+    expect(seed.performances).toHaveLength(81);
+    expect(
+      resolveLineupDjs(ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID).length,
+    ).toBe(81);
+    expect(
+      resolveLineupDjs(ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID).some(
+        (dj) => dj.name === 'MARTIN GARRIX',
+      ),
+    ).toBe(true);
+  });
+
+  it('returns World DJ Festival Japan day 2 performances across three stages', () => {
+    const seed = resolveItineraryCatalogSeed(
+      ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID,
+      'jul5',
+    );
+
+    expect(seed.sessions).toHaveLength(1);
+    expect(seed.performances).toHaveLength(35);
+    expect(
+      seed.performances.some((perf) => perf.artistName === 'MARTIN GARRIX'),
+    ).toBe(true);
+    expect(seed.performances.some((perf) => perf.artistName === 'ALOK')).toBe(
+      true,
+    );
+    expect(
+      seed.performances.some((perf) => perf.artistName === '999999999'),
+    ).toBe(true);
+  });
+
+  it('returns World DJ Festival Japan day 1 performances across three stages', () => {
+    const seed = resolveItineraryCatalogSeed(
+      ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID,
+      'jul4',
+    );
+
+    expect(seed.sessions).toHaveLength(1);
+    expect(seed.performances).toHaveLength(29);
+    expect(
+      seed.performances.some((perf) => perf.stageLabel === 'World Stage'),
+    ).toBe(true);
+    expect(
+      seed.performances.some((perf) => perf.stageLabel === 'Dream Stage'),
+    ).toBe(true);
+    expect(
+      seed.performances.some((perf) => perf.stageLabel === 'Welcome Stage'),
+    ).toBe(true);
+    expect(
+      seed.performances.some((perf) => perf.artistName === 'PORTER ROBINSON'),
+    ).toBe(true);
+    expect(
+      seed.performances.some((perf) => perf.artistName === 'ANGERFIST'),
+    ).toBe(true);
+  });
+
+  it('returns World DJ Festival Japan sessions and lineup DJs', () => {
+    const seed = resolveItineraryCatalogSeed(
+      ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID,
+    );
+
+    expect(seed.sessions.map((session) => session.dateKey)).toEqual([
+      'jul4',
+      'jul5',
+    ]);
+    expect(seed.performances).toHaveLength(64);
+    expect(
+      resolveLineupDjs(ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID).length,
+    ).toBe(64);
+    expect(
+      resolveLineupDjs(ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID).some(
+        (dj) => dj.name === 'KSHMR',
       ),
     ).toBe(true);
   });

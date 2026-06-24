@@ -79,6 +79,28 @@ export class BuddyPostAiSearchResultDto {
   totalScanned!: number;
 }
 
+export class BuddyPostComposeCandidateDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  text!: string;
+
+  @ApiPropertyOptional({ enum: ['code', 'slogan'] })
+  style?: 'code' | 'slogan';
+}
+
+export class BuddyPostAiComposeResultDto {
+  @ApiProperty({ type: [BuddyPostComposeCandidateDto] })
+  candidates!: BuddyPostComposeCandidateDto[];
+
+  @ApiProperty()
+  disclaimer!: string;
+
+  @ApiProperty()
+  aiGenerated!: true;
+}
+
 export class PostMutationResultDto {
   @ApiProperty()
   id!: string;

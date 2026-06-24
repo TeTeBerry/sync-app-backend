@@ -11,6 +11,7 @@ import {
   rankBuddyPostsBySearch,
   resolveBuddyPostSearchCriteria,
   resolveBuddyPostSearchTerms,
+  scoreBuddyPostPreferenceMatch,
   scoreBuddyPostSearchCriteria,
   shouldRetryBuddySearchWithLlm,
 } from '@src/modules/partner/utils/buddy-post-search.util';
@@ -320,6 +321,49 @@ describe('buddy-post-search.util', () => {
       { city: '上海', favorGenres: ['Techno'] },
     );
     expect(ranked.map((row) => String(row._id))).toEqual(['open', 'full']);
+  });
+
+  it('ranks posts higher when budget preference matches exactly', () => {
+    const comfort = samplePost({
+      _id: 'comfort',
+      body: '上海出发 Techno 组队，住宿舒适档',
+      departureCity: '上海',
+      createdAt: new Date('2026-10-01T10:00:00Z'),
+    });
+    const economy = samplePost({
+      _id: 'economy',
+      body: '上海出发 Techno 组队，住宿经济档',
+      departureCity: '上海',
+      createdAt: new Date('2026-10-02T10:00:00Z'),
+    });
+
+    const ranked = rankBuddyPostsBySearch(
+      [economy, comfort],
+      { searchTerms: ['Techno'] },
+      { budgetLevel: 'medium' },
+    );
+    expect(ranked.map((row) => String(row._id))).toEqual([
+      'comfort',
+      'economy',
+    ]);
+    expect(
+      scoreBuddyPostPreferenceMatch(comfort, { budgetLevel: 'medium' }),
+    ).toBeGreaterThan(
+      scoreBuddyPostPreferenceMatch(economy, { budgetLevel: 'medium' }),
+    );
+  });
+
+  it('gives partial budget score for adjacent tiers', () => {
+    const economy = samplePost({
+      _id: 'economy',
+      body: '组队 经济档',
+    });
+    expect(
+      scoreBuddyPostPreferenceMatch(economy, { budgetLevel: 'medium' }),
+    ).toBe(10);
+    expect(scoreBuddyPostPreferenceMatch(economy, { budgetLevel: 'low' })).toBe(
+      20,
+    );
   });
 });
 

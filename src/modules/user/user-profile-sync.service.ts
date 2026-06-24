@@ -5,6 +5,7 @@ import { UserService } from './user.service';
 import {
   buildBuddyPostProfileHints,
   buildPersonalityProfileHints,
+  buildSetVoteProfileHints,
   buildTravelGuideProfileHints,
   hasUserMatchProfileHints,
   mergeUserProfileHints,
@@ -91,5 +92,13 @@ export class UserProfileSyncService {
   ): void {
     const hints = buildPersonalityProfileHints(params);
     void this.applyHints(actor, hints, 'personality_test');
+  }
+
+  applySetVoteHints(
+    actor: RequestActor,
+    params: Parameters<typeof buildSetVoteProfileHints>[0],
+  ): void {
+    const hints = buildSetVoteProfileHints(params);
+    void this.applyHints(actor, hints, 'set_vote');
   }
 }

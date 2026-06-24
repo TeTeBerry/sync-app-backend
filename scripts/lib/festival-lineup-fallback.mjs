@@ -89,6 +89,97 @@ export function loadEdcKoreaFallbackNames() {
   return ['TIËSTO', 'SUBTRONICS', 'FISHER', 'DJ SNAKE'];
 }
 
+/** Read `EDC_ORLANDO_ARTISTS` names from seed when Mongo has no performances. */
+export function loadEdcOrlandoFallbackNames() {
+  const seedPath = join(
+    __dirname,
+    '..',
+    '..',
+    'src',
+    'data',
+    'itinerary',
+    'edc-orlando-itinerary.seed.ts',
+  );
+
+  try {
+    const content = readFileSync(seedPath, 'utf8');
+    const block = content.match(/const EDC_ORLANDO_ARTISTS[\s\S]*?\];/)?.[0] ?? '';
+    const names = [
+      ...block.matchAll(/dj\('((?:\\'|[^'])*)'/g),
+    ].map((match) => match[1].replace(/\\'/g, "'"));
+
+    if (names.length) {
+      return names;
+    }
+  } catch {
+    // fall through
+  }
+
+  return ['MARTIN GARRIX', 'DAVID GUETTA', 'HARDWELL', 'STEVE AOKI'];
+}
+
+/** Read `ULTRA_EUROPE_ARTIST_NAMES` from seed when Mongo has no performances. */
+export function loadUltraEuropeFallbackNames() {
+  const seedPath = join(
+    __dirname,
+    '..',
+    '..',
+    'src',
+    'data',
+    'itinerary',
+    'ultra-europe-itinerary.seed.ts',
+  );
+
+  try {
+    const content = readFileSync(seedPath, 'utf8');
+    const block =
+      content.match(/export const ULTRA_EUROPE_ARTIST_NAMES = [\s\S]*?];/)?.[0] ??
+      '';
+    const names = [
+      ...block.matchAll(/'((?:\\'|[^'])*)'/g),
+    ].map((match) => match[1].replace(/\\'/g, "'"));
+
+    if (names.length) {
+      return names;
+    }
+  } catch {
+    // fall through
+  }
+
+  return ['MARTIN GARRIX', 'TIËSTO', 'ARMIN VAN BUUREN', 'HARDWELL'];
+}
+
+/** Read `WORLD_DJ_FESTIVAL_ARTIST_NAMES` from seed when Mongo has no performances. */
+export function loadWorldDjfFallbackNames() {
+  const seedPath = join(
+    __dirname,
+    '..',
+    '..',
+    'src',
+    'data',
+    'itinerary',
+    'world-dj-festival-japan-itinerary.seed.ts',
+  );
+
+  try {
+    const content = readFileSync(seedPath, 'utf8');
+    const block =
+      content.match(/export const WORLD_DJ_FESTIVAL_ARTIST_NAMES = [\s\S]*?];/)?.[0] ??
+      '';
+    const names = [
+      ...block.matchAll(/'((?:\\'|[^'])*)'/g),
+    ].map((match) => match[1].replace(/\\'/g, "'"));
+
+    if (names.length) {
+      return names;
+    }
+  } catch {
+    // fall through
+  }
+
+  return ['PORTER ROBINSON', 'KSHMR', 'ANGERFIST', 'VERTILE'];
+}
+
 /** Read `TOMORROWLAND_THAILAND_ARTISTS` names from seed when Mongo has no performances. */
 export function loadTomorrowlandThailandFallbackNames() {
   const seedPath = join(
@@ -188,6 +279,9 @@ export const DISCOGS_LINEUP_ARTIST_IDS = {
   KÖLSCH: 688469,
   /** Discogs #1310846 is a different Oppidan */
   OPPIDAN: 10423519,
+  /** Discogs lists as "Kream (4)" */
+  KREAM: 2669995,
+  MEDUZA: 7012514,
 };
 
 /** Discogs homonyms / unreliable pages — skip profile + crawl; genres still from seed. */
@@ -203,11 +297,85 @@ export const SEED_ONLY_LINEUP_ARTISTS = new Set([
   'BASSRUSH EXPERIENCE',
   'DREAMSTATE PRESENTS ELECTRIK SEOUL',
   'INSOMNIAC RECORDS TAKEOVER',
+  /** EDC Orlando stage / showcase labels */
+  'DISCOVERY PROJECT',
+  'FACTORY 93 PRESENTS',
+  'BIG FLORIDA',
+  /** No reliable Discogs row */
+  'AAT',
+  'ADRIÁN MILLS',
+  'ALVES',
+  'AVELLO',
+  'FALLON',
+  'FURY WITH MC DINO',
+  'KINHAU',
+  'MADVKTM',
+  'MATTHIAS',
+  'ME N Ü',
+  'M81!',
+  'RAJE',
+  'ULTRATHEM',
+  'DISCIP',
   'SORAERE BROCKEN',
   /** No reliable Discogs row — wrong "Cheez" bassist page on exact search */
   'CHEEZ & YUKA',
   /** No reliable Discogs row — Italian prog band "Nome" on exact search */
   'NOME.',
+  /** Ultra Europe — Discogs homonyms / no reliable row */
+  'NOME',
+  'MATT',
+  'BLANK',
+  'OAK',
+  'TANK',
+  'CARLOM',
+  'JOWAVES',
+  'MYKRIS',
+  'JOE2SHINE',
+  'JULIAN CROSS',
+  'NAESTOR',
+  'NOTXERIUS',
+  'YAMATOMAYA',
+  'GEMINO',
+  /** World DJ Festival Japan — local / homonym-prone artists */
+  'DJ HADOU',
+  'FØOMIE?',
+  'MIU',
+  'LILY',
+  'FLAVIO',
+  'YUNKORO',
+  'DAIKI',
+  'TATSUNOSHIN',
+  'SAULE',
+  'CORE',
+  'JUNI',
+  'RYU',
+  '417',
+  'YUNPI',
+  'GAGAKU',
+  'MITOCHY',
+  'SHO-TA',
+  /** World DJ Festival Japan day 2 — stage showcases / local artists */
+  'SIGNATURE SHOW',
+  'ROAD TO WELCOME STAGE',
+  'NICOLE CHEN',
+  'KDH',
+  'MACKEY',
+  'PIXEL',
+  'SARA',
+  'CHAWON',
+  'MAAM & KOKI',
+  'KiBØ',
+  'MN4',
+  'ASTERA',
+  'SYZYGY',
+  'I.G.A',
+  'BEAUTY NOISE TOKYO',
+  'LIL NANAA',
+  'NATSUMI',
+  'POKO',
+  'GARKO',
+  'ADI',
+  'YAMAHIRO',
 ]);
 
 /** Discogs search aliases for hard-to-match EDC lineup display names. */
@@ -279,6 +447,110 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   WHISNU: 'Whisnu Santika',
   'WHISNU SANTIKA': 'Whisnu Santika',
 
+  // --- EDC Orlando ---
+  'ME N Ü': 'Me n Ü',
+  'ROSSI.': 'Rossi.',
+  CØNTRA: 'Contra',
+  'M81!': 'M81',
+  'JKYL & HYDE': 'Jkyl & Hyde',
+  'KI/KI': 'KI/KI',
+  'AR/CO': 'AR/CO',
+  'A LITTLE SOUND': 'A Little Sound',
+  'FURY WITH MC DINO': 'Fury',
+  KREAM: 'Kream (4)',
+  MEDUZA: 'Meduza',
+  DISCIP: 'Discip (2)',
+  BENDA: 'Benda (2)',
+  BRUNELLO: 'Brunello (2)',
+  MPH: 'MPH (3)',
+
+  // --- Ultra Europe ---
+  'ARMIN VAN BUUREN': 'Armin van Buuren',
+  ALESSO: 'Alesso',
+  NGHTMRE: 'NGHTMRE',
+  MATRODA: 'Matroda',
+  'JOHN SUMMIT': 'John Summit',
+  TIËSTO: 'Tiësto',
+  'STEVE ANGELLO': 'Steve Angello',
+  'JOEL CORRY': 'Joel Corry',
+  GRYFFIN: 'Gryffin',
+  'WILLY WILLIAM': 'Willy William',
+  AFROJACK: 'Afrojack',
+  HARDWELL: 'Hardwell',
+  'CARL COX': 'Carl Cox',
+  SOLOMUN: 'Solomun',
+  'JOHANNES BRECHT': 'Johannes Brecht',
+  ARTBAT: 'Artbat',
+  'TOMO IN DER MÜHLEN': 'Tomo in der Nachten',
+  GINCHY: 'Ginchy',
+  'BRINA KNAUSS': 'Brina Knauss',
+  MRAK: 'Mrak',
+  'AMELIE LENS': 'Amelie Lens',
+  'ADAM BEYER': 'Adam Beyer',
+  'MAU P': 'Mau P',
+  INSOLATE: 'Insolate',
+  KOROLOVA: 'Korolova',
+  'BLOCK & CROWN': 'Block & Crown',
+  'MIKE & ME': 'Mike & Me',
+  'JIMMY CLASH & TRICKY GULLIVAN': 'Jimmy Clash',
+  'NILS VAN ZANDT': 'Nils van Zandt',
+  'GIAN VARELA': 'Gian Varela',
+  MAIREE: 'Mairee',
+  KEVU: 'Kevu',
+  'ALEX PIZZUTI': 'Alex Pizzuti',
+  MOONSHOT: 'Moonshot',
+  WREX: 'Wrex',
+  XANI: 'Xani',
+  PERCASSI: 'Percassi',
+  DOSSCHY: 'Dosschy',
+  'RYAN NOGAR': 'Ryan Nogar',
+  CIRILLO: 'Cirillo',
+  WEKINGZ: 'Wekingz',
+  'FRANK JEZ': 'Frank Jez',
+  MANDAS: 'Mandas',
+  YASHA: 'Yasha',
+  VANILLAZ: 'Vanillaz',
+  'MALENA NARVAY': 'Malena Narvay',
+  'NICK HAVSEN': 'Nick Havsen',
+  'VICTOR CARDENAS': 'Victor Cardenas',
+  KHARDIAC: 'Khardiac',
+  WAGS: 'Wags',
+  'MIKE BOND': 'Mike Bond',
+  'VEDRAN CAR': 'Vedran Car',
+  LORENZO: 'Lorenzo',
+  BROZ: 'Broz',
+  JAMLES: 'Jamles',
+  'JAMES CARTER': 'James Carter',
+
+  // --- World DJ Festival Japan ---
+  'PORTER ROBINSON': 'Porter Robinson',
+  KSHMR: 'Kshmr',
+  'CHEAT CODES': 'Cheat Codes',
+  'MIKE PERRY': 'Mike Perry',
+  QUINTINO: 'Quintino',
+  'LIKE MIKE (MAIN STAGE DJ SET)': 'Like Mike',
+  ANGERFIST: 'Angerfist',
+  VERTILE: 'Vertile',
+  'DUAL DAMAGE': 'Dual Damage',
+  TONESHIFTERZ: 'Toneshifterz',
+  ATMOZFEARS: 'Atmozfears',
+  'SOUND RUSH': 'Sound Rush',
+  'FØOMIE?': 'Foomie',
+  'DJ HADOU': 'DJ Hadou',
+  ALOK: 'Alok',
+  GALANTIS: 'Galantis',
+  'BLACK TIGER SEX MACHINE': 'Black Tiger Sex Machine',
+  MESTO: 'Mesto',
+  'SICK INDIVIDUALS': 'Sick Individuals',
+  'RETROVISION B2B JEONGHYEON': 'Retrovision',
+  'MAAM & KOKI': 'Maam & Koki',
+  'CHARLIE SPARKS': 'Charlie Sparks',
+  'STAN CHRIST': 'Stan Christ',
+  FOVOS: 'Fovos',
+  SMACK: 'Smack',
+  PAWLOWSKI: 'Pawlowski',
+  KiBØ: 'Kibo',
+
   // --- Defqon.1 2026 (display name → Discogs search) ---
   'ROOLER - 3 HOUR SET': 'Rooler',
   'VERTILE: EVERYTHING CHANGES LIVE': 'Vertile',
@@ -335,6 +607,28 @@ export const LINEUP_COVERAGE_NAME_KEYS = {
   'BLASTOYZ B2B WHITENO1SE': ['blastoyz', 'whiteno1se'],
   'MAD MAXX B2B STRYKER': ['madmaxx', 'stryker'],
   VEGAS: ['vegas'],
+  'SKULL MACHINE (BLACK TIGER SEX MACHINE X KAI WACHI)': [
+    'blacktigersexmachine',
+    'kaiwachi',
+  ],
+  'SKULL MACHINE': ['blacktigersexmachine', 'kaiwachi'],
+  'SHIPE B2B DJ JOCK': ['shipe', 'djjock'],
+  'ADAM BEYER B2B MAU P': ['adambeyer', 'maup'],
+  'ALE BASCIANO B2B MARCO NINNI': ['alebasciano', 'marconinni'],
+  'CASPER YU B2B SHANG': ['casperyu', 'shang'],
+  'BLACK OPS B2B BRANDON': ['blackops', 'brandon'],
+  'SMILE B2B KZ BEATZ': ['smile', 'kzbeatz'],
+  'JOHN MASAKI & KIM SANE': ['johnmasaki', 'kimsane'],
+  'JIMMY CLASH & TRICKY GULLIVAN': ['jimmyclash', 'trickygullivan'],
+  'BLOCK & CROWN': ['block', 'crown'],
+  'MIKE & ME': ['mike', 'me'],
+  'DJ HADOU B2B FØOMIE?': ['djhadou', 'foomie'],
+  'LIKE MIKE (MAIN STAGE DJ SET)': ['likemike'],
+  'ATMOZFEARS B2B SOUND RUSH': ['atmozfears', 'soundrush'],
+  'YUNPI B2B 417': ['yunpi', '417'],
+  'RETROVISION B2B JEONGHYEON': ['retrovision', 'jeonghyeon'],
+  'MAAM & KOKI': ['maam', 'koki'],
+  'BLACK TIGER SEX MACHINE': ['blacktigersexmachine'],
 };
 
 /**

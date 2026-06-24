@@ -5,6 +5,8 @@ export type {
   UpdatePostPayload,
   UpdatePostRecruitPayload,
   AiSearchPostsPayload,
+  AiComposePostsPayload,
+  BuddyPostComposeHints,
   CreatePostCommentPayload,
   PostCommentMutationResult,
   DeletePostResult,
@@ -19,4 +21,7 @@ export type {
   ProfilePostsPage,
   BuddyPostSearchParsed,
   BuddyPostAiSearchResult,
+  BuddyPostComposeCandidate,
+  BuddyPostComposeCandidateStyle,
+  BuddyPostAiComposeResult,
 } from './responses';

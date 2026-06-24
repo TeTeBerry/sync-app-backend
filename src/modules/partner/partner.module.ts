@@ -19,6 +19,7 @@ import {
 } from '../../database/schemas/post-comment.schema';
 import { PostCommentService } from './application/post-comment.service';
 import { BuddyPostSearchParseService } from './application/buddy-post-search-parse.service';
+import { BuddyPostComposeService } from './application/buddy-post-compose.service';
 import { PostSearchService } from './application/post-search.service';
 import { PostDevMockSeedService } from './application/post-dev-mock-seed.service';
 
@@ -44,6 +45,7 @@ import { PostDevMockSeedService } from './application/post-dev-mock-seed.service
     PostService,
     PostCommentService,
     BuddyPostSearchParseService,
+    BuddyPostComposeService,
     PostSearchService,
     PostDevMockSeedService,
   ],

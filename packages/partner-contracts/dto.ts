@@ -35,6 +35,23 @@ export type AiSearchPostsPayload = {
   activityLegacyId: number;
 };
 
+export type BuddyPostComposeHints = {
+  personalityType?: string;
+  favorGenres?: string[];
+  setPicks?: string[];
+  prefillSummary?: string;
+};
+
+export type AiComposePostsPayload = {
+  activityLegacyId: number;
+  dateStart: string;
+  dateEnd: string;
+  location: string;
+  headcount: string;
+  composeHints?: BuddyPostComposeHints;
+  regenerate?: boolean;
+};
+
 export type CreatePostCommentPayload = {
   body: string;
   parentCommentId?: string;

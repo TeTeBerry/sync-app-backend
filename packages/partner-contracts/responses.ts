@@ -74,3 +74,17 @@ export interface BuddyPostAiSearchResult {
   totalMatched: number;
   totalScanned: number;
 }
+
+export type BuddyPostComposeCandidateStyle = 'code' | 'slogan';
+
+export interface BuddyPostComposeCandidate {
+  id: string;
+  text: string;
+  style?: BuddyPostComposeCandidateStyle;
+}
+
+export interface BuddyPostAiComposeResult {
+  candidates: BuddyPostComposeCandidate[];
+  disclaimer: string;
+  aiGenerated: true;
+}

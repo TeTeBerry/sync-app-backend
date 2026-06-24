@@ -1,5 +1,6 @@
 import {
   buildPersonalityProfileHints,
+  buildSetVoteProfileHints,
   buildTravelGuideProfileHints,
   extractProfileGenresFromText,
   mergeUserProfileHints,
@@ -98,5 +99,15 @@ describe('user-profile-hints.util', () => {
     expect(merged.favorGenres).toEqual(
       expect.arrayContaining(['House', 'Big room', 'Hardstyle', 'Dubstep']),
     );
+  });
+
+  it('buildSetVoteProfileHints normalizes genres', () => {
+    const hints = buildSetVoteProfileHints({
+      genres: ['techno', 'Techno', 'House'],
+    });
+    expect(hints.favorGenres).toEqual(
+      expect.arrayContaining(['Techno', 'House']),
+    );
+    expect(hints.favorGenres).toHaveLength(2);
   });
 });

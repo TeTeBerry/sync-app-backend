@@ -157,4 +157,51 @@ describe('PostSearchService', () => {
     expect(result.totalMatched).toBe(1);
     expect(result.items[0]?.id).toBe('hangzhou');
   });
+
+  it('skips preference ranking when applyPreferenceRank is false', async () => {
+    const shanghai = {
+      _id: 'shanghai',
+      body: 'Techno 同逛舞台',
+      departureCity: '上海',
+      createdAt: new Date('2026-09-01T10:00:00Z'),
+    } as PostRecord;
+    const guangzhou = {
+      _id: 'guangzhou',
+      body: 'Techno 同逛舞台',
+      departureCity: '广州',
+      createdAt: new Date('2026-10-03T10:00:00Z'),
+    } as PostRecord;
+
+    repository.findByActivityLegacyIdPage.mockResolvedValue([
+      guangzhou,
+      shanghai,
+    ]);
+    parseService.parse.mockResolvedValue({
+      parsed: {
+        genre: 'Techno',
+        extraKeywords: ['同逛舞台'],
+      },
+      source: 'llm',
+    });
+    postQuery.mapEventDetailPosts.mockImplementation(
+      async (rows: PostRecord[]) =>
+        rows.map((row) => ({ id: String(row._id), body: row.body })),
+    );
+
+    const result = await service.searchByNaturalLanguage(
+      'Techno 同逛舞台',
+      4,
+      {
+        resolvedUserId: 'viewer',
+        clientUserId: 'viewer',
+      } as never,
+      { applyPreferenceRank: false },
+    );
+
+    expect(userService.resolveProfile).not.toHaveBeenCalled();
+    expect(result.items.map((item) => item.id)).toEqual([
+      'shanghai',
+      'guangzhou',
+    ]);
+  });
 });

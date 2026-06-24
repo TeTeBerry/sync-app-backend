@@ -32,6 +32,9 @@ export class UserTravelPlan {
 
   @Prop({ type: [String], default: [] })
   hiddenActivityNodeIds!: string[];
+
+  @Prop()
+  splitCount?: number;
 }
 
 export const UserTravelPlanSchema =

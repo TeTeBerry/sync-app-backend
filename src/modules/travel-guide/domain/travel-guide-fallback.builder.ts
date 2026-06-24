@@ -15,10 +15,10 @@ import {
   buildTravelGuideDocumentItems,
   buildTravelGuideEssentials,
   isTravelGuideAbroad,
+  sanitizeTicketChannelsForActivity,
   travelGuideHotelBookingHint,
   travelGuideRegionKind,
 } from './travel-guide-international.util';
-import { buildTicketChannels } from '../map/travel-guide-map-plan.builder';
 import { destinationCityFromActivityLocation } from '../map/travel-guide-intercity.util';
 import {
   buildInterCityTransportLines,
@@ -228,9 +228,10 @@ function buildExtendedSections(
         })
       : undefined;
 
-  const ticketChannels = llm?.ticketChannels?.length
-    ? llm.ticketChannels
-    : buildTicketChannels(activity);
+  const ticketChannels = sanitizeTicketChannelsForActivity(
+    llm?.ticketChannels?.length ? llm.ticketChannels : undefined,
+    activity,
+  );
 
   const essentialsRaw =
     llm?.essentials ??

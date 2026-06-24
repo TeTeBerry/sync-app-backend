@@ -1,5 +1,159 @@
 import type { Activity } from '../../../database/schemas/activity.schema';
+import type { TravelGuideTicketChannel } from '@sync/travel-guide-contracts';
 import { destinationCityFromActivityLocation } from '../map/travel-guide-intercity.util';
+
+const DOMESTIC_TICKET_CHANNEL_PATTERN = /大麦|猫眼|小程序|公众号|微信/i;
+
+type TravelGuideTicketActivity = Pick<
+  Activity,
+  'name' | 'location' | 'region' | 'externalUrl' | 'code'
+>;
+
+const OVERSEAS_TICKET_CHANNELS_BY_CODE: Record<
+  string,
+  TravelGuideTicketChannel[]
+> = {
+  'world-dj-festival': [
+    {
+      name: 'World DJ Festival 官网',
+      note: 'https://worlddjfestival-jp.com — 早鸟与通票通常最先释出，电子票邮件发送。',
+    },
+    {
+      name: 'ZAIKO / e+',
+      note: '日本大型音乐节常用第三方，支持海外信用卡；购票后保留确认邮件与二维码截图。',
+    },
+  ],
+  'ultra-europe': [
+    {
+      name: 'Ultra Europe 官网',
+      note: 'https://ultraeurope.com — 官方售票与 Split / Hvar / Brač 套票。',
+    },
+    {
+      name: 'Eventim',
+      note: '欧洲场常用授权票务伙伴，支持电子票；认准 Ultra 官方跳转链接。',
+    },
+  ],
+  'edc-orlando': [
+    {
+      name: 'EDC Orlando 官网（Insomniac）',
+      note: 'https://orlando.electricdaisycarnival.com — 官方售票、Payment Plan 与 Shuttle 加购。',
+    },
+    {
+      name: 'Front Gate Tickets',
+      note: 'Insomniac 美场常用票务伙伴；电子票绑定 Insomniac 账户，入场前完成实名/绑定。',
+    },
+  ],
+  'edc-korea': [
+    {
+      name: 'EDC Korea 官网',
+      note: 'https://korea.electricdaisycarnival.com — 韩国场官方售票与 Shuttle 套票。',
+    },
+    {
+      name: 'Melon Ticket / YES24',
+      note: '韩国大型音乐节常用授权平台；支持海外信用卡，购票后保留确认邮件。',
+    },
+  ],
+  'edc-thailand': [
+    {
+      name: 'EDC Thailand 官网',
+      note: 'https://thailand.electricdaisycarnival.com — 官方售票与 Shuttle 接驳套票。',
+    },
+    {
+      name: 'Klook',
+      note: '泰国场常用官方合作渠道，含接驳/酒店套票选项；认准 EDC 官方合作标识。',
+    },
+  ],
+  'ultra-japan': [
+    {
+      name: 'Ultra Japan 官网',
+      note: 'https://ultrajapan.com — 官方售票与早鸟释出时间以官网公告为准。',
+    },
+    {
+      name: 'ZAIKO / e+',
+      note: '日本 Ultra 系列常用第三方，支持海外信用卡；电子票邮件发送，入场前截图保存。',
+    },
+  ],
+  'tomorrowland-belgium': [
+    {
+      name: 'Tomorrowland 官网',
+      note: 'https://www.tomorrowland.com — 全球销售窗口与注册抽签以官网公告为准。',
+    },
+    {
+      name: 'Paylogic',
+      note: 'Tomorrowland 官方票务伙伴；须完成 Global Journey 或门票注册流程。',
+    },
+  ],
+  tomorrowland: [
+    {
+      name: 'Tomorrowland Thailand 官网',
+      note: 'https://thailand.tomorrowland.com — 泰国场官方售票与套餐信息。',
+    },
+    {
+      name: 'Klook',
+      note: '泰国场常用官方合作渠道，含接驳/酒店套票；认准 Tomorrowland 官方合作标识。',
+    },
+  ],
+  s2o: [
+    {
+      name: 'S2O Korea 官网',
+      note: 'https://www.s2okorea.com — 韩国场官方售票与早鸟信息。',
+    },
+    {
+      name: 'Melon Ticket / YES24',
+      note: '韩国大型水上音乐节常用授权平台；电子票二维码提前截图保存。',
+    },
+  ],
+  defqon1: [
+    {
+      name: 'Defqon.1 官网',
+      note: 'https://www.defqon1.nl — 荷兰场官方售票与露营套票。',
+    },
+    {
+      name: 'Paylogic',
+      note: 'Q-dance 旗下活动常用票务伙伴；电子票绑定账户，勿通过非官方二手平台购票。',
+    },
+  ],
+  'untold-romania': [
+    {
+      name: 'UNTOLD Festival 官网',
+      note: 'https://untold.com — 罗马尼亚场官方售票与多日通票。',
+    },
+    {
+      name: 'Eventim',
+      note: '欧洲大型音乐节常用授权伙伴；认准 UNTOLD 官方跳转链接。',
+    },
+  ],
+  'untold-dubai': [
+    {
+      name: 'UNTOLD Dubai 官网',
+      note: 'https://untold.com/festival/dubai — 迪拜场官方售票与套餐信息。',
+    },
+    {
+      name: 'Platinumlist / Ticketmaster UAE',
+      note: '中东场常用授权票务伙伴；电子票邮件发送，入境前完成账户绑定。',
+    },
+  ],
+  creamfields: [
+    {
+      name: 'Creamfields 官网',
+      note: 'https://www.creamfields.com — 英国场官方售票与露营套票。',
+    },
+    {
+      name: 'See Tickets',
+      note: '英国音乐节常用授权伙伴；支持电子票，认准 Creamfields 官方跳转。',
+    },
+  ],
+  soundstorm: [
+    {
+      name: 'MDLBEAST Soundstorm 官网',
+      note: 'https://www.mdlbeast.com/soundstorm — 沙特场官方售票与 VIP 套餐。',
+    },
+    {
+      name: 'WeBook',
+      note: '沙特大型活动常用票务平台；支持电子票，购票后保留确认邮件。',
+    },
+  ],
+};
 
 export type TravelGuideRegionKind = 'domestic' | 'overseas' | 'hmt';
 
@@ -15,6 +169,129 @@ export function isTravelGuideAbroad(
   activity: Pick<Activity, 'region'>,
 ): boolean {
   return travelGuideRegionKind(activity) !== 'domestic';
+}
+
+function genericOverseasTicketChannels(
+  activity: TravelGuideTicketActivity,
+): TravelGuideTicketChannel[] {
+  const channels: TravelGuideTicketChannel[] = [];
+
+  if (activity.externalUrl?.trim()) {
+    channels.push({
+      name: '官方购票链接',
+      note: activity.externalUrl.trim(),
+    });
+  } else {
+    channels.push({
+      name: `${activity.name} 官网`,
+      note: '请搜索活动英文名 + official tickets，认准主办方官网域名。',
+    });
+  }
+
+  channels.push(
+    {
+      name: '官方授权票务伙伴',
+      note: 'Ticketmaster / Eventim / See Tickets 等（以官网跳转为准）；勿通过非官方二手平台购票。',
+    },
+    {
+      name: 'Klook / Trip.com',
+      note: '部分境外场提供官方合作套票（含接驳/酒店），价格可能略高于官网；认准官方合作标识。',
+    },
+  );
+
+  return channels.slice(0, 4);
+}
+
+function hmtTicketChannels(
+  activity: TravelGuideTicketActivity,
+): TravelGuideTicketChannel[] {
+  const channels: TravelGuideTicketChannel[] = [];
+
+  if (activity.externalUrl?.trim()) {
+    channels.push({
+      name: '官方购票链接',
+      note: activity.externalUrl.trim(),
+    });
+  }
+
+  channels.push(
+    {
+      name: '活动官网 / 主办方公告',
+      note: '港澳台场以主办方官网或公告为准；早鸟与实名规则以购票页说明为准。',
+    },
+    {
+      name: 'Klook / Trip.com / 携程',
+      note: '港澳台大型活动常用 OTA 合作渠道；认准官方合作或主办方授权标识。',
+    },
+    {
+      name: 'Cityline / HK Ticketing（香港场）',
+      note: '香港演唱会/音乐节常用票务平台；台湾场可关注 KKTIX / ibon 等本地授权渠道。',
+    },
+  );
+
+  return channels.slice(0, 4);
+}
+
+function domesticTicketChannels(
+  activity: TravelGuideTicketActivity,
+): TravelGuideTicketChannel[] {
+  const channels: TravelGuideTicketChannel[] = [];
+
+  if (activity.externalUrl?.trim()) {
+    channels.push({
+      name: '官方购票链接',
+      note: activity.externalUrl.trim(),
+    });
+  }
+
+  channels.push(
+    {
+      name: '大麦 / 猫眼',
+      note: '国内大型电音节常用官方授权渠道，支持电子票与实名制。',
+    },
+    {
+      name: '活动官方小程序 / 公众号',
+      note: '搜索活动全名，认准官方认证；早鸟与组合票通常最先释出。',
+    },
+  );
+
+  return channels;
+}
+
+export function buildTravelGuideTicketChannels(
+  activity: TravelGuideTicketActivity,
+): TravelGuideTicketChannel[] {
+  const kind = travelGuideRegionKind(activity);
+
+  if (kind === 'domestic') {
+    return domesticTicketChannels(activity);
+  }
+
+  if (kind === 'hmt') {
+    return hmtTicketChannels(activity);
+  }
+
+  const code = activity.code?.trim();
+  if (code && OVERSEAS_TICKET_CHANNELS_BY_CODE[code]) {
+    return OVERSEAS_TICKET_CHANNELS_BY_CODE[code];
+  }
+
+  return genericOverseasTicketChannels(activity);
+}
+
+/** Strip domestic-only ticket channels when LLM polish returns invalid overseas entries. */
+export function sanitizeTicketChannelsForActivity(
+  channels: TravelGuideTicketChannel[] | undefined,
+  activity: TravelGuideTicketActivity,
+): TravelGuideTicketChannel[] {
+  const fallback = buildTravelGuideTicketChannels(activity);
+  if (!channels?.length) return fallback;
+  if (!isTravelGuideAbroad(activity)) return channels;
+
+  const filtered = channels.filter(
+    (ch) => !DOMESTIC_TICKET_CHANNEL_PATTERN.test(`${ch.name} ${ch.note}`),
+  );
+  return filtered.length ? filtered : fallback;
 }
 
 /** 境外/港澳台酒店预订渠道 */

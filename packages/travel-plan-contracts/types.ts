@@ -35,6 +35,10 @@ export type TravelPlanNodeRecord = {
   diningBills?: TravelPlanBillLineItem[];
   /** Present when a transport node aggregates multiple ride-hailing bills. */
   transportBills?: TravelPlanBillLineItem[];
+  /** When true, this node's price participates in per-person split trial. */
+  splitEnabled?: boolean;
+  /** Snapshot of companion count (2–8) when split was confirmed. */
+  splitCount?: number;
 };
 
 /** UI node with optional source and display label from API. */

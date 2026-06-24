@@ -8,6 +8,8 @@ export type SaveTravelPlanPayload = {
   activityConfirmations?: Record<string, boolean>;
   activityPriceOverrides?: Record<string, number>;
   hiddenActivityNodeIds?: string[];
+  /** Page-level unified companion count for split trial (2–8). */
+  splitCount?: number;
 };
 
 export type SaveTravelPlanResult = {

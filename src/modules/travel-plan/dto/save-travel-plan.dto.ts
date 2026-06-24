@@ -2,10 +2,12 @@ import {
   IsArray,
   IsBoolean,
   IsIn,
+  IsInt,
   IsNumber,
   IsObject,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
   ValidateNested,
@@ -104,6 +106,16 @@ export class TravelPlanNodeDto {
   @ValidateNested({ each: true })
   @Type(() => TravelPlanBillLineItemDto)
   transportBills?: TravelPlanBillLineItemDto[];
+
+  @IsOptional()
+  @IsBoolean()
+  splitEnabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(2)
+  @Max(8)
+  splitCount?: number;
 }
 
 export class SaveTravelPlanDto {
@@ -129,4 +141,10 @@ export class SaveTravelPlanDto {
   @IsArray()
   @IsString({ each: true })
   hiddenActivityNodeIds?: string[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(2)
+  @Max(8)
+  splitCount?: number;
 }

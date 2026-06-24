@@ -14,7 +14,10 @@ import {
   resolveTravelGuideBudgetTier,
 } from './domain/parse-activity-days.util';
 import type { LlmTravelGuidePayload } from './domain/travel-guide-llm.types';
-import { isTravelGuideAbroad } from './domain/travel-guide-international.util';
+import {
+  isTravelGuideAbroad,
+  sanitizeTicketChannelsForActivity,
+} from './domain/travel-guide-international.util';
 import { sanitizeLlmTravelGuidePayload } from './domain/travel-guide-payload-normalize.util';
 import { stripLlmAccommodationPayload } from './domain/travel-guide-accommodation-preference.util';
 import {
@@ -125,9 +128,12 @@ export class TravelGuideLlmPolishService {
       documentItems: polishedOrMap.documentItems?.length
         ? polishedOrMap.documentItems
         : mapPayload.documentItems,
-      ticketChannels: polishedOrMap.ticketChannels?.length
-        ? polishedOrMap.ticketChannels
-        : mapPayload.ticketChannels,
+      ticketChannels: sanitizeTicketChannelsForActivity(
+        polishedOrMap.ticketChannels?.length
+          ? polishedOrMap.ticketChannels
+          : mapPayload.ticketChannels,
+        activity,
+      ),
       essentials: polishedOrMap.essentials ?? mapPayload.essentials,
       venueTransportOptions: mergeVenueTransportWithLlmPolish(
         mapPayload.venueTransportOptions ?? [],

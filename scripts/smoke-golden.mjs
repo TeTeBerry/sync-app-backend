@@ -88,6 +88,37 @@ step(`POST travel-guide/generate-async + poll`, async (ctx) => {
   await smokeTravelGuideGenerateAsync(http, ctx.activityId, token);
 });
 
+step(`POST /activities/:id/set-votes + GET leaderboard`, async (ctx) => {
+  const token = ctx.bearerToken ?? (await resolveSmokeJwt());
+  ctx.bearerToken = token;
+
+  const schedule = await http.request(
+    'GET',
+    `activities/${ctx.activityId}/itinerary/schedule?${ctx.q}`,
+  );
+  const djs = schedule?.djs ?? [];
+  assert(Array.isArray(djs) && djs.length >= 2, 'schedule should list at least 2 DJs');
+
+  const artistIds = djs.slice(0, 2).map((dj) => dj.id);
+  const submit = await http.request(
+    'POST',
+    `activities/${ctx.activityId}/set-votes`,
+    {
+      body: { artistIds },
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  assert(submit?.ok === true, 'set-vote submit should return ok');
+  assert(Array.isArray(submit?.picks) && submit.picks.length === 2, 'set-vote picks');
+
+  const board = await http.request(
+    'GET',
+    `activities/${ctx.activityId}/set-votes/leaderboard?${ctx.q}`,
+  );
+  assert(board?.totalVoters >= 1, 'leaderboard totalVoters should be >= 1');
+  assert(Array.isArray(board?.entries), 'leaderboard entries should be array');
+});
+
 async function main() {
   /** @type {GoldenContext} */
   const ctx = {

@@ -55,3 +55,18 @@ export interface CatalogLineupArtistDetail extends CatalogLineupArtist {
   profileFull?: string;
   representativeTracks?: string[];
 }
+
+/** A single DJ pick in a set-vote ballot. */
+export interface SetVotePick {
+  artistId: string;
+  artistName: string;
+  genre?: string;
+}
+
+/** Aggregated leaderboard row for set-vote. */
+export interface SetVoteLeaderboardEntry {
+  artistId: string;
+  artistName: string;
+  voteCount: number;
+  votePercent: number;
+}

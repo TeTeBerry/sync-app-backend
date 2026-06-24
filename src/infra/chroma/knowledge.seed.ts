@@ -14,7 +14,12 @@ export const KNOWLEDGE_DOCUMENTS: Document[] = [
   }),
   new Document({
     pageContent:
-      'Ultra Europe 欧洲站（ultra-europe）通常在克罗地亚斯普利特举办，与国内风暴/EDC 等品牌区分。别名：ultra europe、欧洲ultra。',
+      'World DJ Festival Japan 2026（world-dj-festival）2026 年 7 月 4 日至 5 日，地点日本东京海の森水上競技場（台场海滨）。三舞台：World Stage、Dream Stage、Welcome Stage（Powered by SHINDENGEN）；7 月 4–5 日官方时间表已录入，headliner 包括 Porter Robinson、KSHMR、Like Mike、Martin Garrix、Alok、Galantis、Angerfist、Vertile、999999999 等。别名：world dj festival、wdjf、wdjf japan、东京wdjf。',
+    metadata: { topic: 'activity', code: 'world-dj-festival' },
+  }),
+  new Document({
+    pageContent:
+      'Ultra Europe 2026（ultra-europe）第 11 届，2026 年 7 月 11 日至 13 日，克罗地亚 Poljud Stadium（斯普利特）。四舞台：Ultra Main Stage、Resistance、UMF Radio、Oasis；每日 19:00–05:00。官宣演出时间表已录入，headliner 包括 Armin van Buuren、Tiësto、John Summit、Martin Garrix、Hardwell、Carl Cox、Amelie Lens 等。别名：ultra europe、欧洲ultra。',
     metadata: { topic: 'activity', code: 'ultra-europe' },
   }),
   new Document({
@@ -26,6 +31,11 @@ export const KNOWLEDGE_DOCUMENTS: Document[] = [
     pageContent:
       'EDC Korea（edc-korea）2026 年演出档期：2026-10-03 至 2026-10-04，地点韩国仁川 Inspire Entertainment Resort。别名：edc korea、edc韩国、韩国edc、仁川edc。与 EDC Thailand 区分。',
     metadata: { topic: 'activity', code: 'edc-korea' },
+  }),
+  new Document({
+    pageContent:
+      'EDC Orlando 2026（edc-orlando）2026 年 11 月 6 日至 8 日，地点美国奥兰多 Tinker Field。全阵容已官宣（110 位艺人），主要 headliner 包括 Martin Garrix、David Guetta、Hardwell、Steve Aoki、Afrojack、Alan Walker、Alesso、Kaskade、Slander、Meduza、Mau P、Alok 等；官方演出时间表尚未发布。别名：edc orlando、edc奥兰多、orlando edc。',
+    metadata: { topic: 'activity', code: 'edc-orlando' },
   }),
   new Document({
     pageContent:

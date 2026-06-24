@@ -23,7 +23,9 @@ import { PostWriteService } from './application/post-write.service';
 import { PostQueryService } from './application/post-query.service';
 import { PostCommentService } from './application/post-comment.service';
 import { PostSearchService } from './application/post-search.service';
+import { BuddyPostComposeService } from './application/buddy-post-compose.service';
 import { PostDevMockSeedService } from './application/post-dev-mock-seed.service';
+import type { AiComposePostsDto } from './dto/ai-compose-posts.dto';
 import { TML_THAILAND_LEGACY_ID } from './data/dev-mock-buddy-posts.util';
 
 @Injectable()
@@ -37,6 +39,7 @@ export class PostService {
     private readonly postQuery: PostQueryService,
     private readonly postComments: PostCommentService,
     private readonly postSearch: PostSearchService,
+    private readonly buddyPostCompose: BuddyPostComposeService,
     private readonly userService: UserService,
     private readonly devMockSeed: PostDevMockSeedService,
   ) {}
@@ -68,12 +71,18 @@ export class PostService {
     query: string,
     activityLegacyId: number,
     actor: RequestActor,
+    options?: { applyPreferenceRank?: boolean },
   ) {
     return this.postSearch.searchByNaturalLanguage(
       query,
       activityLegacyId,
       actor,
+      options,
     );
+  }
+
+  composeBuddyPostCandidates(dto: AiComposePostsDto, actor: RequestActor) {
+    return this.buddyPostCompose.compose(dto, actor);
   }
 
   createPost(

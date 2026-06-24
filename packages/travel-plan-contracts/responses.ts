@@ -15,5 +15,6 @@ export type SavedTravelPlanResult = {
   activityConfirmations?: Record<string, boolean>;
   activityPriceOverrides?: Record<string, number>;
   hiddenActivityNodeIds?: string[];
+  splitCount?: number;
   savedAt?: string;
 };

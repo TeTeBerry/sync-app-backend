@@ -16,7 +16,7 @@ export const TRAVEL_GUIDE_MAP_JSON_SYSTEM = [
   '- venueTransportOptions 仅写目的地市内最后一段（机场/酒店/车站 → 会场）；方式与 label 须符合目的地真实交通；禁止写国际航班订票、出发机场飞往目的机场、往返机票等城际/国际段内容；不得增删条目，仅润色 lines。',
   '- transportLines 与 venueTransportOptions 内容禁止重复；城际段与接驳段分开写。',
   '- venueTransportOptions 给出 3–4 种抵达会场方式，每项含 label 与 lines 数组。',
-  '- ticketChannels 列出官方与常用购票渠道（含 externalUrl 若有）；每项含 name 与 note。',
+  '- ticketChannels 列出官方与常用购票渠道（含 externalUrl 若有）；每项含 name 与 note。境外/港澳台场禁止使用大麦、猫眼、微信小程序、公众号等境内渠道；按官网与 Ticketmaster/Eventim/See Tickets/Klook 等实际授权伙伴填写。',
   '- essentials 分 network/payment/apps 三组，出国场须写 eSIM/签证区货币/当地叫车 App。',
   '- documentItems 仅当 isAbroad=true 时输出，含护照、签证/签注、返程票、保险等入境必备。',
   '- budgetItems 须含：机票/城际交通(若跨城)、门票、住宿(按用户 budgetTier 与晚数)、市内/会场交通、餐饮、现金/杂费、合计参考；各项 range 为本次出行合计金额（非人均），合计项 label 写「合计参考（全员）」或「合计参考（单人）」并在 note 注明是否含人均；range 用「约 ¥X–Y」格式。',

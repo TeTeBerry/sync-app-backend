@@ -1,4 +1,3 @@
-// src/modules/activity/activity.module.ts
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AgentsModule } from '../../ai/agents/agents.module';
@@ -13,8 +12,13 @@ import {
   ActivityRegistration,
   ActivityRegistrationSchema,
 } from '../../database/schemas/activity-registration.schema';
+import {
+  ActivitySetVote,
+  ActivitySetVoteSchema,
+} from '../../database/schemas/activity-set-vote.schema';
 import { NotificationModule } from '../notification/notification.module';
 import { LineupCatalogModule } from '../itinerary/lineup-catalog.module';
+import { ItineraryModule } from '../itinerary/itinerary.module';
 import { UserModule } from '../user/user.module';
 import { ActivityLookupModule } from './activity-lookup.module';
 import { ActivityCatalogRefreshModule } from './activity-catalog-refresh.module';
@@ -23,10 +27,15 @@ import { ActivityService } from './activity.service';
 import { ActivityRegistrationRepository } from './registration/activity-registration.repository';
 import { ActivityRegistrationService } from './registration/activity-registration.service';
 import { ACTIVITY_REGISTRATION_REPOSITORY } from './registration/interfaces/activity-registration.repository.interface';
+import { SetVoteController } from './set-vote/set-vote.controller';
+import { SetVoteRepository } from './set-vote/set-vote.repository';
+import { SetVoteService } from './set-vote/set-vote.service';
+import { SET_VOTE_REPOSITORY } from './set-vote/interfaces/set-vote.repository.interface';
 
 @Module({
   imports: [
     LineupCatalogModule,
+    ItineraryModule,
     UserModule,
     ActivityLookupModule,
     ActivityCatalogRefreshModule,
@@ -41,9 +50,13 @@ import { ACTIVITY_REGISTRATION_REPOSITORY } from './registration/interfaces/acti
         name: ActivityRegistration.name,
         schema: ActivityRegistrationSchema,
       },
+      {
+        name: ActivitySetVote.name,
+        schema: ActivitySetVoteSchema,
+      },
     ]),
   ],
-  controllers: [ActivityController],
+  controllers: [ActivityController, SetVoteController],
   providers: [
     ActivityService,
     ActivityRegistrationRepository,
@@ -52,6 +65,12 @@ import { ACTIVITY_REGISTRATION_REPOSITORY } from './registration/interfaces/acti
       useExisting: ActivityRegistrationRepository,
     },
     ActivityRegistrationService,
+    SetVoteRepository,
+    {
+      provide: SET_VOTE_REPOSITORY,
+      useExisting: SetVoteRepository,
+    },
+    SetVoteService,
   ],
   exports: [
     ActivityService,
@@ -59,6 +78,7 @@ import { ACTIVITY_REGISTRATION_REPOSITORY } from './registration/interfaces/acti
     ACTIVITY_REGISTRATION_REPOSITORY,
     ActivityLookupModule,
     ActivityCatalogRefreshModule,
+    SetVoteService,
   ],
 })
 export class ActivityModule {}

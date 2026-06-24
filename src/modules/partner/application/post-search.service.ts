@@ -39,6 +39,7 @@ export class PostSearchService {
     query: string,
     activityLegacyId: number,
     actor: RequestActor,
+    options?: { applyPreferenceRank?: boolean },
   ): Promise<BuddyPostAiSearchResult> {
     const trimmed = query.trim();
     if (!trimmed) {
@@ -50,7 +51,10 @@ export class PostSearchService {
 
     const { parsed: initialParsed, source } =
       await this.parseService.parse(trimmed);
-    const viewerProfile = await this.loadViewerMatchProfile(actor);
+    const applyPreferenceRank = options?.applyPreferenceRank !== false;
+    const viewerProfile = applyPreferenceRank
+      ? await this.loadViewerMatchProfile(actor)
+      : null;
     const rows = await this.loadActivityPosts(activityLegacyId);
 
     let parsed = initialParsed;

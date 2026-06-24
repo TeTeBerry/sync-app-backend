@@ -121,4 +121,40 @@ describe('normalizeTravelPlanNodesForSave', () => {
       },
     ]);
   });
+
+  it('preserves split fields when enabled', () => {
+    const nodes = normalizeTravelPlanNodesForSave([
+      {
+        id: 'dining-split',
+        category: 'dining',
+        startDate: '2025-06-14',
+        endDate: '2025-06-14',
+        title: '晚餐',
+        subtitle: '4 人分摊',
+        price: 860,
+        confirmed: true,
+        splitEnabled: true,
+        splitCount: 4,
+      },
+      {
+        id: 'dining-personal',
+        category: 'dining',
+        startDate: '2025-06-14',
+        endDate: '2025-06-14',
+        title: '个人消费',
+        subtitle: '不分摊',
+        price: 120,
+        confirmed: true,
+        splitEnabled: false,
+        splitCount: 4,
+      },
+    ]);
+
+    expect(nodes[0]).toMatchObject({
+      splitEnabled: true,
+      splitCount: 4,
+    });
+    expect(nodes[1]).not.toHaveProperty('splitEnabled');
+    expect(nodes[1]).not.toHaveProperty('splitCount');
+  });
 });

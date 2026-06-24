@@ -10,6 +10,7 @@ import { buildTravelGuideBudgetItems } from '../domain/travel-guide-budget-estim
 import {
   buildTravelGuideDocumentItems,
   buildTravelGuideEssentials,
+  buildTravelGuideTicketChannels,
   travelGuideHotelBookingHint,
   travelGuideRegionKind,
 } from '../domain/travel-guide-international.util';
@@ -63,33 +64,12 @@ export function buildTransportLinesFromMap(
 export { buildVenueTransportOptions } from '../domain/travel-guide-transport.util';
 
 export function buildTicketChannels(
-  activity: Pick<Activity, 'name' | 'externalUrl'>,
+  activity: Pick<
+    Activity,
+    'name' | 'externalUrl' | 'region' | 'code' | 'location'
+  >,
 ): TravelGuideTicketChannel[] {
-  const channels: TravelGuideTicketChannel[] = [];
-
-  if (activity.externalUrl?.trim()) {
-    channels.push({
-      name: '官方购票链接',
-      note: activity.externalUrl.trim(),
-    });
-  }
-
-  channels.push(
-    {
-      name: '大麦 / 猫眼',
-      note: '国内大型电音节常用官方授权渠道，支持电子票与实名制。',
-    },
-    {
-      name: '活动官方小程序 / 公众号',
-      note: '搜索活动全名，认准官方认证；早鸟与组合票通常最先释出。',
-    },
-    {
-      name: 'Klook / Trip.com（境外场）',
-      note: 'EDC Thailand、Tomorrowland 等境外场常用，含 Shuttle 套票选项。',
-    },
-  );
-
-  return channels.slice(0, 4);
+  return buildTravelGuideTicketChannels(activity);
 }
 
 export function buildParkingLinesFromMap(

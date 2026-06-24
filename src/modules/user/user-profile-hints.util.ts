@@ -292,3 +292,10 @@ export function buildTravelGuideProfileHints(params: {
 
   return hints;
 }
+
+export function buildSetVoteProfileHints(params: {
+  genres: string[];
+}): UserMatchProfileHints {
+  const favorGenres = normalizeProfileGenres(params.genres);
+  return favorGenres.length ? { favorGenres } : {};
+}

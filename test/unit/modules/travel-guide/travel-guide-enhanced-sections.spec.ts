@@ -3,6 +3,7 @@ import {
   buildTravelGuideDocumentItems,
   buildTravelGuideEssentials,
   isTravelGuideAbroad,
+  sanitizeTicketChannelsForActivity,
 } from '../../../../src/modules/travel-guide/domain/travel-guide-international.util';
 import {
   accommodationSchemesFromRanked,
@@ -200,6 +201,11 @@ describe('travel guide enhanced sections', () => {
     expect(payload.ticketChannels?.[0]?.note).toContain(
       'https://example.com/tickets',
     );
+    expect(
+      payload.ticketChannels?.some((c) =>
+        /大麦|猫眼|小程序|公众号/.test(`${c.name} ${c.note}`),
+      ),
+    ).toBe(false);
     expect(payload.venueTransportOptions?.length).toBeGreaterThanOrEqual(3);
     expect(
       payload.venueTransportOptions?.some((o) => /Grab|Shuttle/i.test(o.label)),
@@ -216,9 +222,77 @@ describe('travel guide enhanced sections', () => {
     );
   });
 
+  it('builds overseas ticket channels without domestic platforms', () => {
+    const wdjf = buildTicketChannels({
+      name: 'World DJ Festival Japan 2026',
+      location: '日本·东京 海の森水上競技場',
+      region: 'overseas',
+      code: 'world-dj-festival',
+    });
+    expect(wdjf.some((c) => /worlddjfestival-jp\.com/i.test(c.note))).toBe(
+      true,
+    );
+    expect(
+      wdjf.some((c) => /大麦|猫眼|小程序|公众号/.test(`${c.name} ${c.note}`)),
+    ).toBe(false);
+
+    const ultra = buildTicketChannels({
+      name: 'Ultra Europe 2026',
+      location: '克罗地亚·斯普利特',
+      region: 'overseas',
+      code: 'ultra-europe',
+    });
+    expect(ultra.some((c) => /ultraeurope\.com/i.test(c.note))).toBe(true);
+    expect(ultra.some((c) => /Eventim/i.test(c.name))).toBe(true);
+
+    const edcOrlando = buildTicketChannels({
+      name: 'EDC Orlando 2026',
+      location: '美国·奥兰多',
+      region: 'overseas',
+      code: 'edc-orlando',
+    });
+    expect(
+      edcOrlando.some((c) =>
+        /electricdaisycarnival\.com|Insomniac/i.test(`${c.name} ${c.note}`),
+      ),
+    ).toBe(true);
+  });
+
+  it('keeps domestic ticket channels for mainland festivals', () => {
+    const channels = buildTicketChannels({
+      name: '风暴电音节 深圳站 2026',
+      location: '深圳国际会展中心',
+      region: 'domestic',
+      code: 'storm',
+      externalUrl: 'https://detail.damai.cn/item.htm?id=1',
+    });
+    expect(channels[0]?.name).toBe('官方购票链接');
+    expect(channels.some((c) => /大麦|猫眼/.test(c.name))).toBe(true);
+    expect(channels.some((c) => /小程序|公众号/.test(c.name))).toBe(true);
+  });
+
+  it('strips domestic ticket channels from LLM polish for overseas festivals', () => {
+    const sanitized = sanitizeTicketChannelsForActivity(
+      [
+        { name: '大麦 / 猫眼', note: '国内授权渠道' },
+        { name: 'Ultra Europe 官网', note: 'https://ultraeurope.com' },
+      ],
+      {
+        name: 'Ultra Europe 2026',
+        location: '克罗地亚·斯普利特',
+        region: 'overseas',
+        code: 'ultra-europe',
+      },
+    );
+    expect(sanitized.some((c) => /大麦|猫眼/.test(c.name))).toBe(false);
+    expect(sanitized.some((c) => /ultraeurope\.com/i.test(c.note))).toBe(true);
+  });
+
   it('includes official url in ticket channels', () => {
     const channels = buildTicketChannels({
       name: 'Storm',
+      region: 'domestic',
+      code: 'storm',
       externalUrl: 'https://detail.damai.cn/item.htm?id=1',
     });
     expect(channels[0]?.name).toBe('官方购票链接');

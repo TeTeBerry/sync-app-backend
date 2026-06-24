@@ -1,5 +1,11 @@
 import { Type } from 'class-transformer';
-import { IsNumber, IsString, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
 export class AiSearchPostsDto {
   @IsString()
@@ -9,4 +15,9 @@ export class AiSearchPostsDto {
   @Type(() => Number)
   @IsNumber()
   activityLegacyId: number;
+
+  /** When false, skip viewer preference tiebreaker in ranking. Defaults to true. */
+  @IsOptional()
+  @IsBoolean()
+  applyPreferenceRank?: boolean;
 }

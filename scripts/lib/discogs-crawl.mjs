@@ -11,7 +11,10 @@ import {
   LINEUP_MANUAL_DJ_PROFILES,
   loadEdcThailandFallbackNames,
   loadEdcKoreaFallbackNames,
+  loadEdcOrlandoFallbackNames,
   loadTomorrowlandThailandFallbackNames,
+  loadUltraEuropeFallbackNames,
+  loadWorldDjfFallbackNames,
   normalizeArtistNameKey,
 } from './festival-lineup-fallback.mjs';
 
@@ -71,8 +74,17 @@ export function getCrawlConfig() {
     edcKoreaActivityLegacyId: Number(
       process.env.DISCOGS_EDC_KOREA_ACTIVITY_LEGACY_ID ?? 8,
     ),
+    edcOrlandoActivityLegacyId: Number(
+      process.env.DISCOGS_EDC_ORLANDO_ACTIVITY_LEGACY_ID ?? 13,
+    ),
     tomorrowlandThailandActivityLegacyId: Number(
       process.env.DISCOGS_TOMORROWLAND_THAILAND_ACTIVITY_LEGACY_ID ?? 1,
+    ),
+    ultraEuropeActivityLegacyId: Number(
+      process.env.DISCOGS_ULTRA_EUROPE_ACTIVITY_LEGACY_ID ?? 15,
+    ),
+    worldDjfActivityLegacyId: Number(
+      process.env.DISCOGS_WORLD_DJF_ACTIVITY_LEGACY_ID ?? 6,
     ),
     requestDelayMs: Number(process.env.DISCOGS_REQUEST_DELAY_MS ?? 1100),
     representativeWorksLimit: Math.min(
@@ -308,10 +320,13 @@ const CATALOG_LINEUP_FALLBACK_BY_LEGACY_ID = (config) =>
     [config.stormActivityLegacyId, STORM_LINEUP_ARTIST_NAMES],
     [config.edcThailandActivityLegacyId, loadEdcThailandFallbackNames()],
     [config.edcKoreaActivityLegacyId, loadEdcKoreaFallbackNames()],
+    [config.edcOrlandoActivityLegacyId, loadEdcOrlandoFallbackNames()],
     [
       config.tomorrowlandThailandActivityLegacyId,
       loadTomorrowlandThailandFallbackNames(),
     ],
+    [config.ultraEuropeActivityLegacyId, loadUltraEuropeFallbackNames()],
+    [config.worldDjfActivityLegacyId, loadWorldDjfFallbackNames()],
   ]);
 
 /** All lineup artist names across every activity in the catalog. */
@@ -383,22 +398,45 @@ export async function loadActivityLineupArtistNames(
 }
 
 export async function findMissingLineupArtists(db, expectedNames) {
+  const { missing } = await partitionLineupArtistCoverage(db, expectedNames);
+  return missing;
+}
+
+/** Split lineup names into seed-only / already in DB / still missing for Discogs. */
+export async function partitionLineupArtistCoverage(db, expectedNames) {
   const djs = await db
     .collection('djs')
     .find({})
     .project({ name: 1, discogsId: 1 })
     .toArray();
-  return expectedNames.filter((name) => !isLineupArtistCovered(name, djs));
+
+  const seedOnly = [];
+  const covered = [];
+  const missing = [];
+
+  for (const name of expectedNames) {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      continue;
+    }
+    if (SEED_ONLY_LINEUP_ARTISTS.has(trimmed.toUpperCase())) {
+      seedOnly.push(name);
+      continue;
+    }
+    if (isLineupArtistCovered(name, djs)) {
+      covered.push(name);
+      continue;
+    }
+    missing.push(name);
+  }
+
+  return { seedOnly, covered, missing, djs };
 }
 
 export async function findMissingCatalogArtists(db, config) {
   const expected = await loadAllCatalogLineupArtistNames(db, config);
-  const djs = await db
-    .collection('djs')
-    .find({})
-    .project({ name: 1, discogsId: 1 })
-    .toArray();
-  return expected.filter((name) => !isLineupArtistCovered(name, djs));
+  const { missing } = await partitionLineupArtistCoverage(db, expected);
+  return missing;
 }
 
 export function isLineupArtistCovered(lineupName, djs) {

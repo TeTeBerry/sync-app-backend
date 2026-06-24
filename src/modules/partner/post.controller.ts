@@ -26,6 +26,7 @@ import {
   ApiOkEnvelopeResponse,
 } from '../../common/swagger/api-response.decorator';
 import {
+  BuddyPostAiComposeResultDto,
   BuddyPostAiSearchResultDto,
   EventDetailPostDto,
   EventPostsPageDto,
@@ -36,6 +37,7 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { UpdatePostRecruitDto } from './dto/update-post-recruit.dto';
 import { AiSearchPostsDto } from './dto/ai-search-posts.dto';
+import { AiComposePostsDto } from './dto/ai-compose-posts.dto';
 import { CreatePostCommentDto } from './dto/create-post-comment.dto';
 import { PostService } from './post.service';
 
@@ -124,7 +126,25 @@ export class PostController {
       body.query,
       body.activityLegacyId,
       actor,
+      { applyPreferenceRank: body.applyPreferenceRank },
     );
+  }
+
+  @Post('ai-compose')
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Generate AI buddy post note candidates' })
+  @ApiOkEnvelopeResponse(BuddyPostAiComposeResultDto)
+  async aiCompose(
+    @Body() body: AiComposePostsDto,
+    @CurrentActor() actor: RequestActor,
+    @Req() req: Request,
+  ) {
+    await this.publicRateLimit.assertAllowedAsync(
+      'post_ai_compose',
+      req,
+      actor.resolvedUserId,
+    );
+    return this.postService.composeBuddyPostCandidates(body, actor);
   }
 
   @Post()

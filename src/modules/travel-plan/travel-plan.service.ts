@@ -23,7 +23,10 @@ import {
   normalizeHiddenActivityNodeIds,
   sortTravelPlanNodes,
 } from '@sync/travel-plan-contracts';
-import { normalizeTravelPlanNodesForSave } from './domain/travel-plan-save-normalize.util';
+import {
+  normalizeTravelPlanNodesForSave,
+  normalizeTravelPlanSplitCount,
+} from './domain/travel-plan-save-normalize.util';
 import type { SaveTravelPlanDto } from './dto/save-travel-plan.dto';
 
 @Injectable()
@@ -141,6 +144,7 @@ export class TravelPlanService {
     const hiddenActivityNodeIds = normalizeHiddenActivityNodeIds(
       body.hiddenActivityNodeIds,
     );
+    const splitCount = normalizeTravelPlanSplitCount(body.splitCount);
 
     await assertUserUgcTexts(this.wechatContentSecurity, [
       body.eventMeta,
@@ -164,6 +168,7 @@ export class TravelPlanService {
         activityConfirmations,
         activityPriceOverrides,
         hiddenActivityNodeIds,
+        ...(splitCount != null ? { splitCount } : {}),
       },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
@@ -219,6 +224,8 @@ export class TravelPlanService {
       };
     }
 
+    const splitCount = normalizeTravelPlanSplitCount(doc.splitCount);
+
     return {
       saved: true as const,
       activityLegacyId,
@@ -229,6 +236,7 @@ export class TravelPlanService {
       activityConfirmations,
       activityPriceOverrides,
       hiddenActivityNodeIds,
+      ...(splitCount != null ? { splitCount } : {}),
       savedAt:
         (doc as { updatedAt?: Date }).updatedAt?.toISOString() ??
         new Date().toISOString(),

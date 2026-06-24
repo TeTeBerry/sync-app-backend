@@ -9,6 +9,19 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_OF_DAY = /^([01]\d|2[0-3]):[0-5]\d$/;
 const MAX_NODES = 100;
 const MAX_BILLS_PER_NODE = 50;
+const MIN_SPLIT_COUNT = 2;
+const MAX_SPLIT_COUNT = 8;
+
+function normalizeSplitCount(value?: number): number | undefined {
+  if (value == null || !Number.isFinite(value)) {
+    return undefined;
+  }
+  const rounded = Math.round(value);
+  if (rounded < MIN_SPLIT_COUNT || rounded > MAX_SPLIT_COUNT) {
+    return undefined;
+  }
+  return rounded;
+}
 
 function normalizeIsoDate(value: string): string | null {
   const trimmed = value.trim();
@@ -96,6 +109,10 @@ export function normalizeTravelPlanNodesForSave(
     const endTime = normalizeTime(node.endTime);
     const diningBills = normalizeBillLineItems(node.diningBills);
     const transportBills = normalizeBillLineItems(node.transportBills);
+    const splitEnabled = node.splitEnabled === true ? true : undefined;
+    const splitCount = splitEnabled
+      ? normalizeSplitCount(node.splitCount)
+      : undefined;
 
     normalized.push({
       id,
@@ -114,8 +131,16 @@ export function normalizeTravelPlanNodesForSave(
       confirmed: Boolean(node.confirmed),
       ...(diningBills ? { diningBills } : {}),
       ...(transportBills ? { transportBills } : {}),
+      ...(splitEnabled ? { splitEnabled: true } : {}),
+      ...(splitCount != null ? { splitCount } : {}),
     });
   }
 
   return normalized;
+}
+
+export function normalizeTravelPlanSplitCount(
+  value?: number,
+): number | undefined {
+  return normalizeSplitCount(value);
 }
