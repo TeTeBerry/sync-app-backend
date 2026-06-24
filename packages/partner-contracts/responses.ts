@@ -88,3 +88,19 @@ export interface BuddyPostAiComposeResult {
   disclaimer: string;
   aiGenerated: true;
 }
+
+export type RecommendedPostAuthorGender = 'female' | 'male';
+
+/** Compact post card shown after buddy-post publish / feed highlights. */
+export interface RecommendedPostCard {
+  postId: string;
+  snippet: string;
+  authorName: string;
+  authorHandle?: string;
+  authorAvatar?: string;
+  authorGender?: RecommendedPostAuthorGender;
+  eventTitle: string;
+  location?: string;
+  tags?: string[];
+  activityLegacyId?: number;
+}

@@ -1,4 +1,4 @@
-import type { ClientActionSheet } from '@sync/chat-contracts/client-action.types';
+import type { ClientActionSheet } from './client-action.types';
 import type {
   BuddyPostComposeCandidate,
   BuddyPostComposeHints,

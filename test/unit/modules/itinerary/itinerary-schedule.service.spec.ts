@@ -16,11 +16,22 @@ describe('ItineraryScheduleService discogs styles', () => {
   };
   const activityLookup = {
     findAll: jest.fn(),
+    findAllBasics: jest.fn(),
     findByLegacyId: jest
       .fn()
       .mockResolvedValue({ legacyId: 5, name: 'EDC Thailand 2026' }),
     findByLegacyIds: jest.fn(),
     refreshCache: jest.fn(),
+  };
+  const lineupJsonCache = {
+    getVersion: jest.fn().mockResolvedValue(null),
+    getJson: jest.fn().mockResolvedValue(null),
+    setJson: jest.fn().mockResolvedValue(undefined),
+    bumpVersion: jest.fn().mockResolvedValue('v1'),
+    delete: jest.fn().mockResolvedValue(undefined),
+  };
+  const lineupConfig = {
+    get: jest.fn().mockReturnValue(undefined),
   };
   const catalogRefresh = {
     refreshAfterLineupCatalogChange: jest.fn().mockResolvedValue(undefined),
@@ -71,6 +82,9 @@ describe('ItineraryScheduleService discogs styles', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    activityLookup.findAllBasics.mockImplementation(() =>
+      activityLookup.findAll(),
+    );
     sessionModel.find.mockReturnValue({
       sort: jest.fn().mockReturnValue({
         lean: jest.fn().mockReturnValue({
@@ -116,6 +130,8 @@ describe('ItineraryScheduleService discogs styles', () => {
       activityLookup as never,
       djService as never,
       lineupArtistAvatarService as never,
+      lineupJsonCache as never,
+      lineupConfig as never,
     );
     const artistProfileResolver = new ArtistProfileResolver(
       lineupCatalog,

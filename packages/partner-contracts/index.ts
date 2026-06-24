@@ -23,4 +23,6 @@ export type {
   BuddyPostComposeCandidate,
   BuddyPostComposeCandidateStyle,
   BuddyPostAiComposeResult,
+  RecommendedPostAuthorGender,
+  RecommendedPostCard,
 } from './responses';

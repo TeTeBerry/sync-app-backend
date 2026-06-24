@@ -32,12 +32,4 @@ export class DiscogsGenreEnrichmentService {
       })),
     );
   }
-
-  /** @deprecated Discogs must not override lineup seed genres; kept for call-site compat. */
-  resolveDiscogsGenreLabel(
-    _artistName: string,
-    seedGenreLabel: string,
-  ): string {
-    return resolveLineupSeedGenreLabel(seedGenreLabel);
-  }
 }

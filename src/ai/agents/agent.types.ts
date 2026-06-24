@@ -1,5 +1,4 @@
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import { ChatMessageDto } from '@sync/chat-contracts';
 
 /** TextParseAgent 结构化输出 */
 export interface ParsedPostDraft {
@@ -35,13 +34,6 @@ export interface RiskAssessment {
   sanitizedBody?: string;
   violationType?: ViolationType;
   severity?: RiskSeverity;
-}
-
-export interface AgentParseInput {
-  messages: ChatMessageDto[];
-  input: string;
-  activityLegacyId?: number;
-  image?: string;
 }
 
 export interface UserMatchProfile {

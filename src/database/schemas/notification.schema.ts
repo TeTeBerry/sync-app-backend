@@ -16,7 +16,7 @@ export type NotificationDocument = HydratedDocument<Notification>;
 
 @Schema({ timestamps: true })
 export class Notification {
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   userId: string;
 
   @Prop({ required: true })
@@ -28,7 +28,7 @@ export class Notification {
   @Prop({ required: true })
   body: string;
 
-  @Prop({ default: false, index: true })
+  @Prop({ default: false })
   read: boolean;
 
   @Prop({ type: Object, default: {} })
@@ -37,3 +37,8 @@ export class Notification {
 
 export const NotificationSchema = SchemaFactory.createForClass(Notification);
 NotificationSchema.index({ userId: 1, createdAt: -1 });
+/** Unread list, unread count, mark-all-read — notification.service.ts */
+NotificationSchema.index(
+  { userId: 1, read: 1, createdAt: -1 },
+  { name: 'notification_user_unread' },
+);

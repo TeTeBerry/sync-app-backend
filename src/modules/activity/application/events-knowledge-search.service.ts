@@ -67,7 +67,7 @@ export class EventsKnowledgeSearchService {
   ): Promise<EventsKnowledgeSearchResult> {
     const trimmed = input.trim();
     let parsed = parseEventsActivitySearchQuery(trimmed);
-    const allActivities = await this.activityLookup.findAll();
+    const allActivities = await this.activityLookup.findAllBasics();
     const now = new Date();
     const catalogPool = allActivities.filter((activity) => {
       const yearHint =

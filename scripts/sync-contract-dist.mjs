@@ -4,7 +4,6 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const contractPackages = [
-  'chat-contracts',
   'travel-plan-contracts',
   'travel-guide-contracts',
   'partner-contracts',

@@ -128,7 +128,7 @@ export async function recommendEventsForPersonality(
     return [];
   }
 
-  const activities = await activityLookup.findAll();
+  const activities = await activityLookup.findAllBasics();
   const activityById = new Map(
     activities.map((activity) => [activity.legacyId, activity]),
   );

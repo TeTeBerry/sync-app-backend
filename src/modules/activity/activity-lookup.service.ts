@@ -104,6 +104,11 @@ export class ActivityLookupService
     return resolved.map(enrichActivityLookupRecord);
   }
 
+  async findAllBasics(): Promise<ActivityLookupRecord[]> {
+    await this.syncIfStale();
+    return this.cache.all.map(enrichActivityLookupRecord);
+  }
+
   async findByLegacyId(legacyId: number): Promise<ActivityLookupRecord | null> {
     await this.syncIfStale();
     const record = this.cache.byLegacyId.get(legacyId) ?? null;

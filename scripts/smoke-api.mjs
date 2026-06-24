@@ -49,7 +49,7 @@ function step(name, run) {
 step('GET /health', async () => {
   const data = await http.request('GET', 'health');
   assert(data?.ok === true, 'health.ok should be true');
-  assert(data?.ai?.transport === 'websocket', 'health.ai.transport should be websocket');
+  assert(data?.ai?.transport === 'scene-run', 'health.ai.transport should be scene-run');
 });
 
 step('GET /home', async () => {

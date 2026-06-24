@@ -33,6 +33,7 @@
     "wait:chroma": "node scripts/wait-for-port.mjs localhost 8000 90000 Chroma",
     "db:reset": "node scripts/reset-test-data.mjs",
     "db:sync-catalog": "node scripts/sync-activity-catalog.mjs",
+    "db:sync-indexes": "node scripts/sync-mongo-indexes.mjs",
     "db:sync-catalog:all": "node scripts/sync-activity-catalog-all.mjs",
     "db:clean-dirty": "node scripts/clean-dirty-data.mjs",
     "db:clean-dirty:dry-run": "node scripts/clean-dirty-data.mjs --dry-run",
@@ -97,7 +98,6 @@
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/swagger": "^7.4.2",
     "@sync/activity-contracts": "*",
-    "@sync/chat-contracts": "*",
     "@sync/festival-plan-contracts": "*",
     "@sync/itinerary-contracts": "*",
     "@sync/notification-contracts": "*",
@@ -116,8 +116,7 @@
     "reflect-metadata": "^0.2.2",
     "rimraf": "^5.0.10",
     "rxjs": "^7.8.1",
-    "uuid": "^11.0.5",
-    "ws": "^8.21.0"
+    "uuid": "^11.0.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",
@@ -127,7 +126,6 @@
     "@types/jest": "^29.5.14",
     "@types/node": "^20.17.14",
     "@types/supertest": "^6.0.2",
-    "@types/ws": "^8.5.13",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.1",
@@ -166,8 +164,6 @@
     },
     "moduleNameMapper": {
       "^@src/(.*)$": "<rootDir>/src/$1",
-      "^@sync/chat-contracts$": "<rootDir>/packages/chat-contracts/index.ts",
-      "^@sync/chat-contracts/(.*)$": "<rootDir>/packages/chat-contracts/$1",
       "^@sync/travel-plan-contracts$": "<rootDir>/packages/travel-plan-contracts/index.ts",
       "^@sync/travel-plan-contracts/(.*)$": "<rootDir>/packages/travel-plan-contracts/$1",
       "^@sync/travel-guide-contracts$": "<rootDir>/packages/travel-guide-contracts/index.ts",

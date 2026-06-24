@@ -10,10 +10,10 @@ export class TravelGuideSavedPlan {
   @Prop({ required: true, unique: true, index: true })
   guideId!: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   ownerUserId!: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   activityLegacyId!: number;
 
   /** 生成表单（不含 guideId） */
@@ -37,3 +37,7 @@ export const TravelGuideSavedPlanSchema =
   SchemaFactory.createForClass(TravelGuideSavedPlan);
 
 TravelGuideSavedPlanSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+TravelGuideSavedPlanSchema.index(
+  { ownerUserId: 1, activityLegacyId: 1, updatedAt: -1 },
+  { name: 'travel_guide_saved_plan_latest' },
+);

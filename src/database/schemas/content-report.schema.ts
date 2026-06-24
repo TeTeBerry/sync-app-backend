@@ -40,3 +40,8 @@ ContentReportSchema.index(
   { reporterUserId: 1, targetType: 1, targetId: 1 },
   { unique: true },
 );
+/** Scalper report counts by target user — account-risk.service.ts */
+ContentReportSchema.index(
+  { targetUserId: 1, category: 1, createdAt: -1 },
+  { name: 'content_report_target_category', sparse: true },
+);

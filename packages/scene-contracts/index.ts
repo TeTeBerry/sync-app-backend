@@ -1,3 +1,5 @@
+export type { ClientActionSheet } from './client-action.types';
+
 export type {
   SceneId,
   SceneTrigger,

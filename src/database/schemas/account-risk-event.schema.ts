@@ -14,7 +14,7 @@ export type AccountRiskEventSource =
 
 @Schema({ timestamps: true })
 export class AccountRiskEvent {
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   userId: string;
 
   @Prop({ required: true })
@@ -37,3 +37,7 @@ export const AccountRiskEventSchema =
   SchemaFactory.createForClass(AccountRiskEvent);
 AccountRiskEventSchema.index({ userId: 1, createdAt: -1 });
 AccountRiskEventSchema.index({ userId: 1, violationType: 1, createdAt: -1 });
+AccountRiskEventSchema.index(
+  { userId: 1, severity: 1, createdAt: -1 },
+  { name: 'account_risk_user_severity' },
+);

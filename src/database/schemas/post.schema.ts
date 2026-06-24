@@ -7,7 +7,7 @@ export type PostDocument = HydratedDocument<Post>;
 
 @Schema({ timestamps: true })
 export class Post {
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   userId: string;
 
   @Prop({ required: true })
@@ -19,7 +19,7 @@ export class Post {
   @Prop()
   authorAvatar?: string;
 
-  @Prop({ index: true })
+  @Prop()
   activityLegacyId?: number;
 
   @Prop({ required: true })
@@ -29,7 +29,7 @@ export class Post {
   location?: string;
 
   /** 出发城市（与作者展示 location 区分） */
-  @Prop({ index: true })
+  @Prop()
   departureCity?: string;
 
   @Prop({ required: true })
@@ -71,7 +71,6 @@ export class Post {
 
 export const PostSchema = SchemaFactory.createForClass(Post);
 PostSchema.index({ createdAt: -1 });
-PostSchema.index({ activityLegacyId: 1, createdAt: -1 });
 PostSchema.index({ activityLegacyId: 1, status: 1, departureCity: 1 });
 PostSchema.index({ activityLegacyId: 1, status: 1, createdAt: -1 });
 PostSchema.index({ status: 1, createdAt: -1 });
@@ -82,3 +81,8 @@ PostSchema.index(
 );
 /** Index audit: owner list sorted by createdAt */
 PostSchema.index({ userId: 1, createdAt: -1 });
+/** Owner active post per activity — post.repository.ts */
+PostSchema.index(
+  { userId: 1, activityLegacyId: 1, status: 1, createdAt: -1 },
+  { name: 'post_owner_activity_active' },
+);

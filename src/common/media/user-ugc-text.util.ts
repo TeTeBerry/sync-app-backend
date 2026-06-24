@@ -57,21 +57,6 @@ export function collectTravelGuideUgcTexts(dto: {
   return [dto.departure, dto.departureCity];
 }
 
-export function collectChatMessageUgcTexts(
-  messages: Array<{
-    role?: string;
-    content?: string;
-    imageContext?: { ocrText?: string };
-  }>,
-): Array<string | undefined> {
-  const texts: Array<string | undefined> = [];
-  for (const message of messages) {
-    if (message.role !== 'user') continue;
-    texts.push(message.content, message.imageContext?.ocrText);
-  }
-  return texts;
-}
-
 export function collectItinerarySaveUgcTexts(body: {
   eventMeta?: string;
   days?: Array<{

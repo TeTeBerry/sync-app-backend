@@ -9,7 +9,7 @@
 | 受保护路由 | 需 `Authorization: Bearer`；Guard 校验 JWT 并设置 `req.actor` |
 | `@Public()` 无 Bearer | `resolveRequestActor` 返回 `anonymous`（空 `resolvedUserId`） |
 | Logout | `POST /api/auth/logout`（Bearer）递增 Mongo `user.tokenVersion`；JWT 含 `tv` 声明，与库中版本不一致则 401 |
-| AI WebSocket | Upgrade `Authorization` + body 字段 → `resolveWsChatActor` → `ChatRequestDto.actor` |
+| AI Scene | `POST /api/ai/scene-run` 走 REST + Bearer（与受保护路由相同） |
 
 ## 环境变量
 
@@ -24,7 +24,6 @@
 1. 配置 `WECHAT_MINI_APP_ID` / `WECHAT_MINI_APP_SECRET`
 2. 更换 `JWT_SECRET`，勿使用示例值
 3. 前端已登录请求只带 `Authorization: Bearer`
-4. AI WS：已登录 upgrade 带 Bearer；`send` body 可不传 `userId`/`userName`
 
 ## 代码入口
 
@@ -32,7 +31,6 @@
 - `src/common/auth/jwt-auth.guard.ts` — 全局 Guard
 - `src/common/auth/resolve-request-actor.ts` — `req.actor` → `RequestActor`
 - `src/common/auth/actor-query.util.ts` — `toRequestActor`、`ownerFilterFromActor`
-- `src/ai/ws/ai-chat-ws-actor.ts` — WebSocket actor
 
 ## 遗留边界
 

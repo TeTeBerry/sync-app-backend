@@ -10,6 +10,7 @@ import {
   type IActivityLookupPort,
 } from './ports/activity-lookup.port';
 import type { IActivityCatalogRefreshPort } from './ports/activity-catalog-refresh.port';
+import { LineupCatalogService } from '../itinerary/lineup-catalog.service';
 
 @Injectable()
 export class ActivityCatalogRefreshService implements IActivityCatalogRefreshPort {
@@ -20,17 +21,19 @@ export class ActivityCatalogRefreshService implements IActivityCatalogRefreshPor
     @Optional()
     @Inject(ACTIVITY_REGISTRATION_REPOSITORY)
     private readonly registrationRepository?: IActivityRegistrationRepository,
+    @Optional() private readonly lineupCatalog?: LineupCatalogService,
   ) {}
 
   async refreshAfterLineupCatalogChange(): Promise<void> {
-    const beforeRecords = await this.activityLookup.findAll();
+    const beforeRecords = await this.activityLookup.findAllBasics();
     const previousLineup = new Map(
       beforeRecords.map((record) => [record.legacyId, record.lineupPublished]),
     );
 
     await this.activityLookup.refreshCache();
+    await this.lineupCatalog?.refreshRankedCatalogCache();
 
-    const afterRecords = await this.activityLookup.findAll();
+    const afterRecords = await this.activityLookup.findAllBasics();
     for (const record of afterRecords) {
       if (
         previousLineup.get(record.legacyId) === false &&

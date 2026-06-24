@@ -17,7 +17,7 @@ export class ChromaCatalogSyncService implements OnApplicationBootstrap {
     if (!this.chromaService.isEnabled()) return;
 
     try {
-      const activities = await this.activityLookup.findAll();
+      const activities = await this.activityLookup.findAllBasics();
       const staticDocs = buildStaticKnowledgeDocuments();
       const catalogDocs = activities.map((activity) =>
         buildActivityKnowledgeDocument({

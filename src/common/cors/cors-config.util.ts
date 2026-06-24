@@ -1,4 +1,4 @@
-/** Headers the H5 client may send (REST + WebSocket preflight). */
+/** Headers the H5 client may send (REST preflight). */
 export const CORS_ALLOWED_HEADERS = [
   'Content-Type',
   'Authorization',

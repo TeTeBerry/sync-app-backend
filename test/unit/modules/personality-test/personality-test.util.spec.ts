@@ -250,7 +250,7 @@ describe('personality-test scoring', () => {
     );
     const recommendations = recommendDjLineup(score, sampleLineupPool);
     const activityLookup = {
-      findAll: async () => [
+      findAllBasics: async () => [
         {
           legacyId: 8,
           code: 'edc-korea',
@@ -300,7 +300,7 @@ describe('personality-test scoring', () => {
     );
     const recommendations = recommendDjLineup(score, sampleLineupPool);
     const activityLookup = {
-      findAll: async () => [
+      findAllBasics: async () => [
         {
           legacyId: 99,
           code: 'tml-th',
@@ -343,7 +343,7 @@ describe('personality-test scoring', () => {
       challenge: [],
     };
     const activityLookup = {
-      findAll: async () => [
+      findAllBasics: async () => [
         {
           legacyId: 5,
           code: 'edc-thailand',
@@ -425,7 +425,7 @@ describe('personality-test scoring', () => {
       challenge: [],
     };
     const activityLookup = {
-      findAll: async () => [
+      findAllBasics: async () => [
         {
           legacyId: 1,
           code: 'past-fest',
@@ -497,7 +497,7 @@ describe('personality-test scoring', () => {
     );
     const soulName = recommendationsSoulName(score);
     const activityLookup = {
-      findAll: async () => [
+      findAllBasics: async () => [
         {
           legacyId: 1,
           code: 'past-fest',
@@ -562,7 +562,7 @@ describe('personality-test scoring', () => {
       challenge: [],
     };
     const activityLookup = {
-      findAll: async () => [
+      findAllBasics: async () => [
         {
           legacyId: 10,
           code: 'must-only',

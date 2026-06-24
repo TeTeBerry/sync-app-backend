@@ -1,6 +1,14 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnApplicationBootstrap,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { RedisMemoryJsonCacheService } from '../../infra/cache/redis-memory-json-cache.service';
 import {
   ArtistPerformance,
   ArtistPerformanceDocument,
@@ -31,8 +39,19 @@ import type {
   CatalogLineupArtistEntryInternal,
 } from './itinerary-schedule.types';
 
+type RankedLineupCatalogPayload = {
+  items: CatalogLineupArtistDto[];
+};
+
 @Injectable()
-export class LineupCatalogService {
+export class LineupCatalogService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(LineupCatalogService.name);
+  private rankedCache: CatalogLineupArtistDto[] | null = null;
+  private localVersion = '';
+  private readonly dataKey: string;
+  private readonly versionKey: string;
+  private readonly ttlSec: number;
+
   constructor(
     @InjectModel(ArtistPerformance.name)
     private readonly performanceModel: Model<ArtistPerformanceDocument>,
@@ -40,7 +59,24 @@ export class LineupCatalogService {
     private readonly activityLookup: IActivityLookupPort,
     private readonly djService: DjService,
     private readonly lineupArtistAvatarService: LineupArtistAvatarService,
-  ) {}
+    private readonly jsonCache: RedisMemoryJsonCacheService,
+    config: ConfigService,
+  ) {
+    this.dataKey =
+      config.get<string>('catalog.lineup.dataKey') ??
+      'catalog:lineup-artists:v1';
+    this.versionKey =
+      config.get<string>('catalog.lineup.versionKey') ??
+      'catalog:lineup-artists:version';
+    this.ttlSec = config.get<number>('catalog.lineup.ttlSec') ?? 86_400;
+  }
+
+  async onApplicationBootstrap(): Promise<void> {
+    await this.refreshRankedCatalogCache();
+    this.logger.log(
+      `Lineup artist catalog cache warmed (${this.rankedCache?.length ?? 0} artists)`,
+    );
+  }
 
   async listLineupArtistsForActivities(
     activityLegacyIds: number[],
@@ -52,7 +88,7 @@ export class LineupCatalogService {
       return [];
     }
 
-    const activities = await this.activityLookup.findAll();
+    const activities = await this.activityLookup.findAllBasics();
     const existingIds = new Set(
       activities.map((activity) => activity.legacyId),
     );
@@ -100,16 +136,19 @@ export class LineupCatalogService {
   }
 
   async listCatalogLineupArtistsRanked(): Promise<CatalogLineupArtistDto[]> {
-    const index = await this.buildCatalogLineupArtistIndex();
-    if (!index.entries.length) {
-      return [];
-    }
+    await this.syncRankedCatalogIfStale();
+    return this.rankedCache ?? [];
+  }
 
-    const ranked = index.entries
-      .map((entry) => this.toCatalogLineupArtistDto(entry, index))
-      .filter((entry) => Boolean(entry.thumbnail?.trim()));
-
-    return ranked.sort((a, b) => compareCatalogLineupArtists(a, b));
+  async refreshRankedCatalogCache(): Promise<void> {
+    const ranked = await this.buildRankedCatalog();
+    this.rankedCache = ranked;
+    await this.jsonCache.setJson(
+      this.dataKey,
+      { items: ranked } satisfies RankedLineupCatalogPayload,
+      this.ttlSec,
+    );
+    this.localVersion = await this.jsonCache.bumpVersion(this.versionKey);
   }
 
   async resolveCatalogLineupArtistById(
@@ -177,7 +216,7 @@ export class LineupCatalogService {
       keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
       'i',
     );
-    const activities = await this.activityLookup.findAll();
+    const activities = await this.activityLookup.findAllBasics();
     const targets =
       params.activityLegacyId != null && !Number.isNaN(params.activityLegacyId)
         ? activities.filter(
@@ -222,6 +261,45 @@ export class LineupCatalogService {
     return hits;
   }
 
+  private async buildRankedCatalog(): Promise<CatalogLineupArtistDto[]> {
+    const index = await this.buildCatalogLineupArtistIndex();
+    if (!index.entries.length) {
+      return [];
+    }
+
+    const ranked = index.entries
+      .map((entry) => this.toCatalogLineupArtistDto(entry, index))
+      .filter((entry) => Boolean(entry.thumbnail?.trim()));
+
+    return ranked.sort((a, b) => compareCatalogLineupArtists(a, b));
+  }
+
+  private async syncRankedCatalogIfStale(): Promise<void> {
+    const remoteVersion = await this.jsonCache.getVersion(this.versionKey);
+    if (
+      remoteVersion &&
+      remoteVersion === this.localVersion &&
+      this.rankedCache
+    ) {
+      return;
+    }
+
+    const payload = await this.jsonCache.getJson<RankedLineupCatalogPayload>(
+      this.dataKey,
+    );
+    if (payload?.items) {
+      this.rankedCache = payload.items;
+      this.localVersion = remoteVersion ?? this.localVersion;
+      return;
+    }
+
+    if (this.rankedCache && !remoteVersion) {
+      return;
+    }
+
+    await this.refreshRankedCatalogCache();
+  }
+
   private async buildCatalogLineupArtistIndex(): Promise<{
     activities: ActivityLookupRecord[];
     activitiesByLegacyId: Map<number, ActivityLookupRecord>;
@@ -230,7 +308,7 @@ export class LineupCatalogService {
     catalog: DjCatalogItem[];
     avatarUrlsByKey: Map<string, string>;
   }> {
-    const activities = await this.activityLookup.findAll();
+    const activities = await this.activityLookup.findAllBasics();
     const activitiesByLegacyId = new Map(
       activities.map((activity) => [activity.legacyId, activity]),
     );

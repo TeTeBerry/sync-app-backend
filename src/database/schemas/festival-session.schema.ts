@@ -5,7 +5,7 @@ export type FestivalSessionDocument = HydratedDocument<FestivalSession>;
 
 @Schema({ collection: 'festival_sessions', timestamps: true })
 export class FestivalSession {
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   activityLegacyId!: number;
 
   @Prop({ required: true })
@@ -27,4 +27,9 @@ export const FestivalSessionSchema =
 FestivalSessionSchema.index(
   { activityLegacyId: 1, dateKey: 1 },
   { unique: true },
+);
+/** Schedule load sort — itinerary-schedule.service.ts */
+FestivalSessionSchema.index(
+  { activityLegacyId: 1, sortOrder: 1 },
+  { name: 'festival_session_activity_sort' },
 );

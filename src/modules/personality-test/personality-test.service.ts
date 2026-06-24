@@ -217,7 +217,7 @@ export class PersonalityTestService {
 
     const score = scorePersonality(dto.answers, questions);
     const runtimeCatalog = await this.catalog.getRuntimeCatalog();
-    const activities = await this.activityLookup.findAll();
+    const activities = await this.activityLookup.findAllBasics();
     const activityLegacyIds = activities.map((activity) => activity.legacyId);
     let recommendations;
     try {

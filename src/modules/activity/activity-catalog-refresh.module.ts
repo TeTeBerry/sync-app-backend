@@ -5,6 +5,7 @@ import {
   ActivityRegistration,
   ActivityRegistrationSchema,
 } from '../../database/schemas/activity-registration.schema';
+import { LineupCatalogModule } from '../itinerary/lineup-catalog.module';
 import { ActivityLookupModule } from './activity-lookup.module';
 import { ActivityCatalogRefreshService } from './activity-catalog-refresh.service';
 import { ActivityRegistrationRepository } from './registration/activity-registration.repository';
@@ -15,6 +16,7 @@ import { ACTIVITY_CATALOG_REFRESH_PORT } from './ports/activity-catalog-refresh.
 @Module({
   imports: [
     ActivityLookupModule,
+    LineupCatalogModule,
     AgentsModule,
     MongooseModule.forFeature([
       {

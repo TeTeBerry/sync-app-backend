@@ -24,6 +24,8 @@ export interface ActivityLookupPageOptions {
 
 export interface IActivityLookupPort {
   findAll(): Promise<ActivityLookupRecord[]>;
+  /** Cached rows without resolving cloud image URLs (catalog aggregation). */
+  findAllBasics(): Promise<ActivityLookupRecord[]>;
   findByLegacyId(legacyId: number): Promise<ActivityLookupRecord | null>;
   findByLegacyIds(
     legacyIds: number[],

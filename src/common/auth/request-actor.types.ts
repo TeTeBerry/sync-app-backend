@@ -2,7 +2,7 @@
 export type ActorSource = 'jwt' | 'anonymous';
 
 /**
- * Unified request identity for REST and WebSocket.
+ * Unified request identity for REST (and future streaming transports).
  * - JWT: `clientUserId` is token `sub`; `resolvedUserId` is the same.
  * - Anonymous: empty ids on `@Public()` routes without Bearer.
  */

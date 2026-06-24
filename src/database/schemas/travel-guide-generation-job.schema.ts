@@ -13,10 +13,10 @@ export class TravelGuideGenerationJob {
   @Prop({ required: true, unique: true, index: true })
   jobId!: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   activityLegacyId!: number;
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   ownerUserId!: string;
 
   @Prop({
@@ -27,7 +27,7 @@ export class TravelGuideGenerationJob {
   status!: TravelGuideGenerationJobStatus;
 
   /** Same params hash as generation cache — dedupe in-flight jobs per user. */
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   dedupeKey!: string;
 
   @Prop({ type: Object, required: true })
@@ -53,4 +53,12 @@ export const TravelGuideGenerationJobSchema = SchemaFactory.createForClass(
 TravelGuideGenerationJobSchema.index(
   { expiresAt: 1 },
   { expireAfterSeconds: 0 },
+);
+TravelGuideGenerationJobSchema.index(
+  { ownerUserId: 1, dedupeKey: 1, status: 1 },
+  { name: 'travel_guide_job_dedupe' },
+);
+TravelGuideGenerationJobSchema.index(
+  { ownerUserId: 1, activityLegacyId: 1, status: 1, updatedAt: -1 },
+  { name: 'travel_guide_job_latest_completed' },
 );

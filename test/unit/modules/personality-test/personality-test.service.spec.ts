@@ -63,7 +63,7 @@ describe('PersonalityTestService profile sync', () => {
         {
           provide: ACTIVITY_LOOKUP_PORT,
           useValue: {
-            findAll: jest.fn().mockResolvedValue([{ legacyId: 8 }]),
+            findAllBasics: jest.fn().mockResolvedValue([{ legacyId: 8 }]),
           },
         },
         {
