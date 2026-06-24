@@ -43,4 +43,19 @@ describe('lineup-name-match.util', () => {
       'Ghengar',
     );
   });
+
+  it('matches exact lineup name and ignores partial homonyms', () => {
+    const crowded = [
+      { name: 'Marsha Smith', discogsId: 1 },
+      { name: 'Marshmello', discogsId: 2 },
+    ];
+    expect(matchLineupArtistToCatalog('MARSHMELLO', crowded)?.name).toBe(
+      'Marshmello',
+    );
+  });
+
+  it('does not fuzzy-match partial catalog names', () => {
+    const crowded = [{ name: 'Marsha Smith', discogsId: 1 }];
+    expect(matchLineupArtistToCatalog('MARTIN GARRIX', crowded)).toBeNull();
+  });
 });

@@ -18,18 +18,35 @@ export function collectLineupArtistsForActivity(
   performances: Array<{
     activityLegacyId: number;
     artistName?: string;
+    genre?: string;
     genreLabel?: string;
   }>,
-): Array<{ artistName: string; genreLabel: string }> {
-  const byName = new Map<string, { artistName: string; genreLabel: string }>();
-  const addArtist = (artistName: string, genreLabel: string) => {
+): Array<{ artistName: string; genre: string; genreLabel: string }> {
+  const byName = new Map<
+    string,
+    { artistName: string; genre: string; genreLabel: string }
+  >();
+  const addArtist = (
+    artistName: string,
+    genreLabel: string,
+    genre?: string,
+  ) => {
     const trimmed = artistName.trim();
     if (!trimmed) return;
     const key = trimmed.toLowerCase();
-    if (byName.has(key)) return;
+    const resolvedGenre = genre?.trim() ?? '';
+    const resolvedLabel = genreLabel.trim() || 'Electronic';
+    const existing = byName.get(key);
+    if (existing) {
+      if (resolvedGenre) {
+        existing.genre = resolvedGenre;
+      }
+      return;
+    }
     byName.set(key, {
       artistName: trimmed,
-      genreLabel: genreLabel.trim() || 'Electronic',
+      genre: resolvedGenre,
+      genreLabel: resolvedLabel,
     });
   };
 
@@ -39,18 +56,18 @@ export function collectLineupArtistsForActivity(
     if (perf.activityLegacyId !== activityLegacyId) {
       continue;
     }
-    addArtist(perf.artistName ?? '', perf.genreLabel ?? '');
+    addArtist(perf.artistName ?? '', perf.genreLabel ?? '', perf.genre);
   }
 
   for (const dj of resolveLineupDjs(activityLegacyId)) {
-    addArtist(dj.name, dj.genreLabel);
+    addArtist(dj.name, dj.genreLabel, dj.genre);
   }
 
   if (byName.size === beforeCount) {
     const { performances: seedPerformances } =
       resolveItineraryCatalogSeed(activityLegacyId);
     for (const perf of seedPerformances) {
-      addArtist(perf.artistName, perf.genreLabel);
+      addArtist(perf.artistName, perf.genreLabel, perf.genre);
     }
   }
 

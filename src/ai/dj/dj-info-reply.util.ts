@@ -2,6 +2,7 @@ import type {
   DjCatalogItem,
   DjRepresentativeWork,
 } from '../../modules/dj/dj.types';
+import { sortRepresentativeWorksByRecency } from '../../modules/itinerary/utils/artist-profile-detail.util';
 
 type LineupDj = {
   name: string;
@@ -53,12 +54,12 @@ export function formatArtistDiscographyReply(params: {
   artistName: string;
   works: DjRepresentativeWork[];
 }): string {
-  const title = `🎵 ${params.artistName} 代表作`;
+  const title = `🎵 ${params.artistName} 近期发行`;
   if (!params.works.length) {
-    return `${title}\n暂未收录该艺人的曲目列表，可以先问风格或近期演出。`;
+    return `${title}\n暂未收录该艺人的近期发行，可以先问风格或近期演出。`;
   }
 
-  const lines = params.works.map((work) => {
+  const lines = sortRepresentativeWorksByRecency(params.works).map((work) => {
     const year = work.year ? ` (${work.year})` : '';
     const trackLines = work.tracks
       .slice(0, 5)

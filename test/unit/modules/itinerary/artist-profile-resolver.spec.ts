@@ -48,4 +48,37 @@ describe('ArtistProfileResolver', () => {
     expect(artist.profileFull).toBe('International DJ profile text');
     expect(artist.profileSummary).toContain('International DJ');
   });
+
+  it('uses seed fallback profile when Discogs is skipped for seed-only artists', async () => {
+    const lineupCatalog = {
+      resolveCatalogLineupArtistById: jest.fn().mockResolvedValue({
+        id: 'crush',
+        name: 'CRUSH',
+        genre: 'Hardstyle',
+        genreLabel: 'Hardstyle · Rawstyle',
+        activityCount: 1,
+      }),
+    };
+    const djService = {
+      lookupForLineupArtists: jest.fn().mockResolvedValue(new Map()),
+      resolveProfileForDisplay: jest.fn(),
+    };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ArtistProfileResolver,
+        { provide: LineupCatalogService, useValue: lineupCatalog },
+        { provide: DjService, useValue: djService },
+      ],
+    }).compile();
+
+    const resolver = moduleRef.get(ArtistProfileResolver);
+    const artist = await resolver.getCatalogLineupArtistDetail('crush');
+
+    expect(artist.genre).toBe('Hardstyle');
+    expect(artist.genreLabel).toBe('Hardstyle · Rawstyle');
+    expect(artist.profileSummary).toContain('Hardstyle');
+    expect(artist.representativeTracks).toBeUndefined();
+    expect(djService.resolveProfileForDisplay).not.toHaveBeenCalled();
+  });
 });

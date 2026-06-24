@@ -41,6 +41,9 @@ export interface CatalogLineupArtistNextActivity {
 export interface CatalogLineupArtist {
   id: string;
   name: string;
+  /** Primary festival filter bucket (e.g. House, Techno). */
+  genre: string;
+  /** Human-readable sub-styles for display (e.g. Big Room · Dutch House). */
   genreLabel: string;
   activityCount: number;
   thumbnail?: string;

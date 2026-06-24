@@ -1,13 +1,27 @@
 import type { DjCatalogItem, DjRepresentativeWork } from '../../dj/dj.types';
 import { truncateCatalogProfileSummary } from './lineup-artist-id.util';
 
+/** Newest releases first; missing year sorts after dated releases. */
+export function sortRepresentativeWorksByRecency(
+  works: DjRepresentativeWork[],
+): DjRepresentativeWork[] {
+  return [...works].sort((a, b) => {
+    const yearA = a.year ?? 0;
+    const yearB = b.year ?? 0;
+    if (yearB !== yearA) {
+      return yearB - yearA;
+    }
+    return b.releaseId - a.releaseId;
+  });
+}
+
 export function pickRepresentativeTrackTitles(
   works: DjRepresentativeWork[] | undefined,
   limit = 3,
 ): string[] {
   const titles: string[] = [];
 
-  for (const work of works ?? []) {
+  for (const work of sortRepresentativeWorksByRecency(works ?? [])) {
     const trackItems = work.tracks ?? [];
     if (trackItems.length) {
       for (const track of trackItems) {

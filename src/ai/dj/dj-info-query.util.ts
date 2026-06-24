@@ -279,7 +279,7 @@ function extractArtistFromAssistantMessage(
   return undefined;
 }
 
-/** 从最近对话提取参考艺人（新消息优先，避免串到更早的 Marshmello 等上下文） */
+/** 从最近对话提取参考艺人（新消息优先，避免串到更早的上下文） */
 export function resolveDjChatContext(
   messages: ChatMessageDto[],
 ): DjChatContext {

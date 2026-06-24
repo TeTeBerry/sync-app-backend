@@ -191,8 +191,10 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月13日',
     artistId: 'marshmello',
     artistName: 'MARSHMELLO',
+    /** 主筛选项 — 策展维护，不采用 Discogs 自动标签 */
     genre: 'Future Bass',
-    genreLabel: 'Trap · Dubstep · Pop · Future Bass',
+    /** 代表曲风 — 与阵容/艺人卡展示一致 */
+    genreLabel: 'Future Bass · Melodic Trap · Future House · Electro Pop',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '20:30',

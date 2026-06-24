@@ -94,7 +94,7 @@ describe('ItineraryScheduleService discogs styles', () => {
             dateKey: 'dec18',
             dateLabel: '12月18日',
             genre: 'Big Room',
-            genreLabel: 'Old Seed Label',
+            genreLabel: 'Big Room · Progressive House',
             stage: 'main',
             stageLabel: '主舞台',
             startTime: '22:00',
@@ -110,13 +110,12 @@ describe('ItineraryScheduleService discogs styles', () => {
     });
 
     const conflictService = new ItineraryConflictService();
-    const discogsGenre = new DiscogsGenreEnrichmentService(djService as never);
+    const discogsGenre = new DiscogsGenreEnrichmentService();
     const lineupCatalog = new LineupCatalogService(
       performanceModel as never,
       activityLookup as never,
       djService as never,
       lineupArtistAvatarService as never,
-      discogsGenre,
     );
     const artistProfileResolver = new ArtistProfileResolver(
       lineupCatalog,
@@ -136,12 +135,10 @@ describe('ItineraryScheduleService discogs styles', () => {
     );
   });
 
-  it('replaces seed genreLabel with Discogs styles for EDC Thailand', async () => {
+  it('keeps seed genreLabel on lineup schedule (Discogs does not override)', async () => {
     const schedule = await service.getSchedule(5);
 
-    expect(djService.lookupForLineupArtists).toHaveBeenCalledWith([
-      'MARTIN GARRIX',
-    ]);
+    expect(djService.lookupForLineupArtists).not.toHaveBeenCalled();
     expect(schedule.djs[0]?.genreLabel).toBe('Big Room · Progressive House');
     expect(schedule.performances[0]?.genreLabel).toBe(
       'Big Room · Progressive House',
@@ -150,7 +147,7 @@ describe('ItineraryScheduleService discogs styles', () => {
     expect(schedule.djs[0]?.stageLabel).toBe('主舞台');
   });
 
-  it('merges B2B artist styles from split lineup names', async () => {
+  it('keeps B2B seed genreLabel without merging Discogs styles', async () => {
     performanceModel.find.mockReturnValue({
       lean: jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue([
@@ -177,9 +174,7 @@ describe('ItineraryScheduleService discogs styles', () => {
     });
 
     const schedule = await service.getSchedule(5);
-    expect(schedule.performances[0]?.genreLabel).toBe(
-      'Drum n Bass · Jump Up · Deep House',
-    );
+    expect(schedule.performances[0]?.genreLabel).toBe('Jump Up · D&B');
   });
 
   it('falls back to seed genreLabel when Discogs has no styles', async () => {
@@ -449,6 +444,7 @@ describe('ItineraryScheduleService discogs styles', () => {
     const afrojack = artists.find((item) => item.name === 'AFROJACK');
 
     expect(afrojack?.genreLabel).toBe('Big Room · Dutch House');
+    expect(afrojack?.genre).toBe('House');
   });
 
   it('ranks artists with upcoming shows before higher activity counts', async () => {

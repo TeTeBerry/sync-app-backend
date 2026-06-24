@@ -83,6 +83,9 @@ export class CatalogLineupArtistDto {
   @ApiProperty()
   name!: string;
 
+  @ApiProperty({ description: 'Primary genre bucket for catalog filters' })
+  genre!: string;
+
   @ApiProperty()
   genreLabel!: string;
 

@@ -141,7 +141,7 @@ export class DjInfoService {
     );
     if (!best) {
       return {
-        replyText: `没在艺人库里找到「${artistName}」，暂时无法查询代表作。`,
+        replyText: `没在艺人库里找到「${artistName}」，暂时无法查询近期发行。`,
       };
     }
 

@@ -13,7 +13,6 @@ import {
 import { DjService } from '../dj/dj.service';
 import type { DjCatalogItem } from '../dj/dj.types';
 import { compareActivityDateAsc } from '../../common/utils/activity-date.util';
-import { DiscogsGenreEnrichmentService } from './discogs-genre-enrichment.service';
 import { LineupArtistAvatarService } from './lineup-artist-avatar.service';
 import { artistIdFromLineupName } from './utils/lineup-artist-id.util';
 import {
@@ -21,6 +20,10 @@ import {
   compareCatalogLineupArtists,
   pickNextActivityForArtist,
 } from './domain/lineup-catalog-artist.util';
+import {
+  resolveLineupSeedGenre,
+  resolveLineupSeedGenreLabel,
+} from './domain/lineup-artist-data-policy';
 import type {
   ArtistPerformanceHit,
   CatalogLineupArtistDto,
@@ -36,7 +39,6 @@ export class LineupCatalogService {
     private readonly activityLookup: IActivityLookupPort,
     private readonly djService: DjService,
     private readonly lineupArtistAvatarService: LineupArtistAvatarService,
-    private readonly discogsGenre: DiscogsGenreEnrichmentService,
   ) {}
 
   async listLineupArtistsForActivities(
@@ -65,7 +67,7 @@ export class LineupCatalogService {
       .filter((id) => existingIds.has(id));
     const performances = await this.performanceModel
       .find({ activityLegacyId: { $in: legacyIds } })
-      .select('activityLegacyId artistName genreLabel')
+      .select('activityLegacyId artistName genre genreLabel')
       .lean()
       .exec();
 
@@ -189,7 +191,7 @@ export class LineupCatalogService {
     const legacyIds = targets.map((activity) => activity.legacyId);
     const performances = await this.performanceModel
       .find({ activityLegacyId: { $in: legacyIds } })
-      .select('activityLegacyId artistName genreLabel')
+      .select('activityLegacyId artistName genre genreLabel')
       .lean()
       .exec();
 
@@ -246,7 +248,7 @@ export class LineupCatalogService {
     const legacyIds = activities.map((activity) => activity.legacyId);
     const performances = await this.performanceModel
       .find({ activityLegacyId: { $in: legacyIds } })
-      .select('activityLegacyId artistName genreLabel')
+      .select('activityLegacyId artistName genre genreLabel')
       .lean()
       .exec();
 
@@ -265,10 +267,13 @@ export class LineupCatalogService {
         if (!entry) {
           entry = {
             artistName: artist.artistName.trim(),
+            genre: artist.genre,
             genreLabel: artist.genreLabel,
             activityIds: new Set<number>(),
           };
           byArtist.set(key, entry);
+        } else if (artist.genre && !entry.genre) {
+          entry.genre = artist.genre;
         }
         entry.activityIds.add(activity.legacyId);
       }
@@ -305,21 +310,19 @@ export class LineupCatalogService {
       avatarUrlsByKey: Map<string, string>;
     },
   ): CatalogLineupArtistDto {
-    const genreLabel = this.discogsGenre.resolveDiscogsGenreLabel(
-      entry.artistName,
-      entry.genreLabel,
-      index.catalogByLineupName,
-      index.catalog,
-    );
+    const seedGenreLabel = entry.genreLabel.trim() || 'Electronic';
+    const genreLabel = resolveLineupSeedGenreLabel(seedGenreLabel);
     const nameKey = entry.artistName.trim().toLowerCase();
     const nextActivity = pickNextActivityForArtist(
       entry.activityIds,
       index.activitiesByLegacyId,
     );
+    const genre = resolveLineupSeedGenre(entry.genre, seedGenreLabel);
 
     return {
       id: artistIdFromLineupName(entry.artistName),
       name: entry.artistName,
+      genre,
       genreLabel,
       activityCount: entry.activityIds.size,
       thumbnail: index.avatarUrlsByKey.get(nameKey),

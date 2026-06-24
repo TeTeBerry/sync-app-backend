@@ -9,7 +9,7 @@ export const DISCOGS_LINEUP_ARTIST_IDS: Record<string, number> = {
   'DJ SNAKE': 4046989,
 };
 
-/** No reliable Discogs profile — itinerary uses seed genreLabel instead. */
+/** No reliable Discogs profile — skip crawl; genres always from itinerary seed. */
 export const SEED_ONLY_LINEUP_ARTISTS = new Set([
   '&FRIENDS',
   'PETERBLUE',
@@ -173,26 +173,28 @@ export function getLineupCoverageKeys(lineupName: string): string[] {
   return [...new Set(keys.filter(Boolean))];
 }
 
-export function matchLineupArtistToCatalog<T extends { name: string }>(
-  lineupName: string,
-  catalog: T[],
-): T | null {
+export function matchLineupArtistToCatalog<
+  T extends { name: string; discogsId?: number },
+>(lineupName: string, catalog: T[]): T | null {
   const trimmed = lineupName.trim();
   if (SEED_ONLY_LINEUP_ARTISTS.has(trimmed.toUpperCase())) {
     return null;
   }
 
+  const forcedId = DISCOGS_LINEUP_ARTIST_IDS[trimmed.toUpperCase()];
+  if (forcedId) {
+    const forced = catalog.find((item) => item.discogsId === forcedId);
+    if (forced) {
+      return forced;
+    }
+  }
+
   const alias = DISCOGS_LINEUP_SEARCH_ALIASES[trimmed.toUpperCase()];
   if (alias) {
     const aliasKey = normalizeArtistNameKey(alias);
-    const aliasHit = catalog.find((item) => {
-      const djKey = normalizeArtistNameKey(item.name);
-      return (
-        djKey === aliasKey ||
-        djKey.includes(aliasKey) ||
-        aliasKey.includes(djKey)
-      );
-    });
+    const aliasHit = catalog.find(
+      (item) => normalizeArtistNameKey(item.name) === aliasKey,
+    );
     if (aliasHit) {
       return aliasHit;
     }
@@ -208,14 +210,7 @@ export function matchLineupArtistToCatalog<T extends { name: string }>(
     if (!djKey) {
       continue;
     }
-    if (
-      targetKeys.some(
-        (targetKey) =>
-          djKey === targetKey ||
-          djKey.includes(targetKey) ||
-          targetKey.includes(djKey),
-      )
-    ) {
+    if (targetKeys.some((targetKey) => djKey === targetKey)) {
       return item;
     }
   }

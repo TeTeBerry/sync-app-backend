@@ -52,6 +52,8 @@
     "db:sync-defqon-avatars": "node scripts/sync-lineup-artist-avatars-cloud.mjs --missing-only --activity-legacy-id 2",
     "db:sync-lineup-avatars:dry-run": "node scripts/sync-lineup-artist-avatars-cloud.mjs --missing-only --dry-run",
     "db:report-lineup-avatar-gaps": "node scripts/report-lineup-avatar-gaps.mjs",
+    "db:report-defqon-gaps": "node scripts/report-defqon-artist-gaps.mjs",
+    "db:report-defqon-gaps:json": "node scripts/report-defqon-artist-gaps.mjs -- --write-json",
     "db:translate-dj-locale": "node scripts/translate-dj-locale.mjs",
     "db:translate-dj-locale:all": "node scripts/translate-dj-locale-all.mjs",
     "db:sync-dj-profile-locale:all": "node scripts/sync-dj-profile-locale-all.mjs",

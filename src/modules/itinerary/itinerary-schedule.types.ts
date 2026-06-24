@@ -37,6 +37,7 @@ export type CatalogLineupArtistDetailDto = CatalogLineupArtistDetail;
 
 export type CatalogLineupArtistEntryInternal = {
   artistName: string;
+  genre: string;
   genreLabel: string;
   activityIds: Set<number>;
 };

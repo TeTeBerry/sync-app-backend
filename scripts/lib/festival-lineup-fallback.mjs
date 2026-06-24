@@ -176,7 +176,7 @@ export const DISCOGS_LINEUP_ARTIST_IDS = {
   'DJ SNAKE': 4046989,
 };
 
-/** Skip Discogs crawl — no reliable match; itinerary keeps seed genreLabel. */
+/** Discogs homonyms / unreliable pages — skip profile + crawl; genres still from seed. */
 export const SEED_ONLY_LINEUP_ARTISTS = new Set([
   '&FRIENDS',
   'PETERBLUE',
@@ -261,6 +261,35 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   'RAVE REPUBLIC': 'Rave Republic',
   WHISNU: 'Whisnu Santika',
   'WHISNU SANTIKA': 'Whisnu Santika',
+
+  // --- Defqon.1 2026 (display name → Discogs search) ---
+  'ROOLER - 3 HOUR SET': 'Rooler',
+  'VERTILE: EVERYTHING CHANGES LIVE': 'Vertile',
+  'WILDSTYLEZ - BACK 2 BASICS': 'Wildstylez',
+  'ENCORE WITH PHUTURE NOIZE': 'Phuture Noize',
+  'GUNZ FOR HIRE - XV THE UNDERGROUND KINGS': 'Gunz For Hire',
+  'THE SPOTLIGHT WITH BRENNAN HEART': 'Brennan Heart',
+  'FRONTLINER & MAX ENFORCER': 'Fronliner',
+  'ZATOX & MAD DOG': 'Zatox',
+  'AUDIOTRICZ LIVE': 'Audiotricz',
+  'NOISECONTROLLERS TWO DECADES': 'Noisecontrollers',
+  'LNY TNZ X JEBROER': 'LNY TNZ',
+  'REJECTA & ADARO': 'Rejecta',
+  'THE PITCHER & SLIM SHORE PRESENT THIS IS WHO WE ARE!': 'The Pitcher',
+  'DEVIN WILD - AMONG THE NOISE': 'Devin Wild',
+  'DEEZL: AEON': 'Deezl',
+  'CRYEX': 'Cryex',
+  'EVIL ACTIVITIES': 'Evil Activities',
+  'GEZELLIGE UPTEMPO': 'Gezellige Uptempo',
+  'GHOST-LACTIXX': 'Ghostlactixx',
+  'HARDE KWARK': 'Harde Kwark',
+  'BREAK BY DL': 'Break by DL',
+  'FIGHT SWITCH': 'Fight Switch',
+  'DIRTY LIL MONKEYZ': 'Dirty Lil Monkeyz',
+  'ARABIERQANTUS': 'Arabierqantus',
+  'COENFETTI': 'Coenfetti',
+  'FEESTNATION': 'Feestnation',
+  'MURDOCK': 'Murdock',
 };
 
 /** Lineup display name → normalized keys of acceptable `djs.name` matches. */

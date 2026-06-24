@@ -62,7 +62,7 @@ describe('DjInfoService', () => {
       scope: 'catalog',
     });
 
-    expect(replyText).toContain('Marshmello 代表作');
+    expect(replyText).toContain('Marshmello 近期发行');
     expect(replyText).toContain('Alone (2016)');
     expect(replyText).toContain('· Alone');
   });
