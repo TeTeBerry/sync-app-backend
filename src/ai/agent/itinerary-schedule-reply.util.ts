@@ -13,7 +13,7 @@ export function buildItineraryScheduleOverviewReply(
   if (schedule.djs.length === 0) {
     lines.push('阵容未公布，官宣后会第一时间同步～');
   } else if (schedule.schedulePublished) {
-    lines.push(`官方演出表已发布，共 ${schedule.performances.length} 场演出。`);
+    lines.push(`官方时间表已发布，共 ${schedule.performances.length} 场演出。`);
     lines.push(`部分艺人：${djPreview}`);
   } else {
     lines.push('阵容已公布，官方演出时段尚未发布。');

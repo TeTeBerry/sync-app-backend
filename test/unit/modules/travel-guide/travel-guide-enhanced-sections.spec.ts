@@ -4,6 +4,7 @@ import {
   buildTravelGuideEssentials,
   isTravelGuideAbroad,
   sanitizeTicketChannelsForActivity,
+  travelGuideRegionKind,
 } from '../../../../src/modules/travel-guide/domain/travel-guide-international.util';
 import {
   accommodationSchemesFromRanked,
@@ -223,6 +224,22 @@ describe('travel guide enhanced sections', () => {
   });
 
   it('builds overseas ticket channels without domestic platforms', () => {
+    const tmlThailand = buildTicketChannels({
+      name: 'Tomorrowland Thailand 2026',
+      location: '芭提雅 Wisdom Valley',
+      region: 'overseas',
+      code: 'tomorrowland',
+    });
+    expect(
+      tmlThailand.some((c) => /thailand\.tomorrowland\.com/i.test(c.note)),
+    ).toBe(true);
+    expect(tmlThailand.some((c) => /Klook/i.test(c.name))).toBe(true);
+    expect(
+      tmlThailand.some((c) =>
+        /大麦|猫眼|小程序|公众号/.test(`${c.name} ${c.note}`),
+      ),
+    ).toBe(false);
+
     const wdjf = buildTicketChannels({
       name: 'World DJ Festival Japan 2026',
       location: '日本·东京 海の森水上競技場',
@@ -286,6 +303,40 @@ describe('travel guide enhanced sections', () => {
     );
     expect(sanitized.some((c) => /大麦|猫眼/.test(c.name))).toBe(false);
     expect(sanitized.some((c) => /ultraeurope\.com/i.test(c.note))).toBe(true);
+  });
+
+  it('infers overseas region for TML Thailand when region field is missing', () => {
+    expect(
+      travelGuideRegionKind({
+        name: 'Tomorrowland Thailand 2026',
+        location: '芭提雅 Wisdom Valley',
+        code: 'tomorrowland',
+      }),
+    ).toBe('overseas');
+  });
+
+  it('replaces LLM domestic ticket mix with overseas fallback for TML Thailand', () => {
+    const sanitized = sanitizeTicketChannelsForActivity(
+      [
+        { name: '大麦 / 猫眼', note: '国内大型电音节常用官方授权渠道' },
+        { name: '活动官方小程序 / 公众号', note: '搜索活动全名' },
+        {
+          name: 'Klook / Trip.com（境外场）',
+          note: 'EDC Thailand、Tomorrowland 等境外场常用',
+        },
+      ],
+      {
+        name: 'Tomorrowland Thailand 2026',
+        location: '芭提雅 Wisdom Valley',
+        code: 'tomorrowland',
+      },
+    );
+    expect(sanitized.some((c) => /大麦|猫眼|小程序|公众号/.test(c.name))).toBe(
+      false,
+    );
+    expect(
+      sanitized.some((c) => /thailand\.tomorrowland\.com/i.test(c.note)),
+    ).toBe(true);
   });
 
   it('includes official url in ticket channels', () => {

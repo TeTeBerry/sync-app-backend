@@ -82,7 +82,7 @@ describe('ReadOnlyTurnHandler', () => {
   it('returns schedule delta without agent', async () => {
     const result = await handler.tryRun({
       ...baseCtx,
-      input: '查演出表',
+      input: '查时间表',
       routed: {
         kind: 'dj_info',
         source: 'rule',
@@ -93,7 +93,7 @@ describe('ReadOnlyTurnHandler', () => {
     expect(result?.events.some((event) => event.type === 'delta')).toBe(true);
     expect(itineraryPort.getSchedule).toHaveBeenCalledWith(1, {});
     expect(baseCtx.sink.setReply).toHaveBeenCalledWith(
-      expect.stringContaining('官方演出表已发布'),
+      expect.stringContaining('官方时间表已发布'),
     );
   });
 

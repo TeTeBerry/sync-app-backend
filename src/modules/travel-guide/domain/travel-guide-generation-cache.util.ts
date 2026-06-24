@@ -35,8 +35,8 @@ export function normalizeTravelGuideGenerationParams(
   };
 }
 
-/** Bump when map POI / venue resolution logic changes (invalidates cached plans). */
-const TRAVEL_GUIDE_MAP_DATA_VERSION = 2;
+/** Bump when map POI / venue resolution or overseas ticket channel logic changes. */
+const TRAVEL_GUIDE_MAP_DATA_VERSION = 3;
 
 /**
  * Normalize params for fuzzy matching.

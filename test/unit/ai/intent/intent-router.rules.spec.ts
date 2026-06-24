@@ -154,9 +154,9 @@ describe('intent-router.rules', () => {
     });
 
     expect(
-      resolveChatIntentFastPath('查演出表', {
+      resolveChatIntentFastPath('查时间表', {
         messages: [],
-        input: '查演出表',
+        input: '查时间表',
         activityLegacyId: 1,
       }),
     ).toEqual({

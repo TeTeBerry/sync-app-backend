@@ -54,8 +54,8 @@ export type ReadOnlyFastPathKind =
   | 'festival_catalog';
 
 export const SCHEDULE_OVERVIEW_FAST_PATH_INPUTS = new Set([
-  '查演出表',
-  '演出表',
+  '查时间表',
+  '时间表',
   '演出日程',
 ]);
 
@@ -90,7 +90,7 @@ export function isScheduleOverviewFastPathInput(input: string): boolean {
   if (SCHEDULE_OVERVIEW_FAST_PATH_INPUTS.has(trimmed)) {
     return true;
   }
-  return /^查.*演出表$/.test(trimmed) && trimmed.length <= 12;
+  return /^查.*时间表$/.test(trimmed) && trimmed.length <= 12;
 }
 
 export function resolveReadOnlyActivityFastPath(

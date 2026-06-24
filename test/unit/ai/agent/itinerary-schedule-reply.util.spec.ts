@@ -44,7 +44,7 @@ describe('itinerary-schedule-reply.util', () => {
         genreColor: '#fff',
       })),
     });
-    expect(reply).toContain('官方演出表已发布，共 3 场演出');
+    expect(reply).toContain('官方时间表已发布，共 3 场演出');
     expect(reply).toContain('Martin Garrix');
   });
 

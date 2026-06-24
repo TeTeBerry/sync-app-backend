@@ -36,7 +36,7 @@ const OVERSEAS_TICKET_CHANNELS_BY_CODE: Record<
   'edc-orlando': [
     {
       name: 'EDC Orlando 官网（Insomniac）',
-      note: 'https://orlando.electricdaisycarnival.com — 官方售票、Payment Plan 与 Shuttle 加购。',
+      note: 'https://orlando.edc.com — 官方售票、Payment Plan 与 Shuttle 加购。',
     },
     {
       name: 'Front Gate Tickets',
@@ -46,7 +46,7 @@ const OVERSEAS_TICKET_CHANNELS_BY_CODE: Record<
   'edc-korea': [
     {
       name: 'EDC Korea 官网',
-      note: 'https://korea.electricdaisycarnival.com — 韩国场官方售票与 Shuttle 套票。',
+      note: 'https://korea.edc.com/en/ — 韩国场官方售票与 Shuttle 套票。',
     },
     {
       name: 'Melon Ticket / YES24',
@@ -56,7 +56,7 @@ const OVERSEAS_TICKET_CHANNELS_BY_CODE: Record<
   'edc-thailand': [
     {
       name: 'EDC Thailand 官网',
-      note: 'https://thailand.electricdaisycarnival.com — 官方售票与 Shuttle 接驳套票。',
+      note: 'https://thailand.edc.com — 官方售票与 Shuttle 接驳套票。',
     },
     {
       name: 'Klook',
@@ -126,7 +126,7 @@ const OVERSEAS_TICKET_CHANNELS_BY_CODE: Record<
   'untold-dubai': [
     {
       name: 'UNTOLD Dubai 官网',
-      note: 'https://untold.com/festival/dubai — 迪拜场官方售票与套餐信息。',
+      note: 'https://untold.com/ — 迪拜场官方售票与套餐信息。',
     },
     {
       name: 'Platinumlist / Ticketmaster UAE',
@@ -155,18 +155,52 @@ const OVERSEAS_TICKET_CHANNELS_BY_CODE: Record<
   ],
 };
 
+const DOMESTIC_ACTIVITY_CODES = new Set(['storm', 'tomorrowland-shanghai']);
+
 export type TravelGuideRegionKind = 'domestic' | 'overseas' | 'hmt';
 
+type TravelGuideRegionActivity = Pick<
+  Activity,
+  'region' | 'name' | 'location' | 'code'
+>;
+
+function inferTravelGuideRegionKind(
+  activity: Partial<TravelGuideRegionActivity>,
+): TravelGuideRegionKind | null {
+  const code = activity.code?.trim();
+  if (code && DOMESTIC_ACTIVITY_CODES.has(code)) return 'domestic';
+  if (code && code in OVERSEAS_TICKET_CHANNELS_BY_CODE) return 'overseas';
+
+  const corpus = overseasCorpus(activity);
+  if (/香港|澳门|台湾|hong kong|macau|taipei|台北/.test(corpus)) return 'hmt';
+  if (
+    isThailandOverseasCorpus(corpus) ||
+    isKoreaOverseasCorpus(corpus) ||
+    isJapanOverseasCorpus(corpus) ||
+    /荷兰|比利时|克罗地亚|美国|奥兰多|罗马尼亚|迪拜|沙特|英国|比丁赫伊普|walibi|split|斯普利特/.test(
+      corpus,
+    )
+  ) {
+    return 'overseas';
+  }
+
+  return null;
+}
+
 export function travelGuideRegionKind(
-  activity: Pick<Activity, 'region'>,
+  activity: Partial<TravelGuideRegionActivity>,
 ): TravelGuideRegionKind {
   const region = activity.region?.trim();
   if (region === 'overseas' || region === 'hmt') return region;
+
+  const inferred = inferTravelGuideRegionKind(activity);
+  if (inferred) return inferred;
+
   return 'domestic';
 }
 
 export function isTravelGuideAbroad(
-  activity: Pick<Activity, 'region'>,
+  activity: Partial<TravelGuideRegionActivity>,
 ): boolean {
   return travelGuideRegionKind(activity) !== 'domestic';
 }
@@ -288,10 +322,12 @@ export function sanitizeTicketChannelsForActivity(
   if (!channels?.length) return fallback;
   if (!isTravelGuideAbroad(activity)) return channels;
 
-  const filtered = channels.filter(
-    (ch) => !DOMESTIC_TICKET_CHANNEL_PATTERN.test(`${ch.name} ${ch.note}`),
+  const hasDomesticLeak = channels.some((ch) =>
+    DOMESTIC_TICKET_CHANNEL_PATTERN.test(`${ch.name} ${ch.note}`),
   );
-  return filtered.length ? filtered : fallback;
+  if (hasDomesticLeak) return fallback;
+
+  return channels;
 }
 
 /** 境外/港澳台酒店预订渠道 */
@@ -306,14 +342,14 @@ export function travelGuideHotelBookingHint(
 }
 
 function overseasCorpus(
-  activity: Pick<Activity, 'name' | 'location' | 'region'>,
+  activity: Partial<Pick<Activity, 'name' | 'location' | 'region'>>,
   destinationCity?: string,
 ): string {
   const dest =
     destinationCity?.trim() ||
     destinationCityFromActivityLocation(activity.location) ||
     '';
-  return `${activity.name} ${activity.location ?? ''} ${dest}`.toLowerCase();
+  return `${activity.name ?? ''} ${activity.location ?? ''} ${dest}`.toLowerCase();
 }
 
 export function isThailandOverseasCorpus(corpus: string): boolean {

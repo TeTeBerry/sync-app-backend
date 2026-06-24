@@ -275,10 +275,10 @@ describe('AiTurnPipeline homepage activity gating', () => {
       {
         ...baseDto,
         activityLegacyId: 1,
-        messages: [{ role: 'user', content: '查演出表' }],
+        messages: [{ role: 'user', content: '查时间表' }],
       },
-      [{ role: 'user', content: '查演出表' }],
-      '查演出表',
+      [{ role: 'user', content: '查时间表' }],
+      '查时间表',
       { version: 1, flow: 'idle' },
       'req-schedule-fast',
       'schedule-session',
