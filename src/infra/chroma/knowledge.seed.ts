@@ -91,4 +91,19 @@ export const KNOWLEDGE_DOCUMENTS: Document[] = [
       '平台支持 AI 查询近期活动、了解电音节信息。回答应简洁、可执行，并在需要时引导用户补充日期、人数、出发城市。',
     metadata: { topic: 'assistant' },
   }),
+  new Document({
+    pageContent:
+      '电音节资讯类小程序常见两类：1）综合资讯聚合（如 EDMLink 等，汇总国内外档期、阵容动态）；2）单场活动官方小程序或公众号（购票、阵容公布、现场指南以主办方为准）。SYNC 提供活动库检索与公开组队招募筛选，不卖票。',
+    metadata: { topic: 'ecosystem', code: 'festival-apps' },
+  }),
+  new Document({
+    pageContent:
+      '查电音节购票渠道时，优先认准活动主办方官方小程序、公众号或官网；第三方聚合平台仅供参考档期。境内大型节如 STORM、VAC 等通常有独立官宣渠道；境外场如 EDC Korea、Ultra Europe 等请关注当地主办方公开信息。',
+    metadata: { topic: 'ecosystem', code: 'ticketing-channels' },
+  }),
+  new Document({
+    pageContent:
+      '出境观演常见准备：确认护照有效期、目的地签证或免签政策、当地货币与支付习惯、往返交通与住宿。韩国、日本、泰国、欧洲等目的地要求不同，请以目的地官方入境政策为准。',
+    metadata: { topic: 'travel', code: 'travel-essentials' },
+  }),
 ];

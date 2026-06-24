@@ -6,17 +6,25 @@ import type {
   SceneRunResponse,
 } from '@sync/scene-contracts';
 import type { SceneHandler } from './handlers/scene-handler.interface';
+import { EventsKnowledgeSearchSceneHandler } from './handlers/events-knowledge-search.handler';
 import { RecruitSearchSceneHandler } from './handlers/recruit-search.handler';
 
-const SUPPORTED_SCENES: SceneId[] = ['recruit_search'];
+const SUPPORTED_SCENES: SceneId[] = [
+  'recruit_search',
+  'events_knowledge_search',
+];
 
 @Injectable()
 export class SceneRunService {
   private readonly handlers: Map<SceneId, SceneHandler>;
 
-  constructor(recruitSearchHandler: RecruitSearchSceneHandler) {
-    this.handlers = new Map([
+  constructor(
+    recruitSearchHandler: RecruitSearchSceneHandler,
+    eventsKnowledgeSearchHandler: EventsKnowledgeSearchSceneHandler,
+  ) {
+    this.handlers = new Map<SceneId, SceneHandler>([
       [recruitSearchHandler.scene, recruitSearchHandler],
+      [eventsKnowledgeSearchHandler.scene, eventsKnowledgeSearchHandler],
     ]);
   }
 

@@ -5,13 +5,46 @@ import type {
   EventDetailPost,
 } from '@sync/partner-contracts';
 
-export type SceneId = 'recruit_search' | 'recruit_compose' | 'prep_nudge';
+export type SceneId =
+  | 'recruit_search'
+  | 'recruit_compose'
+  | 'prep_nudge'
+  | 'events_knowledge_search';
+
+export type EventsActivitySearchParsed = {
+  month?: number;
+  year?: number;
+  region?: 'domestic' | 'overseas' | 'hmt' | 'europe' | 'asia';
+  area?: string;
+  genre?: string;
+  keywords?: string[];
+  intent?: 'discover' | 'recruit' | 'travel' | 'ecosystem';
+};
+
+export type KnowledgeCardSection = {
+  heading?: string;
+  body: string;
+};
+
+export type KnowledgeCardLink = {
+  label: string;
+  activityLegacyId?: number;
+};
+
+export type KnowledgeCardPayload = {
+  title?: string;
+  sections: KnowledgeCardSection[];
+  links?: KnowledgeCardLink[];
+  sources: string[];
+  aiGenerated: boolean;
+};
 
 export type SceneTrigger = 'search' | 'chip' | 'sheet_submit' | 'page_enter';
 
 export interface SceneContext {
   trigger?: SceneTrigger;
   applyPreferenceRank?: boolean;
+  locale?: string;
   [key: string]: unknown;
 }
 
@@ -23,7 +56,7 @@ export interface SceneRunRequest {
   context?: SceneContext;
 }
 
-export type InsightLineVariant = 'parsed' | 'preference';
+export type InsightLineVariant = 'parsed' | 'preference' | 'knowledge';
 
 export type SceneEffect =
   | {
@@ -63,6 +96,16 @@ export type SceneEffect =
   | {
       type: 'inline_card';
       payload: Record<string, unknown>;
+    }
+  | {
+      type: 'knowledge_card';
+      card: KnowledgeCardPayload;
+    }
+  | {
+      type: 'filter_activities';
+      activityLegacyIds: number[];
+      totalMatched: number;
+      parsed?: EventsActivitySearchParsed;
     };
 
 export interface SceneRunResponse {

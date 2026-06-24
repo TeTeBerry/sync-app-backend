@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { SceneRunService } from '../../../../src/ai/scene/scene-run.service';
+import { EventsKnowledgeSearchSceneHandler } from '../../../../src/ai/scene/handlers/events-knowledge-search.handler';
 import { RecruitSearchSceneHandler } from '../../../../src/ai/scene/handlers/recruit-search.handler';
 
 describe('SceneRunService', () => {
@@ -7,8 +8,13 @@ describe('SceneRunService', () => {
     scene: 'recruit_search' as const,
     run: jest.fn(),
   };
+  const eventsKnowledgeHandler = {
+    scene: 'events_knowledge_search' as const,
+    run: jest.fn(),
+  };
   const service = new SceneRunService(
     recruitHandler as unknown as RecruitSearchSceneHandler,
+    eventsKnowledgeHandler as unknown as EventsKnowledgeSearchSceneHandler,
   );
 
   beforeEach(() => {
@@ -27,6 +33,19 @@ describe('SceneRunService', () => {
     await service.run(request, actor);
 
     expect(recruitHandler.run).toHaveBeenCalledWith(request, actor);
+  });
+
+  it('routes events_knowledge_search to handler', async () => {
+    eventsKnowledgeHandler.run.mockResolvedValue({ effects: [] });
+    const request = {
+      scene: 'events_knowledge_search' as const,
+      input: '7月欧洲',
+    };
+    const actor = { resolvedUserId: 'user-1' } as never;
+
+    await service.run(request, actor);
+
+    expect(eventsKnowledgeHandler.run).toHaveBeenCalledWith(request, actor);
   });
 
   it('rejects unsupported scene', async () => {

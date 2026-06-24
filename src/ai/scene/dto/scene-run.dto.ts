@@ -14,6 +14,7 @@ const SCENE_IDS: SceneId[] = [
   'recruit_search',
   'recruit_compose',
   'prep_nudge',
+  'events_knowledge_search',
 ];
 
 export class SceneContextDto implements SceneContext {
@@ -23,6 +24,10 @@ export class SceneContextDto implements SceneContext {
 
   @IsOptional()
   applyPreferenceRank?: boolean;
+
+  @IsOptional()
+  @IsString()
+  locale?: string;
 
   [key: string]: unknown;
 }

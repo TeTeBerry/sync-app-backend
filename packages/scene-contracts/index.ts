@@ -6,6 +6,10 @@ export type {
   InsightLineVariant,
   SceneEffect,
   SceneRunResponse,
+  EventsActivitySearchParsed,
+  KnowledgeCardSection,
+  KnowledgeCardLink,
+  KnowledgeCardPayload,
 } from './scene-run.types';
 
 export type { BuddyPostSearchParsedSummaryPart } from './buddy-post-search-parsed-summary.util';
