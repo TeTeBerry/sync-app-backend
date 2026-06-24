@@ -15,6 +15,7 @@ export type DjCatalogItem = {
   styles: string[];
   country?: string;
   representativeWorks?: DjRepresentativeWork[];
+  chineseAliases?: string[];
 };
 
 export type DjSearchResult = {

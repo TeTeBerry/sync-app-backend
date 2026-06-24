@@ -16,6 +16,10 @@ import { buildDjInfoSuggestedReplies } from './dj-info-suggested-replies.util';
 import type { DjInfoStructuredQuery } from './dj-info-structured.types';
 import type { DjCatalogItem } from '../../modules/dj/dj.types';
 import type { ChatMessageDto } from '@sync/chat-contracts';
+import {
+  getChineseAliasesForArtistName,
+  resolveCanonicalNameFromChineseAlias,
+} from '../../modules/dj/dj-chinese-aliases.util';
 
 const LIST_LIMIT = 8;
 
@@ -334,7 +338,9 @@ export class DjInfoService {
       return null;
     }
 
-    const normalized = artistName.trim().toLowerCase();
+    const resolved =
+      resolveCanonicalNameFromChineseAlias(artistName) ?? artistName;
+    const normalized = resolved.trim().toLowerCase();
     const exact = candidates.find(
       (item) => item.name.trim().toLowerCase() === normalized,
     );
@@ -360,9 +366,15 @@ export class DjInfoService {
 
   private async findLineupArtist(artistName: string, activityLegacyId: number) {
     const schedule = await this.scheduleService.getSchedule(activityLegacyId);
-    const normalized = artistName.trim().toLowerCase();
+    const resolved =
+      resolveCanonicalNameFromChineseAlias(artistName) ?? artistName;
+    const normalized = resolved.trim().toLowerCase();
+    const aliasQuery = artistName.trim();
     return (
       schedule.djs.find((dj) => dj.name.trim().toLowerCase() === normalized) ??
+      schedule.djs.find((dj) =>
+        getChineseAliasesForArtistName(dj.name).includes(aliasQuery),
+      ) ??
       schedule.djs.find((dj) =>
         dj.name.trim().toLowerCase().includes(normalized),
       ) ??

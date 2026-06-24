@@ -91,6 +91,12 @@ export class CatalogLineupArtistDto {
 
   @ApiProperty()
   activityCount!: number;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Common Chinese nicknames',
+  })
+  chineseAliases?: string[];
 }
 
 export class ActivityResolveResultDto {

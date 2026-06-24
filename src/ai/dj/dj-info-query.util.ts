@@ -1,6 +1,7 @@
 import type { ChatMessageDto } from '@sync/chat-contracts';
 import type { DjInfoStructuredQuery } from './dj-info-structured.types';
 import { resolveHomeFestivalShortcutCode } from '../utils/festival-shortcut.util';
+import { resolveCanonicalNameFromChineseAlias } from '../../modules/dj/dj-chinese-aliases.util';
 
 export type DjInfoQueryKind =
   | 'artist_profile'
@@ -175,6 +176,9 @@ export function isPlausibleArtistName(name: string): boolean {
   const trimmed = name.trim();
   if (!trimmed || trimmed.length < 2 || trimmed.length > 48) {
     return false;
+  }
+  if (resolveCanonicalNameFromChineseAlias(trimmed)) {
+    return true;
   }
   if (looksLikeDjSearchCommand(trimmed)) {
     return false;

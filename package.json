@@ -24,8 +24,10 @@
     "infra:up": "docker compose up -d mongo redis",
     "infra:up:cn": "MONGO_IMAGE=docker.m.daocloud.io/library/mongo:7 REDIS_IMAGE=docker.m.daocloud.io/library/redis:7-alpine docker compose up -d mongo redis",
     "infra:chroma": "docker compose --profile chroma up -d chroma",
+    "infra:chroma:cn": "CHROMA_IMAGE=docker.m.daocloud.io/chromadb/chroma:0.5.23 docker compose --profile chroma up -d chroma",
     "infra:down": "docker compose down",
     "wait:mongo": "node scripts/wait-for-port.mjs localhost 27017 90000 MongoDB",
+    "wait:chroma": "node scripts/wait-for-port.mjs localhost 8000 90000 Chroma",
     "db:reset": "node scripts/reset-test-data.mjs",
     "db:sync-catalog": "node scripts/sync-activity-catalog.mjs",
     "db:sync-catalog:all": "node scripts/sync-activity-catalog-all.mjs",
@@ -61,7 +63,7 @@
     "db:translate-dj-locale:all": "node scripts/translate-dj-locale-all.mjs",
     "db:sync-dj-profile-locale:all": "node scripts/sync-dj-profile-locale-all.mjs",
     "dev": "npm run wait:mongo && npm run stop:dev && nest build && nest start --watch",
-    "dev:all": "npm run infra:up:cn && npm run wait:mongo && npm run stop:dev && nest build && nest start --watch",
+    "dev:all": "npm run infra:up:cn && npm run infra:chroma:cn && npm run wait:mongo && npm run wait:chroma && npm run stop:dev && nest build && nest start --watch",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -84,6 +86,7 @@
     "smoke:suite:wait": "node scripts/wait-for-port.mjs localhost 3000 90000 API && npm run smoke:suite"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
     "@langchain/core": "^0.2.10",
     "@nestjs/common": "^10.4.15",
     "@nestjs/config": "^3.3.0",

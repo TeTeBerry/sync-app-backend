@@ -3,6 +3,7 @@ import { InfraChromaModule } from '../../infra/chroma/chroma.module';
 import { InfraLlmModule } from '../../infra/llm/llm.module';
 import { ActivityLookupModule } from '../../modules/activity/activity-lookup.module';
 import { EventsKnowledgeSearchService } from '../../modules/activity/application/events-knowledge-search.service';
+import { ItineraryModule } from '../../modules/itinerary/itinerary.module';
 import { PartnerModule } from '../../modules/partner/partner.module';
 import { UserModule } from '../../modules/user/user.module';
 import { EventsKnowledgeSearchSceneHandler } from './handlers/events-knowledge-search.handler';
@@ -15,6 +16,7 @@ import { SceneRunService } from './scene-run.service';
     PartnerModule,
     UserModule,
     ActivityLookupModule,
+    ItineraryModule,
     InfraChromaModule,
     InfraLlmModule,
   ],

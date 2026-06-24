@@ -436,6 +436,28 @@ export function buildTravelGuideDocumentItems(input: {
   return [];
 }
 
+/** One-line visa / ID hint for festival compare cards (US-Q2-46). */
+export function summarizeVisaHint(
+  activity: Pick<Activity, 'name' | 'location' | 'region' | 'code'>,
+): string {
+  const kind = travelGuideRegionKind(activity);
+  if (kind === 'domestic') {
+    return '国内场：身份证即可，跨省出行注意高铁/机票实名。';
+  }
+
+  const items = buildTravelGuideDocumentItems({ activity });
+  if (kind === 'hmt') {
+    return items[0] ?? '港澳通行证 / 台湾通行证（有效签注）。';
+  }
+
+  const visaLine = items.find((item) =>
+    /签证|护照|通行证|Visit Japan|K-ETA|落地签/.test(item),
+  );
+  return (
+    visaLine ?? items[0] ?? '按目的地提前确认证件要求（以入境当日官方为准）。'
+  );
+}
+
 export function buildTravelGuideEssentials(input: {
   activity: Pick<Activity, 'name' | 'location' | 'region'>;
   destinationCity?: string;

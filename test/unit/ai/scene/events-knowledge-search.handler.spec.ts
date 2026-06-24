@@ -57,7 +57,15 @@ describe('EventsKnowledgeSearchSceneHandler', () => {
         },
         {
           type: 'knowledge_card',
-          card: expect.objectContaining({ title: '电音节资讯' }),
+          card: expect.objectContaining({
+            title: '电音节资讯',
+            links: [
+              {
+                label: 'Ultra Europe 2026',
+                activityLegacyId: 3,
+              },
+            ],
+          }),
         },
         {
           type: 'filter_activities',

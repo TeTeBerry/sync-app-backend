@@ -11,6 +11,7 @@ import {
   type IActivityLookupPort,
 } from '../activity/ports/activity-lookup.port';
 import { DjService } from '../dj/dj.service';
+import { getChineseAliasesForArtistName } from '../dj/dj-chinese-aliases.util';
 import type { DjCatalogItem } from '../dj/dj.types';
 import { compareActivityDateAsc } from '../../common/utils/activity-date.util';
 import { LineupArtistAvatarService } from './lineup-artist-avatar.service';
@@ -318,6 +319,10 @@ export class LineupCatalogService {
       index.activitiesByLegacyId,
     );
     const genre = resolveLineupSeedGenre(entry.genre, seedGenreLabel);
+    const catalogItem = index.catalogByLineupName.get(entry.artistName);
+    const chineseAliases = catalogItem?.chineseAliases?.length
+      ? catalogItem.chineseAliases
+      : getChineseAliasesForArtistName(entry.artistName);
 
     return {
       id: artistIdFromLineupName(entry.artistName),
@@ -326,6 +331,7 @@ export class LineupCatalogService {
       genreLabel,
       activityCount: entry.activityIds.size,
       thumbnail: index.avatarUrlsByKey.get(nameKey),
+      ...(chineseAliases.length ? { chineseAliases } : {}),
       ...(nextActivity ? { nextActivity } : {}),
     };
   }

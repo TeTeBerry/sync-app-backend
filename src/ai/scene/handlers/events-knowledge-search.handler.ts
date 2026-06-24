@@ -42,10 +42,20 @@ export class EventsKnowledgeSearchSceneHandler implements SceneHandler {
       });
     }
 
+    const activityLinks = result.matchedActivities
+      .slice(0, 4)
+      .map((activity) => ({
+        label: activity.name,
+        activityLegacyId: activity.legacyId,
+      }));
+
     if (result.knowledgeCard) {
       effects.push({
         type: 'knowledge_card',
-        card: result.knowledgeCard,
+        card: {
+          ...result.knowledgeCard,
+          links: activityLinks,
+        },
       });
     }
 

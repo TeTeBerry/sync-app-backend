@@ -1,21 +1,37 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ChromaClient, Collection } from 'chromadb';
 import { Document } from '@langchain/core/documents';
-import { KNOWLEDGE_DOCUMENTS } from './knowledge.seed';
+import { buildStaticKnowledgeDocuments } from './build-static-knowledge-documents.util';
+import { buildActivityKnowledgeDocument } from './chroma-activity-document.util';
+import { ChromaHttpClient } from './chroma-http.client';
+import {
+  embedKnowledgeTexts,
+  warmupKnowledgeEmbedder,
+} from './chroma-embedding.util';
 
 @Injectable()
 export class ChromaService implements OnModuleInit {
   private readonly logger = new Logger(ChromaService.name);
-  private client?: ChromaClient;
-  private collection?: Collection;
+  private httpClient?: ChromaHttpClient;
+  private collectionId?: string;
+  private collectionName = 'sync_knowledge';
   private enabled = false;
+  private embedderReady = false;
 
   constructor(private readonly config: ConfigService) {}
 
   async onModuleInit() {
     await this.initClient();
-    await this.seedIfEmpty();
+    if (this.enabled) {
+      this.embedderReady = await this.warmupEmbedder();
+      if (this.embedderReady) {
+        await this.seedIfEmpty();
+      }
+    }
+  }
+
+  isEmbedderReady(): boolean {
+    return this.embedderReady;
   }
 
   isEnabled(): boolean {
@@ -27,7 +43,6 @@ export class ChromaService implements OnModuleInit {
     return false;
   }
 
-  /** Chroma JS 客户端的 path 必须是 HTTP 基址，不能是本地目录 */
   private resolveChromaBaseUrl(): string | null {
     const url = this.config.get<string>('chroma.url')?.trim();
     if (url) return url;
@@ -42,7 +57,7 @@ export class ChromaService implements OnModuleInit {
 
   private async initClient(): Promise<void> {
     const baseUrl = this.resolveChromaBaseUrl();
-    const collectionName =
+    this.collectionName =
       this.config.get<string>('chroma.collection') ?? 'sync_knowledge';
 
     if (!baseUrl) {
@@ -57,7 +72,7 @@ export class ChromaService implements OnModuleInit {
 
     try {
       await Promise.race([
-        this.connectCollection(baseUrl, collectionName),
+        this.connectCollection(baseUrl),
         new Promise<never>((_, reject) => {
           setTimeout(
             () => reject(new Error(`连接超时（${connectTimeoutMs}ms）`)),
@@ -68,7 +83,7 @@ export class ChromaService implements OnModuleInit {
 
       this.enabled = true;
       this.logger.log(
-        `Chroma connected (${baseUrl}), collection="${collectionName}"`,
+        `Chroma connected (${baseUrl}), collection="${this.collectionName}"`,
       );
     } catch (error) {
       this.enabled = false;
@@ -78,16 +93,31 @@ export class ChromaService implements OnModuleInit {
     }
   }
 
-  private async connectCollection(
-    baseUrl: string,
-    collectionName: string,
-  ): Promise<void> {
-    this.client = new ChromaClient({ path: baseUrl });
+  private async warmupEmbedder(): Promise<boolean> {
+    try {
+      await warmupKnowledgeEmbedder();
+      this.logger.log('Knowledge embedder ready (MiniLM)');
+      return true;
+    } catch (error) {
+      this.logger.warn(
+        `Knowledge embedder unavailable: ${(error as Error).message}. ` +
+          'Vector RAG disabled; Mongo/rules/DJ alias fallback still work.',
+      );
+      return false;
+    }
+  }
 
-    this.collection = await this.client.getOrCreateCollection({
-      name: collectionName,
-      metadata: { source: 'sync-app-backend' },
-    });
+  private async connectCollection(baseUrl: string): Promise<void> {
+    this.httpClient = new ChromaHttpClient(baseUrl);
+    const ok = await this.httpClient.heartbeat();
+    if (!ok) {
+      throw new Error('heartbeat failed');
+    }
+
+    this.collectionId = await this.httpClient.getOrCreateCollection(
+      this.collectionName,
+      { source: 'sync-app-backend' },
+    );
   }
 
   private docId(doc: Document, index: number): string {
@@ -97,23 +127,22 @@ export class ChromaService implements OnModuleInit {
   }
 
   async seedIfEmpty(): Promise<void> {
-    if (!this.collection) return;
+    if (!this.httpClient || !this.collectionId) return;
 
     try {
-      const count = await this.collection.count();
+      const count = await this.httpClient.count(this.collectionId);
       if (count > 0) return;
 
-      await this.upsertDocuments(KNOWLEDGE_DOCUMENTS);
-      this.logger.log(
-        `Seeded ${KNOWLEDGE_DOCUMENTS.length} knowledge documents`,
-      );
+      const staticDocs = buildStaticKnowledgeDocuments();
+      await this.upsertDocuments(staticDocs);
+      this.logger.log(`Seeded ${staticDocs.length} knowledge documents`);
     } catch (error) {
       this.logger.warn(`Chroma seed skipped: ${(error as Error).message}`);
     }
   }
 
   async upsertDocuments(docs: Document[]): Promise<void> {
-    if (!this.collection || !docs.length) return;
+    if (!this.httpClient || !this.collectionId || !docs.length) return;
 
     const ids = docs.map((doc, index) => this.docId(doc, index));
     const documents = docs.map((doc) => doc.pageContent);
@@ -122,7 +151,23 @@ export class ChromaService implements OnModuleInit {
       code: doc.metadata?.code ? String(doc.metadata.code) : '',
     }));
 
-    await this.collection.upsert({ ids, documents, metadatas });
+    let embeddings: number[][];
+    try {
+      embeddings = await embedKnowledgeTexts(documents);
+      this.embedderReady = true;
+    } catch (error) {
+      this.logger.warn(
+        `Chroma upsert embed failed: ${(error as Error).message}`,
+      );
+      return;
+    }
+
+    await this.httpClient.upsert(this.collectionId, {
+      ids,
+      documents,
+      metadatas,
+      embeddings,
+    });
   }
 
   async upsertActivityKnowledge(input: {
@@ -131,29 +176,42 @@ export class ChromaService implements OnModuleInit {
     alias?: string[];
     date?: string;
     location?: string;
+    area?: string;
+    region?: string;
+    activityType?: string;
   }): Promise<void> {
-    const aliasText = input.alias?.length
-      ? `别名：${input.alias.join('、')}。`
-      : '';
-    const dateText = input.date ? `档期：${input.date}。` : '';
-    const locationText = input.location ? `地点：${input.location}。` : '';
-
-    const doc = new Document({
-      pageContent:
-        `${input.name}（${input.code}）${dateText}${locationText}${aliasText}`.trim(),
-      metadata: { topic: 'activity', code: input.code },
-    });
-
-    await this.upsertDocuments([doc]);
+    await this.upsertDocuments([buildActivityKnowledgeDocument(input)]);
   }
 
-  async query(text: string, n = 3): Promise<Document[]> {
-    if (!this.collection || !text.trim()) return [];
+  async query(
+    text: string,
+    n = 3,
+    options?: { topics?: string[] },
+  ): Promise<Document[]> {
+    if (!this.httpClient || !this.collectionId || !text.trim()) return [];
+    if (!this.embedderReady) return [];
 
     try {
-      const result = await this.collection.query({
-        queryTexts: [text.trim()],
+      const where =
+        options?.topics?.length === 1
+          ? { topic: options.topics[0] }
+          : options?.topics?.length
+            ? { topic: { $in: options.topics } }
+            : undefined;
+
+      let queryEmbeddings: number[][];
+      try {
+        queryEmbeddings = await embedKnowledgeTexts([text.trim()]);
+      } catch (error) {
+        this.embedderReady = false;
+        this.logger.warn(`Chroma embed failed: ${(error as Error).message}`);
+        return [];
+      }
+
+      const result = await this.httpClient.query(this.collectionId, {
+        queryEmbeddings,
         nResults: n,
+        where,
       });
 
       const docs: Document[] = [];
@@ -173,7 +231,7 @@ export class ChromaService implements OnModuleInit {
 
       return docs;
     } catch (error) {
-      this.logger.warn(`Chroma query failed: ${(error as Error).message}`);
+      this.logger.warn(`Chroma HTTP query failed: ${(error as Error).message}`);
       return [];
     }
   }

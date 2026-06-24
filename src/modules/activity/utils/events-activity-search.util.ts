@@ -1,4 +1,9 @@
 import type { EventsActivitySearchParsed } from '@sync/scene-contracts';
+import {
+  extractYearFromText,
+  parseActivityDateRange,
+} from '../../../common/utils/activity-date.util';
+import { resolveFestivalBrand } from '../../../ai/rag/festival-brand.util';
 import type { ActivityLookupRecord } from '../ports/activity-lookup.port';
 
 export type { EventsActivitySearchParsed };
@@ -8,6 +13,18 @@ const RECRUIT_INTENT_PATTERN =
 const TRAVEL_INTENT_PATTERN = /签证|护照|换汇|出入境|海关|入境|出境|visa/i;
 const ECOSYSTEM_INTENT_PATTERN =
   /小程序|公众号|购票|买票|票务|平台|edmlink|官方号/i;
+const GENERIC_QUERY_TERMS =
+  /电音节|音乐节|音乐节|电子音乐|festival|festivals|edm/gi;
+const FESTIVAL_SEARCH_NOISE =
+  /阵容|官宣|lineup|timetable|时间表|嘉宾|谁演|几点公布|何时公布|什么时候公布/gi;
+
+function stripFestivalSearchNoise(query: string): string {
+  return query.replace(FESTIVAL_SEARCH_NOISE, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeSearchKeyword(keyword: string): string {
+  return stripFestivalSearchNoise(keyword).trim();
+}
 
 const REGION_ALIASES: Record<string, EventsActivitySearchParsed['region']> = {
   国内: 'domestic',
@@ -90,19 +107,47 @@ function parseYear(
   return fallbackYear;
 }
 
-function parseActivityMonth(
-  activity: ActivityLookupRecord,
-): number | undefined {
-  const match = activity.date?.match(/^(?:\d{4}-)?(\d{2})-/);
-  if (!match) return undefined;
-  const month = Number(match[1]);
-  return month >= 1 && month <= 12 ? month : undefined;
+function hasExplicitYear(query: string): boolean {
+  return /(20\d{2}|\d{2}\s*年)/.test(query);
 }
 
-function parseActivityYear(activity: ActivityLookupRecord): number | undefined {
-  const match = activity.date?.match(/^(\d{4})-/);
-  if (!match) return undefined;
-  return Number(match[1]);
+function isMonthOnlyQuery(query: string): boolean {
+  return /^\d{1,2}\s*月$/.test(query.trim());
+}
+
+function resolveActivityYearHint(activity: ActivityLookupRecord): string {
+  return (
+    extractYearFromText(activity.name) ??
+    extractYearFromText(activity.date) ??
+    String(new Date().getFullYear())
+  );
+}
+
+function activityOccursInMonth(
+  activity: ActivityLookupRecord,
+  month: number,
+  year?: number,
+): boolean {
+  const range = parseActivityDateRange(
+    activity.date ?? '',
+    resolveActivityYearHint(activity),
+  );
+  if (!range) return false;
+
+  const startMonth = range.start.getMonth() + 1;
+  const endMonth = range.end.getMonth() + 1;
+  const startYear = range.start.getFullYear();
+  const endYear = range.end.getFullYear();
+
+  if (year != null && (year < startYear || year > endYear)) {
+    return false;
+  }
+
+  if (startMonth <= endMonth) {
+    return month >= startMonth && month <= endMonth;
+  }
+
+  return month >= startMonth || month <= endMonth;
 }
 
 function activityHaystack(activity: ActivityLookupRecord): string {
@@ -121,9 +166,44 @@ function activityHaystack(activity: ActivityLookupRecord): string {
 
 function resolveIntent(query: string): EventsActivitySearchParsed['intent'] {
   if (RECRUIT_INTENT_PATTERN.test(query)) return 'recruit';
+  if (/对比|vs|VS|和.*(比|好)|哪个好|选哪| versus /i.test(query))
+    return 'compare';
   if (ECOSYSTEM_INTENT_PATTERN.test(query)) return 'ecosystem';
   if (TRAVEL_INTENT_PATTERN.test(query)) return 'travel';
   return 'discover';
+}
+
+function stripParsedTermsFromQuery(
+  query: string,
+  parsed: EventsActivitySearchParsed,
+): string {
+  let remainder = query;
+  if (parsed.month) {
+    remainder = remainder.replace(
+      new RegExp(`${parsed.month}\\s*月`, 'gi'),
+      ' ',
+    );
+  }
+  if (parsed.region) {
+    for (const [alias, region] of Object.entries(REGION_ALIASES)) {
+      if (region === parsed.region) {
+        remainder = remainder.replace(new RegExp(alias, 'gi'), ' ');
+      }
+    }
+  }
+  if (parsed.area) {
+    for (const [alias, area] of Object.entries(AREA_ALIASES)) {
+      if (area === parsed.area) {
+        remainder = remainder.replace(new RegExp(alias, 'gi'), ' ');
+      }
+    }
+  }
+  if (parsed.genre) {
+    remainder = remainder.replace(new RegExp(parsed.genre, 'gi'), ' ');
+  }
+  return stripFestivalSearchNoise(
+    remainder.replace(GENERIC_QUERY_TERMS, ' ').replace(/\s+/g, ' ').trim(),
+  );
 }
 
 export function parseEventsActivitySearchQuery(
@@ -135,11 +215,16 @@ export function parseEventsActivitySearchQuery(
   const normalized = normalizeQuery(trimmed);
   const parsed: EventsActivitySearchParsed = {
     intent: resolveIntent(trimmed),
-    year: parseYear(trimmed),
   };
 
   const month = parseMonth(trimmed);
   if (month) parsed.month = month;
+
+  if (hasExplicitYear(trimmed)) {
+    parsed.year = parseYear(trimmed);
+  } else if (!isMonthOnlyQuery(trimmed)) {
+    parsed.year = parseYear(trimmed);
+  }
 
   for (const [alias, region] of Object.entries(REGION_ALIASES)) {
     if (normalized.includes(alias.toLowerCase())) {
@@ -162,15 +247,22 @@ export function parseEventsActivitySearchQuery(
     }
   }
 
-  const keywords = tokenize(trimmed).filter((term) => {
-    const lower = term.toLowerCase();
-    if (REGION_ALIASES[lower] || AREA_ALIASES[lower] || GENRE_ALIASES[lower]) {
-      return false;
-    }
-    if (/^\d{1,2}月$/.test(term)) return false;
-    if (/^20\d{2}$/.test(term)) return false;
-    return term.length >= 2;
-  });
+  const keywordSource = stripParsedTermsFromQuery(trimmed, parsed);
+  const keywords = tokenize(keywordSource)
+    .map(normalizeSearchKeyword)
+    .filter((term) => {
+      const lower = term.toLowerCase();
+      if (
+        REGION_ALIASES[lower] ||
+        AREA_ALIASES[lower] ||
+        GENRE_ALIASES[lower]
+      ) {
+        return false;
+      }
+      if (/^\d{1,2}月$/.test(term)) return false;
+      if (/^20\d{2}$/.test(term)) return false;
+      return term.length >= 2;
+    });
   if (keywords.length) parsed.keywords = keywords;
 
   return parsed;
@@ -193,10 +285,53 @@ function matchesRegion(
     return (
       activity.region === 'domestic' ||
       activity.region === 'hmt' ||
-      ['泰国', '日本', '韩国', '印尼'].includes(activity.area ?? '')
+      ['泰国', '日本', '韩国', '印尼', '中国'].includes(activity.area ?? '')
     );
   }
   return activity.region === region;
+}
+
+function activityMatchesArea(
+  activity: ActivityLookupRecord,
+  area: string,
+): boolean {
+  const haystack = activityHaystack(activity);
+  const normalized = area.toLowerCase();
+  return haystack.includes(normalized) || activity.area === area;
+}
+
+function activityMatchesParsedCriteria(
+  activity: ActivityLookupRecord,
+  parsed: EventsActivitySearchParsed,
+): boolean {
+  if (
+    parsed.month != null &&
+    !activityOccursInMonth(activity, parsed.month, parsed.year)
+  ) {
+    return false;
+  }
+  if (parsed.region && !matchesRegion(activity, parsed.region)) {
+    return false;
+  }
+  if (parsed.area && !activityMatchesArea(activity, parsed.area)) {
+    return false;
+  }
+  if (
+    parsed.genre &&
+    !activityHaystack(activity).includes(parsed.genre.toLowerCase())
+  ) {
+    return false;
+  }
+  if (parsed.keywords?.length) {
+    const haystack = activityHaystack(activity);
+    const matched = parsed.keywords.some((keyword) => {
+      const normalized = normalizeSearchKeyword(keyword).toLowerCase();
+      if (!normalized) return true;
+      return haystack.includes(normalized);
+    });
+    if (!matched) return false;
+  }
+  return true;
 }
 
 function scoreActivityForParsedSearch(
@@ -207,41 +342,25 @@ function scoreActivityForParsedSearch(
   let score = 0;
   const haystack = activityHaystack(activity);
 
-  if (parsed.month) {
-    const activityMonth = parseActivityMonth(activity);
-    if (activityMonth === parsed.month) score += 40;
-    else if (activityMonth != null) score -= 10;
+  if (
+    parsed.month &&
+    activityOccursInMonth(activity, parsed.month, parsed.year)
+  ) {
+    score += 50;
   }
-
-  if (parsed.year) {
-    const activityYear = parseActivityYear(activity);
-    if (activityYear === parsed.year) score += 10;
-  }
-
   if (parsed.region && matchesRegion(activity, parsed.region)) {
     score += 25;
   }
-
-  if (parsed.area) {
-    const area = parsed.area.toLowerCase();
-    if (haystack.includes(area) || activity.area === parsed.area) score += 30;
+  if (parsed.area && activityMatchesArea(activity, parsed.area)) {
+    score += 30;
   }
-
   if (parsed.genre && haystack.includes(parsed.genre.toLowerCase())) {
     score += 15;
   }
 
-  for (const keyword of parsed.keywords ?? []) {
-    if (haystack.includes(keyword.toLowerCase())) score += 20;
-  }
-
   const normalizedQuery = normalizeQuery(rawQuery);
   if (normalizedQuery && haystack.includes(normalizedQuery)) {
-    score += 35;
-  }
-
-  for (const alias of activity.alias ?? []) {
-    if (normalizedQuery.includes(alias.toLowerCase())) score += 25;
+    score += 20;
   }
 
   return score;
@@ -251,29 +370,50 @@ export function filterActivitiesByParsedSearch(
   activities: ActivityLookupRecord[],
   parsed: EventsActivitySearchParsed,
   rawQuery: string,
-  options: { minScore?: number; limit?: number } = {},
+  options: { limit?: number } = {},
 ): ActivityLookupRecord[] {
-  const minScore = options.minScore ?? 15;
   const limit = options.limit ?? 12;
   const trimmed = rawQuery.trim();
+  const hasStructuredCriteria = Boolean(
+    parsed.month ||
+    parsed.region ||
+    parsed.area ||
+    parsed.genre ||
+    parsed.keywords?.length,
+  );
 
-  const scored = activities
-    .map((activity) => ({
-      activity,
-      score: scoreActivityForParsedSearch(activity, parsed, trimmed),
-    }))
-    .filter((item) => item.score >= minScore)
-    .sort(
-      (a, b) => b.score - a.score || a.activity.legacyId - b.activity.legacyId,
-    );
+  if (hasStructuredCriteria) {
+    const matched = activities
+      .filter((activity) => activityMatchesParsedCriteria(activity, parsed))
+      .map((activity) => ({
+        activity,
+        score: scoreActivityForParsedSearch(activity, parsed, trimmed),
+      }))
+      .sort(
+        (a, b) =>
+          b.score - a.score || a.activity.legacyId - b.activity.legacyId,
+      )
+      .map((item) => item.activity)
+      .slice(0, limit);
 
-  if (scored.length > 0) {
-    return scored.slice(0, limit).map((item) => item.activity);
+    if (matched.length > 0 || !trimmed) {
+      return matched;
+    }
   }
 
   if (!trimmed) return activities.slice(0, limit);
 
-  const fallbackTerms = tokenize(trimmed);
+  const festivalMatch = resolveFestivalBrand(stripFestivalSearchNoise(trimmed));
+  if (festivalMatch) {
+    const byCode = activities.filter(
+      (activity) => activity.code === festivalMatch.brand.code,
+    );
+    if (byCode.length) return byCode.slice(0, limit);
+  }
+
+  const fallbackTerms = tokenize(
+    stripFestivalSearchNoise(trimmed.replace(GENERIC_QUERY_TERMS, ' ')),
+  );
   return activities
     .filter((activity) => {
       const haystack = activityHaystack(activity);

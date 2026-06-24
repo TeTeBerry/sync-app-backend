@@ -1,6 +1,24 @@
-import { formatArtistDiscographyReply } from '@src/ai/dj/dj-info-reply.util';
+import {
+  formatArtistDiscographyReply,
+  formatDjProfileReply,
+} from '@src/ai/dj/dj-info-reply.util';
 
 describe('dj-info-reply.util', () => {
+  describe('formatDjProfileReply', () => {
+    it('includes Chinese nicknames when available', () => {
+      const reply = formatDjProfileReply({
+        discogsId: 1,
+        name: 'Martin Garrix',
+        genres: ['Electronic'],
+        styles: ['Big Room'],
+        chineseAliases: ['小马丁'],
+      });
+
+      expect(reply).toContain('Martin Garrix');
+      expect(reply).toContain('🏷 外号：小马丁');
+    });
+  });
+
   describe('formatArtistDiscographyReply', () => {
     it('formats releases with tracks', () => {
       const reply = formatArtistDiscographyReply({

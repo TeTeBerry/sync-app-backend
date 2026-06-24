@@ -64,7 +64,16 @@ describe('dj-info-query.util', () => {
   it('does not treat search commands as artist names', () => {
     expect(isPlausibleArtistName('帮我找类似风格的DJ')).toBe(false);
     expect(isPlausibleArtistName('Marshmello')).toBe(true);
+    expect(isPlausibleArtistName('小马丁')).toBe(true);
     expect(parseDjInfoQuery('帮我找类似风格的DJ').artistName).toBeUndefined();
+  });
+
+  it('parses Chinese nicknames as artist profile queries', () => {
+    expect(parseDjInfoQuery('小马丁是什么风格')).toEqual({
+      kind: 'artist_profile',
+      artistName: '小马丁',
+      styles: [],
+    });
   });
 
   it('resolves artist and styles from prior turns', () => {

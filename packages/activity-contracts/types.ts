@@ -48,6 +48,8 @@ export interface CatalogLineupArtist {
   activityCount: number;
   thumbnail?: string;
   nextActivity?: CatalogLineupArtistNextActivity;
+  /** Common Chinese fan nicknames (e.g. 小马丁). */
+  chineseAliases?: string[];
 }
 
 export interface CatalogLineupArtistDetail extends CatalogLineupArtist {

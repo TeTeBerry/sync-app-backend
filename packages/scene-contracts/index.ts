@@ -9,6 +9,8 @@ export type {
   EventsActivitySearchParsed,
   KnowledgeCardSection,
   KnowledgeCardLink,
+  KnowledgeCardCompareRow,
+  KnowledgeCardComparePayload,
   KnowledgeCardPayload,
 } from './scene-run.types';
 

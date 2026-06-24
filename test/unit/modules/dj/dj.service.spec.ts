@@ -13,6 +13,7 @@ describe('DjService catalog cache', () => {
 
   const djModel = {
     find: jest.fn(),
+    updateOne: jest.fn(),
   };
 
   const jsonCache = {
@@ -41,6 +42,11 @@ describe('DjService catalog cache', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     djModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue(docs),
+        }),
+      }),
       lean: jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue(docs),
       }),
@@ -56,7 +62,7 @@ describe('DjService catalog cache', () => {
 
     expect(first).toHaveLength(1);
     expect(second).toBe(first);
-    expect(djModel.find).toHaveBeenCalledTimes(1);
+    expect(djModel.find).toHaveBeenCalledTimes(2);
     expect(jsonCache.setJson).toHaveBeenCalledWith(
       'catalog:dj:v1',
       { items: first },

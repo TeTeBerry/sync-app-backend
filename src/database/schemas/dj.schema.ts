@@ -50,6 +50,10 @@ export class Dj {
   @Prop({ type: [String], default: [] })
   members!: string[];
 
+  /** Common Chinese fan nicknames for search and profile display. */
+  @Prop({ type: [String], default: [] })
+  chineseAliases!: string[];
+
   /** Notable releases / tracks from Discogs — festival lineup artists only. */
   @Prop({
     type: [

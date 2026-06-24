@@ -8,10 +8,16 @@ import type { DjCatalogItem, DjSearchResult } from './dj.types';
 import {
   DISCOGS_LINEUP_SEARCH_ALIASES,
   matchLineupArtistToCatalog,
+  normalizeArtistNameKey,
 } from './lineup-name-match.util';
 import { isLineupCatalogProfileTrusted } from './lineup-catalog-profile-trust.util';
 import { DjLocaleService } from './dj-locale.service';
 import { hasCjkText } from './dj-country-zh.util';
+import { DJ_CHINESE_ALIASES } from './data/dj-chinese-aliases.data';
+import {
+  getChineseAliasesForArtistName,
+  resolveCanonicalNameFromChineseAlias,
+} from './dj-chinese-aliases.util';
 
 const DEFAULT_LIMIT = 8;
 const MAX_LIMIT = 30;
@@ -24,7 +30,16 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function resolveCatalogChineseAliases(doc: DjDocument | Dj): string[] {
+  const stored = doc.chineseAliases?.filter((alias) => alias.trim()) ?? [];
+  if (stored.length) {
+    return stored;
+  }
+  return getChineseAliasesForArtistName(doc.name);
+}
+
 function toCatalogItem(doc: DjDocument | Dj): DjCatalogItem {
+  const chineseAliases = resolveCatalogChineseAliases(doc);
   return {
     discogsId: doc.discogsId,
     name: doc.name,
@@ -34,6 +49,7 @@ function toCatalogItem(doc: DjDocument | Dj): DjCatalogItem {
     styles: doc.styles ?? [],
     country: doc.country,
     representativeWorks: doc.representativeWorks ?? [],
+    ...(chineseAliases.length ? { chineseAliases } : {}),
   };
 }
 
@@ -59,10 +75,52 @@ export class DjService implements OnApplicationBootstrap {
   }
 
   async onApplicationBootstrap() {
+    await this.syncChineseAliases();
     await this.refreshCatalogCache();
     this.logger.log(
       `DJ catalog cache warmed (${this.catalogCache?.length ?? 0} records)`,
     );
+  }
+
+  /** Upsert curated Chinese nicknames onto matching DJ documents. */
+  async syncChineseAliases(): Promise<void> {
+    const docs = await this.djModel
+      .find({})
+      .select('discogsId name chineseAliases')
+      .lean()
+      .exec();
+    if (!docs.length) {
+      return;
+    }
+
+    const byNameKey = new Map(
+      docs.map((doc) => [normalizeArtistNameKey(doc.name), doc] as const),
+    );
+
+    let updated = 0;
+    for (const entry of DJ_CHINESE_ALIASES) {
+      const doc = byNameKey.get(normalizeArtistNameKey(entry.canonicalName));
+      if (!doc) {
+        continue;
+      }
+      const current = doc.chineseAliases ?? [];
+      const next = entry.aliases;
+      if (
+        current.length === next.length &&
+        current.every((alias, index) => alias === next[index])
+      ) {
+        continue;
+      }
+      await this.djModel.updateOne(
+        { discogsId: doc.discogsId },
+        { $set: { chineseAliases: next } },
+      );
+      updated += 1;
+    }
+
+    if (updated > 0) {
+      this.logger.log(`Synced Chinese aliases for ${updated} DJ records`);
+    }
   }
 
   async refreshCatalogCache(): Promise<void> {
@@ -141,10 +199,19 @@ export class DjService implements OnApplicationBootstrap {
       MAX_LIMIT,
     );
     const skip = Math.max(options?.skip ?? 0, 0);
-    const pattern = new RegExp(escapeRegex(trimmed), 'i');
-    const filter = {
-      $or: [{ name: pattern }, { realName: pattern }],
-    };
+    const resolvedName = resolveCanonicalNameFromChineseAlias(trimmed);
+    const searchTerms = [
+      ...new Set([trimmed, ...(resolvedName ? [resolvedName] : [])]),
+    ];
+    const orConditions: Array<Record<string, unknown>> = [];
+    for (const term of searchTerms) {
+      const pattern = new RegExp(escapeRegex(term), 'i');
+      orConditions.push({ name: pattern }, { realName: pattern });
+    }
+    if (resolvedName || hasCjkText(trimmed)) {
+      orConditions.push({ chineseAliases: trimmed });
+    }
+    const filter = { $or: orConditions };
 
     const [items, total] = await Promise.all([
       this.djModel

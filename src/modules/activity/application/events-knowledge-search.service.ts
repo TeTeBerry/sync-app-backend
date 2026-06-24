@@ -7,13 +7,34 @@ import type {
 import { Document } from '@langchain/core/documents';
 import { ChromaService } from '../../../infra/chroma/chroma.service';
 import { LlmService } from '../../../infra/llm/llm.service';
+import { ItineraryScheduleService } from '../../itinerary/itinerary-schedule.service';
 import { ActivityLookupService } from '../activity-lookup.service';
 import type { ActivityLookupRecord } from '../ports/activity-lookup.port';
+import {
+  mergeArtistMatchedActivities,
+  resolveArtistKnowledgeFallback,
+} from '../utils/events-knowledge-artist-fallback.util';
+import { resolveFestivalKnowledgeFallback } from '../utils/events-knowledge-festival-fallback.util';
 import {
   filterActivitiesByParsedSearch,
   formatEventsActivitySearchParsedSummary,
   parseEventsActivitySearchQuery,
 } from '../utils/events-activity-search.util';
+import { mergeChromaActivityHints } from '../utils/events-knowledge-chroma.util';
+import {
+  appendCuratedChromaSections,
+  rankKnowledgeDocumentsForIntent,
+  resolveKnowledgeQueryTopics,
+} from '../utils/events-knowledge-query.util';
+import {
+  buildFestivalCompareKnowledgeCard,
+  enrichParsedForCompare,
+  resolveCompareActivities,
+} from '../utils/events-festival-compare.util';
+import {
+  shouldUseLlmCompareIntro,
+  shouldUseLlmKnowledgeCard,
+} from '../utils/events-knowledge-llm-gate.util';
 
 export type EventsKnowledgeSearchResult = {
   parsed: EventsActivitySearchParsed;
@@ -30,6 +51,7 @@ export class EventsKnowledgeSearchService {
     private readonly activityLookup: ActivityLookupService,
     @Optional() private readonly chromaService?: ChromaService,
     @Optional() private readonly llmService?: LlmService,
+    @Optional() private readonly scheduleService?: ItineraryScheduleService,
   ) {}
 
   async search(
@@ -37,8 +59,7 @@ export class EventsKnowledgeSearchService {
     locale = 'zh-CN',
   ): Promise<EventsKnowledgeSearchResult> {
     const trimmed = input.trim();
-    const parsed = parseEventsActivitySearchQuery(trimmed);
-    const parsedSummary = formatEventsActivitySearchParsedSummary(parsed);
+    let parsed = parseEventsActivitySearchQuery(trimmed);
     const allActivities = await this.activityLookup.findAll();
     const now = new Date();
     const upcoming = allActivities.filter((activity) => {
@@ -47,17 +68,73 @@ export class EventsKnowledgeSearchService {
       const endYear = Number(year[1]);
       return endYear >= now.getFullYear() - 1;
     });
-    const matchedActivities = filterActivitiesByParsedSearch(
-      upcoming.length ? upcoming : allActivities,
+    const catalogPool = upcoming.length ? upcoming : allActivities;
+    let matchedActivities = filterActivitiesByParsedSearch(
+      catalogPool,
       parsed,
       trimmed,
     );
 
-    const chromaDocs = await this.queryKnowledge(trimmed);
+    let chromaDocs = await this.queryKnowledge(trimmed, parsed);
+
+    const artistFallback = await resolveArtistKnowledgeFallback({
+      query: trimmed,
+      keywords: parsed.keywords,
+      catalogPool,
+      scheduleService: this.scheduleService,
+    });
+    const festivalFallback = resolveFestivalKnowledgeFallback({
+      query: trimmed,
+      catalogPool,
+    });
+    if (!chromaDocs.length && festivalFallback.docs.length) {
+      chromaDocs = rankKnowledgeDocumentsForIntent(
+        festivalFallback.docs,
+        resolveKnowledgeQueryTopics(trimmed, parsed),
+      );
+    }
+    if (!chromaDocs.length && artistFallback.docs.length) {
+      chromaDocs = artistFallback.docs;
+    }
+
+    matchedActivities = mergeChromaActivityHints(
+      matchedActivities,
+      chromaDocs,
+      catalogPool,
+    );
+    matchedActivities = mergeArtistMatchedActivities(
+      matchedActivities,
+      artistFallback.activities,
+    );
+    matchedActivities = mergeArtistMatchedActivities(
+      matchedActivities,
+      festivalFallback.activities,
+    );
+
+    parsed = enrichParsedForCompare(
+      trimmed,
+      parsed,
+      catalogPool,
+      matchedActivities,
+    );
+
+    if (parsed.intent === 'compare') {
+      const comparePair = resolveCompareActivities(
+        trimmed,
+        catalogPool,
+        matchedActivities,
+      );
+      if (comparePair.length >= 2) {
+        matchedActivities = comparePair;
+      }
+    }
+
+    const parsedSummary = formatEventsActivitySearchParsedSummary(parsed);
     const knowledgeCard = await this.buildKnowledgeCard({
       query: trimmed,
       parsed,
       activities: matchedActivities,
+      allActivities: catalogPool,
       chromaDocs,
       locale,
     });
@@ -70,20 +147,52 @@ export class EventsKnowledgeSearchService {
     };
   }
 
-  private async queryKnowledge(query: string): Promise<Document[]> {
+  private async queryKnowledge(
+    query: string,
+    parsed: EventsActivitySearchParsed,
+  ): Promise<Document[]> {
     if (!this.chromaService?.isEnabled()) return [];
-    return this.chromaService.query(query, 4);
+
+    const topics = resolveKnowledgeQueryTopics(query, parsed);
+    const docs = await this.chromaService.query(query, 8, {
+      topics: topics as string[] | undefined,
+    });
+
+    return rankKnowledgeDocumentsForIntent(docs, topics).slice(0, 6);
   }
 
   private async buildKnowledgeCard(params: {
     query: string;
     parsed: EventsActivitySearchParsed;
     activities: ActivityLookupRecord[];
+    allActivities: ActivityLookupRecord[];
     chromaDocs: Document[];
     locale: string;
   }): Promise<KnowledgeCardPayload | null> {
-    const llmCard = await this.tryLlmKnowledgeCard(params);
-    if (llmCard) return llmCard;
+    if (params.parsed.intent === 'compare' && params.activities.length >= 2) {
+      const intro = await this.tryLlmCompareIntro(params);
+      return buildFestivalCompareKnowledgeCard({
+        query: params.query,
+        parsed: params.parsed,
+        activities: params.activities,
+        allActivities: params.allActivities,
+        locale: params.locale,
+        introBody: intro?.body,
+        aiGenerated: intro?.aiGenerated ?? false,
+      });
+    }
+
+    if (
+      shouldUseLlmKnowledgeCard({
+        query: params.query,
+        parsed: params.parsed,
+        matchedActivities: params.activities,
+        chromaDocs: params.chromaDocs,
+      })
+    ) {
+      const llmCard = await this.tryLlmKnowledgeCard(params);
+      if (llmCard) return llmCard;
+    }
 
     return this.buildTemplateKnowledgeCard(params);
   }
@@ -193,12 +302,12 @@ export class EventsKnowledgeSearchService {
         body: highlights.map((line) => `• ${line}`).join('\n'),
       });
 
-      for (const doc of chromaDocs.slice(0, 2)) {
-        if (doc.metadata?.topic === 'activity') {
-          sections.push({ body: doc.pageContent });
-          sources.add(isEn ? 'Activity knowledge base' : '活动知识库');
-        }
-      }
+      appendCuratedChromaSections({
+        sections,
+        chromaDocs,
+        sources,
+        isEn,
+      });
 
       for (const activity of activities.slice(0, 3)) {
         if (activity.infoSource) sources.add(activity.infoSource);
@@ -217,12 +326,20 @@ export class EventsKnowledgeSearchService {
     }
 
     if (chromaDocs.length > 0) {
-      sections.push({
-        body: chromaDocs
-          .slice(0, 3)
-          .map((doc) => doc.pageContent)
-          .join('\n\n'),
+      appendCuratedChromaSections({
+        sections,
+        chromaDocs,
+        sources,
+        isEn,
       });
+      if (sections.length === 0) {
+        sections.push({
+          body: chromaDocs
+            .slice(0, 3)
+            .map((doc) => doc.pageContent)
+            .join('\n\n'),
+        });
+      }
       sources.add(isEn ? 'Activity knowledge base' : '活动知识库');
       return {
         title: isEn ? 'Festival intel' : '电音节资讯',
@@ -244,6 +361,40 @@ export class EventsKnowledgeSearchService {
       sources: Array.from(sources),
       aiGenerated: false,
     };
+  }
+
+  private async tryLlmCompareIntro(params: {
+    query: string;
+    parsed: EventsActivitySearchParsed;
+    activities: ActivityLookupRecord[];
+    locale: string;
+  }): Promise<{ body: string; aiGenerated: true } | null> {
+    if (!this.llmService?.enabled) return null;
+    if (!shouldUseLlmCompareIntro(params.parsed, params.query)) return null;
+
+    const isEn = params.locale.toLowerCase().startsWith('en');
+    const [left, right] = params.activities;
+    const system = isEn
+      ? 'Write a one-sentence intro for a festival comparison card. Reply JSON only: {"intro":"..."}. No ticketing promises, no buddy matching.'
+      : '为电音节对比卡写一句导语。只输出 JSON：{"intro":"..."}。不卖票、不撮合找队友。';
+
+    const user = [
+      `Query: ${params.query}`,
+      `Left: ${left.name} (${left.location ?? left.area ?? ''})`,
+      `Right: ${right.name} (${right.location ?? right.area ?? ''})`,
+    ].join('\n');
+
+    const result = await this.llmService.invokeJson<{ intro?: string }>(
+      system,
+      user,
+      KNOWLEDGE_LLM_TIMEOUT_MS,
+      { reasoningEffort: 'no_think' },
+    );
+
+    const intro = result?.intro?.trim();
+    if (!intro) return null;
+
+    return { body: intro, aiGenerated: true };
   }
 
   private async tryLlmKnowledgeCard(params: {

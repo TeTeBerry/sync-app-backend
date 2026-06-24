@@ -18,8 +18,11 @@ export function formatDjProfileReply(item: DjCatalogItem): string {
         ? item.genres.join(' · ')
         : '暂无公开风格标签';
   const country = item.country?.trim() ? ` · ${item.country.trim()}` : '';
+  const aliases = item.chineseAliases?.length
+    ? `\n🏷 外号：${item.chineseAliases.join('、')}`
+    : '';
   const profile = item.profile?.trim() ? `\n${item.profile.trim()}` : '';
-  return `${item.name}${country}\n🎧 风格：${styleText}${profile}`;
+  return `${item.name}${country}\n🎧 风格：${styleText}${aliases}${profile}`;
 }
 
 export function formatDjListReply(params: {

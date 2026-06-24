@@ -18,7 +18,22 @@ export type EventsActivitySearchParsed = {
   area?: string;
   genre?: string;
   keywords?: string[];
-  intent?: 'discover' | 'recruit' | 'travel' | 'ecosystem';
+  intent?: 'discover' | 'recruit' | 'travel' | 'ecosystem' | 'compare';
+  compareActivityCodes?: [string, string];
+};
+
+export type KnowledgeCardCompareRow = {
+  label: string;
+  left: string;
+  right: string;
+};
+
+export type KnowledgeCardComparePayload = {
+  leftName: string;
+  rightName: string;
+  leftActivityLegacyId?: number;
+  rightActivityLegacyId?: number;
+  rows: KnowledgeCardCompareRow[];
 };
 
 export type KnowledgeCardSection = {
@@ -37,6 +52,7 @@ export type KnowledgeCardPayload = {
   links?: KnowledgeCardLink[];
   sources: string[];
   aiGenerated: boolean;
+  compare?: KnowledgeCardComparePayload;
 };
 
 export type SceneTrigger = 'search' | 'chip' | 'sheet_submit' | 'page_enter';

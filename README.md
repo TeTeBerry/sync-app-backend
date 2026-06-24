@@ -47,7 +47,7 @@ Full REST contract: [../sync-app/docs/API.md](../sync-app/docs/API.md)
 cd sync-app-backend
 # Create .env with MONGODB_URI, HUNYUAN_API_KEY, QWEN_API_KEY, etc. (see Environment variables)
 npm install
-npm run dev:all        # Docker mongo + redis, then Nest watch mode
+npm run dev:all        # Docker mongo + redis + chroma, then Nest watch mode
 ```
 
 Service base URL: `http://localhost:3000/api`  
@@ -67,16 +67,24 @@ If Docker image pulls fail in China: `npm run infra:up:cn`
 ### Optional Chroma (activity RAG)
 
 ```bash
+# Only starts Chroma (mongo/redis must already be running)
 npm run infra:chroma
+# If Docker Hub pull fails (EOF / timeout), use DaoCloud mirror:
+npm run infra:chroma:cn
+
 # .env: CHROMA_URL=http://localhost:8000
 curl -s http://localhost:8000/api/v1/heartbeat
+# restart backend — GET /api/health should show chroma: "enabled"
+# catalog + FAQ docs sync on bootstrap via ChromaCatalogSyncService
 ```
+
+Avoid `docker compose --profile chroma up -d` without a service name — that also tries to pull/start mongo and redis.
 
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev:all` | Infra + wait for Mongo + Nest watch |
+| `npm run dev:all` | Infra (mongo + redis + chroma) + wait + Nest watch |
 | `npm run start:dev` | Nest watch (expects Mongo already up) |
 | `npm run build` | Production build |
 | `npm run start:prod` | Run `dist/main.js` |
