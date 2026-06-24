@@ -6,12 +6,14 @@ FROM ${NODE_IMAGE} AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY packages ./packages
 
 # husky prepare is dev-only; skip lifecycle scripts in the image build.
 ENV HUSKY=0
 RUN npm ci --legacy-peer-deps
 
 COPY nest-cli.json tsconfig.json tsconfig.build.json ./
+COPY scripts/sync-contract-dist.mjs ./scripts/sync-contract-dist.mjs
 COPY src ./src
 
 RUN npm run build
@@ -27,6 +29,7 @@ ENV PORT=3000
 RUN apk add --no-cache tini
 
 COPY package.json package-lock.json ./
+COPY --from=build /app/packages ./packages
 
 ENV HUSKY=0
 RUN npm ci --omit=dev --legacy-peer-deps --ignore-scripts && npm cache clean --force

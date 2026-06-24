@@ -5,8 +5,8 @@
   "main": "./dist/index.js",
   "types": "./index.ts",
   "dependencies": {
-    "@sync/itinerary-contracts": "workspace:*",
-    "@sync/travel-guide-contracts": "workspace:*"
+    "@sync/itinerary-contracts": "*",
+    "@sync/travel-guide-contracts": "*"
   },
   "exports": {
     ".": {
