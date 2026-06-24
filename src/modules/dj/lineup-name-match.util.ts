@@ -7,6 +7,20 @@ export const DISCOGS_LINEUP_ARTIST_IDS: Record<string, number> = {
   'SVDDEN DEATH': 5375145,
   'HOHO ONE': 1889815,
   'DJ SNAKE': 4046989,
+  /** Discogs search homonym — UK radio DJ Marsha Smith shares the stage name */
+  MARSHMELLO: 4688591,
+  /** Discogs #561124 is a different Alan Walker */
+  'ALAN WALKER': 4827622,
+  /** Discogs #564801 is a Hong Kong sound artist */
+  ALOK: 1588397,
+  /** Discogs #911928 is a San Francisco post-rock band */
+  CARTA: 5126278,
+  /** Discogs #187821 is an R&B singer */
+  'JAMIE JONES': 434183,
+  /** Discogs #1989806 is a disambiguation stub — Rune Reilly Kölsch is #688469 */
+  KÖLSCH: 688469,
+  /** Discogs #1310846 is a different Oppidan */
+  OPPIDAN: 10423519,
 };
 
 /** No reliable Discogs profile — skip crawl; genres always from itinerary seed. */
@@ -21,6 +35,10 @@ export const SEED_ONLY_LINEUP_ARTISTS = new Set([
   'DREAMSTATE PRESENTS ELECTRIK SEOUL',
   'INSOMNIAC RECORDS TAKEOVER',
   'SORAERE BROCKEN',
+  /** No reliable Discogs row — wrong "Cheez" bassist page on exact search */
+  'CHEEZ & YUKA',
+  /** No reliable Discogs row — Italian prog band "Nome" on exact search */
+  'NOME.',
 ]);
 
 export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
@@ -41,7 +59,7 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   'NO1 (HONGJOONG)': 'Hongjoong',
   'BEN NICKY PRESENTS XTREME': 'Ben Nicky',
   'CASEPEAT X PURPLE RABBIT': 'Casepeat',
-  'CHEEZ & YUKA': 'Cheez',
+  OPPIDAN: 'Oppidan (2)',
   'ALY & FILA': 'Aly & Fila',
   'DIMITRI VEGAS & LIKE MIKE': 'Dimitri Vegas & Like Mike',
   'SWEDISH HOUSE MAFIA': 'Swedish House Mafia',
@@ -56,7 +74,6 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   WHITENO1SE: 'Whiteno1se',
   BLASTOYZ: 'Blastoyz',
   'SUB ZERO PROJECT': 'Sub Zero Project',
-  'NOME.': 'Nome',
   'XCLUB.': 'X Club',
   SM1LE: 'SM1LE',
   'JELLE DK': 'Jelle DK',

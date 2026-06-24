@@ -49,13 +49,13 @@ describe('ArtistProfileResolver', () => {
     expect(artist.profileSummary).toContain('International DJ');
   });
 
-  it('uses seed fallback profile when Discogs is skipped for seed-only artists', async () => {
+  it('uses seed fallback when Discogs profile describes a homonym', async () => {
     const lineupCatalog = {
       resolveCatalogLineupArtistById: jest.fn().mockResolvedValue({
-        id: 'crush',
-        name: 'CRUSH',
-        genre: 'Hardstyle',
-        genreLabel: 'Hardstyle · Rawstyle',
+        id: 'marshmello',
+        name: 'MARSHMELLO',
+        genre: 'Future Bass',
+        genreLabel: 'Future Bass · Melodic Trap · Future House · Electro Pop',
         activityCount: 1,
       }),
     };
@@ -73,12 +73,11 @@ describe('ArtistProfileResolver', () => {
     }).compile();
 
     const resolver = moduleRef.get(ArtistProfileResolver);
-    const artist = await resolver.getCatalogLineupArtistDetail('crush');
+    const artist = await resolver.getCatalogLineupArtistDetail('marshmello');
 
-    expect(artist.genre).toBe('Hardstyle');
-    expect(artist.genreLabel).toBe('Hardstyle · Rawstyle');
-    expect(artist.profileSummary).toContain('Hardstyle');
-    expect(artist.representativeTracks).toBeUndefined();
+    expect(artist.genre).toBe('Future Bass');
+    expect(artist.profileSummary).toContain('Future Bass');
+    expect(artist.profileSummary).not.toContain('Marsha Smith');
     expect(djService.resolveProfileForDisplay).not.toHaveBeenCalled();
   });
 });

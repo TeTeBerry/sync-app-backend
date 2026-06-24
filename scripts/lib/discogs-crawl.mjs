@@ -165,14 +165,13 @@ export function createDiscogsClient(config) {
         const exact = results.find(
           (item) => item.title?.trim().toLowerCase() === normalized,
         );
-        const best = exact ?? results[0];
-        if (!best?.id) {
+        if (!exact?.id) {
           continue;
         }
 
         return {
-          discogsId: best.id,
-          matchedTitle: best.title ?? query,
+          discogsId: exact.id,
+          matchedTitle: exact.title ?? query,
           searchQuery: query,
         };
       } catch (error) {
@@ -357,12 +356,7 @@ export function findDjForLineupName(lineupName, djs) {
       if (!djKey) {
         return false;
       }
-      return targetKeys.some(
-        (targetKey) =>
-          djKey === targetKey ||
-          djKey.includes(targetKey) ||
-          targetKey.includes(djKey),
-      );
+      return targetKeys.some((targetKey) => djKey === targetKey);
     }) ?? null
   );
 }
@@ -418,12 +412,7 @@ export function isLineupArtistCovered(lineupName, djs) {
     if (!djKey) {
       return false;
     }
-    return targetKeys.some(
-      (targetKey) =>
-        djKey === targetKey ||
-        djKey.includes(targetKey) ||
-        targetKey.includes(djKey),
-    );
+    return targetKeys.some((targetKey) => djKey === targetKey);
   });
 }
 

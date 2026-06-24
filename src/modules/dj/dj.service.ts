@@ -5,7 +5,11 @@ import { Model } from 'mongoose';
 import { RedisMemoryJsonCacheService } from '../../infra/cache/redis-memory-json-cache.service';
 import { Dj, DjDocument } from '../../database/schemas/dj.schema';
 import type { DjCatalogItem, DjSearchResult } from './dj.types';
-import { matchLineupArtistToCatalog } from './lineup-name-match.util';
+import {
+  DISCOGS_LINEUP_SEARCH_ALIASES,
+  matchLineupArtistToCatalog,
+} from './lineup-name-match.util';
+import { isLineupCatalogProfileTrusted } from './lineup-catalog-profile-trust.util';
 import { DjLocaleService } from './dj-locale.service';
 import { hasCjkText } from './dj-country-zh.util';
 
@@ -181,9 +185,18 @@ export class DjService implements OnApplicationBootstrap {
     const result = new Map<string, DjCatalogItem>();
     for (const name of unique) {
       const match = matchLineupArtistToCatalog(name, catalog);
-      if (match) {
-        result.set(name, match);
+      if (!match) {
+        continue;
       }
+      const alias = DISCOGS_LINEUP_SEARCH_ALIASES[name.toUpperCase()];
+      if (
+        !isLineupCatalogProfileTrusted(name, match, {
+          allowedCatalogNames: [match.name, ...(alias ? [alias] : [])],
+        })
+      ) {
+        continue;
+      }
+      result.set(name, match);
     }
     return result;
   }
