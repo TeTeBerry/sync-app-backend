@@ -13,6 +13,7 @@ const contractPackages = [
   'activity-contracts',
   'notification-contracts',
   'profile-contracts',
+  'scene-contracts',
 ];
 
 for (const pkg of contractPackages) {

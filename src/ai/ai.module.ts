@@ -14,6 +14,7 @@ import { BuddyModule } from './buddy/buddy.module';
 import { IntentRouterModule } from './intent/intent-router.module';
 import { DjInfoModule } from './dj/dj-info.module';
 import { ChatAgentModule } from './agent/chat-agent.module';
+import { SceneRunModule } from './scene/scene-run.module';
 import { AiRateLimitService } from './ai-rate-limit.service';
 import { AiTurnPipeline } from './orchestration/ai-turn.pipeline';
 import { PostingTurnOrchestrator } from './orchestration/posting-turn.orchestrator';
@@ -41,6 +42,7 @@ import { AiChatWsServer } from './ws/ai-chat-ws.server';
     DjInfoModule,
     ItineraryAgentPortsModule,
     ChatAgentModule,
+    SceneRunModule,
   ],
   providers: [
     AiService,

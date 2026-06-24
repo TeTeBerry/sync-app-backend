@@ -1,0 +1,21 @@
+{
+  "name": "@sync/scene-contracts",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./index.ts",
+  "dependencies": {
+    "@sync/chat-contracts": "workspace:*",
+    "@sync/partner-contracts": "workspace:*"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./*.ts",
+      "default": "./dist/*.js"
+    }
+  }
+}

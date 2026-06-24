@@ -12,6 +12,7 @@ export type PublicRateLimitScope =
   | 'travel_guide_plan'
   | 'post_ai_search'
   | 'post_ai_compose'
+  | 'scene_run'
   | 'chat_session'
   | 'personality_nickname_usage';
 
@@ -49,6 +50,13 @@ export class PublicApiRateLimitService {
       post_ai_compose: {
         maxRequests:
           config.get<number>('publicApi.rateLimit.postAiComposeMax') ?? 30,
+        windowMs,
+      },
+      scene_run: {
+        maxRequests:
+          config.get<number>('publicApi.rateLimit.sceneRunMax') ??
+          config.get<number>('publicApi.rateLimit.postAiSearchMax') ??
+          40,
         windowMs,
       },
       chat_session: {

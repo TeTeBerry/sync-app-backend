@@ -14,6 +14,19 @@
 | Profile | Agent `profile_*` tools | 只读摘要 |
 | Comments | Agent `post_*_comment` tools | `comment_added` 确认 |
 
+## Scene Run（US-Q2-31）
+
+Stateless HTTP `POST /api/ai/scene-run` — **not** part of the WS chat turn pipeline.
+
+| Concern | Owner | Notes |
+|---------|-------|-------|
+| Scene dispatch | `SceneRunService` | `scene` → handler registry |
+| `recruit_search` | `RecruitSearchSceneHandler` | Wraps `PostSearchService` → `insight_line` + `reorder_posts` effects |
+| Contracts | `@sync/scene-contracts` | Shared request/response + effect union |
+| Frontend | `applySceneEffects` | Maps effects to UI state (`useEventDetailPostSearch`) |
+
+L0 rule scenes (e.g. `prep_nudge`) can register handlers without LLM. L1 scenes call existing services directly — no `ChatAgentOrchestratorService` loop unless a future scene needs multi-tool agent turns.
+
 When extending AI behavior, prefer new **ChatAgent tools** or `client_action` affordances over frontend message interception.
 
 **Intent routing** (规则快路径，其余走 Intent LLM 或 `quick_reply` 默认):

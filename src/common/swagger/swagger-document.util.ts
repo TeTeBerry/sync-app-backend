@@ -30,6 +30,11 @@ import {
   TravelGuideGenerationJobResultDto,
   TravelGuidePlanReadResultDto,
 } from './dto/travel-guide.swagger.dto';
+import {
+  SceneInsightLineEffectDto,
+  SceneReorderPostsEffectDto,
+  SceneRunResponseDto,
+} from './dto/scene.swagger.dto';
 
 export function buildSwaggerDocument(app: INestApplication) {
   const config = new DocumentBuilder()
@@ -68,6 +73,9 @@ export function buildSwaggerDocument(app: INestApplication) {
       TravelGuideBudgetTierResultDto,
       PlaceSuggestionsResultDto,
       ReverseGeocodeResultDto,
+      SceneRunResponseDto,
+      SceneInsightLineEffectDto,
+      SceneReorderPostsEffectDto,
     ],
   });
 }

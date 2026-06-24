@@ -99,6 +99,7 @@
     "@sync/notification-contracts": "workspace:*",
     "@sync/partner-contracts": "workspace:*",
     "@sync/profile-contracts": "workspace:*",
+    "@sync/scene-contracts": "workspace:*",
     "@sync/travel-guide-contracts": "workspace:*",
     "@sync/travel-plan-contracts": "workspace:*",
     "chromadb": "^1.10.5",
@@ -178,7 +179,9 @@
       "^@sync/notification-contracts$": "<rootDir>/packages/notification-contracts/index.ts",
       "^@sync/notification-contracts/(.*)$": "<rootDir>/packages/notification-contracts/$1",
       "^@sync/profile-contracts$": "<rootDir>/packages/profile-contracts/index.ts",
-      "^@sync/profile-contracts/(.*)$": "<rootDir>/packages/profile-contracts/$1"
+      "^@sync/profile-contracts/(.*)$": "<rootDir>/packages/profile-contracts/$1",
+      "^@sync/scene-contracts$": "<rootDir>/packages/scene-contracts/index.ts",
+      "^@sync/scene-contracts/(.*)$": "<rootDir>/packages/scene-contracts/$1"
     },
     "coverageDirectory": "coverage",
     "collectCoverageFrom": [
