@@ -13,6 +13,7 @@
  *   npm run db:sync-lineup-avatars -- --urls-file ./urls.json
  *   npm run db:sync-lineup-avatars -- --names "KANINE,SUBTRONICS"
  *   npm run db:sync-lineup-avatars -- --activity-legacy-id 2
+ *   npm run db:sync-lineup-avatars:force -- --names "KANINE"
  */
 
 import { readFileSync } from 'node:fs';
@@ -45,7 +46,8 @@ loadDotEnv();
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
-const missingOnly = args.includes('--missing-only');
+const force = args.includes('--force');
+const missingOnly = !force && args.includes('--missing-only');
 const namesArgIndex = args.indexOf('--names');
 const urlsFileIndex = args.indexOf('--urls-file');
 const activityLegacyIdArg = args.indexOf('--activity-legacy-id');
@@ -163,7 +165,7 @@ async function main() {
     const key = lineupName.trim().toLowerCase();
     const existing = byKey.get(key);
 
-    if (isLineupAvatarAssetKey(existing?.avatarUrl)) {
+    if (!force && isLineupAvatarAssetKey(existing?.avatarUrl)) {
       skipped += 1;
       console.log(`↷ 已在 CloudBase: ${lineupName}`);
       continue;
