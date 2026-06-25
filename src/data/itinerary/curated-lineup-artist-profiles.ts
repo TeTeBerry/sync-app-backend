@@ -1,6 +1,6 @@
 /**
  * Optional rich bios for artists where Discogs is skipped or unreliable.
- * Genre / genreLabel for all lineup artists always come from itinerary seeds.
+ * Genre / genreLabel are not stored in lineup seeds (placeholder at export).
  */
 export type CuratedLineupArtistProfile = {
   profileSummary: string;

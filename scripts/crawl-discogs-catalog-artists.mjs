@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 /**
  * Backfill Discogs artist metadata for lineup artists in the activity catalog.
+ * Match flow: Redis (24h) → dj_discogs_map → electronic search + score → djs upsert.
+ * Main styles: releases?page=1&per_page=100 → top 5 resource_url → aggregate Top3 styles.
+ * Rate limit: DISCOGS_REQUEST_DELAY_MS defaults to 1200ms between Discogs calls.
  * By default only crawls artists missing from MongoDB (incremental).
  * Avatars: `npm run db:sync-lineup-avatars` (TheAudioDB → CloudBase).
  *
  * Usage:
  *   npm run db:crawl-catalog-artists
  *   npm run db:crawl-catalog-artists -- --dry-run
- *   npm run db:crawl-edc-orlando-artists
- *   npm run db:crawl-catalog-artists -- --activity-legacy-id 13
+ *   npm run db:crawl-catalog-artists -- --activity-legacy-id 2
  *   npm run db:crawl-catalog-artists -- --names "MEDUZA,KREAM"
  *   npm run db:crawl-catalog-artists -- --names "MEDUZA" --force
  */
@@ -17,11 +19,12 @@ import mongoose from 'mongoose';
 import { SEED_ONLY_LINEUP_ARTISTS } from './lib/festival-lineup-fallback.mjs';
 import {
   bumpDjCatalogCacheVersion,
+  closeDjDiscogsRedisCache,
   createDiscogsClient,
+  createDjDiscogsMapModel,
   createDjModel,
   crawlArtistNames,
   findMissingCatalogArtists,
-  findMissingLineupArtists,
   getCrawlConfig,
   loadActivityLineupArtistNames,
   loadAllCatalogLineupArtistNames,
@@ -111,6 +114,8 @@ async function main() {
   await mongoose.connect(config.mongoUri);
   const db = mongoose.connection.db;
   const Dj = createDjModel(mongoose);
+  const DjDiscogsMap = createDjDiscogsMapModel(mongoose);
+  const mapCollection = DjDiscogsMap.collection;
   const discogs = createDiscogsClient(config);
 
   const scopedToActivity = Number.isFinite(activityLegacyId);
@@ -148,6 +153,7 @@ async function main() {
   if (!targets.length) {
     console.log('🎉 阵容艺人档案已全部就绪');
     await mongoose.disconnect();
+    await closeDjDiscogsRedisCache();
     return;
   }
 
@@ -156,20 +162,23 @@ async function main() {
   if (dryRun) {
     console.log('\n(dry-run，未调用 Discogs)');
     await mongoose.disconnect();
+    await closeDjDiscogsRedisCache();
     return;
   }
 
-  const { upserted, missed } = await crawlArtistNames({
+  const { upserted, missed, pendingReview } = await crawlArtistNames({
     artistNames: targets,
     discogs,
     Dj,
+    mapCollection,
     label: '目录阵容',
   });
 
   const cacheBumped = await bumpDjCatalogCacheVersion();
   console.log(
     `\n🏁 完成：新增 ${upserted} 条` +
-      (missed ? `，未识别/失败 ${missed} 位` : ''),
+      (missed ? `，未识别/失败 ${missed} 位` : '') +
+      (pendingReview ? `，待复核 ${pendingReview} 位` : ''),
   );
   if (cacheBumped) {
     console.log('♻️  已 bump DJ catalog 缓存版本');
@@ -178,12 +187,14 @@ async function main() {
   }
 
   await mongoose.disconnect();
+  await closeDjDiscogsRedisCache();
 }
 
 main().catch(async (error) => {
   console.error('❌ 抓取失败:', error.message ?? error);
   try {
     await mongoose.disconnect();
+    await closeDjDiscogsRedisCache();
   } catch {
     // ignore
   }

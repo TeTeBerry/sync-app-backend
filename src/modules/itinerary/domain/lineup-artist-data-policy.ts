@@ -1,28 +1,26 @@
 import type { CatalogLineupArtist } from '@sync/activity-contracts';
 import { resolveCuratedLineupArtistProfile } from '@src/data/itinerary/curated-lineup-artist-profiles';
 
-/** Festival lineup genre fields are curated in itinerary seeds — never Discogs. */
+import { LINEUP_SEED_GENRE_PLACEHOLDER } from '@src/data/itinerary/lineup-seed-genre.constants';
+
+/** Lineup genre display — never Discogs; seeds use placeholder unless officially tagged. */
 export function resolveLineupSeedGenreLabel(seedGenreLabel: string): string {
   const trimmed = seedGenreLabel?.trim();
-  if (!trimmed || trimmed === '风格待补充') {
-    return '风格待补充';
+  if (!trimmed || trimmed === LINEUP_SEED_GENRE_PLACEHOLDER) {
+    return LINEUP_SEED_GENRE_PLACEHOLDER;
   }
   return trimmed;
 }
 
 export function resolveLineupSeedGenre(
   seedGenre: string,
-  seedGenreLabel: string,
+  _seedGenreLabel: string,
 ): string {
   const genre = seedGenre?.trim();
-  if (genre && genre !== '风格待补充') {
+  if (genre && genre !== LINEUP_SEED_GENRE_PLACEHOLDER) {
     return genre;
   }
-  const [firstToken] = seedGenreLabel
-    .split(/\s*[·/]\s*/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return firstToken || 'Electronic';
+  return LINEUP_SEED_GENRE_PLACEHOLDER;
 }
 
 /** Profile/tracks when Discogs match is skipped — curated row or seed-accurate one-liner. */
@@ -43,7 +41,7 @@ export function buildLineupArtistProfileFallback(
   }
 
   const label = artist.genreLabel?.trim() || artist.genre?.trim();
-  if (!label || label === '风格待补充') {
+  if (!label || label === LINEUP_SEED_GENRE_PLACEHOLDER) {
     return { representativeTracks: [] };
   }
 

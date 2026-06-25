@@ -8,6 +8,7 @@ import {
   resolveItineraryCatalogSeed,
   resolveLineupDjs,
 } from './itinerary-catalog.util';
+import { LINEUP_SEED_GENRE_PLACEHOLDER } from '@src/data/itinerary/lineup-seed-genre.constants';
 import type {
   CatalogLineupArtistDto,
   CatalogLineupArtistNextActivityDto,
@@ -35,7 +36,7 @@ export function collectLineupArtistsForActivity(
     if (!trimmed) return;
     const key = trimmed.toLowerCase();
     const resolvedGenre = genre?.trim() ?? '';
-    const resolvedLabel = genreLabel.trim() || 'Electronic';
+    const resolvedLabel = genreLabel.trim() || LINEUP_SEED_GENRE_PLACEHOLDER;
     const existing = byName.get(key);
     if (existing) {
       if (resolvedGenre) {

@@ -1,4 +1,5 @@
 import { parseTimeToMinutes } from '@src/modules/itinerary/domain/time-minutes.util';
+import { LINEUP_SEED_GENRE_PLACEHOLDER } from './lineup-seed-genre.constants';
 import { DEFQON1_JUN27_ROWS } from './defqon1-jun27-itinerary.seed';
 import { DEFQON1_JUN28_ROWS } from './defqon1-jun28-itinerary.seed';
 
@@ -83,16 +84,22 @@ function artistId(name: string): string {
 
 function dj(
   name: string,
-  genre: string,
-  genreLabel: string,
+  _genre: string,
+  _genreLabel: string,
   popularity: number,
   genreColor: string,
 ): ArtistMeta {
-  return { name, genre, genreLabel, popularity, genreColor };
+  return {
+    name,
+    genre: LINEUP_SEED_GENRE_PLACEHOLDER,
+    genreLabel: LINEUP_SEED_GENRE_PLACEHOLDER,
+    popularity,
+    genreColor,
+  };
 }
 
 function defaultMeta(name: string): ArtistMeta {
-  return dj(name, 'Hardstyle', 'Hardstyle · Festival', 78, '#94a3b8');
+  return dj(name, '', '', 78, '#94a3b8');
 }
 
 /** Explicit metadata for headliners / multi-day returning acts. */
@@ -229,8 +236,8 @@ function perf({
     dateLabel,
     artistId: id,
     artistName,
-    genre: meta.genre,
-    genreLabel: meta.genreLabel,
+    genre: LINEUP_SEED_GENRE_PLACEHOLDER,
+    genreLabel: LINEUP_SEED_GENRE_PLACEHOLDER,
     stage: stage.id,
     stageLabel: stage.label,
     startTime,
@@ -1352,8 +1359,8 @@ export const DEFQON1_LINEUP_DJ_SEED = ALL_SLOT_ARTIST_NAMES.map((name) => {
   return {
     id,
     name,
-    genre: meta.genre,
-    genreLabel: meta.genreLabel,
+    genre: LINEUP_SEED_GENRE_PLACEHOLDER,
+    genreLabel: LINEUP_SEED_GENRE_PLACEHOLDER,
     stage: primaryStageForArtist(name),
     popularity: meta.popularity,
     avatarSeed: id,

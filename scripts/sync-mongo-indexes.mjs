@@ -66,6 +66,16 @@ const INDEX_SPECS = [
     key: { userId: 1, severity: 1, createdAt: -1 },
     options: { name: 'account_risk_user_severity', background: true },
   },
+  {
+    collection: 'dj_discogs_map',
+    key: { lineupNameKey: 1 },
+    options: { name: 'dj_discogs_map_lineup_name_key', unique: true, background: true },
+  },
+  {
+    collection: 'dj_discogs_map',
+    key: { status: 1 },
+    options: { name: 'dj_discogs_map_status', background: true },
+  },
 ];
 
 async function main() {

@@ -1,3 +1,5 @@
+import { LINEUP_SEED_GENRE_PLACEHOLDER } from './lineup-seed-genre.constants';
+
 export const ITINERARY_EDC_ORLANDO_ACTIVITY_LEGACY_ID = 13;
 
 const MAIN_STAGE = 'main' as const;
@@ -22,12 +24,18 @@ function artistId(name: string): string {
 
 function dj(
   name: string,
-  genre: string,
-  genreLabel: string,
+  _genre: string,
+  _genreLabel: string,
   popularity: number,
   genreColor: string,
 ): EdcArtistSeed {
-  return { name, genre, genreLabel, popularity, genreColor };
+  return {
+    name,
+    genre: LINEUP_SEED_GENRE_PLACEHOLDER,
+    genreLabel: LINEUP_SEED_GENRE_PLACEHOLDER,
+    popularity,
+    genreColor,
+  };
 }
 
 /**

@@ -416,7 +416,7 @@ describe('ItineraryScheduleService discogs styles', () => {
     expect(artists.some((item) => item.name === 'DJ SNAKE')).toBe(true);
   });
 
-  it('falls back to seed genreLabel in artist tab when Discogs has no styles', async () => {
+  it('uses placeholder genreLabel in artist tab when seed has no official genres', async () => {
     activityLookup.findAll.mockResolvedValue([
       {
         legacyId: 1,
@@ -459,8 +459,8 @@ describe('ItineraryScheduleService discogs styles', () => {
     const artists = await service.listCatalogLineupArtistsRanked();
     const afrojack = artists.find((item) => item.name === 'AFROJACK');
 
-    expect(afrojack?.genreLabel).toBe('Big Room · Dutch House');
-    expect(afrojack?.genre).toBe('House');
+    expect(afrojack?.genreLabel).toBe('风格待补充');
+    expect(afrojack?.genre).toBe('风格待补充');
   });
 
   it('ranks artists with upcoming shows before higher activity counts', async () => {

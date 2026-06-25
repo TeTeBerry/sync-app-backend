@@ -1,4 +1,5 @@
 import { parseTimeToMinutes } from '@src/modules/itinerary/domain/time-minutes.util';
+import { LINEUP_SEED_GENRE_PLACEHOLDER } from './lineup-seed-genre.constants';
 import {
   DEFQON1_ARTIST_PERFORMANCE_SEED,
   DEFQON1_FESTIVAL_SESSION_SEED,
@@ -55,8 +56,6 @@ type SeedPerformance = {
   dateLabel: string;
   artistId: string;
   artistName: string;
-  genre: string;
-  genreLabel: string;
   stage: string;
   stageLabel: string;
   startTime: string;
@@ -75,6 +74,8 @@ function perf(input: SeedPerformance) {
   return {
     activityLegacyId: STORM_ACTIVITY_LEGACY_ID,
     ...input,
+    genre: LINEUP_SEED_GENRE_PLACEHOLDER,
+    genreLabel: LINEUP_SEED_GENRE_PLACEHOLDER,
     startMinutes,
     endMinutes,
   };
@@ -104,8 +105,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月13日',
     artistId: 'crush',
     artistName: 'CRUSH',
-    genre: 'House',
-    genreLabel: 'Bass House · Tech House',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '14:00',
@@ -119,8 +118,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月13日',
     artistId: 'crubbixz',
     artistName: 'CRUBBIXZ',
-    genre: 'House',
-    genreLabel: 'Electro House',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '14:30',
@@ -134,8 +131,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月13日',
     artistId: 'tiya',
     artistName: 'TIYA',
-    genre: 'Trance',
-    genreLabel: 'Progressive Trance · Big Room',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '15:15',
@@ -149,8 +144,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月13日',
     artistId: 'ghengar',
     artistName: 'GHENGAR (GHASTLY)',
-    genre: 'Dubstep',
-    genreLabel: 'Heavy Dubstep · Riddim',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '16:00',
@@ -164,8 +157,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月13日',
     artistId: 'blondex',
     artistName: 'BLONDEX',
-    genre: 'Techno',
-    genreLabel: 'Techno · Acid · Trance',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '17:00',
@@ -179,8 +170,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月13日',
     artistId: 'andy-c',
     artistName: 'ANDY C',
-    genre: 'Drum & Bass',
-    genreLabel: 'D&B · Jungle',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '18:00',
@@ -194,8 +183,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月13日',
     artistId: 'excision',
     artistName: 'EXCISION',
-    genre: 'Dubstep',
-    genreLabel: 'Brostep',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '19:10',
@@ -210,9 +197,7 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     artistId: 'marshmello',
     artistName: 'MARSHMELLO',
     /** 主筛选项 — 策展维护，不采用 Discogs 自动标签 */
-    genre: 'Future Bass',
     /** 代表曲风 — 与阵容/艺人卡展示一致 */
-    genreLabel: 'Future Bass · Melodic Trap · Future House · Electro Pop',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '20:30',
@@ -226,8 +211,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月14日',
     artistId: 'crubbixz',
     artistName: 'CRUBBIXZ',
-    genre: 'House',
-    genreLabel: 'Electro House',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '14:00',
@@ -241,8 +224,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月14日',
     artistId: 'whybeatz',
     artistName: 'WHYBEATZ',
-    genre: 'Bass',
-    genreLabel: 'Dubstep · Electro · Dancehall',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '14:15',
@@ -256,8 +237,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月14日',
     artistId: 'yohan',
     artistName: 'YOHAN',
-    genre: 'Bass',
-    genreLabel: 'Bass House · Hybrid Trap',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '15:00',
@@ -271,8 +250,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月14日',
     artistId: 'vidojean',
     artistName: 'VIDOJEAN',
-    genre: 'House',
-    genreLabel: 'Afro House · Deep House · Funky House',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '15:45',
@@ -286,8 +263,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月14日',
     artistId: 'julian-jordan',
     artistName: 'JULIAN JORDAN',
-    genre: 'House',
-    genreLabel: 'Electro House · Bass House · Future House',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '16:45',
@@ -301,8 +276,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月14日',
     artistId: 'odd-mob',
     artistName: 'ODD MOB',
-    genre: 'House',
-    genreLabel: 'Tech House · Bass House',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '17:45',
@@ -316,8 +289,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月14日',
     artistId: 'eric-prydz',
     artistName: 'ERIC PRYDZ',
-    genre: 'House',
-    genreLabel: 'Progressive House · Electro',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '18:55',
@@ -331,8 +302,6 @@ export const STORM_ARTIST_PERFORMANCE_SEED = [
     dateLabel: '6月14日',
     artistId: 'illenium',
     artistName: 'ILLENIUM',
-    genre: 'Dubstep',
-    genreLabel: 'Melodic Dubstep · Future Bass',
     stage: MAIN_STAGE,
     stageLabel: MAIN_STAGE_LABEL,
     startTime: '20:30',

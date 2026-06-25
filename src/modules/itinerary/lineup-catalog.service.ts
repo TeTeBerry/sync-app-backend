@@ -29,6 +29,7 @@ import {
   compareCatalogLineupArtists,
   pickNextActivityForArtist,
 } from './domain/lineup-catalog-artist.util';
+import { LINEUP_SEED_GENRE_PLACEHOLDER } from '@src/data/itinerary/lineup-seed-genre.constants';
 import {
   resolveLineupSeedGenre,
   resolveLineupSeedGenreLabel,
@@ -119,7 +120,7 @@ export class LineupCatalogService implements OnApplicationBootstrap {
       if (byName.has(key)) return;
       byName.set(key, {
         artistName: trimmed,
-        genreLabel: genreLabel.trim() || 'Electronic',
+        genreLabel: genreLabel.trim() || LINEUP_SEED_GENRE_PLACEHOLDER,
       });
     };
 
@@ -389,7 +390,8 @@ export class LineupCatalogService implements OnApplicationBootstrap {
       avatarUrlsByKey: Map<string, string>;
     },
   ): CatalogLineupArtistDto {
-    const seedGenreLabel = entry.genreLabel.trim() || 'Electronic';
+    const seedGenreLabel =
+      entry.genreLabel.trim() || LINEUP_SEED_GENRE_PLACEHOLDER;
     const genreLabel = resolveLineupSeedGenreLabel(seedGenreLabel);
     const nameKey = entry.artistName.trim().toLowerCase();
     const nextActivity = pickNextActivityForArtist(

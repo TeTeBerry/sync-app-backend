@@ -1,4 +1,5 @@
 import { parseTimeToMinutes } from '@src/modules/itinerary/domain/time-minutes.util';
+import { LINEUP_SEED_GENRE_PLACEHOLDER } from './lineup-seed-genre.constants';
 
 export const ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID = 6;
 
@@ -38,12 +39,18 @@ function artistId(name: string): string {
 
 function dj(
   name: string,
-  genre: string,
-  genreLabel: string,
+  _genre: string,
+  _genreLabel: string,
   popularity: number,
   genreColor: string,
 ): ArtistMeta {
-  return { name, genre, genreLabel, popularity, genreColor };
+  return {
+    name,
+    genre: LINEUP_SEED_GENRE_PLACEHOLDER,
+    genreLabel: LINEUP_SEED_GENRE_PLACEHOLDER,
+    popularity,
+    genreColor,
+  };
 }
 
 const WORLD_DJ_FESTIVAL_ARTIST_OVERRIDES = new Map<string, ArtistMeta>([
@@ -688,8 +695,8 @@ function perf({
     dateLabel,
     artistId: id,
     artistName,
-    genre: meta.genre,
-    genreLabel: meta.genreLabel,
+    genre: LINEUP_SEED_GENRE_PLACEHOLDER,
+    genreLabel: LINEUP_SEED_GENRE_PLACEHOLDER,
     stage: stage.id,
     stageLabel: stage.label,
     startTime,

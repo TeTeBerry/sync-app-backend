@@ -1,12 +1,11 @@
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'node:child_process';
 import {
   STORM_LINEUP_ARTIST_NAMES,
-  DISCOGS_LINEUP_ARTIST_IDS,
   SEED_ONLY_LINEUP_ARTISTS,
   expandFestivalArtistNames,
-  getDiscogsSearchQueries,
   getLineupCoverageKeys,
   LINEUP_MANUAL_DJ_PROFILES,
   loadEdcThailandFallbackNames,
@@ -17,8 +16,34 @@ import {
   loadWorldDjfFallbackNames,
   normalizeArtistNameKey,
 } from './festival-lineup-fallback.mjs';
+import { createDiscogsArtistResolver } from './discogs-artist-resolve.mjs';
+import {
+  getDjStylesRedisCache,
+  setDjStylesRedisCache,
+} from './discogs-redis-cache.mjs';
+import { resolveDistRoot, requireFromDist } from './resolve-dist-root.mjs';
+import {
+  upsertDjDiscogsMapMapped,
+  createDjDiscogsMapModel,
+} from './dj-discogs-map.mjs';
+
+export { closeDjDiscogsRedisCache } from './discogs-redis-cache.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(__dirname, '..', '..');
+
+function ensureDistBuilt() {
+  if (resolveDistRoot()) {
+    return;
+  }
+  console.log('dist missing — building for Discogs style util…');
+  execSync('npm run build', { cwd: repoRoot, stdio: 'inherit' });
+}
+
+function loadDiscogsStyleUtil() {
+  ensureDistBuilt();
+  return requireFromDist('modules/dj/discogs-dj-styles.util');
+}
 
 export function loadDotEnv() {
   const root = join(__dirname, '..', '..');
@@ -86,7 +111,16 @@ export function getCrawlConfig() {
     worldDjfActivityLegacyId: Number(
       process.env.DISCOGS_WORLD_DJF_ACTIVITY_LEGACY_ID ?? 6,
     ),
-    requestDelayMs: Number(process.env.DISCOGS_REQUEST_DELAY_MS ?? 1100),
+    requestDelayMs: Number(process.env.DISCOGS_REQUEST_DELAY_MS ?? 1200),
+    releasesPageSize: Number(process.env.DISCOGS_RELEASES_PAGE_SIZE ?? 100),
+    releaseSampleSize: Math.min(
+      Math.max(Number(process.env.DISCOGS_RELEASE_SAMPLE_SIZE ?? 5), 1),
+      10,
+    ),
+    mainStylesTopN: Math.min(
+      Math.max(Number(process.env.DISCOGS_MAIN_STYLES_TOP_N ?? 3), 1),
+      10,
+    ),
     representativeWorksLimit: Math.min(
       Math.max(Number(process.env.DISCOGS_REPRESENTATIVE_WORKS_LIMIT ?? 5), 1),
       10,
@@ -147,132 +181,111 @@ export function createDiscogsClient(config) {
     return res.json();
   }
 
-  async function searchArtistByName(lineupName) {
-    const trimmed = lineupName.trim();
-    const forcedId = DISCOGS_LINEUP_ARTIST_IDS[trimmed.toUpperCase()];
-    if (forcedId) {
+  async function fetchReleaseInsights(artistId) {
+    const cached = await getDjStylesRedisCache(artistId);
+    if (cached && Array.isArray(cached.styles)) {
       return {
-        discogsId: forcedId,
-        matchedTitle: trimmed,
-        searchQuery: `#${forcedId}`,
+        representativeWorks: cached.representativeWorks ?? [],
+        genres: cached.genres ?? [],
+        styles: cached.styles ?? [],
+        fromStylesCache: true,
       };
     }
 
-    const queries = getDiscogsSearchQueries(lineupName);
-
-    for (const query of queries) {
-      await delay(config.requestDelayMs);
-      try {
-        const data = await discogsGet('https://api.discogs.com/database/search', {
-          q: query,
-          type: 'artist',
-          per_page: '5',
-        });
-        const results = data.results ?? [];
-        if (!results.length) {
-          continue;
-        }
-
-        const normalized = query.trim().toLowerCase();
-        const exact = results.find(
-          (item) => item.title?.trim().toLowerCase() === normalized,
-        );
-        if (!exact?.id) {
-          continue;
-        }
-
-        return {
-          discogsId: exact.id,
-          matchedTitle: exact.title ?? query,
-          searchQuery: query,
-        };
-      } catch (error) {
-        console.warn('搜索艺人失败', query, error.message ?? error);
-      }
-    }
-
-    return null;
-  }
-
-  async function fetchRepresentativeWorks(artistId) {
+    const styleUtil = loadDiscogsStyleUtil();
     const representativeWorks = [];
-    const genres = new Set();
-    const styles = new Set();
+    const releaseTags = [];
+    const sampleSize = Math.min(
+      config.releaseSampleSize,
+      config.representativeWorksLimit,
+    );
 
     try {
       await delay(config.requestDelayMs);
       const list = await discogsGet(
         `https://api.discogs.com/artists/${artistId}/releases`,
         {
-          per_page: String(config.representativeWorksLimit),
+          per_page: String(config.releasesPageSize),
           page: '1',
-          sort: 'year',
-          sort_order: 'desc',
         },
       );
 
-      for (const item of (list.releases ?? []).slice(
-        0,
-        config.representativeWorksLimit,
-      )) {
+      for (const item of (list.releases ?? []).slice(0, sampleSize)) {
         const releaseId = item.main_release ?? item.id;
-        if (!releaseId) {
+        const releaseUrl =
+          item.resource_url?.trim() ||
+          (releaseId ? `https://api.discogs.com/releases/${releaseId}` : '');
+        if (!releaseUrl) {
           continue;
         }
 
         await delay(config.requestDelayMs);
         try {
-          const release = await discogsGet(
-            `https://api.discogs.com/releases/${releaseId}`,
-          );
-          for (const genre of release.genres ?? []) {
-            genres.add(genre);
-          }
-          for (const style of release.styles ?? []) {
-            styles.add(style);
-          }
+          const release = await discogsGet(releaseUrl);
+          releaseTags.push({
+            genres: release.genres ?? [],
+            styles: release.styles ?? [],
+          });
 
+          const resolvedReleaseId = release.id ?? releaseId;
           const tracks = (release.tracklist ?? [])
             .map((track) => track.title?.trim())
             .filter(Boolean)
             .slice(0, 8);
 
           representativeWorks.push({
-            releaseId,
+            releaseId: resolvedReleaseId,
             title: (release.title ?? item.title ?? '').trim(),
             year: release.year ?? item.year ?? undefined,
             type: (item.type ?? release.type ?? '').trim(),
             tracks,
           });
         } catch (error) {
-          console.warn('读取发行详情失败', releaseId, error.message ?? error);
+          console.warn('读取发行详情失败', releaseUrl, error.message ?? error);
         }
       }
     } catch (error) {
       console.warn('读取艺人发行列表失败', artistId, error.message ?? error);
     }
 
-    return {
+    const aggregated = styleUtil.aggregateDiscogsReleaseStyles(releaseTags, {
+      topStyles: config.mainStylesTopN,
+    });
+    const payload = {
+      genres: aggregated.genres,
+      styles: aggregated.styles,
       representativeWorks,
-      genres: [...genres],
-      styles: [...styles],
+    };
+
+    await setDjStylesRedisCache(artistId, payload);
+
+    return {
+      ...payload,
+      fromStylesCache: false,
     };
   }
 
-  async function buildDjRecord(discogsId) {
+  async function buildDjRecord(discogsId, options = {}) {
     await delay(config.requestDelayMs);
     const artist = await discogsGet(`https://api.discogs.com/artists/${discogsId}`);
-    const releaseInsights = await fetchRepresentativeWorks(discogsId);
-    const profileGenres = Array.isArray(artist.genres) ? artist.genres : [];
-    const profileStyles = Array.isArray(artist.styles) ? artist.styles : [];
+    const releaseInsights = await fetchReleaseInsights(discogsId);
+    if (releaseInsights.fromStylesCache) {
+      console.log(
+        `↷ 主风格 Redis 缓存命中 #${discogsId} → ${releaseInsights.styles.join(' · ') || '无'}`,
+      );
+    } else if (releaseInsights.styles.length) {
+      console.log(
+        `→ 主风格 Top${config.mainStylesTopN}: ${releaseInsights.styles.join(' · ')}`,
+      );
+    }
 
     return {
       discogsId: artist.id,
-      name: artist.name,
+      name: options.preferredName?.trim() || artist.name,
       realName: artist.real_name ?? '',
       profile: (artist.profile ?? '').substring(0, 600),
-      genres: profileGenres.length ? profileGenres : releaseInsights.genres,
-      styles: profileStyles.length ? profileStyles : releaseInsights.styles,
+      genres: releaseInsights.genres,
+      styles: releaseInsights.styles,
       country: artist.country ?? '',
       urls: artist.urls ?? [],
       members: Array.isArray(artist.members)
@@ -283,8 +296,10 @@ export function createDiscogsClient(config) {
     };
   }
 
+  const resolver = createDiscogsArtistResolver(config, discogsGet, delay);
+
   return {
-    searchArtistByName,
+    resolveArtistMatch: resolver.resolveArtistMatch,
     buildDjRecord,
   };
 }
@@ -467,10 +482,12 @@ export async function crawlArtistNames({
   artistNames,
   discogs,
   Dj,
+  mapCollection,
   label = '艺人',
 }) {
   let upserted = 0;
   let missed = 0;
+  let pendingReview = 0;
   const seenDiscogsIds = new Set();
 
   for (const artistName of artistNames) {
@@ -480,33 +497,56 @@ export async function crawlArtistNames({
     if (manualProfile) {
       const data = { ...manualProfile, crawledAt: new Date() };
       await upsertDjRecord(Dj, data);
+      if (mapCollection) {
+        await upsertDjDiscogsMapMapped(mapCollection, {
+          lineupName: artistName,
+          discogsId: manualProfile.discogsId,
+          discogsName: manualProfile.name,
+          matchScore: 100,
+          searchQuery: '#manual-profile',
+        });
+      }
       upserted += 1;
       console.log('→ 人工档案（无 Discogs 艺人页）');
       continue;
     }
     if (SEED_ONLY_LINEUP_ARTISTS.has(artistName.trim().toUpperCase())) {
-      console.log('↷ 跳过（Discogs 无可靠条目，保留 seed 风格）');
+      console.log('↷ 跳过（无可靠 Discogs 条目）');
       continue;
     }
-    const match = await discogs.searchArtistByName(artistName);
-    if (!match) {
+
+    if (!mapCollection) {
       missed += 1;
-      console.warn('⚠️  未找到:', artistName);
+      console.warn('⚠️  缺少 dj_discogs_map 集合');
+      continue;
+    }
+
+    const match = await discogs.resolveArtistMatch(artistName, mapCollection);
+    if (match.status === 'pending_review') {
+      pendingReview += 1;
+      console.warn('⏸  待复核:', artistName, '-', match.reviewReason);
       continue;
     }
 
     if (seenDiscogsIds.has(match.discogsId)) {
-      console.log(`↷ 跳过重复 Discogs #${match.discogsId} (${match.matchedTitle})`);
+      console.log(
+        `↷ 跳过重复 Discogs #${match.discogsId} (${match.discogsName})`,
+      );
       continue;
     }
     seenDiscogsIds.add(match.discogsId);
 
+    const cacheLabel = match.fromCache
+      ? `cache:${match.cacheLayer ?? 'mongo'}`
+      : 'search';
     console.log(
-      `→ Discogs #${match.discogsId} (${match.matchedTitle}) [query: ${match.searchQuery}]`,
+      `→ Discogs #${match.discogsId} (${match.discogsName}) [${cacheLabel}: ${match.searchQuery}] score=${match.matchScore ?? 'n/a'}`,
     );
 
     try {
-      const data = await discogs.buildDjRecord(match.discogsId);
+      const data = await discogs.buildDjRecord(match.discogsId, {
+        preferredName: artistName,
+      });
       await upsertDjRecord(Dj, data);
       upserted += 1;
     } catch (error) {
@@ -515,7 +555,7 @@ export async function crawlArtistNames({
     }
   }
 
-  return { upserted, missed };
+  return { upserted, missed, pendingReview };
 }
 
 export async function bumpDjCatalogCacheVersion() {
