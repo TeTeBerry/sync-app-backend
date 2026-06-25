@@ -25,99 +25,30 @@ export const DISCOGS_LINEUP_ARTIST_IDS: Record<string, number> = {
   KREAM: 2669995,
   /** Italian house trio — Discogs "Meduza (10)" */
   MEDUZA: 7012514,
-};
 
-/** No reliable Discogs profile — skip crawl; genres always from itinerary seed. */
-export const SEED_ONLY_LINEUP_ARTISTS = new Set([
-  '&FRIENDS',
-  'PETERBLUE',
-  'RØZ',
-  'CRUSH',
-  'TIYA',
-  'YOHAN',
-  'BASSRUSH EXPERIENCE',
-  'DREAMSTATE PRESENTS ELECTRIK SEOUL',
-  'INSOMNIAC RECORDS TAKEOVER',
-  /** EDC Orlando stage / showcase labels */
-  'DISCOVERY PROJECT',
-  'FACTORY 93 PRESENTS',
-  'BIG FLORIDA',
-  /** No reliable Discogs row */
-  'AAT',
-  'ADRIÁN MILLS',
-  'ALVES',
-  'AVELLO',
-  'FALLON',
-  'FURY WITH MC DINO',
-  'KINHAU',
-  'MADVKTM',
-  'MATTHIAS',
-  'ME N Ü',
-  'M81!',
-  'RAJE',
-  'ULTRATHEM',
-  'DISCIP',
-  'SORAERE BROCKEN',
-  /** No reliable Discogs row — wrong "Cheez" bassist page on exact search */
-  'CHEEZ & YUKA',
-  /** No reliable Discogs row — Italian prog band "Nome" on exact search */
-  'NOME.',
-  /** Ultra Europe — Discogs homonyms / no reliable row */
-  'NOME',
-  'MATT',
-  'BLANK',
-  'OAK',
-  'TANK',
-  'CARLOM',
-  'JOWAVES',
-  'MYKRIS',
-  'JOE2SHINE',
-  'JULIAN CROSS',
-  'NAESTOR',
-  'NOTXERIUS',
-  'YAMATOMAYA',
-  'GEMINO',
-  /** World DJ Festival Japan — local / homonym-prone artists */
-  'DJ HADOU',
-  'FØOMIE?',
-  'MIU',
-  'LILY',
-  'FLAVIO',
-  'YUNKORO',
-  'DAIKI',
-  'TATSUNOSHIN',
-  'SAULE',
-  'CORE',
-  'JUNI',
-  'RYU',
-  '417',
-  'YUNPI',
-  'GAGAKU',
-  'MITOCHY',
-  'SHO-TA',
-  /** World DJ Festival Japan day 2 — stage showcases / local artists */
-  'SIGNATURE SHOW',
-  'ROAD TO WELCOME STAGE',
-  'NICOLE CHEN',
-  'KDH',
-  'MACKEY',
-  'PIXEL',
-  'SARA',
-  'CHAWON',
-  'MAAM & KOKI',
-  'KiBØ',
-  'MN4',
-  'ASTERA',
-  'SYZYGY',
-  'I.G.A',
-  'BEAUTY NOISE TOKYO',
-  'LIL NANAA',
-  'NATSUMI',
-  'POKO',
-  'GARKO',
-  'ADI',
-  'YAMAHIRO',
-]);
+  // --- World DJ Festival Japan (day 1) ---
+  /** Discogs #539626 is a US marimba player */
+  'MIKE PERRY': 781755,
+  'PORTER ROBINSON': 1095210,
+  KSHMR: 3763692,
+  /** Discogs #2624525 is Brooks (11) */
+  QUINTINO: 1437686,
+  ANGERFIST: 25958,
+  'LUCAS & STEVE': 2500315,
+  'CHEAT CODES': 4602891,
+  'LIKE MIKE': 806561,
+  'LIKE MIKE (MAIN STAGE DJ SET)': 806561,
+  'SOUND RUSH': 4440037,
+  ATMOZFEARS: 1342829,
+  VERTILE: 7233886,
+  'DUAL DAMAGE': 12581201,
+  TONESHIFTERZ: 1587633,
+  TATSUNOSHIN: 9444280,
+  /** Discogs "DAIKI (12)" — Electro House DJ, Tokyo */
+  DAIKI: 9998461,
+  /** Dream Stage hardstyle producer; stage name LILY */
+  LILY: 9333424,
+};
 
 export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   'AFEM SYKO': 'Afem Syko',
@@ -395,9 +326,6 @@ export function matchLineupArtistToCatalog<
   T extends { name: string; discogsId?: number },
 >(lineupName: string, catalog: T[]): T | null {
   const trimmed = lineupName.trim();
-  if (SEED_ONLY_LINEUP_ARTISTS.has(trimmed.toUpperCase())) {
-    return null;
-  }
 
   const forcedId = DISCOGS_LINEUP_ARTIST_IDS[trimmed.toUpperCase()];
   if (forcedId) {

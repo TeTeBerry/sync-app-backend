@@ -1,24 +1,28 @@
 #!/usr/bin/env node
 /**
  * Backfill Discogs artist metadata for lineup artists in the activity catalog.
- * Match flow: Redis (24h) → dj_discogs_map → electronic search + score → djs upsert.
- * Main styles: releases?page=1&per_page=100 → top 5 resource_url → aggregate Top3 styles.
- * Rate limit: DISCOGS_REQUEST_DELAY_MS defaults to 1200ms between Discogs calls.
- * By default only crawls artists missing from MongoDB (incremental).
- * Avatars: `npm run db:sync-lineup-avatars` (TheAudioDB → CloudBase).
+ *
+ * Name → artist_id flow:
+ * 1. Lineup English name from festival
+ * 2. dj_discogs_map — mapped hit → artist_id → GET /artists/{id} → profile（简介）
+ * 3. Miss → search + score → write map → profile + styles → djs
+ * 4. pending_review → map only, skip djs (no fabricated profiles)
+ * 5. mapped but Discogs 无可用资料 → downgrade to pending_review, skip djs
+ * 5. Main styles: top 5 releases aggregated after artist_id is known
+ * 6. Avatars: run db:sync-lineup-avatars after crawl (mapped names only)
  *
  * Usage:
  *   npm run db:crawl-catalog-artists
  *   npm run db:crawl-catalog-artists -- --dry-run
  *   npm run db:crawl-catalog-artists -- --activity-legacy-id 2
  *   npm run db:crawl-catalog-artists -- --names "MEDUZA,KREAM"
- *   npm run db:crawl-catalog-artists -- --names "MEDUZA" --force
+ *   npm run db:crawl-catalog-artists -- --activity-legacy-id 6 --rematch
  */
 
 import mongoose from 'mongoose';
-import { SEED_ONLY_LINEUP_ARTISTS } from './lib/festival-lineup-fallback.mjs';
 import {
   bumpDjCatalogCacheVersion,
+  clearLineupArtistRematchState,
   closeDjDiscogsRedisCache,
   createDiscogsClient,
   createDjDiscogsMapModel,
@@ -36,7 +40,8 @@ loadDotEnv();
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
-const force = args.includes('--force');
+const rematch = args.includes('--rematch');
+const force = args.includes('--force') || rematch;
 const namesArgIndex = args.indexOf('--names');
 const activityLegacyIdArg = args.indexOf('--activity-legacy-id');
 const activityLegacyId =
@@ -51,46 +56,26 @@ const explicitNames =
         .filter(Boolean)
     : null;
 
-function withoutSeedOnly(names) {
-  return names.filter(
-    (name) => !SEED_ONLY_LINEUP_ARTISTS.has(name.trim().toUpperCase()),
-  );
-}
-
 async function resolveTargets(db, config, allNames) {
   if (explicitNames?.length) {
     if (force) {
-      return {
-        targets: withoutSeedOnly(explicitNames),
-        covered: [],
-        seedOnly: explicitNames.filter((name) =>
-          SEED_ONLY_LINEUP_ARTISTS.has(name.trim().toUpperCase()),
-        ),
-      };
+      return { targets: explicitNames, covered: [] };
     }
     const partition = await partitionLineupArtistCoverage(db, explicitNames);
     return {
       targets: partition.missing,
       covered: partition.covered,
-      seedOnly: partition.seedOnly,
     };
   }
 
   if (Number.isFinite(activityLegacyId)) {
     if (force) {
-      return {
-        targets: withoutSeedOnly(allNames),
-        covered: [],
-        seedOnly: allNames.filter((name) =>
-          SEED_ONLY_LINEUP_ARTISTS.has(name.trim().toUpperCase()),
-        ),
-      };
+      return { targets: allNames, covered: [] };
     }
     const partition = await partitionLineupArtistCoverage(db, allNames);
     return {
       targets: partition.missing,
       covered: partition.covered,
-      seedOnly: partition.seedOnly,
     };
   }
 
@@ -101,7 +86,7 @@ async function resolveTargets(db, config, allNames) {
   }
 
   const targets = await findMissingCatalogArtists(db, config);
-  return { targets, covered: [], seedOnly: [] };
+  return { targets, covered: [] };
 }
 
 async function main() {
@@ -125,7 +110,7 @@ async function main() {
       ? explicitNames
       : await loadAllCatalogLineupArtistNames(db, config);
 
-  const { targets, covered, seedOnly } = await resolveTargets(
+  const { targets, covered } = await resolveTargets(
     db,
     config,
     allNames,
@@ -144,11 +129,18 @@ async function main() {
   if (covered.length) {
     console.log(`↷ 已有档案 ${covered.length} 位，跳过`);
   }
-  if (seedOnly.length) {
-    console.log(`↷ seed-only ${seedOnly.length} 位，跳过 Discogs`);
-  }
-  console.log(`🔎 待入库 ${targets.length} 位${force ? '（--force）' : ''}`);
-  console.log('ℹ️  头像请使用 npm run db:sync-lineup-avatars');
+  const modeLabel = [
+    force ? 'force' : null,
+    rematch ? 'rematch' : null,
+  ]
+    .filter(Boolean)
+    .join('+');
+  console.log(
+    `🔎 待入库 ${targets.length} 位${modeLabel ? `（${modeLabel}）` : ''}`,
+  );
+  console.log(
+    'ℹ️  头像请在 crawl 完成后执行: npm run db:sync-lineup-avatars -- --activity-legacy-id <id>',
+  );
 
   if (!targets.length) {
     console.log('🎉 阵容艺人档案已全部就绪');
@@ -164,6 +156,14 @@ async function main() {
     await mongoose.disconnect();
     await closeDjDiscogsRedisCache();
     return;
+  }
+
+  if (rematch) {
+    const cleared = await clearLineupArtistRematchState(mapCollection, targets);
+    console.log(
+      `\n♻️  rematch：清除映射 ${cleared.clearedMaps} 条` +
+        `，Redis 主风格 ${cleared.clearedStyleRedis} 条`,
+    );
   }
 
   const { upserted, missed, pendingReview } = await crawlArtistNames({

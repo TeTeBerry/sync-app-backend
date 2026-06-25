@@ -1,15 +1,10 @@
 /**
- * Short-lived Redis caches for Discogs ingest (Hermes should reuse keys/TTL).
+ * Short-lived Redis cache for DJ main styles (lineup → artist_id uses dj_discogs_map).
  *
- * Lineup match: discogs:lineup-artist:v1:{lineupNameKey}
- * DJ main styles: discogs:dj-styles:v1:{discogsId}
+ * Key: discogs:dj-styles:v1:{discogsId}
  * TTL: 24h (DISCOGS_REDIS_CACHE_TTL_SEC)
  */
-import { lineupNameKeyFor } from './dj-discogs-map.mjs';
-
 const DEFAULT_TTL_SEC = 86_400;
-const KEY_PREFIX =
-  process.env.DISCOGS_REDIS_CACHE_KEY_PREFIX ?? 'discogs:lineup-artist:v1';
 const DJ_STYLES_KEY_PREFIX =
   process.env.DISCOGS_DJ_STYLES_REDIS_KEY_PREFIX ?? 'discogs:dj-styles:v1';
 
@@ -21,12 +16,38 @@ function cacheTtlSec() {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_TTL_SEC;
 }
 
-function cacheKey(lineupName) {
-  const lineupNameKey = lineupNameKeyFor(lineupName);
-  if (!lineupNameKey) {
+function djStylesCacheKey(discogsId) {
+  const id = Number(discogsId);
+  if (!Number.isFinite(id) || id <= 0) {
     return null;
   }
-  return `${KEY_PREFIX}:${lineupNameKey}`;
+  return `${DJ_STYLES_KEY_PREFIX}:${id}`;
+}
+
+async function waitForRedisReady(client) {
+  if (client.status === 'ready') {
+    return;
+  }
+  if (client.status === 'wait' || client.status === 'close') {
+    await client.connect();
+    return;
+  }
+  await new Promise((resolve, reject) => {
+    const onReady = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = (error) => {
+      cleanup();
+      reject(error);
+    };
+    const cleanup = () => {
+      client.off('ready', onReady);
+      client.off('error', onError);
+    };
+    client.once('ready', onReady);
+    client.once('error', onError);
+  });
 }
 
 async function getRedis() {
@@ -38,45 +59,37 @@ async function getRedis() {
     return null;
   }
   if (redisClient) {
-    return redisClient;
+    try {
+      await waitForRedisReady(redisClient);
+      return redisClient;
+    } catch {
+      try {
+        redisClient.disconnect();
+      } catch {
+        // ignore
+      }
+      redisClient = undefined;
+    }
   }
   try {
     const { Redis } = await import('ioredis');
     redisClient = new Redis(redisUrl, {
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
+      lazyConnect: true,
     });
+    await redisClient.connect();
     return redisClient;
   } catch (error) {
     redisUnavailable = true;
+    redisClient = undefined;
     console.warn('⚠️  Redis 缓存不可用:', error.message ?? error);
     return null;
   }
 }
 
-export async function getDjDiscogsRedisCache(lineupName) {
-  const key = cacheKey(lineupName);
-  if (!key) {
-    return null;
-  }
-  const redis = await getRedis();
-  if (!redis) {
-    return null;
-  }
-  try {
-    const raw = await redis.get(key);
-    if (!raw) {
-      return null;
-    }
-    return JSON.parse(raw);
-  } catch (error) {
-    console.warn('⚠️  读取 Redis Discogs 缓存失败:', error.message ?? error);
-    return null;
-  }
-}
-
-export async function setDjDiscogsRedisCache(lineupName, payload) {
-  const key = cacheKey(lineupName);
+export async function deleteDjStylesRedisCache(discogsId) {
+  const key = djStylesCacheKey(discogsId);
   if (!key) {
     return false;
   }
@@ -85,20 +98,12 @@ export async function setDjDiscogsRedisCache(lineupName, payload) {
     return false;
   }
   try {
-    await redis.set(key, JSON.stringify(payload), 'EX', cacheTtlSec());
+    await redis.del(key);
     return true;
   } catch (error) {
-    console.warn('⚠️  写入 Redis Discogs 缓存失败:', error.message ?? error);
+    console.warn('⚠️  删除 Redis DJ 主风格缓存失败:', error.message ?? error);
     return false;
   }
-}
-
-function djStylesCacheKey(discogsId) {
-  const id = Number(discogsId);
-  if (!Number.isFinite(id) || id <= 0) {
-    return null;
-  }
-  return `${DJ_STYLES_KEY_PREFIX}:${id}`;
 }
 
 export async function getDjStylesRedisCache(discogsId) {
@@ -153,10 +158,6 @@ export async function closeDjDiscogsRedisCache() {
 }
 
 export const DISCOGS_REDIS_CACHE_DOC = {
-  lineupArtist: {
-    keyPrefix: KEY_PREFIX,
-    ttlSec: DEFAULT_TTL_SEC,
-  },
   djStyles: {
     keyPrefix: DJ_STYLES_KEY_PREFIX,
     ttlSec: DEFAULT_TTL_SEC,
@@ -165,8 +166,6 @@ export const DISCOGS_REDIS_CACHE_DOC = {
   env: {
     redisUrl: 'REDIS_URL',
     ttlSec: 'DISCOGS_REDIS_CACHE_TTL_SEC',
-    lineupKeyPrefix: 'DISCOGS_REDIS_CACHE_KEY_PREFIX',
     djStylesKeyPrefix: 'DISCOGS_DJ_STYLES_REDIS_KEY_PREFIX',
-    requestDelayMs: 'DISCOGS_REQUEST_DELAY_MS',
   },
 };

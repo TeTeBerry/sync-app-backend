@@ -50,7 +50,6 @@
     "media:upload-personality-test": "node scripts/upload-personality-test-media.mjs",
     "media:upload-raver-avatars": "node scripts/upload-raver-avatars.mjs",
     "media:upload-activity-images": "node scripts/sync-activity-images-cloud.mjs",
-    "media:sync-activity-images": "node scripts/sync-activity-images-cloud.mjs",
     "db:crawl-catalog-artists": "node scripts/crawl-discogs-catalog-artists.mjs",
     "db:sync-lineup-artist-catalog:all": "node scripts/sync-lineup-artist-catalog-all.mjs",
     "db:sync-lineup-avatars": "node scripts/sync-lineup-artist-avatars-cloud.mjs --missing-only",

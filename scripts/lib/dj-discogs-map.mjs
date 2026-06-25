@@ -1,5 +1,6 @@
 import { normalizeArtistNameKey } from './festival-lineup-fallback.mjs';
 
+/** Mongo mapping: festival lineup display name → Discogs artist_id. */
 export function createDjDiscogsMapModel(mongoose) {
   const schema = new mongoose.Schema(
     {
@@ -44,7 +45,20 @@ export async function findDjDiscogsMapEntry(collection, lineupName) {
   if (!lineupNameKey) {
     return null;
   }
-  return collection.findOne({ lineupNameKey }).lean();
+  return collection.findOne({ lineupNameKey });
+}
+
+export async function deleteDjDiscogsMapEntry(collection, lineupName) {
+  const lineupNameKey = lineupNameKeyFor(lineupName);
+  if (!lineupNameKey) {
+    return null;
+  }
+  const existing = await collection.findOne({ lineupNameKey });
+  if (!existing) {
+    return null;
+  }
+  await collection.deleteOne({ lineupNameKey });
+  return existing;
 }
 
 export async function upsertDjDiscogsMapMapped(collection, input) {
@@ -95,4 +109,40 @@ export async function upsertDjDiscogsMapPendingReview(collection, input) {
     },
     { upsert: true },
   );
+}
+
+/**
+ * Lineup names confirmed in dj_discogs_map (status=mapped) — safe for avatar lookup.
+ * Returns discogsName as the canonical search name for TheAudioDB.
+ */
+export async function listMappedLineupArtists(mapCollection, lineupNames) {
+  const keys = [
+    ...new Set(
+      lineupNames
+        .map((name) => lineupNameKeyFor(name))
+        .filter(Boolean),
+    ),
+  ];
+  if (!keys.length) {
+    return [];
+  }
+
+  const rows = await mapCollection
+    .find({ lineupNameKey: { $in: keys }, status: 'mapped', discogsId: { $exists: true } })
+    .toArray();
+  const byKey = new Map(rows.map((row) => [row.lineupNameKey, row]));
+
+  const targets = [];
+  for (const lineupName of lineupNames) {
+    const row = byKey.get(lineupNameKeyFor(lineupName));
+    if (!row?.discogsId) {
+      continue;
+    }
+    targets.push({
+      lineupName,
+      discogsId: row.discogsId,
+      searchName: (row.discogsName ?? lineupName).trim() || lineupName,
+    });
+  }
+  return targets;
 }

@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 /**
- * Fetch lineup artist images (TheAudioDB or --urls-file), upload to CloudBase,
- * and store `lineup-avatar/` keys in MongoDB.
+ * Fetch lineup artist avatars AFTER name is confirmed in dj_discogs_map (status=mapped).
+ * Uses discogsName from the map to search TheAudioDB, then uploads to CloudBase.
+ *
+ * Run order:
+ *   1. npm run db:crawl-catalog-artists -- --activity-legacy-id N
+ *   2. npm run db:sync-lineup-avatars -- --activity-legacy-id N
  *
  * Usage:
  *   npm run db:sync-lineup-avatars
@@ -29,7 +33,9 @@ import {
   loadActivityLineupArtistNames,
   loadAllCatalogLineupArtistNames,
   loadDotEnv,
+  createDjDiscogsMapModel,
 } from './lib/discogs-crawl.mjs';
+import { listMappedLineupArtists } from './lib/dj-discogs-map.mjs';
 import {
   createTheAudioDbClient,
   getTheAudioDbConfig,
@@ -75,13 +81,13 @@ function isRemoteImageUrl(url) {
   return Boolean(url?.trim()) && /^https?:\/\//i.test(url.trim());
 }
 
-async function resolveSourceUrl({ lineupName, manualUrls, audioDb }) {
+async function resolveSourceUrl({ lineupName, searchName, manualUrls, audioDb }) {
   const manual = manualUrls[lineupName]?.trim();
   if (manual && isRemoteImageUrl(manual)) {
     return { url: manual, source: 'manual' };
   }
 
-  const match = await audioDb.searchArtist(lineupName);
+  const match = await audioDb.searchArtist(searchName);
   if (match?.avatarUrl && isRemoteImageUrl(match.avatarUrl)) {
     return { url: match.avatarUrl, source: 'theaudiodb' };
   }
@@ -105,6 +111,7 @@ async function main() {
 
   await mongoose.connect(mongoConfig.mongoUri);
   const db = mongoose.connection.db;
+  const mapCollection = createDjDiscogsMapModel(mongoose).collection;
   const audioDb = createTheAudioDbClient(getTheAudioDbConfig());
 
   const lineupNames = explicitNames?.length
@@ -113,6 +120,12 @@ async function main() {
       ? await loadActivityLineupArtistNames(db, activityLegacyId, mongoConfig)
       : await loadAllCatalogLineupArtistNames(db, mongoConfig);
 
+  const avatarTargets = await listMappedLineupArtists(
+    mapCollection,
+    lineupNames,
+  );
+  const skippedUnmapped = lineupNames.length - avatarTargets.length;
+
   const existingRows = await db
     .collection('lineup_artist_avatars')
     .find({})
@@ -120,16 +133,19 @@ async function main() {
     .toArray();
   const byKey = new Map(existingRows.map((row) => [row.artistNameKey, row]));
 
-  let targets = lineupNames;
+  let targets = avatarTargets;
   if (missingOnly) {
-    targets = lineupNames.filter((name) => {
-      const row = byKey.get(name.trim().toLowerCase());
+    targets = avatarTargets.filter((item) => {
+      const row = byKey.get(item.lineupName.trim().toLowerCase());
       return !isLineupAvatarAssetKey(row?.avatarUrl);
     });
   }
 
   console.log('✅ MongoDB:', mongoConfig.mongoUri);
   console.log(`☁️  CloudBase env: ${cloudConfig.envId || '(dry-run)'}`);
+  console.log(
+    `ℹ️  仅处理 dj_discogs_map 已确认艺人（mapped）；未确认 ${skippedUnmapped} 位已跳过`,
+  );
   console.log(`🎤 待处理 ${targets.length} 位艺人`);
   if (dryRun) {
     console.log('ℹ️  dry-run 模式');
@@ -143,7 +159,7 @@ async function main() {
   let skipped = 0;
   let missed = 0;
 
-  for (const lineupName of targets) {
+  for (const { lineupName, searchName, discogsId } of targets) {
     const key = lineupName.trim().toLowerCase();
     const existing = byKey.get(key);
 
@@ -153,12 +169,16 @@ async function main() {
       continue;
     }
 
-    console.log(`\n处理: ${lineupName}`);
+    console.log(
+      `\n处理: ${lineupName}` +
+        (discogsId ? ` → #${discogsId} (${searchName})` : ''),
+    );
 
     let sourceInfo;
     try {
       sourceInfo = await resolveSourceUrl({
         lineupName,
+        searchName,
         manualUrls,
         audioDb,
       });

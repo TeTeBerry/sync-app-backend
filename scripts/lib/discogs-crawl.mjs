@@ -4,7 +4,6 @@ import { fileURLToPath } from 'url';
 import { execSync } from 'node:child_process';
 import {
   STORM_LINEUP_ARTIST_NAMES,
-  SEED_ONLY_LINEUP_ARTISTS,
   expandFestivalArtistNames,
   getLineupCoverageKeys,
   LINEUP_MANUAL_DJ_PROFILES,
@@ -20,14 +19,38 @@ import { createDiscogsArtistResolver } from './discogs-artist-resolve.mjs';
 import {
   getDjStylesRedisCache,
   setDjStylesRedisCache,
+  deleteDjStylesRedisCache,
 } from './discogs-redis-cache.mjs';
 import { resolveDistRoot, requireFromDist } from './resolve-dist-root.mjs';
 import {
   upsertDjDiscogsMapMapped,
+  upsertDjDiscogsMapPendingReview,
   createDjDiscogsMapModel,
+  deleteDjDiscogsMapEntry,
 } from './dj-discogs-map.mjs';
 
 export { closeDjDiscogsRedisCache } from './discogs-redis-cache.mjs';
+export { createDjDiscogsMapModel } from './dj-discogs-map.mjs';
+export { listMappedLineupArtists } from './dj-discogs-map.mjs';
+
+export async function clearLineupArtistRematchState(mapCollection, lineupNames) {
+  let clearedMaps = 0;
+  let clearedStyleRedis = 0;
+
+  for (const lineupName of lineupNames) {
+    const existing = await deleteDjDiscogsMapEntry(mapCollection, lineupName);
+    if (existing) {
+      clearedMaps += 1;
+      if (existing.discogsId) {
+        if (await deleteDjStylesRedisCache(existing.discogsId)) {
+          clearedStyleRedis += 1;
+        }
+      }
+    }
+  }
+
+  return { clearedMaps, clearedStyleRedis };
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, '..', '..');
@@ -43,6 +66,11 @@ function ensureDistBuilt() {
 function loadDiscogsStyleUtil() {
   ensureDistBuilt();
   return requireFromDist('modules/dj/discogs-dj-styles.util');
+}
+
+function loadDiscogsMatchUtil() {
+  ensureDistBuilt();
+  return requireFromDist('modules/dj/discogs-artist-match.util');
 }
 
 export function loadDotEnv() {
@@ -266,9 +294,35 @@ export function createDiscogsClient(config) {
   }
 
   async function buildDjRecord(discogsId, options = {}) {
-    await delay(config.requestDelayMs);
-    const artist = await discogsGet(`https://api.discogs.com/artists/${discogsId}`);
+    const prefetched = options.prefetchedArtist;
+    const artist =
+      prefetched?.id === discogsId
+        ? prefetched
+        : await (async () => {
+            await delay(config.requestDelayMs);
+            const raw = await discogsGet(
+              `https://api.discogs.com/artists/${discogsId}`,
+            );
+            return {
+              id: raw.id,
+              name: raw.name,
+              realName: raw.real_name ?? '',
+              profile: raw.profile ?? '',
+              country: raw.country ?? '',
+              urls: raw.urls ?? [],
+              members: Array.isArray(raw.members)
+                ? raw.members.map((member) => member.name)
+                : [],
+            };
+          })();
+
     const releaseInsights = await fetchReleaseInsights(discogsId);
+    const profileText = (artist.profile ?? '').substring(0, 600);
+    if (profileText) {
+      console.log(`→ 简介 ${profileText.length} 字`);
+    } else {
+      console.warn('⚠️  该艺人 Discogs 页无 profile 文本');
+    }
     if (releaseInsights.fromStylesCache) {
       console.log(
         `↷ 主风格 Redis 缓存命中 #${discogsId} → ${releaseInsights.styles.join(' · ') || '无'}`,
@@ -282,8 +336,8 @@ export function createDiscogsClient(config) {
     return {
       discogsId: artist.id,
       name: options.preferredName?.trim() || artist.name,
-      realName: artist.real_name ?? '',
-      profile: (artist.profile ?? '').substring(0, 600),
+      realName: artist.realName ?? '',
+      profile: profileText,
       genres: releaseInsights.genres,
       styles: releaseInsights.styles,
       country: artist.country ?? '',
@@ -297,10 +351,12 @@ export function createDiscogsClient(config) {
   }
 
   const resolver = createDiscogsArtistResolver(config, discogsGet, delay);
+  const { isVerifiableDiscogsDjRecord } = loadDiscogsMatchUtil();
 
   return {
     resolveArtistMatch: resolver.resolveArtistMatch,
     buildDjRecord,
+    isVerifiableDiscogsDjRecord,
   };
 }
 
@@ -412,12 +468,8 @@ export async function loadActivityLineupArtistNames(
   return expandFestivalArtistNames(names);
 }
 
-export async function findMissingLineupArtists(db, expectedNames) {
-  const { missing } = await partitionLineupArtistCoverage(db, expectedNames);
-  return missing;
-}
 
-/** Split lineup names into seed-only / already in DB / still missing for Discogs. */
+/** Split lineup names into already in DB / still missing for Discogs. */
 export async function partitionLineupArtistCoverage(db, expectedNames) {
   const djs = await db
     .collection('djs')
@@ -425,17 +477,12 @@ export async function partitionLineupArtistCoverage(db, expectedNames) {
     .project({ name: 1, discogsId: 1 })
     .toArray();
 
-  const seedOnly = [];
   const covered = [];
   const missing = [];
 
   for (const name of expectedNames) {
     const trimmed = name.trim();
     if (!trimmed) {
-      continue;
-    }
-    if (SEED_ONLY_LINEUP_ARTISTS.has(trimmed.toUpperCase())) {
-      seedOnly.push(name);
       continue;
     }
     if (isLineupArtistCovered(name, djs)) {
@@ -445,7 +492,7 @@ export async function partitionLineupArtistCoverage(db, expectedNames) {
     missing.push(name);
   }
 
-  return { seedOnly, covered, missing, djs };
+  return { covered, missing, djs };
 }
 
 export async function findMissingCatalogArtists(db, config) {
@@ -510,10 +557,6 @@ export async function crawlArtistNames({
       console.log('→ 人工档案（无 Discogs 艺人页）');
       continue;
     }
-    if (SEED_ONLY_LINEUP_ARTISTS.has(artistName.trim().toUpperCase())) {
-      console.log('↷ 跳过（无可靠 Discogs 条目）');
-      continue;
-    }
 
     if (!mapCollection) {
       missed += 1;
@@ -537,7 +580,7 @@ export async function crawlArtistNames({
     seenDiscogsIds.add(match.discogsId);
 
     const cacheLabel = match.fromCache
-      ? `cache:${match.cacheLayer ?? 'mongo'}`
+      ? `map:${match.cacheLayer ?? 'mongo'}`
       : 'search';
     console.log(
       `→ Discogs #${match.discogsId} (${match.discogsName}) [${cacheLabel}: ${match.searchQuery}] score=${match.matchScore ?? 'n/a'}`,
@@ -546,7 +589,22 @@ export async function crawlArtistNames({
     try {
       const data = await discogs.buildDjRecord(match.discogsId, {
         preferredName: artistName,
+        prefetchedArtist: match.prefetchedArtist,
       });
+      if (!discogs.isVerifiableDiscogsDjRecord(data)) {
+        pendingReview += 1;
+        await upsertDjDiscogsMapPendingReview(mapCollection, {
+          lineupName: artistName,
+          searchQuery: match.searchQuery ?? '',
+          reviewReason: 'Discogs 可查资料不足，未生成艺人档案',
+        });
+        console.warn(
+          '⏸  待复核:',
+          artistName,
+          '- Discogs 可查资料不足，未生成艺人档案',
+        );
+        continue;
+      }
       await upsertDjRecord(Dj, data);
       upserted += 1;
     } catch (error) {

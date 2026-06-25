@@ -1,19 +1,39 @@
 /**
- * Discogs lineup artist matching:
- * 1) name alignment
- * 2) profile electronic keywords
- * 3) artist catalog genres/styles
- * 4) latest release electronic tags
- * 5) non-electronic penalty
+ * Discogs lineup artist matching (v2):
+ *
+ * Flow (lineup English name → artist_id):
+ * 1. dj_discogs_map hit (mapped) → use artist_id, fetch styles elsewhere
+ * 2. Miss → search q="NAME" dj electronic producer, type=artist, strict=1
+ * 3. Top 8 candidates → artist detail only → 5-factor score
+ * 4. Winner ≥120 → write dj_discogs_map; pending_review → map only, no djs upsert
+ * 5. Never upsert djs without verifiable Discogs profile or release-derived styles
+ *
+ * Five score factors: base 100, profile +30, catalog/release +50, catalog/release −60, profile −100
+ * During match phase, artist catalog genres/styles proxy release tags (releases fetched after winner).
  */
+import {
+  type DiscogsReleaseTags,
+  isIrrelevantDiscogsTag,
+} from './discogs-dj-styles.util';
+
+export type DiscogsReleaseSample = DiscogsReleaseTags & {
+  title?: string;
+  format?: string;
+  formatDescriptions?: string[];
+};
+
 export type DiscogsArtistCandidate = {
   id: number;
   name: string;
   profile?: string;
   genres?: string[];
   styles?: string[];
+  /** @deprecated use releaseSamples — kept for backward compatibility */
   releaseGenres?: string[];
+  /** @deprecated use releaseSamples */
   releaseStyles?: string[];
+  /** Top N release tag sets used for electronic ratio scoring. */
+  releaseSamples?: DiscogsReleaseSample[];
 };
 
 export type DiscogsArtistMatchScore = {
@@ -21,19 +41,32 @@ export type DiscogsArtistMatchScore = {
   name: string;
   total: number;
   breakdown: {
-    nameMatch: number;
-    profileElectronic: number;
-    catalogElectronic: number;
-    releaseElectronic: number;
-    nonElectronicPenalty: number;
+    base: number;
+    profileElectronicBonus: number;
+    releaseElectronicBonus: number;
+    releaseNonElectronicPenalty: number;
+    profileNonElectronicPenalty: number;
   };
 };
 
-export const DISCOGS_MATCH_MIN_ACCEPT_SCORE = 55;
+export const DISCOGS_MATCH_BASE_SCORE = 100;
+export const DISCOGS_MATCH_MIN_ACCEPT_SCORE = 120;
+export const DISCOGS_MATCH_SUSPECT_MIN_SCORE = 60;
+export const DISCOGS_MATCH_REJECT_BELOW_SCORE = 60;
 export const DISCOGS_MATCH_AMBIGUITY_GAP = 8;
+export const DISCOGS_MATCH_RELEASE_SAMPLE_SIZE = 5;
+export const DISCOGS_MATCH_RELEASE_ELECTRONIC_RATIO = 0.7;
+export const DISCOGS_MATCH_RELEASE_NON_ELECTRONIC_RATIO = 0.4;
 export const DISCOGS_SEARCH_CANDIDATE_LIMIT = 8;
 export const DISCOGS_REQUEST_DELAY_MS_DEFAULT = 1200;
 export const DISCOGS_REDIS_CACHE_TTL_SEC_DEFAULT = 86_400;
+/** Minimum profile length to accept a Discogs artist page without release styles. */
+export const DISCOGS_MIN_VERIFIABLE_PROFILE_LENGTH = 20;
+
+const PROFILE_ELECTRONIC_BONUS = 30;
+const RELEASE_ELECTRONIC_BONUS = 50;
+const RELEASE_NON_ELECTRONIC_PENALTY = 60;
+const PROFILE_NON_ELECTRONIC_PENALTY = 100;
 
 const ELECTRONIC_PROFILE_KEYWORDS = [
   'dj',
@@ -51,7 +84,29 @@ const ELECTRONIC_PROFILE_KEYWORDS = [
   'disc jockey',
 ];
 
-const ELECTRONIC_GENRES = new Set(['electronic', 'hip hop', 'hip-hop', 'pop']);
+const PURE_NON_ELECTRONIC_PROFILE_HINTS = [
+  'band',
+  'folk',
+  '摇滚乐队',
+  '民谣歌手',
+  'rock band',
+  'folk singer',
+  'folk band',
+  'indie rock band',
+  'country singer',
+  'jazz band',
+  'orchestra',
+  'choir',
+  'classical composer',
+  'soundtrack composer',
+  'film score',
+  'author',
+  'writer',
+  'politician',
+  'actor',
+  'poet',
+  'painter',
+];
 
 const ELECTRONIC_STYLE_HINTS = [
   'house',
@@ -85,23 +140,6 @@ const ELECTRONIC_STYLE_HINTS = [
   'uk garage',
 ];
 
-const NON_ELECTRONIC_PROFILE_HINTS = [
-  'classical',
-  'jazz',
-  'folk',
-  'author',
-  'writer',
-  'politician',
-  'actor',
-  'orchestra',
-  'choir',
-  'poet',
-  'painter',
-  'photographer',
-  'soundtrack composer',
-  'film score',
-];
-
 export function normalizeDiscogsMatchName(name: string): string {
   return name
     .trim()
@@ -119,178 +157,370 @@ export function buildDiscogsElectronicSearchQuery(lineupName: string): string {
   return `"${trimmed}" dj electronic producer`;
 }
 
-function tokenOverlapScore(left: string, right: string): number {
-  const leftTokens = new Set(
-    normalizeDiscogsMatchName(left).split(/\s+/).filter(Boolean),
-  );
-  const rightTokens = new Set(
-    normalizeDiscogsMatchName(right).split(/\s+/).filter(Boolean),
-  );
-  if (!leftTokens.size || !rightTokens.size) {
-    return 0;
+export function resolveReleaseSamples(
+  candidate: DiscogsArtistCandidate,
+): DiscogsReleaseTags[] {
+  if (candidate.releaseSamples?.length) {
+    return candidate.releaseSamples;
   }
-  let overlap = 0;
-  for (const token of leftTokens) {
-    if (rightTokens.has(token)) {
-      overlap += 1;
+  if (
+    (candidate.releaseGenres?.length ?? 0) > 0 ||
+    (candidate.releaseStyles?.length ?? 0) > 0
+  ) {
+    return [
+      {
+        genres: candidate.releaseGenres ?? [],
+        styles: candidate.releaseStyles ?? [],
+      },
+    ];
+  }
+  const catalogGenres = candidate.genres ?? [];
+  const catalogStyles = candidate.styles ?? [];
+  if (catalogGenres.length || catalogStyles.length) {
+    return [{ genres: catalogGenres, styles: catalogStyles }];
+  }
+  return [];
+}
+
+function isNonElectronicReleaseTag(tag: string): boolean {
+  const normalized = tag.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  if (isIrrelevantDiscogsTag(tag)) {
+    return true;
+  }
+  return (
+    normalized.includes('hip hop') ||
+    normalized === 'hip-hop' ||
+    normalized === 'hiphop' ||
+    normalized === 'r&b' ||
+    normalized === 'rnb'
+  );
+}
+
+function isElectronicReleaseTag(tag: string): boolean {
+  const normalized = tag.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  if (normalized === 'electronic') {
+    return true;
+  }
+  return ELECTRONIC_STYLE_HINTS.some((hint) => normalized.includes(hint));
+}
+
+export function scoreReleaseTagRatios(releaseSamples: DiscogsReleaseTags[]): {
+  electronicRatio: number;
+  nonElectronicRatio: number;
+  classifiedTags: number;
+} {
+  let electronic = 0;
+  let nonElectronic = 0;
+
+  for (const release of releaseSamples) {
+    const tags = [...(release.genres ?? []), ...(release.styles ?? [])];
+    for (const tag of tags) {
+      if (isElectronicReleaseTag(tag)) {
+        electronic += 1;
+        continue;
+      }
+      if (isNonElectronicReleaseTag(tag)) {
+        nonElectronic += 1;
+      }
     }
   }
-  return overlap / Math.max(leftTokens.size, rightTokens.size);
+
+  const classifiedTags = electronic + nonElectronic;
+  if (!classifiedTags) {
+    return { electronicRatio: 0, nonElectronicRatio: 0, classifiedTags: 0 };
+  }
+
+  return {
+    electronicRatio: electronic / classifiedTags,
+    nonElectronicRatio: nonElectronic / classifiedTags,
+    classifiedTags,
+  };
 }
 
-function scoreNameMatch(lineupName: string, artistName: string): number {
-  const lineup = normalizeDiscogsMatchName(lineupName);
-  const artist = normalizeDiscogsMatchName(artistName);
-  if (!lineup || !artist) {
-    return 0;
-  }
-  if (lineup === artist) {
-    return 30;
-  }
-  if (artist.startsWith(lineup) || lineup.startsWith(artist)) {
-    return 22;
-  }
-  const overlap = tokenOverlapScore(lineupName, artistName);
-  if (overlap >= 0.85) {
-    return 20;
-  }
-  if (overlap >= 0.6) {
-    return 12;
-  }
-  return 0;
-}
-
-function scoreProfileElectronic(profile?: string): number {
+function scoreProfileElectronicBonus(profile?: string): number {
   const text = profile?.toLowerCase() ?? '';
   if (!text.trim()) {
     return 0;
   }
-  let hits = 0;
   for (const keyword of ELECTRONIC_PROFILE_KEYWORDS) {
     if (text.includes(keyword)) {
-      hits += 1;
+      return PROFILE_ELECTRONIC_BONUS;
     }
   }
-  return Math.min(20, hits * 5);
+  return 0;
 }
 
-function hasElectronicGenre(genres: string[] = []): boolean {
-  return genres.some((genre) =>
-    ELECTRONIC_GENRES.has(genre.trim().toLowerCase()),
+function scoreProfileNonElectronicPenalty(profile?: string): number {
+  const text = profile?.toLowerCase() ?? '';
+  if (!text.trim()) {
+    return 0;
+  }
+  for (const hint of PURE_NON_ELECTRONIC_PROFILE_HINTS) {
+    if (text.includes(hint.toLowerCase())) {
+      return PROFILE_NON_ELECTRONIC_PENALTY;
+    }
+  }
+  return 0;
+}
+
+/** Count electronic genre/style tags across the first N releases (tie-break #1). */
+export function countReleaseElectronicTags(
+  releaseSamples: DiscogsReleaseTags[],
+): number {
+  let count = 0;
+  for (const release of releaseSamples.slice(
+    0,
+    DISCOGS_MATCH_RELEASE_SAMPLE_SIZE,
+  )) {
+    for (const tag of [...(release.genres ?? []), ...(release.styles ?? [])]) {
+      if (isElectronicReleaseTag(tag)) {
+        count += 1;
+      }
+    }
+  }
+  return count;
+}
+
+/** Distinct electronic profile keyword hits (tie-break #2). */
+export function scoreProfileElectronicKeywordDensity(profile?: string): number {
+  const text = profile?.toLowerCase() ?? '';
+  if (!text.trim()) {
+    return 0;
+  }
+  let count = 0;
+  for (const keyword of ELECTRONIC_PROFILE_KEYWORDS) {
+    if (text.includes(keyword)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+/** EP / remix / single preferred over album / compilation (tie-break #3). */
+export function scoreReleaseTypePreference(
+  releaseSamples: DiscogsReleaseSample[],
+): number {
+  let score = 0;
+  for (const sample of releaseSamples.slice(
+    0,
+    DISCOGS_MATCH_RELEASE_SAMPLE_SIZE,
+  )) {
+    const blob = [
+      sample.title ?? '',
+      sample.format ?? '',
+      ...(sample.formatDescriptions ?? []),
+      ...(sample.genres ?? []),
+      ...(sample.styles ?? []),
+    ]
+      .join(' ')
+      .toLowerCase();
+
+    if (/\bremix\b|rework|\bedit\b|bootleg|\bvip\b/.test(blob)) {
+      score += 3;
+    } else if (/\bep\b|\bsingle\b|maxi|12"/.test(blob)) {
+      score += 2;
+    } else if (/\balbum\b|compilation|\bcomp\b|\blp\b/.test(blob)) {
+      score -= 1;
+    }
+
+    if (/\bpop\b/.test(blob) && !/\belectro\b/.test(blob)) {
+      score -= 2;
+    }
+  }
+  return score;
+}
+
+export type DiscogsArtistTiebreakBreakdown = {
+  releaseElectronicTags: number;
+  profileKeywordDensity: number;
+  releaseTypePreference: number;
+};
+
+export function scoreDiscogsArtistTiebreak(
+  candidate: DiscogsArtistCandidate,
+): DiscogsArtistTiebreakBreakdown {
+  const samples = resolveReleaseSamples(candidate) as DiscogsReleaseSample[];
+  return {
+    releaseElectronicTags: countReleaseElectronicTags(samples),
+    profileKeywordDensity: scoreProfileElectronicKeywordDensity(
+      candidate.profile,
+    ),
+    releaseTypePreference: scoreReleaseTypePreference(samples),
+  };
+}
+
+export function compareDiscogsTiebreakBreakdown(
+  left: DiscogsArtistTiebreakBreakdown,
+  right: DiscogsArtistTiebreakBreakdown,
+): number {
+  if (left.releaseElectronicTags !== right.releaseElectronicTags) {
+    return left.releaseElectronicTags - right.releaseElectronicTags;
+  }
+  if (left.profileKeywordDensity !== right.profileKeywordDensity) {
+    return left.profileKeywordDensity - right.profileKeywordDensity;
+  }
+  return left.releaseTypePreference - right.releaseTypePreference;
+}
+
+/**
+ * Pick a single winner from all tied candidates using tie-break criteria.
+ * Returns null when the top two remain indistinguishable after ranking.
+ */
+export function pickTiebreakWinner(
+  candidates: DiscogsArtistCandidate[],
+): DiscogsArtistCandidate | null {
+  if (!candidates.length) {
+    return null;
+  }
+  if (candidates.length === 1) {
+    return candidates[0];
+  }
+
+  const ranked = candidates
+    .map((candidate) => ({
+      candidate,
+      tiebreak: scoreDiscogsArtistTiebreak(candidate),
+    }))
+    .sort((left, right) =>
+      compareDiscogsTiebreakBreakdown(right.tiebreak, left.tiebreak),
+    );
+
+  const best = ranked[0];
+  const second = ranked[1];
+  if (compareDiscogsTiebreakBreakdown(best.tiebreak, second.tiebreak) === 0) {
+    return null;
+  }
+
+  return best.candidate;
+}
+
+/**
+ * Break a close high-score tie between two candidates.
+ * @deprecated Prefer pickTiebreakWinner for multi-candidate clusters.
+ */
+export function tryBreakDiscogsArtistTie(
+  top: DiscogsArtistCandidate,
+  second: DiscogsArtistCandidate,
+): DiscogsArtistCandidate | null {
+  return pickTiebreakWinner([top, second]);
+}
+
+export function getAmbiguousScoreCluster(
+  eligible: DiscogsArtistMatchScore[],
+  minAccept: number,
+  ambiguityGap: number,
+): DiscogsArtistMatchScore[] {
+  if (!eligible.length) {
+    return [];
+  }
+
+  const top = eligible[0];
+  if (top.total < minAccept) {
+    return [];
+  }
+
+  return eligible.filter(
+    (item) => item.total >= minAccept && top.total - item.total < ambiguityGap,
   );
 }
 
-function countElectronicStyles(styles: string[] = []): number {
-  return styles.filter((style) => {
-    const lower = style.trim().toLowerCase();
-    return ELECTRONIC_STYLE_HINTS.some((hint) => lower.includes(hint));
-  }).length;
+export function isCloseHighScoreAmbiguity(
+  eligible: DiscogsArtistMatchScore[],
+  minAccept: number,
+  ambiguityGap: number,
+): boolean {
+  return (
+    getAmbiguousScoreCluster(eligible, minAccept, ambiguityGap).length >= 2
+  );
 }
 
-function scoreCatalogElectronic(
-  genres: string[] = [],
-  styles: string[] = [],
-): number {
-  let score = 0;
-  if (hasElectronicGenre(genres)) {
-    score += 15;
-  }
-  const electronicStyles = countElectronicStyles(styles);
-  if (electronicStyles >= 2) {
-    score += 10;
-  } else if (electronicStyles === 1) {
-    score += 6;
-  }
-  return Math.min(25, score);
+export function getEligibleRankedScores(
+  scored: DiscogsArtistMatchScore[],
+  suspectMin: number,
+): DiscogsArtistMatchScore[] {
+  return [...scored]
+    .sort((left, right) => right.total - left.total)
+    .filter((item) => item.total >= suspectMin);
 }
 
-function scoreReleaseElectronic(
-  releaseGenres: string[] = [],
-  releaseStyles: string[] = [],
-): number {
-  let score = 0;
-  if (hasElectronicGenre(releaseGenres)) {
-    score += 12;
+export type DiscogsDjRecordSnapshot = {
+  profile?: string;
+  genres?: string[];
+  styles?: string[];
+  representativeWorks?: Array<{ title?: string }>;
+};
+
+/**
+ * True when the record is backed by real Discogs data — never invent filler copy.
+ * Accept: non-trivial profile, or release-derived styles plus at least one work.
+ */
+export function isVerifiableDiscogsDjRecord(
+  record: DiscogsDjRecordSnapshot,
+): boolean {
+  const profile = record.profile?.trim() ?? '';
+  if (profile.length >= DISCOGS_MIN_VERIFIABLE_PROFILE_LENGTH) {
+    return true;
   }
-  const electronicStyles = countElectronicStyles(releaseStyles);
-  if (electronicStyles >= 2) {
-    score += 13;
-  } else if (electronicStyles === 1) {
-    score += 8;
-  }
-  return Math.min(25, score);
+
+  const styles = record.styles ?? [];
+  const works = record.representativeWorks ?? [];
+  return styles.length > 0 && works.length > 0;
 }
 
-function scoreNonElectronicPenalty(
-  profile?: string,
-  genres: string[] = [],
-  styles: string[] = [],
-  releaseStyles: string[] = [],
+function scoreReleaseElectronicBonus(
+  releaseSamples: DiscogsReleaseTags[],
 ): number {
-  const text = profile?.toLowerCase() ?? '';
-  let penalty = 0;
-
-  for (const hint of NON_ELECTRONIC_PROFILE_HINTS) {
-    if (text.includes(hint)) {
-      penalty += 12;
-    }
+  const { electronicRatio, classifiedTags } =
+    scoreReleaseTagRatios(releaseSamples);
+  if (!classifiedTags) {
+    return 0;
   }
+  return electronicRatio > DISCOGS_MATCH_RELEASE_ELECTRONIC_RATIO
+    ? RELEASE_ELECTRONIC_BONUS
+    : 0;
+}
 
-  const hasElectronic =
-    hasElectronicGenre(genres) ||
-    countElectronicStyles(styles) > 0 ||
-    countElectronicStyles(releaseStyles) > 0;
-
-  if (
-    !hasElectronic &&
-    genres.length > 0 &&
-    genres.every((genre) => {
-      const lower = genre.toLowerCase();
-      return (
-        lower.includes('classical') ||
-        lower.includes('jazz') ||
-        lower.includes('folk') ||
-        lower.includes('stage')
-      );
-    })
-  ) {
-    penalty += 25;
+function scoreReleaseNonElectronicPenalty(
+  releaseSamples: DiscogsReleaseTags[],
+): number {
+  const { nonElectronicRatio, classifiedTags } =
+    scoreReleaseTagRatios(releaseSamples);
+  if (!classifiedTags) {
+    return 0;
   }
-
-  return Math.min(40, penalty);
+  return nonElectronicRatio >= DISCOGS_MATCH_RELEASE_NON_ELECTRONIC_RATIO
+    ? RELEASE_NON_ELECTRONIC_PENALTY
+    : 0;
 }
 
 export function scoreDiscogsArtistCandidate(
-  lineupName: string,
+  _lineupName: string,
   candidate: DiscogsArtistCandidate,
 ): DiscogsArtistMatchScore {
+  const releaseSamples = resolveReleaseSamples(candidate);
   const breakdown = {
-    nameMatch: scoreNameMatch(lineupName, candidate.name),
-    profileElectronic: scoreProfileElectronic(candidate.profile),
-    catalogElectronic: scoreCatalogElectronic(
-      candidate.genres,
-      candidate.styles,
-    ),
-    releaseElectronic: scoreReleaseElectronic(
-      candidate.releaseGenres,
-      candidate.releaseStyles,
-    ),
-    nonElectronicPenalty: scoreNonElectronicPenalty(
+    base: DISCOGS_MATCH_BASE_SCORE,
+    profileElectronicBonus: scoreProfileElectronicBonus(candidate.profile),
+    releaseElectronicBonus: scoreReleaseElectronicBonus(releaseSamples),
+    releaseNonElectronicPenalty:
+      scoreReleaseNonElectronicPenalty(releaseSamples),
+    profileNonElectronicPenalty: scoreProfileNonElectronicPenalty(
       candidate.profile,
-      candidate.genres,
-      candidate.styles,
-      candidate.releaseStyles,
     ),
   };
 
-  const total = Math.max(
-    0,
-    breakdown.nameMatch +
-      breakdown.profileElectronic +
-      breakdown.catalogElectronic +
-      breakdown.releaseElectronic -
-      breakdown.nonElectronicPenalty,
-  );
+  const total =
+    breakdown.base +
+    breakdown.profileElectronicBonus +
+    breakdown.releaseElectronicBonus -
+    breakdown.releaseNonElectronicPenalty -
+    breakdown.profileNonElectronicPenalty;
 
   return {
     discogsId: candidate.id,
@@ -313,6 +543,8 @@ export type DiscogsMatchDecision =
       reviewReason: string;
       searchQuery: string;
       candidateScores: DiscogsArtistMatchScore[];
+      needsTiebreak?: boolean;
+      tiebreakCluster?: DiscogsArtistMatchScore[];
     };
 
 export function decideDiscogsArtistMatch(
@@ -320,50 +552,61 @@ export function decideDiscogsArtistMatch(
   scored: DiscogsArtistMatchScore[],
   options?: {
     minAcceptScore?: number;
+    suspectMinScore?: number;
     ambiguityGap?: number;
     searchQuery?: string;
   },
 ): DiscogsMatchDecision {
   const minAccept = options?.minAcceptScore ?? DISCOGS_MATCH_MIN_ACCEPT_SCORE;
+  const suspectMin =
+    options?.suspectMinScore ?? DISCOGS_MATCH_SUSPECT_MIN_SCORE;
   const ambiguityGap = options?.ambiguityGap ?? DISCOGS_MATCH_AMBIGUITY_GAP;
   const searchQuery =
     options?.searchQuery ?? buildDiscogsElectronicSearchQuery(lineupName);
 
-  const ranked = [...scored]
-    .filter((item) => item.total > 0)
-    .sort((a, b) => b.total - a.total);
+  const ranked = [...scored].sort((a, b) => b.total - a.total);
+  const eligible = ranked.filter((item) => item.total >= suspectMin);
 
-  if (!ranked.length) {
+  if (!eligible.length) {
+    const topRejected = ranked[0];
     return {
       status: 'pending_review',
-      reviewReason: '无合格电子音乐人候选',
+      reviewReason: topRejected
+        ? `最高得分 ${topRejected.total} 低于剔除线 ${suspectMin}`
+        : '无合格电子音乐人候选',
       searchQuery,
-      candidateScores: scored,
+      candidateScores: ranked,
     };
   }
 
-  const top = ranked[0];
-  const second = ranked[1];
+  const top = eligible[0];
+  const second = eligible[1];
 
   if (top.total < minAccept) {
     return {
       status: 'pending_review',
-      reviewReason: `最高得分 ${top.total} 低于阈值 ${minAccept}`,
+      reviewReason: `最高得分 ${top.total} 存疑（需 ≥${minAccept}）`,
       searchQuery,
-      candidateScores: ranked,
+      candidateScores: eligible,
     };
   }
 
-  if (
-    second &&
-    second.total >= minAccept &&
-    top.total - second.total < ambiguityGap
-  ) {
+  const ambiguousCluster = getAmbiguousScoreCluster(
+    eligible,
+    minAccept,
+    ambiguityGap,
+  );
+
+  if (isCloseHighScoreAmbiguity(eligible, minAccept, ambiguityGap)) {
     return {
       status: 'pending_review',
-      reviewReason: `前两名得分接近（${top.total} vs ${second.total}）`,
+      reviewReason: `${ambiguousCluster.length} 位高分接近（${top.total} 分${
+        second ? `，次高 ${second.total}` : ''
+      }）`,
       searchQuery,
-      candidateScores: ranked,
+      candidateScores: eligible,
+      needsTiebreak: true,
+      tiebreakCluster: ambiguousCluster,
     };
   }
 
