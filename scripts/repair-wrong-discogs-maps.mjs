@@ -1,15 +1,18 @@
 #!/usr/bin/env node
 /**
- * Downgrade dj_discogs_map entries whose Discogs name does not match the lineup name.
+ * Repair dj_discogs_map entries before v3 rematch:
+ * - Name mismatch vs lineup display name
+ * - Stale pre-v3 search rows (no genre=Electronic) → pending + cache clear on rematch
  *
  * Usage:
  *   npm run db:repair-discogs-maps -- --dry-run
- *   npm run db:repair-discogs-maps
+ *   npm run db:repair-discogs-maps -- --apply
  *   npm run db:repair-discogs-maps -- --apply --rematch
+ *   npm run db:repair-discogs-maps -- --apply --stale-only
  */
 
 import mongoose from 'mongoose';
-import { getDiscogsSearchQueries } from './lib/festival-lineup-fallback.mjs';
+import { getDiscogsTrustedNameVariants } from './lib/festival-lineup-fallback.mjs';
 import {
   createDjDiscogsMapModel,
   upsertDjDiscogsMapPendingReview,
@@ -36,6 +39,7 @@ function loadMatchUtil() {
 const args = process.argv.slice(2);
 const apply = args.includes('--apply');
 const rematch = args.includes('--rematch');
+const staleOnly = args.includes('--stale-only') || args.includes('--legacy-only');
 const emitJson = args.includes('--json');
 
 function printRepairJson(payload) {
@@ -45,7 +49,7 @@ function printRepairJson(payload) {
   console.log('HERMES_REPAIR_JSON:' + JSON.stringify(payload));
 }
 
-function shouldDowngrade(row) {
+function inspectMapRow(row) {
   const lineupName = row.lineupName?.trim() ?? '';
   const discogsName = row.discogsName?.trim() ?? '';
   const discogsId = row.discogsId;
@@ -53,17 +57,41 @@ function shouldDowngrade(row) {
     return null;
   }
 
-  const { isLineupDiscogsNamePlausible } = loadMatchUtil();
-  const allowedDiscogsNames = getDiscogsSearchQueries(lineupName);
-  if (
-    isLineupDiscogsNamePlausible(lineupName, discogsName, allowedDiscogsNames)
-  ) {
+  const { isLineupDiscogsNamePlausible, isStaleDiscogsMapEntry } =
+    loadMatchUtil();
+  const nameMatchVariants = getDiscogsTrustedNameVariants(lineupName);
+  const stale = isStaleDiscogsMapEntry({
+    searchQuery: row.searchQuery,
+    discoveryStrategyId: row.discoveryStrategyId,
+  });
+
+  if (staleOnly && !stale) {
     return null;
   }
 
-  return {
-    reason: `名称不一致（${discogsName || 'unknown'}）`,
-  };
+  if (
+    !isLineupDiscogsNamePlausible(lineupName, discogsName, nameMatchVariants)
+  ) {
+    return {
+      kind: 'name_mismatch',
+      reason: `名称不一致（${discogsName || 'unknown'}）`,
+      stale,
+      searchQuery: row.searchQuery ?? '',
+      discoveryStrategyId: row.discoveryStrategyId ?? '',
+    };
+  }
+
+  if (stale) {
+    return {
+      kind: 'stale_v3_search',
+      reason: '非 v3 搜索参数（无 genre=Electronic），需 rematch',
+      stale: true,
+      searchQuery: row.searchQuery ?? '',
+      discoveryStrategyId: row.discoveryStrategyId ?? '',
+    };
+  }
+
+  return null;
 }
 
 async function main() {
@@ -76,7 +104,7 @@ async function main() {
   const suspicious = [];
 
   for (const row of mapped) {
-    const verdict = shouldDowngrade(row);
+    const verdict = inspectMapRow(row);
     if (verdict) {
       suspicious.push({
         lineupName: row.lineupName,
@@ -87,14 +115,33 @@ async function main() {
     }
   }
 
+  suspicious.sort((left, right) => {
+    if (left.stale !== right.stale) {
+      return left.stale ? -1 : 1;
+    }
+    if (left.kind !== right.kind) {
+      return left.kind === 'stale_v3_search' ? -1 : 1;
+    }
+    return left.lineupName.localeCompare(right.lineupName);
+  });
+
+  const staleCount = suspicious.filter((item) => item.stale).length;
+  const nameMismatchCount = suspicious.filter(
+    (item) => item.kind === 'name_mismatch',
+  ).length;
+
   console.log(`\n检查 mapped: ${mapped.length} 条`);
-  console.log(`可疑映射: ${suspicious.length} 条\n`);
+  console.log(`需处理: ${suspicious.length} 条`);
+  console.log(`  stale 非 v3 search: ${staleCount}`);
+  console.log(`  名称不一致: ${nameMismatchCount}\n`);
 
   if (!suspicious.length) {
     console.log('无需修复。');
     printRepairJson({
       mappedChecked: mapped.length,
       suspiciousCount: 0,
+      staleCount: 0,
+      nameMismatchCount: 0,
       downgraded: 0,
       clearedMaps: 0,
       names: [],
@@ -105,7 +152,10 @@ async function main() {
 
   for (const item of suspicious.slice(0, 30)) {
     console.log(
-      `  ${item.lineupName} → #${item.discogsId} (${item.discogsName}) — ${item.reason}`,
+      `  [${item.kind}] ${item.lineupName} → #${item.discogsId} (${item.discogsName})`,
+    );
+    console.log(
+      `      ${item.reason} | search=${item.searchQuery || '-'} | strategy=${item.discoveryStrategyId || '-'}`,
     );
   }
   if (suspicious.length > 30) {
@@ -114,9 +164,14 @@ async function main() {
 
   if (!apply) {
     console.log('\n(dry-run) 加 --apply 执行降级');
+    if (staleCount) {
+      console.log('  stale 行加 --apply --rematch 清除映射后 v3 重跑');
+    }
     printRepairJson({
       mappedChecked: mapped.length,
       suspiciousCount: suspicious.length,
+      staleCount,
+      nameMismatchCount,
       downgraded: 0,
       clearedMaps: 0,
       names: suspicious.map((item) => item.lineupName),
@@ -129,7 +184,9 @@ async function main() {
   for (const item of suspicious) {
     await upsertDjDiscogsMapPendingReview(mapCollection, {
       lineupName: item.lineupName,
-      searchQuery: 'repair:name-mismatch',
+      searchQuery: item.stale
+        ? 'repair:stale-v3-search'
+        : 'repair:name-mismatch',
       reviewReason: item.reason,
     });
     downgraded += 1;
@@ -143,6 +200,7 @@ async function main() {
     const cleared = await clearLineupArtistRematchState(mapCollection, names);
     clearedMaps = cleared.clearedMaps;
     console.log(`已清除 ${clearedMaps} 条映射缓存，可运行 rematch crawl`);
+    console.log('  npm run db:crawl-catalog-artists:rematch-mapped');
     console.log(
       `  npm run db:crawl-catalog-artists -- --names "${names.slice(0, 5).join(',')}" --rematch`,
     );
@@ -154,6 +212,8 @@ async function main() {
   printRepairJson({
     mappedChecked: mapped.length,
     suspiciousCount: suspicious.length,
+    staleCount,
+    nameMismatchCount,
     downgraded,
     clearedMaps,
     names: suspicious.map((item) => item.lineupName),

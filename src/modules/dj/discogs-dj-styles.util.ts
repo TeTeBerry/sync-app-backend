@@ -31,7 +31,48 @@ export const DISCOGS_IRRELEVANT_TAGS = new Set([
   'reggae',
   'spiritual',
   'stage',
+  'dance-pop',
 ]);
+
+/** House subgenres that also contribute to the parent "House" style bucket. */
+export const DISCOGS_HOUSE_SUBGENRES = new Set([
+  'electro house',
+  'deep house',
+  'future house',
+  'funky house',
+  'vocal house',
+  'jackin house',
+  'latin house',
+  'tribal house',
+  'microhouse',
+]);
+
+export type DiscogsArtistReleaseListItem = {
+  main_release?: number;
+  id?: number;
+  year?: number;
+  role?: string;
+  title?: string;
+  type?: string;
+  resource_url?: string;
+};
+
+/**
+ * Prefer recent Main-role releases when sampling Discogs tags for DJ styles.
+ */
+export function pickReleasesForStyleSampling(
+  items: DiscogsArtistReleaseListItem[],
+  sampleSize: number,
+): DiscogsArtistReleaseListItem[] {
+  const sorted = [...items].sort(
+    (left, right) => (right.year ?? 0) - (left.year ?? 0),
+  );
+  const mainRole = sorted.filter(
+    (item) => (item.role ?? '').trim().toLowerCase() === 'main',
+  );
+  const pool = mainRole.length >= Math.min(sampleSize, 3) ? mainRole : sorted;
+  return pool.slice(0, sampleSize);
+}
 
 export function normalizeDiscogsTag(tag: string): string {
   return tag.trim().toLowerCase();
@@ -69,6 +110,18 @@ function bumpTagCount(
   counts.set(key, { label: trimmed, count: 1 });
 }
 
+function bumpStyleTagCounts(
+  styleCounts: Map<string, { label: string; count: number }>,
+  tag: string,
+) {
+  const normalized = normalizeDiscogsTag(tag);
+  if (DISCOGS_HOUSE_SUBGENRES.has(normalized)) {
+    bumpTagCount(styleCounts, 'House');
+    return;
+  }
+  bumpTagCount(styleCounts, tag);
+}
+
 function rankTags(
   counts: Map<string, { label: string; count: number }>,
   topN?: number,
@@ -93,7 +146,7 @@ export function aggregateDiscogsReleaseStyles(
       bumpTagCount(genreCounts, genre);
     }
     for (const style of release.styles ?? []) {
-      bumpTagCount(styleCounts, style);
+      bumpStyleTagCounts(styleCounts, style);
     }
   }
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * List all catalog lineup artist names (Mongo + seed fallback).
- * Used by hermes-agent via subprocess — same logic as db:crawl-catalog-artists scope.
+ * List all catalog lineup artist names from Mongo artist_performances only.
+ * Used by hermes-agent and db:crawl-catalog-artists scope.
  *
  * Usage:
  *   npm run db:list-catalog-lineup-artists
@@ -31,7 +31,7 @@ async function main() {
   const artists = await loadAllCatalogLineupArtistNames(db, config);
 
   const payload = {
-    source: 'backend',
+    source: 'mongo',
     artists,
     artistCount: artists.length,
     activityCount: activities.length,

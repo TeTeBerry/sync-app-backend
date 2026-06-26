@@ -54,6 +54,16 @@ describe('lineup-name-match.util', () => {
     );
   });
 
+  it('matches GHENGAR via Ghastly when Ghengar is absent from catalog', () => {
+    const ghastlyOnly = [{ name: 'Ghastly', discogsId: 123 }];
+    expect(matchLineupArtistToCatalog('GHENGAR', ghastlyOnly)?.name).toBe(
+      'Ghastly',
+    );
+    expect(
+      matchLineupArtistToCatalog('GHENGAR (GHASTLY)', ghastlyOnly)?.name,
+    ).toBe('Ghastly');
+  });
+
   it('matches exact lineup name and ignores partial homonyms', () => {
     const crowded = [
       { name: 'Marsha Smith', discogsId: 1 },

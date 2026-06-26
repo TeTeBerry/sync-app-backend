@@ -1,12 +1,12 @@
 /**
- * Discogs lineup artist matching (v2):
+ * Discogs lineup artist matching (v3):
  *
  * Flow (lineup English name → artist_id):
  * 1. dj_discogs_map hit (mapped) → use artist_id, fetch styles elsewhere
- * 2. Miss → search q="NAME" strict, type=artist, strict=1
- * 3. Top 8 candidates → artist detail only → 5-factor score
- * 4. Winner ≥120 → write dj_discogs_map; pending_review → map only, no djs upsert
- * 5. Never upsert djs without verifiable Discogs profile or release-derived styles
+ * 2. Miss → tiered database/search (genre=Electronic on every request):
+ *    artist → anv → release-by-artist → release-by-credit → artist q
+ * 3. Filter / expand hits → score top 8 → winner ≥120 + name gate → mapped
+ * 4. Never upsert djs without verifiable Discogs profile or release-derived styles
  *
  * Five score factors: base 100, profile +30, catalog/release +50, catalog/release −60, profile −100
  * During match phase, artist catalog genres/styles proxy release tags (releases fetched after winner).
@@ -15,6 +15,10 @@ import {
   type DiscogsReleaseTags,
   isIrrelevantDiscogsTag,
 } from './discogs-dj-styles.util';
+import {
+  isDiscogsDisambiguationProfile,
+  isLineupCatalogProfileTrusted,
+} from './lineup-catalog-profile-trust.util';
 
 export type DiscogsReleaseSample = DiscogsReleaseTags & {
   title?: string;
@@ -28,12 +32,18 @@ export type DiscogsArtistCandidate = {
   profile?: string;
   genres?: string[];
   styles?: string[];
+  /** Discogs namevariations / ANV entries from the artist page. */
+  aliases?: string[];
   /** @deprecated use releaseSamples — kept for backward compatibility */
   releaseGenres?: string[];
   /** @deprecated use releaseSamples */
   releaseStyles?: string[];
   /** Top N release tag sets used for electronic ratio scoring. */
   releaseSamples?: DiscogsReleaseSample[];
+  discoveryMeta?: {
+    strategyId: string;
+    strategyLabel: string;
+  };
 };
 
 export type DiscogsArtistMatchScore = {
@@ -58,8 +68,38 @@ export const DISCOGS_MATCH_RELEASE_SAMPLE_SIZE = 5;
 export const DISCOGS_MATCH_RELEASE_ELECTRONIC_RATIO = 0.7;
 export const DISCOGS_MATCH_RELEASE_NON_ELECTRONIC_RATIO = 0.4;
 export const DISCOGS_SEARCH_CANDIDATE_LIMIT = 8;
+/** Every lineup database/search request includes this genre filter. */
+export const DISCOGS_LINEUP_SEARCH_GENRE = 'Electronic';
+export const DISCOGS_RELEASE_SEARCH_PER_PAGE = 5;
 export const DISCOGS_REQUEST_DELAY_MS_DEFAULT = 1200;
 export const DISCOGS_REDIS_CACHE_TTL_SEC_DEFAULT = 86_400;
+
+export type DiscogsSearchStrategyKind =
+  | 'artist-direct'
+  | 'release-graph'
+  | 'artist-broad';
+
+export type DiscogsSearchStrategy = {
+  id: string;
+  kind: DiscogsSearchStrategyKind;
+  params: Record<string, string>;
+};
+
+export type DiscogsArtistRef = {
+  artistId: number;
+  displayName: string;
+  strategyId: string;
+  strategyLabel: string;
+  refKind: 'artist-hit' | 'release-graph' | 'anv-hit';
+};
+
+const DISCOGS_SEARCH_STRATEGY_PRIORITY: Record<string, number> = {
+  'artist-exact': 0,
+  'artist-anv': 1,
+  'release-by-artist': 2,
+  'release-by-credit': 3,
+  'artist-q': 4,
+};
 /** Minimum profile length to accept a Discogs artist page without release styles. */
 export const DISCOGS_MIN_VERIFIABLE_PROFILE_LENGTH = 20;
 
@@ -160,105 +200,321 @@ export function normalizeDiscogsMatchName(name: string): string {
     .trim();
 }
 
-function isDiscogsTokenBoundaryMatch(
-  discogsNorm: string,
-  token: string,
-): boolean {
-  if (!token || !discogsNorm) {
-    return false;
+/** Trailing Discogs homonym index, e.g. "Marshmello (2)" → 2. */
+export function parseDiscogsDisambiguationSuffix(name: string): number | null {
+  const match = name.trim().match(/\((\d+)\)\s*$/);
+  if (!match) {
+    return null;
   }
-  if (discogsNorm === token) {
-    return true;
-  }
-  const index = discogsNorm.indexOf(token);
-  if (index < 0) {
-    return false;
-  }
-  const after = discogsNorm[index + token.length];
-  return after === undefined || after === ' ' || after === '(';
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-/** Lineup display name vs Discogs artist page name — blocks homonym auto-maps. */
+function collectLineupNameNorms(
+  lineupName: string,
+  nameMatchVariants: string[] = [],
+): Set<string> {
+  const variants = [
+    lineupName,
+    ...nameMatchVariants.filter(
+      (name) => name.trim() && name.trim() !== lineupName.trim(),
+    ),
+  ]
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  return new Set(variants.map(normalizeDiscogsMatchName).filter(Boolean));
+}
+
+/**
+ * Strict name gate: Discogs page name (or ANV / alias) must exactly match the
+ * lineup display name or an explicit search alias — no partial matching.
+ */
 export function isLineupDiscogsNamePlausible(
   lineupName: string,
   discogsName: string,
-  allowedDiscogsNames: string[] = [],
+  nameMatchVariants: string[] = [],
+  options?: { discogsAliases?: string[] },
 ): boolean {
-  const discogsNorm = normalizeDiscogsMatchName(discogsName);
-  if (!discogsNorm) {
+  const lineupNorms = collectLineupNameNorms(lineupName, nameMatchVariants);
+  if (!lineupNorms.size) {
     return false;
   }
 
-  const names = [lineupName, ...allowedDiscogsNames]
-    .map((name) => name.trim())
-    .filter(Boolean);
-  const lineupNorms = [
-    ...new Set(names.map(normalizeDiscogsMatchName).filter(Boolean)),
+  const discogsNames = [
+    discogsName,
+    ...(options?.discogsAliases ?? []).filter(Boolean),
   ];
 
-  for (const lineupNorm of lineupNorms) {
-    if (lineupNorm === discogsNorm) {
+  for (const name of discogsNames) {
+    const discogsNorm = normalizeDiscogsMatchName(name);
+    if (discogsNorm && lineupNorms.has(discogsNorm)) {
       return true;
-    }
-    if (!lineupNorm.includes(' ') && discogsNorm.includes(' ')) {
-      continue;
-    }
-    if (
-      lineupNorm.length >= 4 &&
-      isDiscogsTokenBoundaryMatch(discogsNorm, lineupNorm)
-    ) {
-      return true;
-    }
-    if (
-      discogsNorm.length >= 4 &&
-      isDiscogsTokenBoundaryMatch(lineupNorm, discogsNorm)
-    ) {
-      return true;
-    }
-
-    const tokens = lineupNorm.split(/\s+/).filter((token) => token.length >= 2);
-    if (tokens.length >= 2) {
-      const hits = tokens.filter((token) =>
-        isDiscogsTokenBoundaryMatch(discogsNorm, token),
-      );
-      const required = Math.min(
-        tokens.length,
-        Math.max(2, Math.ceil(tokens.length * 0.75)),
-      );
-      if (hits.length >= required) {
-        return true;
-      }
-      continue;
-    }
-
-    if (tokens.length === 1 && tokens[0].length >= 4) {
-      const token = tokens[0];
-      if (discogsNorm === token) {
-        return true;
-      }
-      if (
-        discogsNorm.length >= 4 &&
-        isDiscogsTokenBoundaryMatch(token, discogsNorm)
-      ) {
-        return true;
-      }
-      return isDiscogsTokenBoundaryMatch(discogsNorm, token);
     }
   }
 
   return false;
 }
 
-/** Strict quoted artist name only — used before electronic-producer fallback search. */
-export function buildDiscogsStrictArtistSearchQuery(
-  lineupName: string,
-): string {
-  return `"${lineupName.trim()}"`;
+/** How many search hits to request before client-side exact-name filtering. */
+export const DISCOGS_ARTIST_SEARCH_RESULT_SCAN_LIMIT = 25;
+
+export type DiscogsArtistSearchHit = {
+  type?: string;
+  title?: string;
+  id?: number;
+};
+
+function withLineupSearchGenre(
+  params: Record<string, string>,
+): Record<string, string> {
+  return { ...params, genre: DISCOGS_LINEUP_SEARCH_GENRE };
 }
 
-export function buildDiscogsElectronicSearchQuery(lineupName: string): string {
-  const trimmed = lineupName.trim();
-  return `"${trimmed}" dj electronic producer`;
+/** v3 tiered database/search plan — every strategy includes genre=Electronic. */
+export function buildLineupSearchStrategies(
+  artistName: string,
+): DiscogsSearchStrategy[] {
+  const trimmed = artistName.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  return [
+    {
+      id: 'artist-exact',
+      kind: 'artist-direct',
+      params: withLineupSearchGenre({ type: 'artist', artist: trimmed }),
+    },
+    {
+      id: 'artist-anv',
+      kind: 'artist-direct',
+      params: withLineupSearchGenre({ type: 'artist', anv: trimmed }),
+    },
+    {
+      id: 'release-by-artist',
+      kind: 'release-graph',
+      params: withLineupSearchGenre({
+        type: 'release',
+        artist: trimmed,
+        per_page: String(DISCOGS_RELEASE_SEARCH_PER_PAGE),
+      }),
+    },
+    {
+      id: 'release-by-credit',
+      kind: 'release-graph',
+      params: withLineupSearchGenre({
+        type: 'release',
+        credit: trimmed,
+        per_page: String(DISCOGS_RELEASE_SEARCH_PER_PAGE),
+      }),
+    },
+    {
+      id: 'artist-q',
+      kind: 'artist-broad',
+      params: withLineupSearchGenre({ type: 'artist', q: trimmed }),
+    },
+  ];
+}
+
+export function defaultLineupSearchQueryLabel(lineupName: string): string {
+  const strategies = buildLineupSearchStrategies(lineupName);
+  const primary = strategies[0];
+  if (!primary) {
+    return 'artist-search';
+  }
+  return formatDiscogsArtistSearchLabel(primary.params);
+}
+
+export function formatDiscogsArtistSearchLabel(
+  params: Record<string, string>,
+): string {
+  const parts = Object.keys(params)
+    .sort()
+    .map((key) => `${key}=${params[key]}`);
+  return parts.join('&') || 'artist-search';
+}
+
+export function compareDiscogsSearchStrategyPriority(
+  leftId: string,
+  rightId: string,
+): number {
+  const left = DISCOGS_SEARCH_STRATEGY_PRIORITY[leftId] ?? 99;
+  const right = DISCOGS_SEARCH_STRATEGY_PRIORITY[rightId] ?? 99;
+  return left - right;
+}
+
+export function mergeDiscogsArtistRefs(
+  refs: DiscogsArtistRef[],
+): DiscogsArtistRef[] {
+  const byId = new Map<number, DiscogsArtistRef>();
+  for (const ref of refs) {
+    const existing = byId.get(ref.artistId);
+    if (
+      !existing ||
+      compareDiscogsSearchStrategyPriority(
+        ref.strategyId,
+        existing.strategyId,
+      ) < 0
+    ) {
+      byId.set(ref.artistId, ref);
+    }
+  }
+  return [...byId.values()];
+}
+
+/** Keep artist hits; ANV strategy trusts Discogs ANV index (verified on artist page). */
+export function filterDiscogsArtistSearchHits(
+  hits: DiscogsArtistSearchHit[],
+  nameMatchVariants: string[],
+  strategyId?: string,
+): DiscogsArtistSearchHit[] {
+  const norms = collectLineupNameNorms(
+    nameMatchVariants[0] ?? '',
+    nameMatchVariants.slice(1),
+  );
+  if (!norms.size && strategyId !== 'artist-anv') {
+    return [];
+  }
+
+  return (hits ?? []).filter((item) => {
+    if (item.type !== 'artist' || !item.id) {
+      return false;
+    }
+    if (strategyId === 'artist-anv') {
+      return true;
+    }
+    const titleNorm = normalizeDiscogsMatchName(item.title ?? '');
+    return Boolean(titleNorm && norms.has(titleNorm));
+  });
+}
+
+export function artistRefsFromSearchHits(
+  hits: DiscogsArtistSearchHit[],
+  strategy: DiscogsSearchStrategy,
+  nameMatchVariants: string[],
+): DiscogsArtistRef[] {
+  const filtered = filterDiscogsArtistSearchHits(
+    hits,
+    nameMatchVariants,
+    strategy.id,
+  );
+  const strategyLabel = formatDiscogsArtistSearchLabel(strategy.params);
+  return filtered.map((hit) => ({
+    artistId: hit.id!,
+    displayName: hit.title ?? '',
+    strategyId: strategy.id,
+    strategyLabel,
+    refKind: strategy.id === 'artist-anv' ? 'anv-hit' : 'artist-hit',
+  }));
+}
+
+export function artistRefsFromRelease(
+  release: { artists?: Array<{ id?: number; name?: string }> },
+  strategy: DiscogsSearchStrategy,
+): DiscogsArtistRef[] {
+  const strategyLabel = formatDiscogsArtistSearchLabel(strategy.params);
+  return (release.artists ?? [])
+    .filter((artist) => artist.id)
+    .map((artist) => ({
+      artistId: artist.id!,
+      displayName: artist.name ?? '',
+      strategyId: strategy.id,
+      strategyLabel,
+      refKind: 'release-graph' as const,
+    }));
+}
+
+export function filterArtistRefsByNameGate(
+  refs: DiscogsArtistRef[],
+  lineupName: string,
+  nameMatchVariants: string[],
+): DiscogsArtistRef[] {
+  return refs.filter((ref) => {
+    if (ref.refKind === 'anv-hit') {
+      return true;
+    }
+    return isLineupDiscogsNamePlausible(
+      lineupName,
+      ref.displayName,
+      nameMatchVariants,
+    );
+  });
+}
+
+export function isStaleDiscogsMapEntry(entry: {
+  searchQuery?: string;
+  discoveryStrategyId?: string;
+}): boolean {
+  return isLegacyDiscogsV2MapEntry(entry);
+}
+
+/** @deprecated use isStaleDiscogsMapEntry */
+export function isLegacyDiscogsV2MapEntry(entry: {
+  searchQuery?: string;
+  discoveryStrategyId?: string;
+}): boolean {
+  if (entry.discoveryStrategyId?.trim()) {
+    return false;
+  }
+  const query = entry.searchQuery?.trim() ?? '';
+  if (!query || query.startsWith('#map:') || query.startsWith('repair:')) {
+    return false;
+  }
+  if (/^q=/.test(query) && !/genre=/i.test(query)) {
+    return true;
+  }
+  return !/genre=Electronic/i.test(query);
+}
+
+export function buildLineupSearchRequestParams(
+  strategy: DiscogsSearchStrategy,
+  scanLimit: number,
+): Record<string, string> {
+  if (strategy.kind === 'release-graph') {
+    return {
+      ...strategy.params,
+      per_page:
+        strategy.params.per_page ?? String(DISCOGS_RELEASE_SEARCH_PER_PAGE),
+    };
+  }
+  return { ...strategy.params, per_page: String(scanLimit) };
+}
+
+export function isLineupDiscogsCandidatePlausible(
+  lineupName: string,
+  candidate: Pick<DiscogsArtistCandidate, 'name' | 'aliases' | 'profile'>,
+  nameMatchVariants: string[] = [],
+): boolean {
+  const profile = candidate.profile?.trim() ?? '';
+
+  if (isDiscogsDisambiguationProfile(profile)) {
+    return false;
+  }
+
+  if (
+    !isLineupDiscogsNamePlausible(
+      lineupName,
+      candidate.name,
+      nameMatchVariants,
+      { discogsAliases: candidate.aliases },
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    profile &&
+    !isLineupCatalogProfileTrusted(
+      lineupName,
+      { name: candidate.name, profile },
+      { allowedCatalogNames: nameMatchVariants },
+    )
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 export function resolveReleaseSamples(
@@ -441,16 +697,28 @@ export function scoreReleaseTypePreference(
 }
 
 export type DiscogsArtistTiebreakBreakdown = {
+  disambiguationPreference: number;
   releaseElectronicTags: number;
   profileKeywordDensity: number;
   releaseTypePreference: number;
 };
+
+export function scoreDiscogsDisambiguationPreference(name: string): number {
+  const suffix = parseDiscogsDisambiguationSuffix(name);
+  if (suffix == null) {
+    return 100;
+  }
+  return Math.max(0, 80 - suffix * 15);
+}
 
 export function scoreDiscogsArtistTiebreak(
   candidate: DiscogsArtistCandidate,
 ): DiscogsArtistTiebreakBreakdown {
   const samples = resolveReleaseSamples(candidate) as DiscogsReleaseSample[];
   return {
+    disambiguationPreference: scoreDiscogsDisambiguationPreference(
+      candidate.name,
+    ),
     releaseElectronicTags: countReleaseElectronicTags(samples),
     profileKeywordDensity: scoreProfileElectronicKeywordDensity(
       candidate.profile,
@@ -463,6 +731,9 @@ export function compareDiscogsTiebreakBreakdown(
   left: DiscogsArtistTiebreakBreakdown,
   right: DiscogsArtistTiebreakBreakdown,
 ): number {
+  if (left.disambiguationPreference !== right.disambiguationPreference) {
+    return left.disambiguationPreference - right.disambiguationPreference;
+  }
   if (left.releaseElectronicTags !== right.releaseElectronicTags) {
     return left.releaseElectronicTags - right.releaseElectronicTags;
   }
@@ -568,6 +839,9 @@ export function isVerifiableDiscogsDjRecord(
   record: DiscogsDjRecordSnapshot,
 ): boolean {
   const profile = record.profile?.trim() ?? '';
+  if (isDiscogsDisambiguationProfile(profile)) {
+    return false;
+  }
   if (profile.length >= DISCOGS_MIN_VERIFIABLE_PROFILE_LENGTH) {
     return true;
   }
@@ -641,6 +915,7 @@ export type DiscogsMatchDecision =
       discogsName: string;
       matchScore: number;
       searchQuery: string;
+      discoveryStrategyId?: string;
     }
   | {
       status: 'pending_review';
@@ -659,7 +934,13 @@ export function decideDiscogsArtistMatch(
     suspectMinScore?: number;
     ambiguityGap?: number;
     searchQuery?: string;
-    allowedDiscogsNames?: string[];
+    /** Lineup name + explicit alias only — used for strict name gate. */
+    nameMatchVariants?: string[];
+    /** When provided, name gate also checks artist page aliases / ANV. */
+    candidateById?: Map<
+      number,
+      Pick<DiscogsArtistCandidate, 'name' | 'aliases' | 'profile'>
+    >;
   },
 ): DiscogsMatchDecision {
   const minAccept = options?.minAcceptScore ?? DISCOGS_MATCH_MIN_ACCEPT_SCORE;
@@ -667,11 +948,30 @@ export function decideDiscogsArtistMatch(
     options?.suspectMinScore ?? DISCOGS_MATCH_SUSPECT_MIN_SCORE;
   const ambiguityGap = options?.ambiguityGap ?? DISCOGS_MATCH_AMBIGUITY_GAP;
   const searchQuery =
-    options?.searchQuery ?? buildDiscogsElectronicSearchQuery(lineupName);
-  const allowedDiscogsNames = options?.allowedDiscogsNames ?? [];
+    options?.searchQuery ?? defaultLineupSearchQueryLabel(lineupName);
+  const nameMatchVariants = options?.nameMatchVariants ?? [];
+
+  function passesNameGate(discogsId: number, discogsName: string): boolean {
+    const candidate = options?.candidateById?.get(discogsId);
+    if (candidate) {
+      return isLineupDiscogsCandidatePlausible(
+        lineupName,
+        candidate,
+        nameMatchVariants,
+      );
+    }
+    return isLineupDiscogsNamePlausible(
+      lineupName,
+      discogsName,
+      nameMatchVariants,
+    );
+  }
 
   const ranked = [...scored].sort((a, b) => b.total - a.total);
   const eligible = ranked.filter((item) => item.total >= suspectMin);
+  const gatePassed = eligible.filter((item) =>
+    passesNameGate(item.discogsId, item.name),
+  );
 
   if (!eligible.length) {
     return {
@@ -682,8 +982,17 @@ export function decideDiscogsArtistMatch(
     };
   }
 
-  const top = eligible[0];
-  const second = eligible[1];
+  if (!gatePassed.length) {
+    return {
+      status: 'pending_review',
+      reviewReason: DISCOGS_REVIEW_REASON.nameMismatch(eligible[0].name),
+      searchQuery,
+      candidateScores: eligible,
+    };
+  }
+
+  const top = gatePassed[0];
+  const second = gatePassed[1];
 
   if (top.total < minAccept) {
     return {
@@ -695,12 +1004,12 @@ export function decideDiscogsArtistMatch(
   }
 
   const ambiguousCluster = getAmbiguousScoreCluster(
-    eligible,
+    gatePassed,
     minAccept,
     ambiguityGap,
   );
 
-  if (isCloseHighScoreAmbiguity(eligible, minAccept, ambiguityGap)) {
+  if (isCloseHighScoreAmbiguity(gatePassed, minAccept, ambiguityGap)) {
     return {
       status: 'pending_review',
       reviewReason: DISCOGS_REVIEW_REASON.HOMONYM_AMBIGUITY,
@@ -708,17 +1017,6 @@ export function decideDiscogsArtistMatch(
       candidateScores: ambiguousCluster,
       needsTiebreak: true,
       tiebreakCluster: ambiguousCluster,
-    };
-  }
-
-  if (
-    !isLineupDiscogsNamePlausible(lineupName, top.name, allowedDiscogsNames)
-  ) {
-    return {
-      status: 'pending_review',
-      reviewReason: DISCOGS_REVIEW_REASON.nameMismatch(top.name),
-      searchQuery,
-      candidateScores: eligible,
     };
   }
 

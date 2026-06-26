@@ -16,6 +16,7 @@ export function createDjDiscogsMapModel(mongoose) {
       },
       matchScore: { type: Number },
       searchQuery: { type: String },
+      discoveryStrategyId: { type: String },
       reviewReason: { type: String },
       source: { type: String },
       candidateScores: {
@@ -75,6 +76,7 @@ export async function upsertDjDiscogsMapMapped(collection, input) {
         status: 'mapped',
         matchScore: input.matchScore,
         searchQuery: input.searchQuery,
+        discoveryStrategyId: input.discoveryStrategyId ?? '',
         reviewReason: '',
         source: input.source ?? '',
         candidateScores: input.candidateScores ?? [],
@@ -131,19 +133,19 @@ export async function listMappedLineupArtists(mapCollection, lineupNames) {
   }
 
   const rows = await mapCollection
-    .find({ lineupNameKey: { $in: keys }, status: 'mapped', discogsId: { $exists: true } })
+    .find({ lineupNameKey: { $in: keys }, status: 'mapped' })
     .toArray();
   const byKey = new Map(rows.map((row) => [row.lineupNameKey, row]));
 
   const targets = [];
   for (const lineupName of lineupNames) {
     const row = byKey.get(lineupNameKeyFor(lineupName));
-    if (!row?.discogsId) {
+    if (!row) {
       continue;
     }
     targets.push({
       lineupName,
-      discogsId: row.discogsId,
+      discogsId: row.discogsId ?? null,
       searchName: (row.discogsName ?? lineupName).trim() || lineupName,
     });
   }

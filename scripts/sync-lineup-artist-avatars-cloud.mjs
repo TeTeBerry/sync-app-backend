@@ -161,7 +161,7 @@ async function main() {
   const lineupNames = explicitNames?.length
     ? explicitNames
     : Number.isFinite(activityLegacyId)
-      ? await loadActivityLineupArtistNames(db, activityLegacyId, mongoConfig)
+      ? await loadActivityLineupArtistNames(db, activityLegacyId)
       : await loadAllCatalogLineupArtistNames(db, mongoConfig);
 
   const avatarTargets = await listMappedLineupArtists(

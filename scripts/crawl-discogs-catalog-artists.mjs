@@ -5,7 +5,7 @@
  * Name → artist_id flow:
  * 1. Lineup English name from festival
  * 2. dj_discogs_map — mapped hit → artist_id → GET /artists/{id} → profile（简介）
- * 3. Miss → search + score → write map → profile + styles → djs
+ * 3. Miss → v3 tiered search (genre=Electronic) → score → write map
  * 4. pending_review → map only, skip djs (no fabricated profiles)
  * 5. mapped but Discogs 无可用资料 → downgrade to pending_review, skip djs
  * 5. Main styles: top 5 releases aggregated after artist_id is known
@@ -130,7 +130,7 @@ async function main() {
     );
   } else {
     allNames = scopedToActivity
-      ? await loadActivityLineupArtistNames(db, activityLegacyId, config)
+      ? await loadActivityLineupArtistNames(db, activityLegacyId)
       : explicitNames?.length
         ? explicitNames
         : await loadAllCatalogLineupArtistNames(db, config);

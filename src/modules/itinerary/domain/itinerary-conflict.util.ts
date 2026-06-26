@@ -52,6 +52,9 @@ export function detectPerformanceConflicts(
       for (let j = i + 1; j < slots.length; j += 1) {
         const a = slots[i];
         const b = slots[j];
+        if (a.startMinutes < 0 || b.startMinutes < 0) {
+          continue;
+        }
         if (
           !rangesOverlap(
             a.startMinutes,

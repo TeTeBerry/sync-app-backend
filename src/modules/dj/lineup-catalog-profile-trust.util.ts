@@ -60,6 +60,16 @@ export function isDiscogsDisambiguationProfile(profile: string): boolean {
   return /(?:For the|please use|use)\s+.*?\[a=?[\d]+/i.test(profile.trim());
 }
 
+export function catalogNameTrustKeys(name: string): string[] {
+  const trimmed = name.trim();
+  const keys = [normalizeArtistNameKey(trimmed)];
+  const withoutSuffix = trimmed.replace(/\s*\(\d+\)\s*$/, '').trim();
+  if (withoutSuffix && withoutSuffix !== trimmed) {
+    keys.push(normalizeArtistNameKey(withoutSuffix));
+  }
+  return [...new Set(keys.filter(Boolean))];
+}
+
 /** Reject Discogs rows where the bio clearly describes a different person. */
 export function isLineupCatalogProfileTrusted(
   lineupName: string,
@@ -67,7 +77,6 @@ export function isLineupCatalogProfileTrusted(
   options?: { allowedCatalogNames?: string[] },
 ): boolean {
   const lineupKey = normalizeArtistNameKey(lineupName);
-  const catalogKey = normalizeArtistNameKey(catalogItem.name);
   const allowedKeys = new Set(
     [
       lineupKey,
@@ -75,7 +84,9 @@ export function isLineupCatalogProfileTrusted(
     ].filter(Boolean),
   );
 
-  if (!allowedKeys.has(catalogKey)) {
+  if (
+    !catalogNameTrustKeys(catalogItem.name).some((key) => allowedKeys.has(key))
+  ) {
     return false;
   }
 

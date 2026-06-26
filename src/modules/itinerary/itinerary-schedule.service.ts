@@ -23,8 +23,9 @@ import {
   type IActivityCatalogRefreshPort,
 } from '../activity/ports/activity-catalog-refresh.port';
 import {
-  hasItineraryCatalogSeed,
   resolveLineupDjs,
+  buildLineupOnlyArtistPerformanceSeed,
+  LINEUP_ONLY_CATALOG_ACTIVITY_LEGACY_IDS,
 } from './domain/itinerary-catalog.util';
 import { ItineraryCacheService } from './itinerary-cache.service';
 import {
@@ -33,9 +34,6 @@ import {
   ARTIST_PERFORMANCE_SEED,
   STORM_ACTIVITY_LEGACY_ID,
   ITINERARY_DEFQON1_ACTIVITY_LEGACY_ID,
-  ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
-  ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
-  ITINERARY_EDC_ORLANDO_ACTIVITY_LEGACY_ID,
   ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID,
   ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID,
 } from '@src/data/itinerary/itinerary.seed';
@@ -80,7 +78,9 @@ export class ItineraryScheduleService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.seedItineraryCatalogData();
+    if (process.env.ITINERARY_AUTO_SEED === '1') {
+      await this.seedItineraryCatalogData();
+    }
   }
 
   async seedItineraryCatalogData() {
@@ -107,6 +107,22 @@ export class ItineraryScheduleService implements OnModuleInit {
       );
     }
 
+    for (const legacyId of LINEUP_ONLY_CATALOG_ACTIVITY_LEGACY_IDS) {
+      const lineupOnly = buildLineupOnlyArtistPerformanceSeed(legacyId);
+      for (const perf of lineupOnly) {
+        await this.performanceModel.findOneAndUpdate(
+          {
+            activityLegacyId: perf.activityLegacyId,
+            dateKey: perf.dateKey,
+            artistId: perf.artistId,
+          },
+          perf,
+          { upsert: true, new: true, setDefaultsOnInsert: true },
+        );
+      }
+      await this.pruneStalePerformances(legacyId, lineupOnly);
+    }
+
     await this.pruneStalePerformances(
       STORM_ACTIVITY_LEGACY_ID,
       ARTIST_PERFORMANCE_SEED,
@@ -115,24 +131,6 @@ export class ItineraryScheduleService implements OnModuleInit {
       ITINERARY_DEFQON1_ACTIVITY_LEGACY_ID,
       ALL_ARTIST_PERFORMANCE_SEED.filter(
         (p) => p.activityLegacyId === ITINERARY_DEFQON1_ACTIVITY_LEGACY_ID,
-      ),
-    );
-    await this.pruneStalePerformances(
-      ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
-      ALL_ARTIST_PERFORMANCE_SEED.filter(
-        (p) => p.activityLegacyId === ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
-      ),
-    );
-    await this.pruneStalePerformances(
-      ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
-      ALL_ARTIST_PERFORMANCE_SEED.filter(
-        (p) => p.activityLegacyId === ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
-      ),
-    );
-    await this.pruneStalePerformances(
-      ITINERARY_EDC_ORLANDO_ACTIVITY_LEGACY_ID,
-      ALL_ARTIST_PERFORMANCE_SEED.filter(
-        (p) => p.activityLegacyId === ITINERARY_EDC_ORLANDO_ACTIVITY_LEGACY_ID,
       ),
     );
     await this.pruneStalePerformances(
@@ -153,6 +151,7 @@ export class ItineraryScheduleService implements OnModuleInit {
       ...new Set([
         ...ALL_FESTIVAL_SESSION_SEED_COMBINED.map((s) => s.activityLegacyId),
         ...ALL_ARTIST_PERFORMANCE_SEED.map((p) => p.activityLegacyId),
+        ...LINEUP_ONLY_CATALOG_ACTIVITY_LEGACY_IDS,
       ]),
     ];
     await Promise.all(
@@ -165,6 +164,10 @@ export class ItineraryScheduleService implements OnModuleInit {
     activityLegacyId: number,
     canonical: Array<{ dateKey: string; artistId: string }>,
   ) {
+    if (!canonical.length) {
+      return;
+    }
+
     await this.performanceModel.deleteMany({
       activityLegacyId,
       $nor: canonical.map((p) => ({
@@ -201,7 +204,7 @@ export class ItineraryScheduleService implements OnModuleInit {
       perfFilter.dateKey = options.dateKey;
     }
 
-    let [sessions, performances] = await Promise.all([
+    const [sessions, performances] = await Promise.all([
       this.sessionModel
         .find(sessionFilter)
         .sort({ sortOrder: 1 })
@@ -209,22 +212,6 @@ export class ItineraryScheduleService implements OnModuleInit {
         .exec(),
       this.performanceModel.find(perfFilter).lean().exec(),
     ]);
-
-    if (
-      performances.length === 0 &&
-      sessions.length === 0 &&
-      hasItineraryCatalogSeed(activityLegacyId)
-    ) {
-      await this.seedItineraryCatalogData();
-      [sessions, performances] = await Promise.all([
-        this.sessionModel
-          .find(sessionFilter)
-          .sort({ sortOrder: 1 })
-          .lean()
-          .exec(),
-        this.performanceModel.find(perfFilter).lean().exec(),
-      ]);
-    }
 
     const eventMeta = activity.name;
     const styledPerformances =
@@ -297,7 +284,7 @@ export class ItineraryScheduleService implements OnModuleInit {
     const perfFilter: Record<string, unknown> = { activityLegacyId };
     if (dateKey) perfFilter.dateKey = dateKey;
 
-    let [sessions, performances] = await Promise.all([
+    const [sessions, performances] = await Promise.all([
       this.sessionModel
         .find({ activityLegacyId })
         .sort({ sortOrder: 1 })
@@ -305,22 +292,6 @@ export class ItineraryScheduleService implements OnModuleInit {
         .exec(),
       this.performanceModel.find(perfFilter).lean().exec(),
     ]);
-
-    if (
-      performances.length === 0 &&
-      sessions.length === 0 &&
-      hasItineraryCatalogSeed(activityLegacyId)
-    ) {
-      await this.seedItineraryCatalogData();
-      [sessions, performances] = await Promise.all([
-        this.sessionModel
-          .find({ activityLegacyId })
-          .sort({ sortOrder: 1 })
-          .lean()
-          .exec(),
-        this.performanceModel.find(perfFilter).lean().exec(),
-      ]);
-    }
 
     return {
       sessions: sessions as FestivalSession[],

@@ -1,222 +1,4 @@
-import { readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
 import { extractLineupDiscogsSearchNames } from './lineup-discogs-search.mjs';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-/** Sync with `itinerary.seed.ts` storm fallback */
-export const STORM_LINEUP_ARTIST_NAMES = [
-  'CRUSH',
-  'CRUBBIXZ',
-  'TIYA',
-  'GHENGAR (GHASTLY)',
-  'BLONDEX',
-  'ANDY C',
-  'EXCISION',
-  'MARSHMELLO',
-  'WHYBEATZ',
-  'YOHAN',
-  'VIDOJEAN',
-  'JULIAN JORDAN',
-  'ODD MOB',
-  'ERIC PRYDZ',
-  'ILLENIUM',
-];
-
-/** Read `EDC_THAILAND_ARTISTS` names from seed when Mongo has no performances. */
-export function loadEdcThailandFallbackNames() {
-  const seedPath = join(
-    __dirname,
-    '..',
-    '..',
-    'src',
-    'data',
-    'itinerary',
-    'edc-thailand-itinerary.seed.ts',
-  );
-
-  try {
-    const content = readFileSync(seedPath, 'utf8');
-    const block =
-      content.match(/const EDC_THAILAND_ARTISTS[\s\S]*?\];/)?.[0] ?? '';
-    const names = [
-      ...block.matchAll(/name:\s*'((?:\\'|[^'])*)'/g),
-    ].map((match) => match[1].replace(/\\'/g, "'"));
-
-    if (names.length) {
-      return names;
-    }
-  } catch {
-    // fall through
-  }
-
-  return [
-    'MARTIN GARRIX',
-    'TIËSTO',
-    'CHARLOTTE DE WITTE',
-    'DOM DOLLA',
-    'JAMES HYPE',
-    'DJ SNAKE',
-  ];
-}
-
-/** Read `EDC_KOREA_ARTISTS` names from seed when Mongo has no performances. */
-export function loadEdcKoreaFallbackNames() {
-  const seedPath = join(
-    __dirname,
-    '..',
-    '..',
-    'src',
-    'data',
-    'itinerary',
-    'edc-korea-itinerary.seed.ts',
-  );
-
-  try {
-    const content = readFileSync(seedPath, 'utf8');
-    const block = content.match(/const EDC_KOREA_ARTISTS[\s\S]*?\];/)?.[0] ?? '';
-    const names = [
-      ...block.matchAll(/dj\('((?:\\'|[^'])*)'/g),
-    ].map((match) => match[1].replace(/\\'/g, "'"));
-
-    if (names.length) {
-      return names;
-    }
-  } catch {
-    // fall through
-  }
-
-  return ['TIËSTO', 'SUBTRONICS', 'FISHER', 'DJ SNAKE'];
-}
-
-/** Read `EDC_ORLANDO_ARTISTS` names from seed when Mongo has no performances. */
-export function loadEdcOrlandoFallbackNames() {
-  const seedPath = join(
-    __dirname,
-    '..',
-    '..',
-    'src',
-    'data',
-    'itinerary',
-    'edc-orlando-itinerary.seed.ts',
-  );
-
-  try {
-    const content = readFileSync(seedPath, 'utf8');
-    const block = content.match(/const EDC_ORLANDO_ARTISTS[\s\S]*?\];/)?.[0] ?? '';
-    const names = [
-      ...block.matchAll(/dj\('((?:\\'|[^'])*)'/g),
-    ].map((match) => match[1].replace(/\\'/g, "'"));
-
-    if (names.length) {
-      return names;
-    }
-  } catch {
-    // fall through
-  }
-
-  return ['MARTIN GARRIX', 'DAVID GUETTA', 'HARDWELL', 'STEVE AOKI'];
-}
-
-/** Read `ULTRA_EUROPE_ARTIST_NAMES` from seed when Mongo has no performances. */
-export function loadUltraEuropeFallbackNames() {
-  const seedPath = join(
-    __dirname,
-    '..',
-    '..',
-    'src',
-    'data',
-    'itinerary',
-    'ultra-europe-itinerary.seed.ts',
-  );
-
-  try {
-    const content = readFileSync(seedPath, 'utf8');
-    const block =
-      content.match(/export const ULTRA_EUROPE_ARTIST_NAMES = [\s\S]*?];/)?.[0] ??
-      '';
-    const names = [
-      ...block.matchAll(/'((?:\\'|[^'])*)'/g),
-    ].map((match) => match[1].replace(/\\'/g, "'"));
-
-    if (names.length) {
-      return names;
-    }
-  } catch {
-    // fall through
-  }
-
-  return ['MARTIN GARRIX', 'TIËSTO', 'ARMIN VAN BUUREN', 'HARDWELL'];
-}
-
-/** Read `WORLD_DJ_FESTIVAL_ARTIST_NAMES` from seed when Mongo has no performances. */
-export function loadWorldDjfFallbackNames() {
-  const seedPath = join(
-    __dirname,
-    '..',
-    '..',
-    'src',
-    'data',
-    'itinerary',
-    'world-dj-festival-japan-itinerary.seed.ts',
-  );
-
-  try {
-    const content = readFileSync(seedPath, 'utf8');
-    const block =
-      content.match(/export const WORLD_DJ_FESTIVAL_ARTIST_NAMES = [\s\S]*?];/)?.[0] ??
-      '';
-    const names = [
-      ...block.matchAll(/'((?:\\'|[^'])*)'/g),
-    ].map((match) => match[1].replace(/\\'/g, "'"));
-
-    if (names.length) {
-      return names;
-    }
-  } catch {
-    // fall through
-  }
-
-  return ['PORTER ROBINSON', 'KSHMR', 'ANGERFIST', 'VERTILE'];
-}
-
-/** Read `TOMORROWLAND_THAILAND_ARTISTS` names from seed when Mongo has no performances. */
-export function loadTomorrowlandThailandFallbackNames() {
-  const seedPath = join(
-    __dirname,
-    '..',
-    '..',
-    'src',
-    'data',
-    'itinerary',
-    'tomorrowland-thailand-itinerary.seed.ts',
-  );
-
-  try {
-    const content = readFileSync(seedPath, 'utf8');
-    const block =
-      content.match(/const TOMORROWLAND_THAILAND_ARTISTS[\s\S]*?\];/)?.[0] ?? '';
-    const names = [
-      ...block.matchAll(/name:\s*'((?:\\'|[^'])*)'/g),
-    ].map((match) => match[1].replace(/\\'/g, "'"));
-
-    if (names.length) {
-      return names;
-    }
-  } catch {
-    // fall through
-  }
-
-  return [
-    'SWEDISH HOUSE MAFIA',
-    'MARTIN GARRIX',
-    'DIMITRI VEGAS & LIKE MIKE',
-    'AFROJACK',
-    'NERVO',
-    'LOST FREQUENCIES',
-  ];
-}
 
 const B2B_PATTERN = /\s+B2B\s+/i;
 const AMPERSAND_PATTERN = /\s+&\s+/;
@@ -311,6 +93,7 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   /** WUKONG × Bassjackers — see https://djmag.com/top100djs/2025/83/wukong */
   'WUJACKERS': 'Wukong',
   'GHENGAR (GHASTLY)': 'Ghengar',
+  GHENGAR: 'Ghengar',
   'VIDOJEAN (VJ X OL)': 'Vidojean',
   VIDOJEAN: 'Vidojean',
   WHYBEATZ: 'WhyBeatz',
@@ -502,12 +285,22 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   'MURDOCK': 'Murdock',
 };
 
+/**
+ * Secondary Discogs search when primary lineup / alias finds no artist page.
+ * e.g. GHENGAR (Ghastly's alias) → fall back to Ghastly.
+ */
+export const DISCOGS_LINEUP_SEARCH_FALLBACKS = {
+  GHENGAR: ['Ghastly'],
+  'GHENGAR (GHASTLY)': ['Ghastly'],
+};
+
 /** Lineup display name → normalized keys of acceptable `djs.name` matches. */
 export const LINEUP_COVERAGE_NAME_KEYS = {
   'LEVELTRONICS': ['subtronics', 'levelup'],
   'SHOWTEK HARDSTYLE SET': ['showtek'],
   'WUJACKERS': ['wukong', 'bassjackers'],
   'GHENGAR (GHASTLY)': ['ghengar', 'ghastly'],
+  GHENGAR: ['ghengar', 'ghastly'],
   'VIDOJEAN (VJ X OL)': ['vidojean'],
   VIDOJEAN: ['vidojean'],
   WHYBEATZ: ['whybeatz'],
@@ -593,9 +386,39 @@ export function normalizeArtistNameKey(name) {
     .replace(/[^a-z0-9]/g, '');
 }
 
+/** Trusted display names for strict Discogs name gate (lineup + explicit alias only). */
+export function getDiscogsTrustedNameVariants(lineupName) {
+  const trimmed = lineupName.trim();
+  if (!trimmed) {
+    return [];
+  }
+  const upper = trimmed.toUpperCase();
+  const alias = DISCOGS_LINEUP_SEARCH_ALIASES[upper];
+  const fallbacks = DISCOGS_LINEUP_SEARCH_FALLBACKS[upper] ?? [];
+  const variants = [trimmed];
+  if (alias && alias !== trimmed) {
+    variants.push(alias);
+  }
+  for (const name of fallbacks) {
+    if (name && !variants.includes(name)) {
+      variants.push(name);
+    }
+  }
+  const parenMatch = trimmed.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+  if (parenMatch && !/\s+B2B\s+/i.test(parenMatch[2])) {
+    const inner = parenMatch[2].trim();
+    if (inner && !variants.includes(inner)) {
+      variants.push(inner);
+    }
+  }
+  return variants;
+}
+
 export function getDiscogsSearchQueries(lineupName) {
   const trimmed = lineupName.trim();
-  const alias = DISCOGS_LINEUP_SEARCH_ALIASES[trimmed.toUpperCase()];
+  const upper = trimmed.toUpperCase();
+  const alias = DISCOGS_LINEUP_SEARCH_ALIASES[upper];
+  const fallbacks = DISCOGS_LINEUP_SEARCH_FALLBACKS[upper] ?? [];
   const extracted = extractLineupDiscogsSearchNames(trimmed);
   const queries = [];
 
@@ -608,6 +431,18 @@ export function getDiscogsSearchQueries(lineupName) {
   for (const name of extracted) {
     if (name !== trimmed && !queries.includes(name)) {
       queries.push(name);
+    }
+  }
+  for (const name of fallbacks) {
+    if (name && !queries.includes(name)) {
+      queries.push(name);
+    }
+  }
+  const parenMatch = trimmed.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+  if (parenMatch && !/\s+B2B\s+/i.test(parenMatch[2])) {
+    const inner = parenMatch[2].trim();
+    if (inner && !queries.includes(inner)) {
+      queries.push(inner);
     }
   }
   return queries;

@@ -1,25 +1,235 @@
 import {
-  buildDiscogsElectronicSearchQuery,
-  buildDiscogsStrictArtistSearchQuery,
+  artistRefsFromRelease,
+  buildLineupSearchStrategies,
+  defaultLineupSearchQueryLabel,
+  DISCOGS_LINEUP_SEARCH_GENRE,
+  filterDiscogsArtistSearchHits,
+  formatDiscogsArtistSearchLabel,
   decideDiscogsArtistMatch,
   DISCOGS_REVIEW_REASON,
   getAmbiguousScoreCluster,
+  isLegacyDiscogsV2MapEntry,
+  isLineupDiscogsCandidatePlausible,
   isLineupDiscogsNamePlausible,
   isVerifiableDiscogsDjRecord,
+  mergeDiscogsArtistRefs,
   pickTiebreakWinner,
   scoreDiscogsArtistCandidate,
   scoreReleaseTagRatios,
   tryBreakDiscogsArtistTie,
 } from '@src/modules/dj/discogs-artist-match.util';
+import { DISCOGS_LINEUP_SEARCH_ALIASES } from '@src/modules/dj/lineup-name-match.util';
 
 describe('discogs-artist-match.util', () => {
-  it('builds strict electronic producer search query', () => {
-    expect(buildDiscogsElectronicSearchQuery('DJ SNAKE')).toBe(
-      '"DJ SNAKE" dj electronic producer',
+  it('builds v3 lineup search strategies with genre=Electronic on every tier', () => {
+    const strategies = buildLineupSearchStrategies('CHARLOTTE DE WITTE');
+    expect(strategies.map((strategy) => strategy.id)).toEqual([
+      'artist-exact',
+      'artist-anv',
+      'release-by-artist',
+      'release-by-credit',
+      'artist-q',
+    ]);
+    for (const strategy of strategies) {
+      expect(strategy.params.genre).toBe(DISCOGS_LINEUP_SEARCH_GENRE);
+    }
+    expect(defaultLineupSearchQueryLabel('CHARLOTTE DE WITTE')).toBe(
+      'artist=CHARLOTTE DE WITTE&genre=Electronic&type=artist',
     );
-    expect(buildDiscogsStrictArtistSearchQuery('CHARLOTTE DE WITTE')).toBe(
-      '"CHARLOTTE DE WITTE"',
+    expect(
+      formatDiscogsArtistSearchLabel({
+        type: 'artist',
+        artist: 'KSHMR',
+        genre: DISCOGS_LINEUP_SEARCH_GENRE,
+      }),
+    ).toBe('artist=KSHMR&genre=Electronic&type=artist');
+  });
+
+  it('keeps alias regression names plausible under v3 name gate', () => {
+    const aliasSamples = [
+      ['WUJACKERS', 'Wukong'],
+      ['OPPIDAN', 'Oppidan (2)'],
+      ['VEGAS', 'Vegas (2)'],
+      ['KÖLSCH', 'Kölsch'],
+      ['GHENGAR', 'Ghengar'],
+    ] as const;
+
+    for (const [lineup, alias] of aliasSamples) {
+      expect(DISCOGS_LINEUP_SEARCH_ALIASES[lineup]).toBe(alias);
+      expect(isLineupDiscogsNamePlausible(lineup, alias, [lineup, alias])).toBe(
+        true,
+      );
+    }
+  });
+
+  it('allows Ghastly as trusted match for GHENGAR lineup alias', () => {
+    expect(
+      isLineupDiscogsNamePlausible('GHENGAR', 'Ghastly', [
+        'GHENGAR',
+        'Ghengar',
+        'Ghastly',
+      ]),
+    ).toBe(true);
+  });
+
+  it('accepts discogs ANV / namevariations on the artist page', () => {
+    expect(
+      isLineupDiscogsCandidatePlausible(
+        'OPPIDAN',
+        { name: 'Oppidan (2)', aliases: ['Oppidan'] },
+        ['OPPIDAN', 'Oppidan (2)'],
+      ),
+    ).toBe(true);
+    expect(
+      isLineupDiscogsNamePlausible('WHYBEATZ', 'Unrelated', [], {
+        discogsAliases: ['WhyBeatz'],
+      }),
+    ).toBe(true);
+  });
+
+  it('trusts artist-anv search hits before artist-page verification', () => {
+    const strategy = buildLineupSearchStrategies('MARLO')[1];
+    const hits = [
+      { type: 'artist', id: 10, title: 'Marlo (5)' },
+      { type: 'artist', id: 11, title: 'Different Name' },
+    ];
+    expect(
+      filterDiscogsArtistSearchHits(hits, ['MARLO'], strategy.id).map(
+        (hit) => hit.id,
+      ),
+    ).toEqual([10, 11]);
+    expect(
+      filterDiscogsArtistSearchHits(hits, ['MARLO'], 'artist-exact').map(
+        (hit) => hit.id,
+      ),
+    ).toEqual([10]);
+  });
+
+  it('expands release graph refs and dedupes by strategy priority', () => {
+    const releaseStrategy = buildLineupSearchStrategies('KSHMR')[2];
+    const refs = artistRefsFromRelease(
+      {
+        artists: [
+          { id: 1, name: 'KSHMR' },
+          { id: 2, name: 'Guest' },
+        ],
+      },
+      releaseStrategy,
     );
+    expect(refs).toHaveLength(2);
+    expect(refs[0]).toMatchObject({
+      artistId: 1,
+      refKind: 'release-graph',
+      strategyId: 'release-by-artist',
+    });
+
+    const merged = mergeDiscogsArtistRefs([
+      ...refs,
+      {
+        artistId: 1,
+        displayName: 'KSHMR',
+        strategyId: 'artist-q',
+        strategyLabel: 'q=KSHMR',
+        refKind: 'artist-hit',
+      },
+    ]);
+    expect(merged).toHaveLength(2);
+    expect(merged.find((ref) => ref.artistId === 1)?.strategyId).toBe(
+      'release-by-artist',
+    );
+  });
+
+  it('flags legacy v2 map rows missing genre=Electronic', () => {
+    expect(isLegacyDiscogsV2MapEntry({ searchQuery: 'artist=KSHMR' })).toBe(
+      true,
+    );
+    expect(isLegacyDiscogsV2MapEntry({ searchQuery: 'q=KSHMR' })).toBe(true);
+    expect(
+      isLegacyDiscogsV2MapEntry({
+        searchQuery: 'artist=KSHMR&genre=Electronic&type=artist',
+        discoveryStrategyId: 'artist-exact',
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects disambiguation stub artist pages', () => {
+    expect(
+      isLineupDiscogsCandidatePlausible(
+        'ALAN WALKER',
+        {
+          name: 'Alan Walker',
+          profile: 'For the British-Norwegian DJ use [a4827622]',
+        },
+        ['ALAN WALKER'],
+      ),
+    ).toBe(false);
+    expect(
+      isVerifiableDiscogsDjRecord({
+        profile: 'For the British-Norwegian DJ use [a4827622]',
+        styles: ['House'],
+        representativeWorks: [{ title: 'Faded' }],
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects wrong homonym profiles via profile trust', () => {
+    const marshaSmithProfile =
+      'Marsha Smith is a London, UK based DJ, radio host, music consultant, supervisor, mentor, networking and creative developer, also known as Marshmello.';
+    expect(
+      isLineupDiscogsCandidatePlausible(
+        'MARSHMELLO',
+        {
+          name: 'Marshmello',
+          profile: marshaSmithProfile,
+        },
+        ['MARSHMELLO'],
+      ),
+    ).toBe(false);
+    expect(
+      isLineupDiscogsCandidatePlausible(
+        'KREAM',
+        {
+          name: 'Kream (4)',
+          profile: 'Kream is a Danish electronic music duo.',
+        },
+        ['KREAM'],
+      ),
+    ).toBe(true);
+    expect(
+      isLineupDiscogsCandidatePlausible(
+        'MARSHMELLO',
+        {
+          name: 'Marshmello (2)',
+          profile:
+            'Trap and dubstep artist (* May 19th, 1992), DJ and producer from Philadelphia, United States.',
+        },
+        ['MARSHMELLO'],
+      ),
+    ).toBe(true);
+    expect(
+      isLineupDiscogsCandidatePlausible(
+        'MARSHMELLO',
+        {
+          name: 'Marshmello',
+          profile:
+            'Marshmello (Christopher Comstock) is an American electronic music producer and DJ.',
+        },
+        ['MARSHMELLO'],
+      ),
+    ).toBe(true);
+  });
+
+  it('filters search hits to exact normalized artist titles', () => {
+    const hits = [
+      { type: 'artist', id: 1, title: 'Kream (4)' },
+      { type: 'artist', id: 2, title: 'Kream' },
+      { type: 'artist', id: 3, title: 'Dream (2)' },
+      { type: 'release', id: 4, title: 'Kream - EP' },
+    ];
+    expect(
+      filterDiscogsArtistSearchHits(hits, ['KREAM']).map((h) => h.id),
+    ).toEqual([1, 2]);
+    expect(filterDiscogsArtistSearchHits(hits, ['MARLO'])).toEqual([]);
   });
 
   it('scores from artist catalog tags when release samples are absent', () => {
@@ -403,18 +613,17 @@ describe('discogs-artist-match.util', () => {
     });
   });
 
-  it('accepts plausible discogs names with disambiguation suffix', () => {
-    expect(isLineupDiscogsNamePlausible('KREAM', 'Kream (4)', ['KREAM'])).toBe(
+  it('accepts exact normalized discogs names', () => {
+    expect(isLineupDiscogsNamePlausible('KREAM', 'Kream (4)')).toBe(true);
+    expect(isLineupDiscogsNamePlausible('COSMIC GATE', 'Cosmic Gate')).toBe(
       true,
     );
     expect(
-      isLineupDiscogsNamePlausible('COSMIC GATE', 'Cosmic Gate', [
-        'COSMIC GATE',
-      ]),
+      isLineupDiscogsNamePlausible('WUJACKERS', 'Wukong', ['Wukong']),
     ).toBe(true);
   });
 
-  it('rejects homonym discogs names', () => {
+  it('rejects partial, collaborator, and homonym discogs names', () => {
     expect(
       isLineupDiscogsNamePlausible('BRENNAN HEART', 'Hpnotic', [
         'BRENNAN HEART',
@@ -426,12 +635,137 @@ describe('discogs-artist-match.util', () => {
       ]),
     ).toBe(false);
     expect(isLineupDiscogsNamePlausible('YOHAN', 'Yohann Mills')).toBe(false);
-    expect(
-      isLineupDiscogsNamePlausible('DØMINA', 'Domination (4)', ['Domina']),
-    ).toBe(false);
+    expect(isLineupDiscogsNamePlausible('DØMINA', 'Domination (4)')).toBe(
+      false,
+    );
     expect(isLineupDiscogsNamePlausible('MARLO', 'Marlow')).toBe(false);
     expect(isLineupDiscogsNamePlausible('BLONDEX', 'Blondee')).toBe(false);
     expect(isLineupDiscogsNamePlausible('ARGY', 'Argy K')).toBe(false);
+    expect(
+      isLineupDiscogsNamePlausible('DIMITRI VEGAS & LIKE MIKE', 'Like Mike'),
+    ).toBe(false);
+    expect(
+      isLineupDiscogsNamePlausible(
+        'DAVID FORBES',
+        'David Forbes & Mallorca Lee',
+      ),
+    ).toBe(false);
+  });
+
+  it('maps with ANV when decide receives candidate aliases', () => {
+    const decision = decideDiscogsArtistMatch(
+      'OPPIDAN',
+      [
+        {
+          discogsId: 42,
+          name: 'Oppidan (2)',
+          total: 180,
+          breakdown: {
+            base: 100,
+            profileElectronicBonus: 30,
+            releaseElectronicBonus: 50,
+            releaseNonElectronicPenalty: 0,
+            profileNonElectronicPenalty: 0,
+          },
+        },
+      ],
+      {
+        nameMatchVariants: ['OPPIDAN', 'Oppidan (2)'],
+        candidateById: new Map([
+          [
+            42,
+            {
+              name: 'Oppidan (2)',
+              aliases: ['Oppidan'],
+            },
+          ],
+        ]),
+      },
+    );
+
+    expect(decision).toMatchObject({
+      status: 'mapped',
+      discogsId: 42,
+      discogsName: 'Oppidan (2)',
+    });
+  });
+
+  it('prefers unnumbered Discogs names in tie-break', () => {
+    const winner = pickTiebreakWinner([
+      {
+        id: 4688591,
+        name: 'Marshmello (2)',
+        profile: 'Trap and dubstep artist from Philadelphia.',
+        releaseSamples: [{ genres: ['Electronic'], styles: ['Trap'] }],
+      },
+      {
+        id: 1001,
+        name: 'Marshmello',
+        profile: 'Marshmello is an American electronic music producer and DJ.',
+        releaseSamples: [{ genres: ['Electronic'], styles: ['Future Bass'] }],
+      },
+    ]);
+
+    expect(winner?.id).toBe(1001);
+  });
+
+  it('maps the next gate-passing candidate when the top score is a homonym', () => {
+    const decision = decideDiscogsArtistMatch(
+      'MARSHMELLO',
+      [
+        {
+          discogsId: 314685,
+          name: 'Marshmello',
+          total: 180,
+          breakdown: {
+            base: 100,
+            profileElectronicBonus: 30,
+            releaseElectronicBonus: 50,
+            releaseNonElectronicPenalty: 0,
+            profileNonElectronicPenalty: 0,
+          },
+        },
+        {
+          discogsId: 4688591,
+          name: 'Marshmello (2)',
+          total: 130,
+          breakdown: {
+            base: 100,
+            profileElectronicBonus: 30,
+            releaseElectronicBonus: 0,
+            releaseNonElectronicPenalty: 0,
+            profileNonElectronicPenalty: 0,
+          },
+        },
+      ],
+      {
+        nameMatchVariants: ['MARSHMELLO'],
+        candidateById: new Map([
+          [
+            314685,
+            {
+              name: 'Marshmello',
+              profile:
+                'Marsha Smith is a London, UK based DJ, also known as Marshmello.',
+            },
+          ],
+          [
+            4688591,
+            {
+              name: 'Marshmello (2)',
+              profile:
+                'Trap and dubstep artist (* May 19th, 1992), DJ and producer from Philadelphia, United States.',
+            },
+          ],
+        ]),
+      },
+    );
+
+    expect(decision).toMatchObject({
+      status: 'mapped',
+      discogsId: 4688591,
+      discogsName: 'Marshmello (2)',
+    });
   });
 
   it('rejects homonym winner when discogs name does not match lineup', () => {
@@ -451,7 +785,7 @@ describe('discogs-artist-match.util', () => {
           },
         },
       ],
-      { allowedDiscogsNames: ['BRENNAN HEART'] },
+      { nameMatchVariants: ['BRENNAN HEART'] },
     );
 
     expect(decision.status).toBe('pending_review');

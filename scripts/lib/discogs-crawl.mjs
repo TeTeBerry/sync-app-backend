@@ -3,16 +3,9 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'node:child_process';
 import {
-  STORM_LINEUP_ARTIST_NAMES,
   expandFestivalArtistNames,
   getLineupCoverageKeys,
   LINEUP_MANUAL_DJ_PROFILES,
-  loadEdcThailandFallbackNames,
-  loadEdcKoreaFallbackNames,
-  loadEdcOrlandoFallbackNames,
-  loadTomorrowlandThailandFallbackNames,
-  loadUltraEuropeFallbackNames,
-  loadWorldDjfFallbackNames,
   normalizeArtistNameKey,
 } from './festival-lineup-fallback.mjs';
 import {
@@ -31,7 +24,13 @@ import {
   upsertDjDiscogsMapPendingReview,
   createDjDiscogsMapModel,
   deleteDjDiscogsMapEntry,
+  findDjDiscogsMapEntry,
 } from './dj-discogs-map.mjs';
+import {
+  buildWebOnlyDjRecord,
+  allocateSyntheticDiscogsId,
+  isSyntheticDiscogsId,
+} from './web-only-dj-profile.mjs';
 
 export { closeDjDiscogsRedisCache, deleteDjStylesRedisCache } from './discogs-redis-cache.mjs';
 export { createDjDiscogsMapModel } from './dj-discogs-map.mjs';
@@ -130,31 +129,10 @@ export function getCrawlConfig() {
       process.env.MONGODB_URI ??
       process.env.MONGO_URI ??
       'mongodb://127.0.0.1:27017/sync-ai',
-    stormActivityLegacyId: Number(
-      process.env.DISCOGS_STORM_ACTIVITY_LEGACY_ID ?? 4,
-    ),
-    edcThailandActivityLegacyId: Number(
-      process.env.DISCOGS_EDC_THAILAND_ACTIVITY_LEGACY_ID ?? 5,
-    ),
-    edcKoreaActivityLegacyId: Number(
-      process.env.DISCOGS_EDC_KOREA_ACTIVITY_LEGACY_ID ?? 8,
-    ),
-    edcOrlandoActivityLegacyId: Number(
-      process.env.DISCOGS_EDC_ORLANDO_ACTIVITY_LEGACY_ID ?? 13,
-    ),
-    tomorrowlandThailandActivityLegacyId: Number(
-      process.env.DISCOGS_TOMORROWLAND_THAILAND_ACTIVITY_LEGACY_ID ?? 1,
-    ),
-    ultraEuropeActivityLegacyId: Number(
-      process.env.DISCOGS_ULTRA_EUROPE_ACTIVITY_LEGACY_ID ?? 15,
-    ),
-    worldDjfActivityLegacyId: Number(
-      process.env.DISCOGS_WORLD_DJF_ACTIVITY_LEGACY_ID ?? 6,
-    ),
     requestDelayMs: Number(process.env.DISCOGS_REQUEST_DELAY_MS ?? 1200),
     releasesPageSize: Number(process.env.DISCOGS_RELEASES_PAGE_SIZE ?? 100),
     releaseSampleSize: Math.min(
-      Math.max(Number(process.env.DISCOGS_RELEASE_SAMPLE_SIZE ?? 5), 1),
+      Math.max(Number(process.env.DISCOGS_RELEASE_SAMPLE_SIZE ?? 8), 1),
       10,
     ),
     mainStylesTopN: Math.min(
@@ -248,10 +226,9 @@ export function createDiscogsClient(config) {
     const styleUtil = loadDiscogsStyleUtil();
     const representativeWorks = [];
     const releaseTags = [];
-    const sampleSize = Math.min(
-      config.releaseSampleSize,
-      config.representativeWorksLimit,
-    );
+    const styleSampleSize = config.releaseSampleSize;
+    const worksSampleSize = config.representativeWorksLimit;
+    const fetchCount = Math.max(styleSampleSize, worksSampleSize);
 
     try {
       await delay(config.requestDelayMs);
@@ -260,10 +237,18 @@ export function createDiscogsClient(config) {
         {
           per_page: String(config.releasesPageSize),
           page: '1',
+          sort: 'year',
+          sort_order: 'desc',
         },
       );
 
-      for (const item of (list.releases ?? []).slice(0, sampleSize)) {
+      const releaseItems = styleUtil.pickReleasesForStyleSampling(
+        list.releases ?? [],
+        fetchCount,
+      );
+
+      const fetchedReleases = [];
+      for (const item of releaseItems) {
         const releaseId = item.main_release ?? item.id;
         const releaseUrl =
           item.resource_url?.trim() ||
@@ -286,16 +271,35 @@ export function createDiscogsClient(config) {
             .filter(Boolean)
             .slice(0, 8);
 
-          representativeWorks.push({
+          fetchedReleases.push({
             releaseId: resolvedReleaseId,
             title: (release.title ?? item.title ?? '').trim(),
             year: release.year ?? item.year ?? undefined,
             type: (item.type ?? release.type ?? '').trim(),
             tracks,
+            genres: release.genres ?? [],
+            styles: release.styles ?? [],
           });
         } catch (error) {
           console.warn('读取发行详情失败', releaseUrl, error.message ?? error);
         }
+      }
+
+      for (const release of fetchedReleases.slice(0, styleSampleSize)) {
+        releaseTags.push({
+          genres: release.genres,
+          styles: release.styles,
+        });
+      }
+
+      for (const release of fetchedReleases.slice(0, worksSampleSize)) {
+        representativeWorks.push({
+          releaseId: release.releaseId,
+          title: release.title,
+          year: release.year,
+          type: release.type,
+          tracks: release.tracks,
+        });
       }
     } catch (error) {
       console.warn('读取艺人发行列表失败', artistId, error.message ?? error);
@@ -381,17 +385,13 @@ export function createDiscogsClient(config) {
   return {
     discogsGet,
     resolveArtistMatch: resolver.resolveArtistMatch,
+    previewArtistMatch: resolver.previewArtistMatch,
     buildDjRecord,
     isVerifiableDiscogsDjRecord,
   };
 }
 
-export async function loadLineupArtistNames(
-  db,
-  activityLegacyId,
-  fallbackNames,
-  label,
-) {
+export async function loadLineupArtistNames(db, activityLegacyId, label) {
   const rows = await db
     .collection('artist_performances')
     .find({ activityLegacyId })
@@ -413,33 +413,20 @@ export async function loadLineupArtistNames(
     return fromMongo;
   }
 
-  console.log(`ℹ️  ${label}: seed fallback，${fallbackNames.length} 条阵容名`);
-  return [...fallbackNames];
+  console.warn(
+    `⚠️  ${label}: activityLegacyId=${activityLegacyId} 无 artist_performances（请先 npm run db:seed-itinerary 或写入阵容）`,
+  );
+  return [];
 }
 
-const CATALOG_LINEUP_FALLBACK_BY_LEGACY_ID = (config) =>
-  new Map([
-    [config.stormActivityLegacyId, STORM_LINEUP_ARTIST_NAMES],
-    [config.edcThailandActivityLegacyId, loadEdcThailandFallbackNames()],
-    [config.edcKoreaActivityLegacyId, loadEdcKoreaFallbackNames()],
-    [config.edcOrlandoActivityLegacyId, loadEdcOrlandoFallbackNames()],
-    [
-      config.tomorrowlandThailandActivityLegacyId,
-      loadTomorrowlandThailandFallbackNames(),
-    ],
-    [config.ultraEuropeActivityLegacyId, loadUltraEuropeFallbackNames()],
-    [config.worldDjfActivityLegacyId, loadWorldDjfFallbackNames()],
-  ]);
-
-/** Lineup display names (performances in Mongo, else seed fallback) for every activity. */
-export async function loadAllCatalogLineupDisplayNames(db, config) {
+/** Lineup display names from Mongo artist_performances only (no seed fallback). */
+export async function loadAllCatalogLineupDisplayNames(db, _config) {
   const activities = await db
     .collection('activities')
     .find({})
     .project({ legacyId: 1, name: 1 })
     .toArray();
 
-  const fallbackByLegacyId = CATALOG_LINEUP_FALLBACK_BY_LEGACY_ID(config);
   const names = [];
 
   for (const activity of activities) {
@@ -447,14 +434,8 @@ export async function loadAllCatalogLineupDisplayNames(db, config) {
     if (!Number.isFinite(legacyId)) {
       continue;
     }
-    const fallback = fallbackByLegacyId.get(legacyId) ?? [];
     const label = activity.name?.trim() || `#${legacyId}`;
-    const activityNames = await loadLineupArtistNames(
-      db,
-      legacyId,
-      fallback,
-      label,
-    );
+    const activityNames = await loadLineupArtistNames(db, legacyId, label);
     names.push(...activityNames);
   }
 
@@ -500,7 +481,7 @@ export async function loadAllCatalogLineupArtistNames(db, config) {
   return expandFestivalArtistNames(displayNames);
 }
 
-/** Strict keys from lineup display names only (artist_performances / seed 录入名). */
+/** Strict keys from lineup display names only (artist_performances 录入名). */
 export function buildStrictLineupScope(displayNames) {
   const names = [...new Set(displayNames.map((name) => name.trim()).filter(Boolean))];
   const allowedKeys = new Set(
@@ -561,24 +542,13 @@ export function findDjForLineupName(lineupName, djs) {
   );
 }
 
-/** Lineup names for one festival (performances in Mongo, else seed fallback). */
-export async function loadActivityLineupArtistNames(
-  db,
-  activityLegacyId,
-  config,
-) {
+/** Lineup names for one festival (Mongo artist_performances only). */
+export async function loadActivityLineupArtistNames(db, activityLegacyId) {
   const activity = await db
     .collection('activities')
     .findOne({ legacyId: activityLegacyId }, { projection: { name: 1 } });
-  const fallbackByLegacyId = CATALOG_LINEUP_FALLBACK_BY_LEGACY_ID(config);
-  const fallback = fallbackByLegacyId.get(activityLegacyId) ?? [];
   const label = activity?.name?.trim() || `#${activityLegacyId}`;
-  const names = await loadLineupArtistNames(
-    db,
-    activityLegacyId,
-    fallback,
-    label,
-  );
+  const names = await loadLineupArtistNames(db, activityLegacyId, label);
   return expandFestivalArtistNames(names);
 }
 
@@ -728,6 +698,70 @@ export async function crawlArtistNames({
       if (match.status === 'pending_review') {
         pendingReview += 1;
         console.warn('⏸  待复核:', artistName, '-', match.reviewReason);
+        continue;
+      }
+
+      if (match.webOnly || isSyntheticDiscogsId(match.discogsId)) {
+        const mapRow = match.hermesEvidence
+          ? {
+              hermesEvidence: match.hermesEvidence,
+              discogsId: match.discogsId,
+              discogsName: match.discogsName,
+            }
+          : await findDjDiscogsMapEntry(mapCollection, artistName);
+
+        if (!mapRow?.hermesEvidence) {
+          missed += 1;
+          console.warn(
+            '⚠️  web-only mapped 缺少 hermesEvidence，无法写入 djs:',
+            artistName,
+          );
+          continue;
+        }
+
+        const syntheticId =
+          match.discogsId ?? mapRow.discogsId ?? allocateSyntheticDiscogsId(artistName);
+
+        if (seenDiscogsIds.has(syntheticId)) {
+          console.log(
+            `↷ 跳过重复 web-only #${syntheticId} (${match.discogsName})`,
+          );
+          continue;
+        }
+        seenDiscogsIds.add(syntheticId);
+
+        console.log(
+          `→ web-only mapped #${syntheticId} (${match.discogsName ?? artistName}) [${match.fromCache ? 'map:mongo' : 'hermes'}: ${match.searchQuery}]`,
+        );
+
+        const data = buildWebOnlyDjRecord({
+          lineupName: artistName,
+          discogsName: match.discogsName ?? mapRow.discogsName,
+          hermesEvidence: mapRow.hermesEvidence,
+          discogsId: syntheticId,
+        });
+
+        if (!discogs.isVerifiableDiscogsDjRecord(data)) {
+          pendingReview += 1;
+          await upsertDjDiscogsMapPendingReview(mapCollection, {
+            lineupName: artistName,
+            searchQuery: match.searchQuery ?? '',
+            reviewReason: DISCOGS_REVIEW_REASON.BUILD_RECORD_FAILED,
+            candidateScores: [],
+            source: DISCOGS_MAP_SOURCE_FESTIVAL_CRAWL,
+          });
+          console.warn(
+            '⏸  待复核:',
+            artistName,
+            '-',
+            DISCOGS_REVIEW_REASON.BUILD_RECORD_FAILED,
+          );
+          continue;
+        }
+
+        await upsertDjRecord(Dj, data);
+        upserted += 1;
+        console.log('→ Hermes web 档案（无 Discogs 艺人页）');
         continue;
       }
 

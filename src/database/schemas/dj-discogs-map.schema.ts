@@ -34,6 +34,9 @@ export class DjDiscogsMap {
   searchQuery?: string;
 
   @Prop()
+  discoveryStrategyId?: string;
+
+  @Prop()
   reviewReason?: string;
 
   @Prop()

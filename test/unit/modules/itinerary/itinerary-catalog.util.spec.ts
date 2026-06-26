@@ -1,4 +1,5 @@
 import {
+  buildLineupOnlyArtistPerformanceSeed,
   hasItineraryCatalogSeed,
   resolveItineraryCatalogSeed,
   resolveLineupDjs,
@@ -140,6 +141,20 @@ describe('itinerary-catalog.util', () => {
         (perf) => perf.artistName === 'ROOLER - 3 HOUR SET',
       ),
     ).toBe(true);
+  });
+
+  it('materializes lineup-only festivals for Mongo crawl', () => {
+    const seed = buildLineupOnlyArtistPerformanceSeed(
+      ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
+    );
+
+    expect(seed.length).toBe(
+      resolveLineupDjs(ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID).length,
+    );
+    expect(seed.every((perf) => perf.startTime === '')).toBe(true);
+    expect(seed.every((perf) => perf.endMinutes === -1)).toBe(true);
+    expect(seed.every((perf) => perf.dateKey === 'dec18')).toBe(true);
+    expect(seed.some((perf) => perf.artistName === 'MARTIN GARRIX')).toBe(true);
   });
 
   it('returns lineup DJs without performances for EDC Thailand', () => {

@@ -58,6 +58,77 @@ const LINEUP_DJS_BY_ACTIVITY_LEGACY_ID = new Map<number, LineupDjSeed[]>([
   ],
 ]);
 
+/** Festivals with lineup announced but no official timetable in seed yet. */
+export const LINEUP_ONLY_CATALOG_ACTIVITY_LEGACY_IDS = [
+  ITINERARY_TOMORROWLAND_THAILAND_ACTIVITY_LEGACY_ID,
+  ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
+  ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
+  ITINERARY_EDC_ORLANDO_ACTIVITY_LEGACY_ID,
+] as const;
+
+const LINEUP_ONLY_STAGE_LABELS: Record<string, string> = {
+  main: '主舞台',
+};
+
+/** Minutes sentinel when official timetable is not published yet. */
+export const LINEUP_ONLY_UNPUBLISHED_MINUTES = -1;
+
+export type LineupOnlyPerformanceSeed = {
+  activityLegacyId: number;
+  dateKey: string;
+  dateLabel: string;
+  artistId: string;
+  artistName: string;
+  genre: string;
+  genreLabel: string;
+  stage: string;
+  stageLabel: string;
+  startTime: string;
+  endTime: string;
+  startMinutes: number;
+  endMinutes: number;
+  popularity: number;
+  avatarSeed: string;
+  genreColor: string;
+};
+
+/** Materialize lineup-only festivals into artist_performances for Mongo crawl. */
+export function buildLineupOnlyArtistPerformanceSeed(
+  activityLegacyId: number,
+): LineupOnlyPerformanceSeed[] {
+  const djs = resolveLineupDjs(activityLegacyId);
+  if (!djs.length) {
+    return [];
+  }
+
+  const sessions = ALL_FESTIVAL_SESSION_SEED_COMBINED.filter(
+    (session) => session.activityLegacyId === activityLegacyId,
+  ).sort((a, b) => a.sortOrder - b.sortOrder);
+  const firstSession = sessions[0];
+  if (!firstSession) {
+    return [];
+  }
+
+  return djs.map((dj) => ({
+    activityLegacyId,
+    dateKey: firstSession.dateKey,
+    dateLabel: firstSession.label,
+    artistId: dj.id,
+    artistName: dj.name,
+    genre: dj.genre,
+    genreLabel: dj.genreLabel,
+    stage: dj.stage,
+    stageLabel: LINEUP_ONLY_STAGE_LABELS[dj.stage] ?? dj.stage,
+    startTime: '',
+    endTime: '',
+    startMinutes: LINEUP_ONLY_UNPUBLISHED_MINUTES,
+    endMinutes: LINEUP_ONLY_UNPUBLISHED_MINUTES,
+    popularity: dj.popularity,
+    avatarSeed: dj.avatarSeed,
+    genreColor: dj.genreColor,
+  }));
+}
+
 export function hasItineraryCatalogSeed(activityLegacyId: number): boolean {
   return ITINERARY_CATALOG_ACTIVITY_LEGACY_IDS.has(activityLegacyId);
 }
