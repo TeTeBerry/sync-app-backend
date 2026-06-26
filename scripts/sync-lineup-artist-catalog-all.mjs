@@ -2,7 +2,6 @@
 /**
  * Sync Discogs DJ catalog + lineup avatar metadata to local + cloud MongoDB.
  * Avatar URLs are public HTTPS CDN links (Discogs / TheAudioDB); this script copies metadata only.
- * keys so production can resolve HTTPS URLs.
  *
  * Usage:
  *   npm run db:sync-lineup-artist-catalog:all
@@ -161,7 +160,7 @@ async function main() {
   }
 
   console.log(
-    '\n✅ DJ catalog + lineup avatar metadata synced. Avatar files are in CloudBase (shared).',
+    '\n✅ DJ catalog + lineup avatar metadata synced (CDN URLs).',
   );
   console.log(
     'Tip: run `npm run db:sync-catalog:all -- --with-itinerary` to sync festival sessions too.',
