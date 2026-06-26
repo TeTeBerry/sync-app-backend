@@ -7,6 +7,7 @@ import type {
   PostCommentItem,
   ProfilePostItem,
 } from '@sync/partner-contracts';
+import { normalizeRecruitUnityTags } from '@sync/partner-contracts';
 import { PostRecord } from './interfaces/post.repository.interface';
 
 const LIST_BODY_PREVIEW_MAX = 280;
@@ -84,6 +85,9 @@ export class PostMapper {
       recruitStatus: post.recruitStatus ?? 'open',
       ...(post.slotsTotal != null ? { slotsTotal: post.slotsTotal } : {}),
       ...(post.slotsFilled != null ? { slotsFilled: post.slotsFilled } : {}),
+      ...(post.recruitUnityTags?.length
+        ? { recruitUnityTags: normalizeRecruitUnityTags(post.recruitUnityTags) }
+        : {}),
     };
   }
 
@@ -109,6 +113,9 @@ export class PostMapper {
       recruitStatus: post.recruitStatus ?? 'open',
       ...(post.slotsTotal != null ? { slotsTotal: post.slotsTotal } : {}),
       ...(post.slotsFilled != null ? { slotsFilled: post.slotsFilled } : {}),
+      ...(post.recruitUnityTags?.length
+        ? { recruitUnityTags: normalizeRecruitUnityTags(post.recruitUnityTags) }
+        : {}),
     };
   }
 

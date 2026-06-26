@@ -42,6 +42,10 @@ export class Post {
   @Prop({ type: [String], default: [] })
   tags: string[];
 
+  /** Unity recruit preference chips (enum keys, max 3). US-Q2-56 */
+  @Prop({ type: [String], default: [] })
+  recruitUnityTags: string[];
+
   /** active=可见；hidden=审核/违规隐藏 */
   @Prop({ default: 'active' })
   status: PostStatus;

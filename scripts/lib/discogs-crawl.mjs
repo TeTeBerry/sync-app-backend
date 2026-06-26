@@ -15,6 +15,10 @@ import {
   loadWorldDjfFallbackNames,
   normalizeArtistNameKey,
 } from './festival-lineup-fallback.mjs';
+import {
+  DISCOGS_MAP_SOURCE_FESTIVAL_CRAWL,
+  DISCOGS_REVIEW_REASON,
+} from './lineup-discogs-search.mjs';
 import { createDiscogsArtistResolver } from './discogs-artist-resolve.mjs';
 import {
   getDjStylesRedisCache,
@@ -29,11 +33,19 @@ import {
   deleteDjDiscogsMapEntry,
 } from './dj-discogs-map.mjs';
 
-export { closeDjDiscogsRedisCache } from './discogs-redis-cache.mjs';
+export { closeDjDiscogsRedisCache, deleteDjStylesRedisCache } from './discogs-redis-cache.mjs';
 export { createDjDiscogsMapModel } from './dj-discogs-map.mjs';
-export { listMappedLineupArtists } from './dj-discogs-map.mjs';
+export { listMappedLineupArtists, listAllMappedLineupNames } from './dj-discogs-map.mjs';
+export {
+  expandFestivalArtistNames,
+  expandFestivalArtistName,
+  isCompositeLineupDisplayName,
+} from './festival-lineup-fallback.mjs';
 
-export async function clearLineupArtistRematchState(mapCollection, lineupNames) {
+export async function clearLineupArtistRematchState(
+  mapCollection,
+  lineupNames,
+) {
   let clearedMaps = 0;
   let clearedStyleRedis = 0;
 
@@ -199,10 +211,23 @@ export function createDiscogsClient(config) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async function discogsGet(url, params = {}) {
+  async function discogsGet(url, params = {}, attempt = 0) {
     const query = new URLSearchParams(params);
     const target = query.size ? `${url}?${query}` : url;
     const res = await fetch(target, { headers });
+    const retryable =
+      res.status === 429 ||
+      res.status === 502 ||
+      res.status === 503 ||
+      res.status === 504;
+    if (retryable && attempt < 5) {
+      const waitMs = config.requestDelayMs * (attempt + 2);
+      console.warn(
+        `Discogs ${res.status}，${waitMs}ms 后重试 (${attempt + 1}/5): ${target}`,
+      );
+      await delay(waitMs);
+      return discogsGet(url, params, attempt + 1);
+    }
     if (!res.ok) {
       throw new Error(`Discogs ${res.status}: ${res.statusText}`);
     }
@@ -354,13 +379,19 @@ export function createDiscogsClient(config) {
   const { isVerifiableDiscogsDjRecord } = loadDiscogsMatchUtil();
 
   return {
+    discogsGet,
     resolveArtistMatch: resolver.resolveArtistMatch,
     buildDjRecord,
     isVerifiableDiscogsDjRecord,
   };
 }
 
-export async function loadLineupArtistNames(db, activityLegacyId, fallbackNames, label) {
+export async function loadLineupArtistNames(
+  db,
+  activityLegacyId,
+  fallbackNames,
+  label,
+) {
   const rows = await db
     .collection('artist_performances')
     .find({ activityLegacyId })
@@ -400,8 +431,8 @@ const CATALOG_LINEUP_FALLBACK_BY_LEGACY_ID = (config) =>
     [config.worldDjfActivityLegacyId, loadWorldDjfFallbackNames()],
   ]);
 
-/** All lineup artist names across every activity in the catalog. */
-export async function loadAllCatalogLineupArtistNames(db, config) {
+/** Lineup display names (performances in Mongo, else seed fallback) for every activity. */
+export async function loadAllCatalogLineupDisplayNames(db, config) {
   const activities = await db
     .collection('activities')
     .find({})
@@ -427,7 +458,90 @@ export async function loadAllCatalogLineupArtistNames(db, config) {
     names.push(...activityNames);
   }
 
-  return expandFestivalArtistNames(names);
+  return [...new Set(names.map((name) => name.trim()).filter(Boolean))];
+}
+
+/** Normalized keys + avatar keys for every lineup display / expanded solo name. */
+export function buildLineupArtistScope(displayNames) {
+  const expandedNames = expandFestivalArtistNames(displayNames);
+  const allNames = [
+    ...new Set(
+      [...displayNames, ...expandedNames]
+        .map((name) => name.trim())
+        .filter(Boolean),
+    ),
+  ];
+  const allowedKeys = new Set();
+
+  for (const name of allNames) {
+    for (const key of getLineupCoverageKeys(name)) {
+      if (key) {
+        allowedKeys.add(key);
+      }
+    }
+  }
+
+  const allowedAvatarKeys = new Set(
+    allNames.map((name) => name.toLowerCase()),
+  );
+
+  return {
+    displayNames,
+    expandedNames,
+    allNames,
+    allowedKeys,
+    allowedAvatarKeys,
+  };
+}
+
+/** All lineup artist names across every activity in the catalog. */
+export async function loadAllCatalogLineupArtistNames(db, config) {
+  const displayNames = await loadAllCatalogLineupDisplayNames(db, config);
+  return expandFestivalArtistNames(displayNames);
+}
+
+/** Strict keys from lineup display names only (artist_performances / seed 录入名). */
+export function buildStrictLineupScope(displayNames) {
+  const names = [...new Set(displayNames.map((name) => name.trim()).filter(Boolean))];
+  const allowedKeys = new Set(
+    names.map((name) => normalizeArtistNameKey(name)).filter(Boolean),
+  );
+  const allowedAvatarKeys = new Set(names.map((name) => name.toLowerCase()));
+
+  return {
+    displayNames: names,
+    allowedKeys,
+    allowedAvatarKeys,
+  };
+}
+
+/** Rows outside lineup 录入名 — exact key match only, no fuzzy / alias validation. */
+export async function findOrphanLineupArtistRows(db, config) {
+  const displayNames = await loadAllCatalogLineupDisplayNames(db, config);
+  const scope = buildStrictLineupScope(displayNames);
+
+  const [djs, maps, avatars] = await Promise.all([
+    db.collection('djs').find({}).toArray(),
+    db.collection('dj_discogs_map').find({}).toArray(),
+    db.collection('lineup_artist_avatars').find({}).toArray(),
+  ]);
+
+  const orphanMaps = maps.filter(
+    (row) => !scope.allowedKeys.has(row.lineupNameKey),
+  );
+  const orphanDjs = djs.filter(
+    (dj) => !scope.allowedKeys.has(normalizeArtistNameKey(dj.name ?? '')),
+  );
+  const orphanAvatars = avatars.filter(
+    (row) => !scope.allowedAvatarKeys.has(row.artistNameKey),
+  );
+
+  return {
+    scope,
+    orphanDjs,
+    orphanMaps,
+    orphanAvatars,
+  };
 }
 
 export function findDjForLineupName(lineupName, djs) {
@@ -468,7 +582,6 @@ export async function loadActivityLineupArtistNames(
   return expandFestivalArtistNames(names);
 }
 
-
 /** Split lineup names into already in DB / still missing for Discogs. */
 export async function partitionLineupArtistCoverage(db, expectedNames) {
   const djs = await db
@@ -501,6 +614,47 @@ export async function findMissingCatalogArtists(db, config) {
   return missing;
 }
 
+/** Lineup names in scope that have dj_discogs_map status=pending_review. */
+export async function listPendingReviewLineupArtists(db, lineupNames) {
+  const keys = [
+    ...new Set(
+      lineupNames.map((name) => normalizeArtistNameKey(name)).filter(Boolean),
+    ),
+  ];
+  if (!keys.length) {
+    return [];
+  }
+
+  const rows = await db
+    .collection('dj_discogs_map')
+    .find({
+      lineupNameKey: { $in: keys },
+      status: 'pending_review',
+    })
+    .project({ lineupName: 1, lineupNameKey: 1 })
+    .toArray();
+
+  const byKey = new Map(rows.map((row) => [row.lineupNameKey, row.lineupName]));
+  const pending = [];
+  const seen = new Set();
+
+  for (const name of lineupNames) {
+    const key = normalizeArtistNameKey(name);
+    if (!byKey.has(key) || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    pending.push(byKey.get(key) ?? name);
+  }
+
+  return pending;
+}
+
+export async function listPendingReviewCatalogArtists(db, config) {
+  const expected = await loadAllCatalogLineupArtistNames(db, config);
+  return listPendingReviewLineupArtists(db, expected);
+}
+
 export function isLineupArtistCovered(lineupName, djs) {
   const targetKeys = getLineupCoverageKeys(lineupName);
   if (!targetKeys.length) {
@@ -517,7 +671,11 @@ export function isLineupArtistCovered(lineupName, djs) {
 }
 
 export async function upsertDjRecord(Dj, data) {
-  await Dj.updateOne({ discogsId: data.discogsId }, { $set: data }, { upsert: true });
+  await Dj.updateOne(
+    { discogsId: data.discogsId },
+    { $set: data },
+    { upsert: true },
+  );
 
   const worksLabel = data.representativeWorks.length
     ? ` | 近期发行 ${data.representativeWorks.length} 条`
@@ -551,6 +709,7 @@ export async function crawlArtistNames({
           discogsName: manualProfile.name,
           matchScore: 100,
           searchQuery: '#manual-profile',
+          source: DISCOGS_MAP_SOURCE_FESTIVAL_CRAWL,
         });
       }
       upserted += 1;
@@ -564,29 +723,29 @@ export async function crawlArtistNames({
       continue;
     }
 
-    const match = await discogs.resolveArtistMatch(artistName, mapCollection);
-    if (match.status === 'pending_review') {
-      pendingReview += 1;
-      console.warn('⏸  待复核:', artistName, '-', match.reviewReason);
-      continue;
-    }
-
-    if (seenDiscogsIds.has(match.discogsId)) {
-      console.log(
-        `↷ 跳过重复 Discogs #${match.discogsId} (${match.discogsName})`,
-      );
-      continue;
-    }
-    seenDiscogsIds.add(match.discogsId);
-
-    const cacheLabel = match.fromCache
-      ? `map:${match.cacheLayer ?? 'mongo'}`
-      : 'search';
-    console.log(
-      `→ Discogs #${match.discogsId} (${match.discogsName}) [${cacheLabel}: ${match.searchQuery}] score=${match.matchScore ?? 'n/a'}`,
-    );
-
     try {
+      const match = await discogs.resolveArtistMatch(artistName, mapCollection);
+      if (match.status === 'pending_review') {
+        pendingReview += 1;
+        console.warn('⏸  待复核:', artistName, '-', match.reviewReason);
+        continue;
+      }
+
+      if (seenDiscogsIds.has(match.discogsId)) {
+        console.log(
+          `↷ 跳过重复 Discogs #${match.discogsId} (${match.discogsName})`,
+        );
+        continue;
+      }
+      seenDiscogsIds.add(match.discogsId);
+
+      const cacheLabel = match.fromCache
+        ? `map:${match.cacheLayer ?? 'mongo'}`
+        : 'search';
+      console.log(
+        `→ Discogs #${match.discogsId} (${match.discogsName}) [${cacheLabel}: ${match.searchQuery}] score=${match.matchScore ?? 'n/a'}`,
+      );
+
       const data = await discogs.buildDjRecord(match.discogsId, {
         preferredName: artistName,
         prefetchedArtist: match.prefetchedArtist,
@@ -596,12 +755,21 @@ export async function crawlArtistNames({
         await upsertDjDiscogsMapPendingReview(mapCollection, {
           lineupName: artistName,
           searchQuery: match.searchQuery ?? '',
-          reviewReason: 'Discogs 可查资料不足，未生成艺人档案',
+          reviewReason: DISCOGS_REVIEW_REASON.BUILD_RECORD_FAILED,
+          candidateScores: [
+            {
+              discogsId: match.discogsId,
+              name: match.discogsName ?? artistName,
+              total: match.matchScore ?? 0,
+            },
+          ],
+          source: DISCOGS_MAP_SOURCE_FESTIVAL_CRAWL,
         });
         console.warn(
           '⏸  待复核:',
           artistName,
-          '- Discogs 可查资料不足，未生成艺人档案',
+          '-',
+          DISCOGS_REVIEW_REASON.BUILD_RECORD_FAILED,
         );
         continue;
       }
@@ -624,7 +792,8 @@ export async function bumpDjCatalogCacheVersion() {
 
   try {
     const { Redis } = await import('ioredis');
-    const versionKey = process.env.CATALOG_DJ_VERSION_KEY ?? 'catalog:dj:version';
+    const versionKey =
+      process.env.CATALOG_DJ_VERSION_KEY ?? 'catalog:dj:version';
     const redis = new Redis(redisUrl);
     await redis.incr(versionKey);
     await redis.quit();

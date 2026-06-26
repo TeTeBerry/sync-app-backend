@@ -16,6 +16,7 @@ import { ActivityImageService } from './activity-image.service';
 import { buildActivityLookupCache } from './activity-lookup.cache';
 import { isActivityLineupPublished } from './utils/activity-lineup-published.util';
 import { enrichActivityLookupRecord } from '../travel-guide/domain/travel-guide-support.util';
+import { enrichDevUnityAttendees } from './utils/dev-unity-attendees.util';
 import type {
   ActivityListPage,
   ActivityLookupPageOptions,
@@ -101,12 +102,16 @@ export class ActivityLookupService
     const resolved = await this.activityImages.resolveRecords([
       ...this.cache.all,
     ]);
-    return resolved.map(enrichActivityLookupRecord);
+    return resolved.map((record) =>
+      enrichDevUnityAttendees(enrichActivityLookupRecord(record)),
+    );
   }
 
   async findAllBasics(): Promise<ActivityLookupRecord[]> {
     await this.syncIfStale();
-    return this.cache.all.map(enrichActivityLookupRecord);
+    return this.cache.all.map((record) =>
+      enrichDevUnityAttendees(enrichActivityLookupRecord(record)),
+    );
   }
 
   async findByLegacyId(legacyId: number): Promise<ActivityLookupRecord | null> {
@@ -116,7 +121,9 @@ export class ActivityLookupService
       return null;
     }
     const [resolved] = await this.activityImages.resolveRecords([record]);
-    return resolved ? enrichActivityLookupRecord(resolved) : null;
+    return resolved
+      ? enrichDevUnityAttendees(enrichActivityLookupRecord(resolved))
+      : null;
   }
 
   async findByLegacyIds(
@@ -130,7 +137,10 @@ export class ActivityLookupService
     const map = new Map<number, ActivityLookupRecord>();
     for (const record of resolved) {
       if (record.legacyId != null) {
-        map.set(record.legacyId, enrichActivityLookupRecord(record));
+        map.set(
+          record.legacyId,
+          enrichDevUnityAttendees(enrichActivityLookupRecord(record)),
+        );
       }
     }
     return map;
@@ -147,7 +157,9 @@ export class ActivityLookupService
       return null;
     }
     const [resolved] = await this.activityImages.resolveRecords([record]);
-    return resolved ? enrichActivityLookupRecord(resolved) : null;
+    return resolved
+      ? enrichDevUnityAttendees(enrichActivityLookupRecord(resolved))
+      : null;
   }
 
   async findPage(
@@ -164,7 +176,9 @@ export class ActivityLookupService
       await this.activityImages.resolveRecords(
         this.cache.all.slice(skip, skip + limit),
       )
-    ).map(enrichActivityLookupRecord);
+    ).map((record) =>
+      enrichDevUnityAttendees(enrichActivityLookupRecord(record)),
+    );
 
     return { items, total, skip, limit };
   }

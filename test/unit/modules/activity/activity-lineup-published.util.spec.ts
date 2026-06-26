@@ -21,4 +21,8 @@ describe('isActivityLineupPublished', () => {
   it('returns false when no performances and no lineup seed', () => {
     expect(isActivityLineupPublished(999, false)).toBe(false);
   });
+
+  it('returns false for TML Shanghai even when performances exist', () => {
+    expect(isActivityLineupPublished(16, true)).toBe(false);
+  });
 });

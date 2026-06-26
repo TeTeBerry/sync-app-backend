@@ -3,6 +3,7 @@ import { ItineraryConflictService } from '@src/modules/itinerary/itinerary-confl
 import { DiscogsGenreEnrichmentService } from '@src/modules/itinerary/discogs-genre-enrichment.service';
 import { LineupCatalogService } from '@src/modules/itinerary/lineup-catalog.service';
 import { ArtistProfileResolver } from '@src/modules/itinerary/artist-profile-resolver.service';
+import { resolveLineupDisplayGenreFromCatalog } from '@src/modules/itinerary/domain/lineup-artist-data-policy';
 
 describe('ItineraryScheduleService discogs styles', () => {
   const performanceModel = {
@@ -70,6 +71,7 @@ describe('ItineraryScheduleService discogs styles', () => {
         ['SOTA', catalog[2]],
       ]),
     ),
+    resolveLineupGenreDisplayForArtists: jest.fn(),
     resolveProfileForDisplay: jest.fn(
       async (_discogsId: number, profile?: string) => profile ?? '',
     ),
@@ -82,6 +84,20 @@ describe('ItineraryScheduleService discogs styles', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    djService.resolveLineupGenreDisplayForArtists.mockImplementation(
+      async (names: string[]) => {
+        const lookup = await djService.lookupForLineupArtists(names);
+        const result = new Map<string, { genre: string; genreLabel: string }>();
+        for (const name of names) {
+          const item = lookup.get(name);
+          result.set(
+            name,
+            resolveLineupDisplayGenreFromCatalog(item ? [item] : []),
+          );
+        }
+        return result;
+      },
+    );
     activityLookup.findAllBasics.mockImplementation(() =>
       activityLookup.findAll(),
     );
@@ -124,7 +140,7 @@ describe('ItineraryScheduleService discogs styles', () => {
     });
 
     const conflictService = new ItineraryConflictService();
-    const discogsGenre = new DiscogsGenreEnrichmentService();
+    const discogsGenre = new DiscogsGenreEnrichmentService(djService as never);
     const lineupCatalog = new LineupCatalogService(
       performanceModel as never,
       activityLookup as never,
@@ -151,10 +167,10 @@ describe('ItineraryScheduleService discogs styles', () => {
     );
   });
 
-  it('keeps seed genreLabel on lineup schedule (Discogs does not override)', async () => {
+  it('applies mapped Discogs styles on lineup schedule', async () => {
     const schedule = await service.getSchedule(5);
 
-    expect(djService.lookupForLineupArtists).not.toHaveBeenCalled();
+    expect(djService.resolveLineupGenreDisplayForArtists).toHaveBeenCalled();
     expect(schedule.djs[0]?.genreLabel).toBe('Big Room · Progressive House');
     expect(schedule.performances[0]?.genreLabel).toBe(
       'Big Room · Progressive House',
@@ -163,7 +179,7 @@ describe('ItineraryScheduleService discogs styles', () => {
     expect(schedule.djs[0]?.stageLabel).toBe('主舞台');
   });
 
-  it('keeps B2B seed genreLabel without merging Discogs styles', async () => {
+  it('merges mapped Discogs styles for B2B lineup names', async () => {
     performanceModel.find.mockReturnValue({
       lean: jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue([
@@ -189,11 +205,25 @@ describe('ItineraryScheduleService discogs styles', () => {
       }),
     });
 
+    djService.resolveLineupGenreDisplayForArtists.mockResolvedValueOnce(
+      new Map([
+        [
+          'KANINE B2B SOTA',
+          {
+            genre: 'Drum n Bass',
+            genreLabel: 'Drum n Bass · Jump Up · Deep House',
+          },
+        ],
+      ]),
+    );
+
     const schedule = await service.getSchedule(5);
-    expect(schedule.performances[0]?.genreLabel).toBe('Jump Up · D&B');
+    expect(schedule.performances[0]?.genreLabel).toBe(
+      'Drum n Bass · Jump Up · Deep House',
+    );
   });
 
-  it('falls back to seed genreLabel when Discogs has no styles', async () => {
+  it('uses placeholder when Discogs has no mapped styles', async () => {
     djService.lookupForLineupArtists.mockResolvedValue(new Map());
     performanceModel.find.mockReturnValue({
       lean: jest.fn().mockReturnValue({
@@ -221,7 +251,7 @@ describe('ItineraryScheduleService discogs styles', () => {
     });
 
     const schedule = await service.getSchedule(5);
-    expect(schedule.performances[0]?.genreLabel).toBe('Tech House');
+    expect(schedule.performances[0]?.genreLabel).toBe('风格待补充');
   });
 
   it('serves lineup DJs with schedulePublished false when no performances exist', async () => {
@@ -416,7 +446,7 @@ describe('ItineraryScheduleService discogs styles', () => {
     expect(artists.some((item) => item.name === 'DJ SNAKE')).toBe(true);
   });
 
-  it('uses placeholder genreLabel in artist tab when seed has no official genres', async () => {
+  it('uses placeholder genreLabel when mapped catalog has no styles', async () => {
     activityLookup.findAll.mockResolvedValue([
       {
         legacyId: 1,

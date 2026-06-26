@@ -1,9 +1,66 @@
 import type { CatalogLineupArtist } from '@sync/activity-contracts';
 import { resolveCuratedLineupArtistProfile } from '@src/data/itinerary/curated-lineup-artist-profiles';
+import type { DjCatalogItem } from '@src/modules/dj/dj.types';
+import {
+  formatDiscogsStyleLabel,
+  mergeDiscogsStyleLabels,
+} from '@src/modules/dj/discogs-style-label.util';
 
 import { LINEUP_SEED_GENRE_PLACEHOLDER } from '@src/data/itinerary/lineup-seed-genre.constants';
 
-/** Lineup genre display — never Discogs; seeds use placeholder unless officially tagged. */
+type CatalogGenreSource = Pick<DjCatalogItem, 'styles' | 'genres'>;
+
+const PLACEHOLDER_GENRE = {
+  genre: LINEUP_SEED_GENRE_PLACEHOLDER,
+  genreLabel: LINEUP_SEED_GENRE_PLACEHOLDER,
+} as const;
+
+function resolvePrimaryGenreFromCatalogItems(
+  items: CatalogGenreSource[],
+  genreLabel: string,
+): string {
+  for (const item of items) {
+    const style = item.styles?.find((value) => value.trim())?.trim();
+    if (style) {
+      return style;
+    }
+  }
+  for (const item of items) {
+    const genre = item.genres?.find((value) => value.trim())?.trim();
+    if (genre) {
+      return genre;
+    }
+  }
+  if (genreLabel && genreLabel !== LINEUP_SEED_GENRE_PLACEHOLDER) {
+    return genreLabel.split(' · ')[0]?.trim() || genreLabel;
+  }
+  return LINEUP_SEED_GENRE_PLACEHOLDER;
+}
+
+/** Lineup genre display — Discogs mapped catalog first; else placeholder (seeds are not shown). */
+export function resolveLineupDisplayGenreFromCatalog(
+  catalogItems: CatalogGenreSource[] | null | undefined,
+): { genre: string; genreLabel: string } {
+  const items = catalogItems?.filter(Boolean) ?? [];
+  if (!items.length) {
+    return { ...PLACEHOLDER_GENRE };
+  }
+
+  const genreLabel =
+    items.length === 1
+      ? formatDiscogsStyleLabel(items[0])
+      : mergeDiscogsStyleLabels(items);
+  if (genreLabel === LINEUP_SEED_GENRE_PLACEHOLDER) {
+    return { ...PLACEHOLDER_GENRE };
+  }
+
+  return {
+    genre: resolvePrimaryGenreFromCatalogItems(items, genreLabel),
+    genreLabel,
+  };
+}
+
+/** @deprecated Seeds are not used for lineup genre display — kept for legacy call sites. */
 export function resolveLineupSeedGenreLabel(seedGenreLabel: string): string {
   const trimmed = seedGenreLabel?.trim();
   if (!trimmed || trimmed === LINEUP_SEED_GENRE_PLACEHOLDER) {

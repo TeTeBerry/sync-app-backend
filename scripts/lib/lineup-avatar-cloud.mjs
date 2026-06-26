@@ -18,51 +18,28 @@ export function isLineupAvatarAssetKey(value) {
   return trimmed.startsWith(LINEUP_AVATAR_CLOUD_PREFIX);
 }
 
-export function extensionFromContentType(contentType, fallback = 'jpg') {
-  const type = (contentType ?? '').toLowerCase();
-  if (type.includes('png')) {
-    return 'png';
-  }
-  if (type.includes('webp')) {
-    return 'webp';
-  }
-  if (type.includes('jpeg') || type.includes('jpg')) {
-    return 'jpg';
-  }
-  return fallback;
+export function isRemoteLineupAvatarUrl(value) {
+  const trimmed = value?.trim();
+  return Boolean(trimmed && /^https?:\/\//i.test(trimmed));
 }
 
-export async function downloadRemoteImage(url) {
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'SyncElectronicDJAgent/1.0',
-      Accept: 'image/*',
-    },
+export function isStoredLineupAvatarUrl(value) {
+  return isRemoteLineupAvatarUrl(value);
+}
+
+/** Remove legacy CloudBase object-key rows (`lineup-avatar/...`). */
+export async function purgeLegacyLineupCloudAvatars(db) {
+  const result = await db.collection('lineup_artist_avatars').deleteMany({
+    avatarUrl: { $regex: '^lineup-avatar/' },
   });
-  if (!response.ok) {
-    throw new Error(`download ${response.status}`);
-  }
-  const contentType = response.headers.get('content-type') ?? '';
-  const buffer = Buffer.from(await response.arrayBuffer());
-  if (!buffer.length) {
-    throw new Error('empty image');
-  }
-  return {
-    buffer,
-    ext: extensionFromContentType(contentType),
-  };
-}
-
-export function lineupAvatarCloudPath(artistName, ext = 'jpg') {
-  const slug = lineupAvatarSlug(artistName) || 'artist';
-  return `${LINEUP_AVATAR_CLOUD_PREFIX}${slug}.${ext}`;
+  return result.deletedCount ?? 0;
 }
 
 export async function upsertLineupArtistAvatar(db, entry) {
   const artistName = entry.artistName.trim();
   const artistNameKey = artistName.toLowerCase();
   const avatarUrl = entry.avatarUrl.trim();
-  if (!artistName || !avatarUrl || !avatarUrl.startsWith(LINEUP_AVATAR_CLOUD_PREFIX)) {
+  if (!artistName || !isRemoteLineupAvatarUrl(avatarUrl)) {
     return false;
   }
 
@@ -73,7 +50,7 @@ export async function upsertLineupArtistAvatar(db, entry) {
         artistName,
         artistNameKey,
         avatarUrl,
-        source: entry.source ?? 'cloudbase',
+        source: entry.source ?? 'cdn',
         updatedAt: new Date(),
       },
       $setOnInsert: { createdAt: new Date() },

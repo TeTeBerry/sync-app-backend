@@ -17,6 +17,7 @@ export function createDjDiscogsMapModel(mongoose) {
       matchScore: { type: Number },
       searchQuery: { type: String },
       reviewReason: { type: String },
+      source: { type: String },
       candidateScores: {
         type: [
           {
@@ -75,6 +76,7 @@ export async function upsertDjDiscogsMapMapped(collection, input) {
         matchScore: input.matchScore,
         searchQuery: input.searchQuery,
         reviewReason: '',
+        source: input.source ?? '',
         candidateScores: input.candidateScores ?? [],
         mappedAt: now,
         reviewedAt: now,
@@ -96,6 +98,7 @@ export async function upsertDjDiscogsMapPendingReview(collection, input) {
         status: 'pending_review',
         searchQuery: input.searchQuery,
         reviewReason: input.reviewReason,
+        source: input.source ?? '',
         candidateScores: input.candidateScores ?? [],
         reviewedAt: now,
       },
@@ -145,4 +148,12 @@ export async function listMappedLineupArtists(mapCollection, lineupNames) {
     });
   }
   return targets;
+}
+
+export async function listAllMappedLineupNames(mapCollection) {
+  const rows = await mapCollection
+    .find({ status: 'mapped', discogsId: { $exists: true } })
+    .project({ lineupName: 1 })
+    .toArray();
+  return rows.map((row) => row.lineupName?.trim()).filter(Boolean);
 }

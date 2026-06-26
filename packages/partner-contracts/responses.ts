@@ -1,4 +1,5 @@
 import type { PostRecruitStatus, PostStatus } from './types';
+import type { RecruitUnityTagId } from './recruit-unity-tags';
 
 export interface EventDetailPost {
   id: string;
@@ -18,6 +19,7 @@ export interface EventDetailPost {
   recruitStatus?: PostRecruitStatus;
   slotsTotal?: number;
   slotsFilled?: number;
+  recruitUnityTags?: RecruitUnityTagId[];
 }
 
 export interface PostCommentItem {
@@ -65,6 +67,7 @@ export interface BuddyPostSearchParsed {
   peopleCount?: string;
   extraKeywords?: string[];
   preferOpenRecruit?: boolean;
+  unityTags?: RecruitUnityTagId[];
   searchTerms: string[];
 }
 

@@ -16,6 +16,7 @@ import {
   type IActivityLookupPort,
 } from '../../activity/ports/activity-lookup.port';
 import type { PostStatus } from '../../../database/schemas/post.schema';
+import { normalizeRecruitUnityTags } from '@sync/partner-contracts';
 import { AccountRiskService } from '../../account-risk/account-risk.service';
 import { UserProfileSyncService } from '../../user/user-profile-sync.service';
 import { UserService } from '../../user/user.service';
@@ -183,6 +184,7 @@ export class PostWriteService {
       slotsFilled: dto.slotsFilled,
       body: bodyToSave,
     });
+    const recruitUnityTags = normalizeRecruitUnityTags(dto.recruitUnityTags);
 
     const BODY_PREVIEW_MAX = 280;
     const bodyPreview =
@@ -211,6 +213,7 @@ export class PostWriteService {
       body: bodyToSave,
       bodyPreview,
       tags: dto.tags ?? [],
+      recruitUnityTags,
       status,
       listedInFeed,
       recruitStatus: recruit.recruitStatus,
@@ -379,6 +382,10 @@ export class PostWriteService {
       slotsFilled: dto.slotsFilled ?? post.slotsFilled,
       body: bodyToSave,
     });
+    const recruitUnityTags =
+      dto.recruitUnityTags !== undefined
+        ? normalizeRecruitUnityTags(dto.recruitUnityTags)
+        : normalizeRecruitUnityTags(post.recruitUnityTags);
 
     const BODY_PREVIEW_MAX = 280;
     const bodyPreview =
@@ -400,6 +407,7 @@ export class PostWriteService {
       location,
       departureCity,
       tags: dto.tags ?? post.tags ?? [],
+      recruitUnityTags,
       recruitStatus: recruit.recruitStatus,
       ...(recruit.slotsTotal != null ? { slotsTotal: recruit.slotsTotal } : {}),
       ...(recruit.slotsFilled != null

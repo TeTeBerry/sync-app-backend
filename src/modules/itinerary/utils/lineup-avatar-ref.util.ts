@@ -4,6 +4,11 @@ const CLOUD_FILE_ID_RE = /^cloud:\/\/[^/]+\/.+/;
 
 export const LINEUP_AVATAR_CLOUD_PREFIX = 'lineup-avatar/';
 
+export function isRemoteLineupAvatarUrl(raw: string | undefined): boolean {
+  const trimmed = raw?.trim();
+  return Boolean(trimmed && /^https?:\/\//i.test(trimmed));
+}
+
 export function isLineupAvatarAssetKey(raw: string | undefined): boolean {
   const trimmed = raw?.trim();
   if (!trimmed || trimmed.includes('..')) {

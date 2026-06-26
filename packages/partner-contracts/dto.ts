@@ -1,4 +1,5 @@
 import type { PostRecruitStatus } from './types';
+import type { RecruitUnityTagId } from './recruit-unity-tags';
 
 export type CreatePostPayload = {
   body: string;
@@ -7,6 +8,7 @@ export type CreatePostPayload = {
   location?: string;
   departureCity?: string;
   tags?: string[];
+  recruitUnityTags?: RecruitUnityTagId[];
   /** Default true. False = stored but hidden from activity/popular feeds. */
   listedInFeed?: boolean;
   recruitStatus?: PostRecruitStatus;
@@ -19,6 +21,7 @@ export type UpdatePostPayload = {
   location?: string;
   departureCity?: string;
   tags?: string[];
+  recruitUnityTags?: RecruitUnityTagId[];
   recruitStatus?: PostRecruitStatus;
   slotsTotal?: number;
   slotsFilled?: number;

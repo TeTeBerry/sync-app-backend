@@ -12,7 +12,7 @@ import {
   loadAllCatalogLineupArtistNames,
   loadDotEnv,
 } from './lib/discogs-crawl.mjs';
-import { isLineupAvatarAssetKey } from './lib/lineup-avatar-cloud.mjs';
+import { isStoredLineupAvatarUrl } from './lib/lineup-avatar-cloud.mjs';
 
 loadDotEnv();
 
@@ -36,17 +36,24 @@ async function main() {
   for (const name of lineupNames) {
     const key = name.trim().toLowerCase();
     const row = byKey.get(key);
-    if (isLineupAvatarAssetKey(row?.avatarUrl)) {
+    if (isStoredLineupAvatarUrl(row?.avatarUrl)) {
       covered.push(name);
     } else {
       missing.push(name);
     }
   }
 
+  const legacyCloud = rows.filter((row) =>
+    row.avatarUrl?.trim().startsWith('lineup-avatar/'),
+  ).length;
+
   console.log('✅ MongoDB:', config.mongoUri);
   console.log(`🎤 阵容艺人（去重）: ${lineupNames.length}`);
-  console.log(`☁️  CloudBase 头像: ${covered.length}`);
+  console.log(`🌐 CDN 头像: ${covered.length}`);
   console.log(`❌ 缺失: ${missing.length}`);
+  if (legacyCloud) {
+    console.log(`⚠️  残留 CloudBase 路径: ${legacyCloud}`);
+  }
 
   if (missing.length) {
     console.log('\n--- 缺失 ---');

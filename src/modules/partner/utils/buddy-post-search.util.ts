@@ -11,6 +11,12 @@ import {
 } from './departure-city.util';
 
 import type { BuddyPostSearchParsed } from '@sync/partner-contracts';
+import {
+  isRecruitUnityTagId,
+  recruitUnityTagSearchHaystackLabels,
+  resolveUnityTagsFromSearchText,
+  type RecruitUnityTagId,
+} from '@sync/partner-contracts';
 
 export type { BuddyPostSearchParsed } from '@sync/partner-contracts';
 
@@ -25,6 +31,7 @@ export type BuddyPostSearchCriteria = {
   /** Budget / price-band terms — boost ranking but never block results alone. */
   softSearchTerms?: string[];
   preferOpenRecruit?: boolean;
+  unityTags?: RecruitUnityTagId[];
 };
 
 export type BuddyPostSearchResult = {
@@ -79,9 +86,27 @@ export function fuzzyTextMatches(text: string, query: string): boolean {
 }
 
 export function buildBuddyPostSearchText(post: PostRecord): string {
-  return [post.body, post.location, post.departureCity, ...(post.tags ?? [])]
+  const unityLabels = recruitUnityTagSearchHaystackLabels(
+    (post.recruitUnityTags ?? []).filter(isRecruitUnityTagId),
+  );
+  return [
+    post.body,
+    post.location,
+    post.departureCity,
+    ...(post.tags ?? []),
+    ...unityLabels,
+  ]
     .filter((part) => typeof part === 'string' && part.trim())
     .join(' ');
+}
+
+export function buddyPostMatchesUnityTags(
+  post: PostRecord,
+  unityTags: RecruitUnityTagId[] | undefined,
+): boolean {
+  if (!unityTags?.length) return true;
+  const postTags = (post.recruitUnityTags ?? []).filter(isRecruitUnityTagId);
+  return unityTags.every((tag) => postTags.includes(tag));
 }
 
 export function buddyPostMatchesSearchTerms(
@@ -223,6 +248,10 @@ export function buddyPostMatchesSearchCriteria(
   post: PostRecord,
   criteria: BuddyPostSearchCriteria,
 ): boolean {
+  if (!buddyPostMatchesUnityTags(post, criteria.unityTags)) {
+    return false;
+  }
+
   const departureCity = criteria.departureCity?.trim();
   if (departureCity && !postMatchesDepartureCity(post, departureCity)) {
     return false;
@@ -230,7 +259,7 @@ export function buddyPostMatchesSearchCriteria(
 
   const { required, soft } = resolveCriteriaSearchTermGroups(criteria);
   if (!required.length && !soft.length) {
-    return Boolean(departureCity);
+    return Boolean(departureCity) || Boolean(criteria.unityTags?.length);
   }
 
   const requiredMatched = countMatchedBuddyPostSearchTerms(post, required);
@@ -397,6 +426,7 @@ export function parseBuddyPostSearchQuery(
   else if (peopleMatch?.[0]) remainder = remainder.replace(peopleMatch[0], ' ');
 
   const extraKeywords = tokenizeRawBuddySearchQuery(remainder);
+  const unityTags = resolveUnityTagsFromSearchText(trimmed);
   const parsed: BuddyPostSearchParsedFields = {
     departureCity,
     date,
@@ -404,6 +434,7 @@ export function parseBuddyPostSearchQuery(
     peopleCount,
     preferOpenRecruit: gapPeopleMatch ? true : undefined,
     extraKeywords: extraKeywords.length ? extraKeywords : undefined,
+    ...(unityTags.length ? { unityTags } : {}),
   };
 
   if (departureCity && parsed.extraKeywords?.length) {
@@ -417,11 +448,25 @@ export function parseBuddyPostSearchQuery(
 
   if (!buildBodySearchTermsFromParsed(parsed).length && !parsed.departureCity) {
     const fromRaw = tokenizeRawBuddySearchQuery(parseTarget || trimmed);
+    const fallbackUnityTags = resolveUnityTagsFromSearchText(trimmed);
     const fallback: BuddyPostSearchParsedFields = fromRaw.length
-      ? { extraKeywords: fromRaw }
+      ? {
+          extraKeywords: fromRaw,
+          ...(fallbackUnityTags.length ? { unityTags: fallbackUnityTags } : {}),
+        }
       : parseTarget
-        ? { extraKeywords: [parseTarget] }
-        : { extraKeywords: [trimmed] };
+        ? {
+            extraKeywords: [parseTarget],
+            ...(fallbackUnityTags.length
+              ? { unityTags: fallbackUnityTags }
+              : {}),
+          }
+        : {
+            extraKeywords: [trimmed],
+            ...(fallbackUnityTags.length
+              ? { unityTags: fallbackUnityTags }
+              : {}),
+          };
     const inferredCity = inferDepartureCityFromText(parseTarget, trimmed);
     if (inferredCity) {
       fallback.departureCity = inferredCity;
@@ -444,6 +489,11 @@ export function resolveBuddyPostSearchCriteria(
   parsed: BuddyPostSearchParsedFields,
   rawQuery: string,
 ): BuddyPostSearchCriteria {
+  const unityTags = parsed.unityTags?.length
+    ? parsed.unityTags
+    : resolveUnityTagsFromSearchText(rawQuery);
+  const unityTagsField = unityTags.length ? { unityTags } : {};
+
   const bodyTerms = buildBodySearchTermsFromParsed(parsed);
   const { required, soft } = partitionBuddyPostSearchTerms(bodyTerms);
 
@@ -453,6 +503,7 @@ export function resolveBuddyPostSearchCriteria(
       searchTerms: required,
       softSearchTerms: soft,
       preferOpenRecruit: parsed.preferOpenRecruit,
+      ...unityTagsField,
     };
   }
 
@@ -471,6 +522,7 @@ export function resolveBuddyPostSearchCriteria(
         departureCity,
         searchTerms: partitioned.required,
         softSearchTerms: partitioned.soft,
+        ...unityTagsField,
       };
     }
     const fallbackPartition = partitionBuddyPostSearchTerms([normalized]);
@@ -478,6 +530,7 @@ export function resolveBuddyPostSearchCriteria(
       departureCity,
       searchTerms: fallbackPartition.required,
       softSearchTerms: fallbackPartition.soft,
+      ...unityTagsField,
     };
   }
 
@@ -488,6 +541,7 @@ export function resolveBuddyPostSearchCriteria(
     departureCity,
     searchTerms: rawPartition.required,
     softSearchTerms: rawPartition.soft,
+    ...unityTagsField,
   };
 }
 

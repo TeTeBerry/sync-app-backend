@@ -30,10 +30,7 @@ import {
   pickNextActivityForArtist,
 } from './domain/lineup-catalog-artist.util';
 import { LINEUP_SEED_GENRE_PLACEHOLDER } from '@src/data/itinerary/lineup-seed-genre.constants';
-import {
-  resolveLineupSeedGenre,
-  resolveLineupSeedGenreLabel,
-} from './domain/lineup-artist-data-policy';
+import { resolveLineupDisplayGenreFromCatalog } from './domain/lineup-artist-data-policy';
 import type {
   ArtistPerformanceHit,
   CatalogLineupArtistDto,
@@ -133,7 +130,17 @@ export class LineupCatalogService implements OnApplicationBootstrap {
       }
     }
 
-    return [...byName.values()];
+    const genreByName =
+      await this.djService.resolveLineupGenreDisplayForArtists(
+        [...byName.values()].map((artist) => artist.artistName),
+      );
+    return [...byName.values()].map((artist) => {
+      const display = genreByName.get(artist.artistName);
+      return {
+        artistName: artist.artistName,
+        genreLabel: display?.genreLabel ?? LINEUP_SEED_GENRE_PLACEHOLDER,
+      };
+    });
   }
 
   async listCatalogLineupArtistsRanked(): Promise<CatalogLineupArtistDto[]> {
@@ -306,6 +313,10 @@ export class LineupCatalogService implements OnApplicationBootstrap {
     activitiesByLegacyId: Map<number, ActivityLookupRecord>;
     entries: CatalogLineupArtistEntryInternal[];
     catalogByLineupName: Map<string, DjCatalogItem>;
+    genreDisplayByLineupName: Map<
+      string,
+      { genre: string; genreLabel: string }
+    >;
     catalog: DjCatalogItem[];
     avatarUrlsByKey: Map<string, string>;
   }> {
@@ -320,6 +331,7 @@ export class LineupCatalogService implements OnApplicationBootstrap {
         activitiesByLegacyId,
         entries: [],
         catalogByLineupName: new Map(),
+        genreDisplayByLineupName: new Map(),
         catalog: [],
         avatarUrlsByKey: new Map(),
       };
@@ -361,21 +373,33 @@ export class LineupCatalogService implements OnApplicationBootstrap {
 
     const entries = [...byArtist.values()];
     const artistNames = entries.map((entry) => entry.artistName);
-    const [catalogByLineupName, catalog, avatarUrlsByKey] = entries.length
+    const [
+      catalogByLineupName,
+      genreDisplayByLineupName,
+      catalog,
+      avatarUrlsByKey,
+    ] = entries.length
       ? await Promise.all([
           this.djService.lookupForLineupArtists(artistNames),
+          this.djService.resolveLineupGenreDisplayForArtists(artistNames),
           this.djService.loadCatalog(),
           this.lineupArtistAvatarService.findAvatarUrlsByArtistNames(
             artistNames,
           ),
         ])
-      : [new Map<string, DjCatalogItem>(), [], new Map<string, string>()];
+      : [
+          new Map<string, DjCatalogItem>(),
+          new Map<string, { genre: string; genreLabel: string }>(),
+          [],
+          new Map<string, string>(),
+        ];
 
     return {
       activities,
       activitiesByLegacyId,
       entries,
       catalogByLineupName,
+      genreDisplayByLineupName,
       catalog,
       avatarUrlsByKey,
     };
@@ -386,19 +410,27 @@ export class LineupCatalogService implements OnApplicationBootstrap {
     index: {
       activitiesByLegacyId: Map<number, ActivityLookupRecord>;
       catalogByLineupName: Map<string, DjCatalogItem>;
+      genreDisplayByLineupName: Map<
+        string,
+        { genre: string; genreLabel: string }
+      >;
       catalog: DjCatalogItem[];
       avatarUrlsByKey: Map<string, string>;
     },
   ): CatalogLineupArtistDto {
-    const seedGenreLabel =
-      entry.genreLabel.trim() || LINEUP_SEED_GENRE_PLACEHOLDER;
-    const genreLabel = resolveLineupSeedGenreLabel(seedGenreLabel);
+    const display =
+      index.genreDisplayByLineupName.get(entry.artistName) ??
+      resolveLineupDisplayGenreFromCatalog(
+        index.catalogByLineupName.get(entry.artistName)
+          ? [index.catalogByLineupName.get(entry.artistName)!]
+          : [],
+      );
+    const { genre, genreLabel } = display;
     const nameKey = entry.artistName.trim().toLowerCase();
     const nextActivity = pickNextActivityForArtist(
       entry.activityIds,
       index.activitiesByLegacyId,
     );
-    const genre = resolveLineupSeedGenre(entry.genre, seedGenreLabel);
     const catalogItem = index.catalogByLineupName.get(entry.artistName);
     const chineseAliases = catalogItem?.chineseAliases?.length
       ? catalogItem.chineseAliases

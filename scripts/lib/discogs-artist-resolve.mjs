@@ -11,7 +11,11 @@
 import { execSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DISCOGS_LINEUP_ARTIST_IDS, getDiscogsSearchQueries } from './festival-lineup-fallback.mjs';
+import { getDiscogsSearchQueries } from './festival-lineup-fallback.mjs';
+import {
+  DISCOGS_MAP_SOURCE_FESTIVAL_CRAWL,
+  formatMapCandidateScores,
+} from './lineup-discogs-search.mjs';
 import {
   findDjDiscogsMapEntry,
   upsertDjDiscogsMapMapped,
@@ -37,12 +41,15 @@ function loadMatchUtil() {
 
 export function createDiscogsArtistResolver(config, discogsGet, delay) {
   const {
+    buildDiscogsStrictArtistSearchQuery,
     buildDiscogsElectronicSearchQuery,
     scoreDiscogsArtistCandidate,
     decideDiscogsArtistMatch,
     pickTiebreakWinner,
     getEligibleRankedScores,
     getAmbiguousScoreCluster,
+    isLineupDiscogsNamePlausible,
+    DISCOGS_REVIEW_REASON: MATCH_REVIEW_REASON,
     DISCOGS_SEARCH_CANDIDATE_LIMIT,
     DISCOGS_MATCH_MIN_ACCEPT_SCORE,
     DISCOGS_MATCH_SUSPECT_MIN_SCORE,
@@ -146,9 +153,8 @@ export function createDiscogsArtistResolver(config, discogsGet, delay) {
     }
   }
 
-  async function searchElectronicCandidates(lineupName) {
-    const [primaryQueryName] = getDiscogsSearchQueries(lineupName);
-    const searchQuery = buildDiscogsElectronicSearchQuery(primaryQueryName);
+  async function searchDiscogsArtistCandidates(queryName) {
+    const searchQuery = buildDiscogsStrictArtistSearchQuery(queryName);
 
     await delay(config.requestDelayMs);
     const data = await discogsGet('https://api.discogs.com/database/search', {
@@ -202,55 +208,59 @@ export function createDiscogsArtistResolver(config, discogsGet, delay) {
       };
     }
 
-    const forcedId = DISCOGS_LINEUP_ARTIST_IDS[trimmed.toUpperCase()];
-    if (forcedId) {
-      const searchQuery = `#forced:${forcedId}`;
-      try {
-        await fetchArtistCandidate(forcedId);
-      } catch (error) {
-        const reviewReason = '强制 Discogs ID 不存在或不可访问';
-        await upsertDjDiscogsMapPendingReview(mapCollection, {
-          lineupName: trimmed,
-          searchQuery,
-          reviewReason,
-        });
-        return {
-          status: 'pending_review',
-          reviewReason,
-          searchQuery,
-          fromCache: false,
-        };
+    const allowedDiscogsNames = getDiscogsSearchQueries(trimmed);
+    const searchNames = allowedDiscogsNames.length ? allowedDiscogsNames : [trimmed];
+
+    let searchQuery = '';
+    let candidates = [];
+    let scored = [];
+    let decision = null;
+
+    queryLoop: for (const queryName of searchNames) {
+      const attempt = await searchDiscogsArtistCandidates(queryName);
+      searchQuery = attempt.searchQuery;
+      candidates = attempt.candidates;
+      if (!candidates.length) {
+        continue;
       }
 
-      await upsertDjDiscogsMapMapped(mapCollection, {
-        lineupName: trimmed,
-        discogsId: forcedId,
-        discogsName: trimmed,
-        matchScore: minAcceptScore,
+      scored = candidates.map((candidate) =>
+        scoreDiscogsArtistCandidate(trimmed, candidate),
+      );
+      const attemptDecision = decideDiscogsArtistMatch(trimmed, scored, {
+        minAcceptScore,
+        suspectMinScore,
+        ambiguityGap,
         searchQuery,
+        allowedDiscogsNames,
       });
-      return {
-        status: 'mapped',
-        discogsId: forcedId,
-        discogsName: trimmed,
-        searchQuery,
-        matchScore: minAcceptScore,
-        fromCache: false,
-        forced: true,
+
+      const hasEligible = scored.some((item) => item.total >= suspectMinScore);
+      if (!hasEligible) {
+        continue;
+      }
+
+      if (attemptDecision.status === 'mapped') {
+        decision = attemptDecision;
+        break queryLoop;
+      }
+
+      if (!decision) {
+        decision = attemptDecision;
+      }
+    }
+
+    if (!decision) {
+      decision = {
+        status: 'pending_review',
+        reviewReason: MATCH_REVIEW_REASON.NO_QUALIFYING_CANDIDATE,
+        searchQuery:
+          searchQuery || buildDiscogsElectronicSearchQuery(trimmed),
+        candidateScores: [],
       };
     }
 
-    const { searchQuery, candidates } = await searchElectronicCandidates(trimmed);
     const candidateById = new Map(candidates.map((candidate) => [candidate.id, candidate]));
-    const scored = candidates.map((candidate) =>
-      scoreDiscogsArtistCandidate(trimmed, candidate),
-    );
-    let decision = decideDiscogsArtistMatch(trimmed, scored, {
-      minAcceptScore,
-      suspectMinScore,
-      ambiguityGap,
-      searchQuery,
-    });
 
     if (decision.status === 'pending_review' && decision.needsTiebreak) {
       const eligible = getEligibleRankedScores(scored, suspectMinScore);
@@ -267,19 +277,31 @@ export function createDiscogsArtistResolver(config, discogsGet, delay) {
         const leadScore = cluster[0];
 
         if (winner) {
-          decision = {
+          const mappedCandidate = {
             status: 'mapped',
             discogsId: winner.id,
             discogsName: winner.name,
             matchScore: leadScore.total,
             searchQuery,
           };
+          decision = isLineupDiscogsNamePlausible(
+            trimmed,
+            winner.name,
+            allowedDiscogsNames,
+          )
+            ? mappedCandidate
+            : {
+                status: 'pending_review',
+                reviewReason: MATCH_REVIEW_REASON.nameMismatch(winner.name),
+                searchQuery,
+                candidateScores: eligible,
+              };
         } else {
           decision = {
             status: 'pending_review',
-            reviewReason: `${cluster.length} 位高分接近，决胜后仍无法区分（${leadScore.total} 分）`,
+            reviewReason: MATCH_REVIEW_REASON.HOMONYM_AMBIGUITY,
             searchQuery,
-            candidateScores: eligible,
+            candidateScores: cluster,
           };
         }
       }
@@ -290,11 +312,8 @@ export function createDiscogsArtistResolver(config, discogsGet, delay) {
         lineupName: trimmed,
         searchQuery: decision.searchQuery,
         reviewReason: decision.reviewReason,
-        candidateScores: decision.candidateScores.map((item) => ({
-          discogsId: item.discogsId,
-          name: item.name,
-          total: item.total,
-        })),
+        candidateScores: formatMapCandidateScores(decision.candidateScores),
+        source: DISCOGS_MAP_SOURCE_FESTIVAL_CRAWL,
       });
       return {
         status: 'pending_review',
@@ -310,11 +329,8 @@ export function createDiscogsArtistResolver(config, discogsGet, delay) {
       discogsName: decision.discogsName,
       matchScore: decision.matchScore,
       searchQuery: decision.searchQuery,
-      candidateScores: scored.map((item) => ({
-        discogsId: item.discogsId,
-        name: item.name,
-        total: item.total,
-      })),
+      candidateScores: formatMapCandidateScores(scored),
+      source: DISCOGS_MAP_SOURCE_FESTIVAL_CRAWL,
     });
 
     const winner = candidates.find((item) => item.id === decision.discogsId);
@@ -331,6 +347,6 @@ export function createDiscogsArtistResolver(config, discogsGet, delay) {
 
   return {
     resolveArtistMatch,
-    searchElectronicCandidates,
+    searchDiscogsArtistCandidates,
   };
 }

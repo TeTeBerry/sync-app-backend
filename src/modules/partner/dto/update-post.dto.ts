@@ -1,4 +1,5 @@
 import {
+  ArrayMaxSize,
   IsArray,
   IsIn,
   IsNumber,
@@ -7,6 +8,10 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import {
+  MAX_RECRUIT_UNITY_TAGS,
+  RECRUIT_UNITY_TAG_IDS,
+} from '@sync/partner-contracts';
 
 export class UpdatePostDto {
   @IsString()
@@ -25,6 +30,12 @@ export class UpdatePostDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_RECRUIT_UNITY_TAGS)
+  @IsIn(RECRUIT_UNITY_TAG_IDS, { each: true })
+  recruitUnityTags?: string[];
 
   @IsOptional()
   @IsIn(['open', 'full'])

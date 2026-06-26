@@ -17,6 +17,8 @@
  *   npm run db:crawl-catalog-artists -- --activity-legacy-id 2
  *   npm run db:crawl-catalog-artists -- --names "MEDUZA,KREAM"
  *   npm run db:crawl-catalog-artists -- --activity-legacy-id 6 --rematch
+ *   npm run db:crawl-catalog-artists -- --pending-review-only --rematch
+ *   npm run db:crawl-catalog-artists -- --rematch-mapped
  */
 
 import mongoose from 'mongoose';
@@ -28,19 +30,25 @@ import {
   createDjDiscogsMapModel,
   createDjModel,
   crawlArtistNames,
+  expandFestivalArtistNames,
   findMissingCatalogArtists,
+  listPendingReviewCatalogArtists,
+  listPendingReviewLineupArtists,
   getCrawlConfig,
   loadActivityLineupArtistNames,
   loadAllCatalogLineupArtistNames,
   loadDotEnv,
   partitionLineupArtistCoverage,
+  listAllMappedLineupNames,
 } from './lib/discogs-crawl.mjs';
 
 loadDotEnv();
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
-const rematch = args.includes('--rematch');
+const pendingReviewOnly = args.includes('--pending-review-only');
+const rematchMapped = args.includes('--rematch-mapped');
+let rematch = args.includes('--rematch') || pendingReviewOnly || rematchMapped;
 const force = args.includes('--force') || rematch;
 const namesArgIndex = args.indexOf('--names');
 const activityLegacyIdArg = args.indexOf('--activity-legacy-id');
@@ -56,7 +64,12 @@ const explicitNames =
         .filter(Boolean)
     : null;
 
-async function resolveTargets(db, config, allNames) {
+async function resolveTargets(db, config, allNames, { pendingReviewOnly: pendingOnly }) {
+  if (pendingOnly) {
+    const pending = await listPendingReviewLineupArtists(db, allNames);
+    return { targets: pending, covered: [] };
+  }
+
   if (explicitNames?.length) {
     if (force) {
       return { targets: explicitNames, covered: [] };
@@ -104,20 +117,37 @@ async function main() {
   const discogs = createDiscogsClient(config);
 
   const scopedToActivity = Number.isFinite(activityLegacyId);
-  const allNames = scopedToActivity
-    ? await loadActivityLineupArtistNames(db, activityLegacyId, config)
-    : explicitNames?.length
-      ? explicitNames
-      : await loadAllCatalogLineupArtistNames(db, config);
+  let allNames;
+  let targets;
+  let covered = [];
 
-  const { targets, covered } = await resolveTargets(
-    db,
-    config,
-    allNames,
-  );
+  if (rematchMapped) {
+    const mappedNames = await listAllMappedLineupNames(mapCollection);
+    allNames = expandFestivalArtistNames(mappedNames);
+    targets = allNames;
+    console.log(
+      `♻️  rematch-mapped：当前 mapped ${mappedNames.length} 条 → 拆分后 ${targets.length} 位 solo 艺人`,
+    );
+  } else {
+    allNames = scopedToActivity
+      ? await loadActivityLineupArtistNames(db, activityLegacyId, config)
+      : explicitNames?.length
+        ? explicitNames
+        : await loadAllCatalogLineupArtistNames(db, config);
+
+    const resolved = await resolveTargets(db, config, allNames, {
+      pendingReviewOnly,
+    });
+    targets = resolved.targets;
+    covered = resolved.covered;
+  }
 
   console.log('✅ MongoDB:', config.mongoUri);
-  if (scopedToActivity) {
+  if (pendingReviewOnly) {
+    console.log(`⏸  仅待复核艺人 ${targets.length} 位（自动 rematch）`);
+  } else if (rematchMapped) {
+    console.log(`🔎 严格搜索重匹配 ${targets.length} 位（原 mapped，B2B/& 已拆分）`);
+  } else if (scopedToActivity) {
     console.log(
       `🎤 活动 #${activityLegacyId} 阵容 ${allNames.length} 位（B2B 已拆分）`,
     );
@@ -159,7 +189,13 @@ async function main() {
   }
 
   if (rematch) {
-    const cleared = await clearLineupArtistRematchState(mapCollection, targets);
+    const mappedNames = rematchMapped
+      ? await listAllMappedLineupNames(mapCollection)
+      : [];
+    const toClear = rematchMapped
+      ? [...new Set([...mappedNames, ...targets])]
+      : targets;
+    const cleared = await clearLineupArtistRematchState(mapCollection, toClear);
     console.log(
       `\n♻️  rematch：清除映射 ${cleared.clearedMaps} 条` +
         `，Redis 主风格 ${cleared.clearedStyleRedis} 条`,

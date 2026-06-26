@@ -43,6 +43,11 @@ import {
   isRaverAvatarAssetKey,
   isRaverAvatarCloudFileId,
 } from './utils/personality-avatar-ref.util';
+import {
+  assertPlurStaticCloudFileIdForEnv,
+  isPlurStaticAssetKey,
+  isPlurStaticCloudFileId,
+} from '../../common/media/plur-media-ref.util';
 
 @Injectable()
 export class PersonalityTestService {
@@ -84,7 +89,10 @@ export class PersonalityTestService {
     const keys = assetKeys
       .map((key) => key.trim())
       .filter(
-        (key) => isPersonalityStaticAssetKey(key) || isRaverAvatarAssetKey(key),
+        (key) =>
+          isPersonalityStaticAssetKey(key) ||
+          isRaverAvatarAssetKey(key) ||
+          isPlurStaticAssetKey(key),
       );
     const uniqueKeys = [...new Set(keys)];
 
@@ -104,6 +112,10 @@ export class PersonalityTestService {
       (fileId) => {
         if (isRaverAvatarCloudFileId(fileId)) {
           assertRaverAvatarCloudFileIdForEnv(fileId);
+          return;
+        }
+        if (isPlurStaticCloudFileId(fileId)) {
+          assertPlurStaticCloudFileIdForEnv(fileId);
           return;
         }
         assertPersonalityStaticCloudFileIdForEnv(fileId);

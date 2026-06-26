@@ -1,7 +1,10 @@
 import {
   buildDiscogsElectronicSearchQuery,
+  buildDiscogsStrictArtistSearchQuery,
   decideDiscogsArtistMatch,
+  DISCOGS_REVIEW_REASON,
   getAmbiguousScoreCluster,
+  isLineupDiscogsNamePlausible,
   isVerifiableDiscogsDjRecord,
   pickTiebreakWinner,
   scoreDiscogsArtistCandidate,
@@ -13,6 +16,9 @@ describe('discogs-artist-match.util', () => {
   it('builds strict electronic producer search query', () => {
     expect(buildDiscogsElectronicSearchQuery('DJ SNAKE')).toBe(
       '"DJ SNAKE" dj electronic producer',
+    );
+    expect(buildDiscogsStrictArtistSearchQuery('CHARLOTTE DE WITTE')).toBe(
+      '"CHARLOTTE DE WITTE"',
     );
   });
 
@@ -121,7 +127,32 @@ describe('discogs-artist-match.util', () => {
 
     expect(decision.status).toBe('pending_review');
     if (decision.status === 'pending_review') {
-      expect(decision.reviewReason).toContain('存疑');
+      expect(decision.reviewReason).toContain('可信度不足');
+    }
+  });
+
+  it('marks no qualifying candidates with empty candidateScores', () => {
+    const decision = decideDiscogsArtistMatch('999999999', [
+      {
+        discogsId: 1,
+        name: 'Nobody',
+        total: 30,
+        breakdown: {
+          base: 100,
+          profileElectronicBonus: 0,
+          releaseElectronicBonus: 0,
+          releaseNonElectronicPenalty: 0,
+          profileNonElectronicPenalty: 100,
+        },
+      },
+    ]);
+
+    expect(decision.status).toBe('pending_review');
+    if (decision.status === 'pending_review') {
+      expect(decision.reviewReason).toBe(
+        DISCOGS_REVIEW_REASON.NO_QUALIFYING_CANDIDATE,
+      );
+      expect(decision.candidateScores).toEqual([]);
     }
   });
 
@@ -156,6 +187,9 @@ describe('discogs-artist-match.util', () => {
     expect(decision.status).toBe('pending_review');
     if (decision.status === 'pending_review') {
       expect(decision.needsTiebreak).toBe(true);
+      expect(decision.reviewReason).toBe(
+        DISCOGS_REVIEW_REASON.HOMONYM_AMBIGUITY,
+      );
     }
   });
 
@@ -367,5 +401,62 @@ describe('discogs-artist-match.util', () => {
       discogsId: 1588397,
       discogsName: 'Alok',
     });
+  });
+
+  it('accepts plausible discogs names with disambiguation suffix', () => {
+    expect(isLineupDiscogsNamePlausible('KREAM', 'Kream (4)', ['KREAM'])).toBe(
+      true,
+    );
+    expect(
+      isLineupDiscogsNamePlausible('COSMIC GATE', 'Cosmic Gate', [
+        'COSMIC GATE',
+      ]),
+    ).toBe(true);
+  });
+
+  it('rejects homonym discogs names', () => {
+    expect(
+      isLineupDiscogsNamePlausible('BRENNAN HEART', 'Hpnotic', [
+        'BRENNAN HEART',
+      ]),
+    ).toBe(false);
+    expect(
+      isLineupDiscogsNamePlausible('ARMIN VAN BUUREN', 'DJ Chief MC', [
+        'ARMIN VAN BUUREN',
+      ]),
+    ).toBe(false);
+    expect(isLineupDiscogsNamePlausible('YOHAN', 'Yohann Mills')).toBe(false);
+    expect(
+      isLineupDiscogsNamePlausible('DØMINA', 'Domination (4)', ['Domina']),
+    ).toBe(false);
+    expect(isLineupDiscogsNamePlausible('MARLO', 'Marlow')).toBe(false);
+    expect(isLineupDiscogsNamePlausible('BLONDEX', 'Blondee')).toBe(false);
+    expect(isLineupDiscogsNamePlausible('ARGY', 'Argy K')).toBe(false);
+  });
+
+  it('rejects homonym winner when discogs name does not match lineup', () => {
+    const decision = decideDiscogsArtistMatch(
+      'BRENNAN HEART',
+      [
+        {
+          discogsId: 6770993,
+          name: 'Hpnotic',
+          total: 180,
+          breakdown: {
+            base: 100,
+            profileElectronicBonus: 30,
+            releaseElectronicBonus: 50,
+            releaseNonElectronicPenalty: 0,
+            profileNonElectronicPenalty: 0,
+          },
+        },
+      ],
+      { allowedDiscogsNames: ['BRENNAN HEART'] },
+    );
+
+    expect(decision.status).toBe('pending_review');
+    if (decision.status === 'pending_review') {
+      expect(decision.reviewReason).toContain('名称不一致');
+    }
   });
 });

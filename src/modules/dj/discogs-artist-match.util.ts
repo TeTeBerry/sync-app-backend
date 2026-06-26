@@ -3,7 +3,7 @@
  *
  * Flow (lineup English name → artist_id):
  * 1. dj_discogs_map hit (mapped) → use artist_id, fetch styles elsewhere
- * 2. Miss → search q="NAME" dj electronic producer, type=artist, strict=1
+ * 2. Miss → search q="NAME" strict, type=artist, strict=1
  * 3. Top 8 candidates → artist detail only → 5-factor score
  * 4. Winner ≥120 → write dj_discogs_map; pending_review → map only, no djs upsert
  * 5. Never upsert djs without verifiable Discogs profile or release-derived styles
@@ -62,6 +62,14 @@ export const DISCOGS_REQUEST_DELAY_MS_DEFAULT = 1200;
 export const DISCOGS_REDIS_CACHE_TTL_SEC_DEFAULT = 86_400;
 /** Minimum profile length to accept a Discogs artist page without release styles. */
 export const DISCOGS_MIN_VERIFIABLE_PROFILE_LENGTH = 20;
+
+export const DISCOGS_REVIEW_REASON = {
+  NO_QUALIFYING_CANDIDATE: '无合格电子音乐人候选：Discogs未检索到对应艺人页面',
+  HOMONYM_AMBIGUITY: '通用名称多Discogs艺人歧义，分值接近无法自动区分',
+  INSUFFICIENT_SCORE: '企划 / 双人组合名称资料不足，可信度不足',
+  BUILD_RECORD_FAILED: '匹配成功但艺人资料单薄/企划联名，数据构建校验不通过',
+  nameMismatch: (discogsName: string) => `名称不一致（${discogsName}）`,
+} as const;
 
 const PROFILE_ELECTRONIC_BONUS = 30;
 const RELEASE_ELECTRONIC_BONUS = 50;
@@ -150,6 +158,102 @@ export function normalizeDiscogsMatchName(name: string): string {
     .replace(/&/g, 'and')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
+}
+
+function isDiscogsTokenBoundaryMatch(
+  discogsNorm: string,
+  token: string,
+): boolean {
+  if (!token || !discogsNorm) {
+    return false;
+  }
+  if (discogsNorm === token) {
+    return true;
+  }
+  const index = discogsNorm.indexOf(token);
+  if (index < 0) {
+    return false;
+  }
+  const after = discogsNorm[index + token.length];
+  return after === undefined || after === ' ' || after === '(';
+}
+
+/** Lineup display name vs Discogs artist page name — blocks homonym auto-maps. */
+export function isLineupDiscogsNamePlausible(
+  lineupName: string,
+  discogsName: string,
+  allowedDiscogsNames: string[] = [],
+): boolean {
+  const discogsNorm = normalizeDiscogsMatchName(discogsName);
+  if (!discogsNorm) {
+    return false;
+  }
+
+  const names = [lineupName, ...allowedDiscogsNames]
+    .map((name) => name.trim())
+    .filter(Boolean);
+  const lineupNorms = [
+    ...new Set(names.map(normalizeDiscogsMatchName).filter(Boolean)),
+  ];
+
+  for (const lineupNorm of lineupNorms) {
+    if (lineupNorm === discogsNorm) {
+      return true;
+    }
+    if (!lineupNorm.includes(' ') && discogsNorm.includes(' ')) {
+      continue;
+    }
+    if (
+      lineupNorm.length >= 4 &&
+      isDiscogsTokenBoundaryMatch(discogsNorm, lineupNorm)
+    ) {
+      return true;
+    }
+    if (
+      discogsNorm.length >= 4 &&
+      isDiscogsTokenBoundaryMatch(lineupNorm, discogsNorm)
+    ) {
+      return true;
+    }
+
+    const tokens = lineupNorm.split(/\s+/).filter((token) => token.length >= 2);
+    if (tokens.length >= 2) {
+      const hits = tokens.filter((token) =>
+        isDiscogsTokenBoundaryMatch(discogsNorm, token),
+      );
+      const required = Math.min(
+        tokens.length,
+        Math.max(2, Math.ceil(tokens.length * 0.75)),
+      );
+      if (hits.length >= required) {
+        return true;
+      }
+      continue;
+    }
+
+    if (tokens.length === 1 && tokens[0].length >= 4) {
+      const token = tokens[0];
+      if (discogsNorm === token) {
+        return true;
+      }
+      if (
+        discogsNorm.length >= 4 &&
+        isDiscogsTokenBoundaryMatch(token, discogsNorm)
+      ) {
+        return true;
+      }
+      return isDiscogsTokenBoundaryMatch(discogsNorm, token);
+    }
+  }
+
+  return false;
+}
+
+/** Strict quoted artist name only — used before electronic-producer fallback search. */
+export function buildDiscogsStrictArtistSearchQuery(
+  lineupName: string,
+): string {
+  return `"${lineupName.trim()}"`;
 }
 
 export function buildDiscogsElectronicSearchQuery(lineupName: string): string {
@@ -555,6 +659,7 @@ export function decideDiscogsArtistMatch(
     suspectMinScore?: number;
     ambiguityGap?: number;
     searchQuery?: string;
+    allowedDiscogsNames?: string[];
   },
 ): DiscogsMatchDecision {
   const minAccept = options?.minAcceptScore ?? DISCOGS_MATCH_MIN_ACCEPT_SCORE;
@@ -563,19 +668,17 @@ export function decideDiscogsArtistMatch(
   const ambiguityGap = options?.ambiguityGap ?? DISCOGS_MATCH_AMBIGUITY_GAP;
   const searchQuery =
     options?.searchQuery ?? buildDiscogsElectronicSearchQuery(lineupName);
+  const allowedDiscogsNames = options?.allowedDiscogsNames ?? [];
 
   const ranked = [...scored].sort((a, b) => b.total - a.total);
   const eligible = ranked.filter((item) => item.total >= suspectMin);
 
   if (!eligible.length) {
-    const topRejected = ranked[0];
     return {
       status: 'pending_review',
-      reviewReason: topRejected
-        ? `最高得分 ${topRejected.total} 低于剔除线 ${suspectMin}`
-        : '无合格电子音乐人候选',
+      reviewReason: DISCOGS_REVIEW_REASON.NO_QUALIFYING_CANDIDATE,
       searchQuery,
-      candidateScores: ranked,
+      candidateScores: [],
     };
   }
 
@@ -585,7 +688,7 @@ export function decideDiscogsArtistMatch(
   if (top.total < minAccept) {
     return {
       status: 'pending_review',
-      reviewReason: `最高得分 ${top.total} 存疑（需 ≥${minAccept}）`,
+      reviewReason: DISCOGS_REVIEW_REASON.INSUFFICIENT_SCORE,
       searchQuery,
       candidateScores: eligible,
     };
@@ -600,13 +703,22 @@ export function decideDiscogsArtistMatch(
   if (isCloseHighScoreAmbiguity(eligible, minAccept, ambiguityGap)) {
     return {
       status: 'pending_review',
-      reviewReason: `${ambiguousCluster.length} 位高分接近（${top.total} 分${
-        second ? `，次高 ${second.total}` : ''
-      }）`,
+      reviewReason: DISCOGS_REVIEW_REASON.HOMONYM_AMBIGUITY,
       searchQuery,
-      candidateScores: eligible,
+      candidateScores: ambiguousCluster,
       needsTiebreak: true,
       tiebreakCluster: ambiguousCluster,
+    };
+  }
+
+  if (
+    !isLineupDiscogsNamePlausible(lineupName, top.name, allowedDiscogsNames)
+  ) {
+    return {
+      status: 'pending_review',
+      reviewReason: DISCOGS_REVIEW_REASON.nameMismatch(top.name),
+      searchQuery,
+      candidateScores: eligible,
     };
   }
 

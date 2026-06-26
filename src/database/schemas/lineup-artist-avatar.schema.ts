@@ -14,7 +14,7 @@ export class LineupArtistAvatar {
   @Prop({ required: true })
   avatarUrl!: string;
 
-  @Prop({ default: 'cloudbase' })
+  @Prop({ default: 'cdn' })
   source!: string;
 }
 

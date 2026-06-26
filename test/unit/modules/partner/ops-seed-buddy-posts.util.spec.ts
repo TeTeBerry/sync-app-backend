@@ -52,6 +52,7 @@ describe('ops-seed-buddy-posts.util', () => {
       expect(isRaverAvatarAssetKeyInCatalog(post.authorAvatar)).toBe(true);
       expect(post.authorAvatar.startsWith('avatar/')).toBe(true);
       expect(post.tags).toEqual(['#组队']);
+      expect(post.recruitUnityTags?.length ?? 0).toBeGreaterThanOrEqual(2);
       expect(post.body).toMatch(/^组队，/);
       expect(post.body).not.toMatch(/已满|招满|满员|招募中｜/);
       expect(post.body.length).toBeGreaterThan(20);

@@ -1,4 +1,5 @@
 import type { RaverPersonalityType } from '../../personality-test/personality-test.types';
+import type { RecruitUnityTagId } from '@sync/partner-contracts';
 import { normalizeRecruitFields } from '../utils/buddy-post-recruit.util';
 import { generatePersonalityNickname } from '../../personality-test/utils/personality-nickname.util';
 import { generatePersonalityRaverAvatarKey } from '../../personality-test/utils/personality-raver-avatar.util';
@@ -42,6 +43,7 @@ type OpsSeedPostDef = {
   slotsFilled: number;
   createdAtOffsetHours: number;
   comments?: number;
+  recruitUnityTags?: RecruitUnityTagId[];
 };
 
 /** Production ops seed posts — US-Q2-21 cold-start recruit wall. */
@@ -59,6 +61,7 @@ const OPS_SEED_POST_DEFS: OpsSeedPostDef[] = [
     slotsTotal: 3,
     slotsFilled: 1,
     createdAtOffsetHours: 96,
+    recruitUnityTags: ['welcome_newbie', 'multi_day'],
   },
   {
     slot: 2,
@@ -72,6 +75,7 @@ const OPS_SEED_POST_DEFS: OpsSeedPostDef[] = [
     slotsTotal: 4,
     slotsFilled: 2,
     createdAtOffsetHours: 72,
+    recruitUnityTags: ['budget_friendly', 'afterparty_ok'],
   },
   {
     slot: 3,
@@ -86,6 +90,7 @@ const OPS_SEED_POST_DEFS: OpsSeedPostDef[] = [
     slotsFilled: 3,
     createdAtOffsetHours: 120,
     comments: 4,
+    recruitUnityTags: ['same_departure', 'pure_rave'],
   },
   // 风暴电音节 深圳 (legacyId 4): 2 open + 1 full
   {
@@ -100,6 +105,7 @@ const OPS_SEED_POST_DEFS: OpsSeedPostDef[] = [
     slotsTotal: 3,
     slotsFilled: 1,
     createdAtOffsetHours: 88,
+    recruitUnityTags: ['women_friendly', 'budget_friendly'],
   },
   {
     slot: 5,
@@ -113,6 +119,7 @@ const OPS_SEED_POST_DEFS: OpsSeedPostDef[] = [
     slotsTotal: 2,
     slotsFilled: 1,
     createdAtOffsetHours: 64,
+    recruitUnityTags: ['welcome_newbie', 'pure_rave'],
   },
   {
     slot: 6,
@@ -127,6 +134,7 @@ const OPS_SEED_POST_DEFS: OpsSeedPostDef[] = [
     slotsFilled: 4,
     createdAtOffsetHours: 108,
     comments: 6,
+    recruitUnityTags: ['same_departure', 'early_bird'],
   },
   // EDC Thailand (legacyId 5): 2 open
   {
@@ -141,6 +149,7 @@ const OPS_SEED_POST_DEFS: OpsSeedPostDef[] = [
     slotsTotal: 3,
     slotsFilled: 1,
     createdAtOffsetHours: 80,
+    recruitUnityTags: ['budget_friendly', 'multi_day'],
   },
   {
     slot: 8,
@@ -154,6 +163,7 @@ const OPS_SEED_POST_DEFS: OpsSeedPostDef[] = [
     slotsTotal: 2,
     slotsFilled: 1,
     createdAtOffsetHours: 56,
+    recruitUnityTags: ['welcome_newbie', 'women_friendly'],
   },
   // TML 上海 (legacyId 16): 2 open
   {
@@ -168,6 +178,7 @@ const OPS_SEED_POST_DEFS: OpsSeedPostDef[] = [
     slotsTotal: 3,
     slotsFilled: 1,
     createdAtOffsetHours: 48,
+    recruitUnityTags: ['same_departure', 'early_bird'],
   },
   {
     slot: 10,
@@ -181,6 +192,7 @@ const OPS_SEED_POST_DEFS: OpsSeedPostDef[] = [
     slotsTotal: 2,
     slotsFilled: 1,
     createdAtOffsetHours: 36,
+    recruitUnityTags: ['same_departure', 'welcome_newbie', 'pure_rave'],
   },
 ];
 
@@ -218,6 +230,7 @@ export type OpsSeedBuddyPostSeed = {
   body: string;
   bodyPreview: string;
   tags: string[];
+  recruitUnityTags?: RecruitUnityTagId[];
   status: 'active';
   listedInFeed: true;
   comments: number;
@@ -263,6 +276,9 @@ export function buildOpsSeedBuddyPosts(
       body,
       bodyPreview: body,
       tags: ['#组队'],
+      ...(def.recruitUnityTags?.length
+        ? { recruitUnityTags: def.recruitUnityTags }
+        : {}),
       status: 'active',
       listedInFeed: true,
       comments: def.comments ?? 0,

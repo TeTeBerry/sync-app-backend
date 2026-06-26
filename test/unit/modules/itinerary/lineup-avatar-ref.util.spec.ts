@@ -2,6 +2,7 @@ import {
   buildLineupAvatarCloudFileId,
   isLineupAvatarAssetKey,
   isLineupAvatarCloudFileId,
+  isRemoteLineupAvatarUrl,
 } from '@src/modules/itinerary/utils/lineup-avatar-ref.util';
 
 describe('lineup-avatar-ref.util', () => {
@@ -12,6 +13,13 @@ describe('lineup-avatar-ref.util', () => {
     expect(isLineupAvatarAssetKey('lineup-avatar/kanine.jpg')).toBe(true);
     expect(isLineupAvatarAssetKey('avatar/kanine.jpg')).toBe(false);
     expect(isLineupAvatarAssetKey('lineup-avatar/../evil.jpg')).toBe(false);
+  });
+
+  it('accepts public CDN avatar URLs', () => {
+    expect(isRemoteLineupAvatarUrl('https://i.discogs.com/example.jpg')).toBe(
+      true,
+    );
+    expect(isRemoteLineupAvatarUrl('lineup-avatar/kanine.jpg')).toBe(false);
   });
 
   it('builds cloud file ids with optional bucket', () => {

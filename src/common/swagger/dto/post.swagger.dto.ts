@@ -22,8 +22,8 @@ export class EventDetailPostDto {
   @ApiPropertyOptional()
   body?: string;
 
-  @ApiPropertyOptional()
-  recruitStatus?: string;
+  @ApiPropertyOptional({ type: [String] })
+  recruitUnityTags?: string[];
 }
 
 export class EventPostsPageDto {

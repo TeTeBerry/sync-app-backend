@@ -18,6 +18,16 @@ describe('lineup-name-match.util', () => {
     ]);
   });
 
+  it('expands split-able & lineup names into solo artists', () => {
+    expect(expandFestivalArtistName('JOHN MASAKI & KIM SANE')).toEqual([
+      'JOHN MASAKI',
+      'KIM SANE',
+    ]);
+    expect(expandFestivalArtistName('ABOVE & BEYOND')).toEqual([
+      'ABOVE & BEYOND',
+    ]);
+  });
+
   it('matches B2B split lineup names', () => {
     expect(matchLineupArtistToCatalog('GREEN VELVET', catalog)?.name).toBe(
       'Green Velvet',

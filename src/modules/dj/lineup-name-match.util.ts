@@ -1,54 +1,18 @@
 /** Keep in sync with `scripts/lib/festival-lineup-fallback.mjs` */
 
 const B2B_PATTERN = /\s+B2B\s+/i;
+const AMPERSAND_PATTERN = /\s+&\s+/;
 
-export const DISCOGS_LINEUP_ARTIST_IDS: Record<string, number> = {
-  KANINE: 5865864,
-  'SVDDEN DEATH': 5375145,
-  'HOHO ONE': 1889815,
-  'DJ SNAKE': 4046989,
-  /** Discogs search homonym — UK radio DJ Marsha Smith shares the stage name */
-  MARSHMELLO: 4688591,
-  /** Discogs #561124 is a different Alan Walker */
-  'ALAN WALKER': 4827622,
-  /** Discogs #564801 is a Hong Kong sound artist */
-  ALOK: 1588397,
-  /** Discogs #911928 is a San Francisco post-rock band */
-  CARTA: 5126278,
-  /** Discogs #187821 is an R&B singer */
-  'JAMIE JONES': 434183,
-  /** Discogs #1989806 is a disambiguation stub — Rune Reilly Kölsch is #688469 */
-  KÖLSCH: 688469,
-  /** Discogs #1310846 is a different Oppidan */
-  OPPIDAN: 10423519,
-  /** Discogs lists as "Kream (4)" */
-  KREAM: 2669995,
-  /** Italian house trio — Discogs "Meduza (10)" */
-  MEDUZA: 7012514,
-
-  // --- World DJ Festival Japan (day 1) ---
-  /** Discogs #539626 is a US marimba player */
-  'MIKE PERRY': 781755,
-  'PORTER ROBINSON': 1095210,
-  KSHMR: 3763692,
-  /** Discogs #2624525 is Brooks (11) */
-  QUINTINO: 1437686,
-  ANGERFIST: 25958,
-  'LUCAS & STEVE': 2500315,
-  'CHEAT CODES': 4602891,
-  'LIKE MIKE': 806561,
-  'LIKE MIKE (MAIN STAGE DJ SET)': 806561,
-  'SOUND RUSH': 4440037,
-  ATMOZFEARS: 1342829,
-  VERTILE: 7233886,
-  'DUAL DAMAGE': 12581201,
-  TONESHIFTERZ: 1587633,
-  TATSUNOSHIN: 9444280,
-  /** Discogs "DAIKI (12)" — Electro House DJ, Tokyo */
-  DAIKI: 9998461,
-  /** Dream Stage hardstyle producer; stage name LILY */
-  LILY: 9333424,
-};
+const DUO_LINEUP_ACTS = new Set([
+  'ABOVE & BEYOND',
+  'ALY & FILA',
+  'D-BLOCK & S-TE-FAN',
+  'DIMITRI VEGAS & LIKE MIKE',
+  'ELI & FUR',
+  'LUCAS & STEVE',
+  'MATISSE & SADKO',
+  'TAIKI & NULIGHT',
+]);
 
 export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   'AFEM SYKO': 'Afem Syko',
@@ -64,7 +28,7 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   VIDOJEAN: 'Vidojean',
   WHYBEATZ: 'WhyBeatz',
   '999999999': '999999999',
-  DØMINA: 'Domina',
+  BLONDEX: 'Blondex',
   'NO1 (HONGJOONG)': 'Hongjoong',
   'BEN NICKY PRESENTS XTREME': 'Ben Nicky',
   'CASEPEAT X PURPLE RABBIT': 'Casepeat',
@@ -268,36 +232,57 @@ export const LINEUP_COVERAGE_NAME_KEYS: Record<string, string[]> = {
   'BLACK TIGER SEX MACHINE': ['blacktigersexmachine'],
 };
 
+function expandAmpersandLineupParts(lineupName: string): string[] {
+  const trimmed = lineupName.trim();
+  if (!trimmed || !AMPERSAND_PATTERN.test(trimmed)) {
+    return trimmed ? [trimmed] : [];
+  }
+  if (DUO_LINEUP_ACTS.has(trimmed.toUpperCase())) {
+    return [trimmed];
+  }
+  const coverage = LINEUP_COVERAGE_NAME_KEYS[trimmed.toUpperCase()];
+  if (coverage?.length > 1) {
+    return trimmed
+      .split(AMPERSAND_PATTERN)
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }
+  return [trimmed];
+}
+
 export function expandFestivalArtistName(lineupName: string): string[] {
   const trimmed = lineupName.trim();
   if (!trimmed || trimmed === '国内艺人') {
     return [];
   }
 
+  let parts = [trimmed];
+
   const parenMatch = trimmed.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
   if (parenMatch) {
     const main = parenMatch[1].trim();
     const inner = parenMatch[2].trim();
     if (B2B_PATTERN.test(inner)) {
-      return [
+      parts = [
         main,
         ...inner
           .split(B2B_PATTERN)
           .map((part) => part.trim())
           .filter(Boolean),
       ];
+    } else {
+      parts = main ? [main] : [];
     }
-    return main ? [main] : [];
-  }
-
-  if (B2B_PATTERN.test(trimmed)) {
-    return trimmed
+  } else if (B2B_PATTERN.test(trimmed)) {
+    parts = trimmed
       .split(B2B_PATTERN)
       .map((part) => part.trim())
       .filter(Boolean);
   }
 
-  return [trimmed];
+  return [
+    ...new Set(parts.flatMap((part) => expandAmpersandLineupParts(part))),
+  ];
 }
 
 export function normalizeArtistNameKey(name: string): string {
@@ -326,14 +311,6 @@ export function matchLineupArtistToCatalog<
   T extends { name: string; discogsId?: number },
 >(lineupName: string, catalog: T[]): T | null {
   const trimmed = lineupName.trim();
-
-  const forcedId = DISCOGS_LINEUP_ARTIST_IDS[trimmed.toUpperCase()];
-  if (forcedId) {
-    const forced = catalog.find((item) => item.discogsId === forcedId);
-    if (forced) {
-      return forced;
-    }
-  }
 
   const alias = DISCOGS_LINEUP_SEARCH_ALIASES[trimmed.toUpperCase()];
   if (alias) {

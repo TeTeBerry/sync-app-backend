@@ -1,6 +1,7 @@
 import {
   buddyPostMatchesSearchCriteria,
   buddyPostMatchesSearchTerms,
+  buddyPostMatchesUnityTags,
   buildBodySearchTermsFromParsed,
   fuzzyTextMatches,
   isBudgetBuddySearchTerm,
@@ -404,5 +405,21 @@ describe('buddy-post-search rule-first helpers', () => {
     expect(shouldRetryBuddySearchWithLlm('Techno 组队', 'llm', 0, parsed)).toBe(
       false,
     );
+  });
+
+  it('parses and filters unity tags from NL query', () => {
+    const parsed = parseBuddyPostSearchQuery('欢迎新手');
+    expect(parsed.unityTags).toEqual(['welcome_newbie']);
+
+    const withTag = samplePost({ recruitUnityTags: ['welcome_newbie'] });
+    const withoutTag = samplePost({ recruitUnityTags: ['women_friendly'] });
+    const criteria = resolveBuddyPostSearchCriteria(parsed, '欢迎新手');
+
+    expect(buddyPostMatchesUnityTags(withTag, criteria.unityTags)).toBe(true);
+    expect(buddyPostMatchesUnityTags(withoutTag, criteria.unityTags)).toBe(
+      false,
+    );
+    expect(buddyPostMatchesSearchCriteria(withTag, criteria)).toBe(true);
+    expect(buddyPostMatchesSearchCriteria(withoutTag, criteria)).toBe(false);
   });
 });

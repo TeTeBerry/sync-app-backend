@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Sync Discogs DJ catalog + lineup avatar metadata to local + cloud MongoDB.
- * Avatar image files live in CloudBase; this script copies `lineup_artist_avatars`
+ * Avatar URLs are public HTTPS CDN links (Discogs / TheAudioDB); this script copies metadata only.
  * keys so production can resolve HTTPS URLs.
  *
  * Usage:
@@ -124,7 +124,7 @@ async function upsertAvatars(uri, rows) {
           artistName: payload.artistName,
           artistNameKey: payload.artistNameKey,
           avatarUrl: payload.avatarUrl,
-          source: payload.source ?? 'cloudbase',
+          source: payload.source ?? 'cdn',
           updatedAt: new Date(),
         },
         $setOnInsert: { createdAt: createdAt ?? new Date() },

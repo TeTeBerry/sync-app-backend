@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { CloudModule } from '../../infra/cloud/cloud.module';
 import {
   ArtistPerformance,
   ArtistPerformanceSchema,
@@ -21,7 +20,6 @@ import { LINEUP_CATALOG_PORT } from './ports/lineup-catalog.port';
   imports: [
     ActivityLookupModule,
     DjModule,
-    CloudModule,
     MongooseModule.forFeature([
       { name: ArtistPerformance.name, schema: ArtistPerformanceSchema },
       { name: LineupArtistAvatar.name, schema: LineupArtistAvatarSchema },

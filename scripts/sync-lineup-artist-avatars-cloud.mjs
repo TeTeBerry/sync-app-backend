@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
  * Fetch lineup artist avatars AFTER name is confirmed in dj_discogs_map (status=mapped).
- * Uses discogsName from the map to search TheAudioDB, then uploads to CloudBase.
+ * Stores public CDN URLs (Discogs img.discogs.com / TheAudioDB) — no CloudBase upload.
  *
  * Run order:
- *   1. npm run db:crawl-catalog-artists -- --activity-legacy-id N
- *   2. npm run db:sync-lineup-avatars -- --activity-legacy-id N
+ *   1. npm run db:crawl-catalog-artists -- --rematch-mapped
+ *   2. npm run db:sync-lineup-avatars
  *
  * Usage:
  *   npm run db:sync-lineup-avatars
@@ -18,18 +18,15 @@
 
 import { readFileSync } from 'node:fs';
 import mongoose from 'mongoose';
+import { pickDiscogsArtistImageUrl } from './lib/discogs-image.mjs';
 import {
-  getCloudBaseUploadConfig,
-  getWeChatAccessToken,
-  uploadBufferToCloudBase,
-} from './lib/cloudbase-upload.mjs';
-import {
-  downloadRemoteImage,
-  isLineupAvatarAssetKey,
-  lineupAvatarCloudPath,
+  isRemoteLineupAvatarUrl,
+  isStoredLineupAvatarUrl,
+  purgeLegacyLineupCloudAvatars,
   upsertLineupArtistAvatar,
 } from './lib/lineup-avatar-cloud.mjs';
 import {
+  createDiscogsClient,
   getCrawlConfig,
   loadActivityLineupArtistNames,
   loadAllCatalogLineupArtistNames,
@@ -79,19 +76,62 @@ function loadUrlsFile() {
   return parsed;
 }
 
-function isRemoteImageUrl(url) {
-  return Boolean(url?.trim()) && /^https?:\/\//i.test(url.trim());
+function hasStoredAvatar(row) {
+  return isStoredLineupAvatarUrl(row?.avatarUrl);
 }
 
-async function resolveSourceUrl({ lineupName, searchName, manualUrls, audioDb }) {
+async function resolveDiscogsAvatarUrl(discogs, discogsId) {
+  if (!discogsId) {
+    return null;
+  }
+  try {
+    const artist = await discogs.discogsGet(
+      `https://api.discogs.com/artists/${discogsId}`,
+    );
+    const imageUrl = pickDiscogsArtistImageUrl(artist.images);
+    if (imageUrl) {
+      return { url: imageUrl, source: 'discogs' };
+    }
+  } catch (error) {
+    console.warn('⚠️  Discogs 头像读取失败', discogsId, error.message ?? error);
+  }
+  return null;
+}
+
+async function resolveSourceUrl({
+  lineupName,
+  searchName,
+  discogsId,
+  manualUrls,
+  audioDb,
+  discogs,
+}) {
   const manual = manualUrls[lineupName]?.trim();
-  if (manual && isRemoteImageUrl(manual)) {
+  if (manual && isRemoteLineupAvatarUrl(manual)) {
     return { url: manual, source: 'manual' };
   }
 
-  const match = await audioDb.searchArtist(searchName);
-  if (match?.avatarUrl && isRemoteImageUrl(match.avatarUrl)) {
+  const discogsAvatar = await resolveDiscogsAvatarUrl(discogs, discogsId);
+  if (discogsAvatar) {
+    return discogsAvatar;
+  }
+
+  const match = await audioDb.searchArtist(lineupName);
+  if (match?.avatarUrl && isRemoteLineupAvatarUrl(match.avatarUrl)) {
     return { url: match.avatarUrl, source: 'theaudiodb' };
+  }
+
+  if (
+    searchName &&
+    searchName.trim().toLowerCase() !== lineupName.trim().toLowerCase()
+  ) {
+    const fallbackMatch = await audioDb.searchArtist(searchName);
+    if (
+      fallbackMatch?.avatarUrl &&
+      isRemoteLineupAvatarUrl(fallbackMatch.avatarUrl)
+    ) {
+      return { url: fallbackMatch.avatarUrl, source: 'theaudiodb' };
+    }
   }
 
   return null;
@@ -99,22 +139,24 @@ async function resolveSourceUrl({ lineupName, searchName, manualUrls, audioDb })
 
 async function main() {
   const mongoConfig = getCrawlConfig();
-  const cloudConfig = getCloudBaseUploadConfig();
   const manualUrls = loadUrlsFile();
 
-  if (!dryRun) {
-    if (!cloudConfig.envId || !cloudConfig.appId || !cloudConfig.appSecret) {
-      console.error(
-        '❌ 请设置 CLOUDBASE_ENV_ID、WECHAT_MINI_APP_ID、WECHAT_MINI_APP_SECRET',
-      );
-      process.exit(1);
-    }
+  if (!mongoConfig.discogsToken) {
+    console.error('❌ 请设置 DISCOGS_TOKEN');
+    process.exit(1);
   }
 
   await mongoose.connect(mongoConfig.mongoUri);
   const db = mongoose.connection.db;
+
+  const purged = await purgeLegacyLineupCloudAvatars(db);
+  if (purged) {
+    console.log(`🗑️  已删除 ${purged} 条旧 CloudBase 头像记录`);
+  }
+
   const mapCollection = createDjDiscogsMapModel(mongoose).collection;
   const audioDb = createTheAudioDbClient(getTheAudioDbConfig());
+  const discogs = createDiscogsClient(mongoConfig);
 
   const lineupNames = explicitNames?.length
     ? explicitNames
@@ -139,12 +181,12 @@ async function main() {
   if (missingOnly) {
     targets = avatarTargets.filter((item) => {
       const row = byKey.get(item.lineupName.trim().toLowerCase());
-      return !isLineupAvatarAssetKey(row?.avatarUrl);
+      return !hasStoredAvatar(row);
     });
   }
 
   console.log('✅ MongoDB:', mongoConfig.mongoUri);
-  console.log(`☁️  CloudBase env: ${cloudConfig.envId || '(dry-run)'}`);
+  console.log('🌐 头像模式：CDN 直链（Discogs / TheAudioDB），不上传 CloudBase');
   console.log(
     `ℹ️  仅处理 dj_discogs_map 已确认艺人（mapped）；未确认 ${skippedUnmapped} 位已跳过`,
   );
@@ -153,11 +195,7 @@ async function main() {
     console.log('ℹ️  dry-run 模式');
   }
 
-  const accessToken = dryRun
-    ? null
-    : await getWeChatAccessToken(cloudConfig.appId, cloudConfig.appSecret);
-
-  let uploaded = 0;
+  let saved = 0;
   let skipped = 0;
   let missed = 0;
 
@@ -165,9 +203,9 @@ async function main() {
     const key = lineupName.trim().toLowerCase();
     const existing = byKey.get(key);
 
-    if (!force && isLineupAvatarAssetKey(existing?.avatarUrl)) {
+    if (!force && hasStoredAvatar(existing)) {
       skipped += 1;
-      console.log(`↷ 已在 CloudBase: ${lineupName}`);
+      console.log(`↷ 已有头像: ${lineupName}`);
       continue;
     }
 
@@ -181,8 +219,10 @@ async function main() {
       sourceInfo = await resolveSourceUrl({
         lineupName,
         searchName,
+        discogsId,
         manualUrls,
         audioDb,
+        discogs,
       });
     } catch (error) {
       missed += 1;
@@ -197,45 +237,30 @@ async function main() {
     }
 
     console.log(
-      `→ 来源 [${sourceInfo.source}] ${sourceInfo.url.slice(0, 72)}...`,
+      `→ 来源 [${sourceInfo.source}] ${sourceInfo.url.slice(0, 80)}`,
     );
 
-    const assetKey = lineupAvatarCloudPath(lineupName, 'jpg');
     if (dryRun) {
-      console.log(`   将上传至 ${assetKey}`);
-      uploaded += 1;
+      saved += 1;
       continue;
     }
 
-    try {
-      const { buffer, ext } = await downloadRemoteImage(sourceInfo.url);
-      const assetKey = lineupAvatarCloudPath(lineupName, ext);
-      await uploadBufferToCloudBase({
-        envId: cloudConfig.envId,
-        accessToken,
-        cloudPath: assetKey,
-        buffer,
-      });
-      const ok = await upsertLineupArtistAvatar(db, {
-        artistName: lineupName,
-        avatarUrl: assetKey,
-        source: sourceInfo.source,
-      });
-      if (!ok) {
-        missed += 1;
-        console.warn('⚠️  Mongo 写入失败');
-        continue;
-      }
-      uploaded += 1;
-      console.log(`✅ ${assetKey}`);
-    } catch (error) {
+    const ok = await upsertLineupArtistAvatar(db, {
+      artistName: lineupName,
+      avatarUrl: sourceInfo.url,
+      source: sourceInfo.source,
+    });
+    if (!ok) {
       missed += 1;
-      console.warn('⚠️  上传失败', error.message ?? error);
+      console.warn('⚠️  Mongo 写入失败');
+      continue;
     }
+    saved += 1;
+    console.log('✅ 已保存 CDN URL');
   }
 
   console.log(
-    `\n🏁 完成：上传 ${uploaded} 条，跳过 ${skipped} 条` +
+    `\n🏁 完成：保存 ${saved} 条，跳过 ${skipped} 条` +
       (missed ? `，未找到/失败 ${missed} 位` : ''),
   );
   await mongoose.disconnect();

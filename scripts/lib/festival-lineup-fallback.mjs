@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { extractLineupDiscogsSearchNames } from './lineup-discogs-search.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -218,10 +219,43 @@ export function loadTomorrowlandThailandFallbackNames() {
 }
 
 const B2B_PATTERN = /\s+B2B\s+/i;
+const AMPERSAND_PATTERN = /\s+&\s+/;
+
+/** Festival duo acts that share one Discogs artist page — do not split on `&`. */
+const DUO_LINEUP_ACTS = new Set([
+  'ABOVE & BEYOND',
+  'ALY & FILA',
+  'D-BLOCK & S-TE-FAN',
+  'DIMITRI VEGAS & LIKE MIKE',
+  'ELI & FUR',
+  'LUCAS & STEVE',
+  'MATISSE & SADKO',
+  'TAIKI & NULIGHT',
+]);
+
+function expandAmpersandLineupParts(lineupName) {
+  const trimmed = lineupName.trim();
+  if (!trimmed || !AMPERSAND_PATTERN.test(trimmed)) {
+    return trimmed ? [trimmed] : [];
+  }
+  if (DUO_LINEUP_ACTS.has(trimmed.toUpperCase())) {
+    return [trimmed];
+  }
+  const coverage = LINEUP_COVERAGE_NAME_KEYS[trimmed.toUpperCase()];
+  if (coverage?.length > 1) {
+    return trimmed
+      .split(AMPERSAND_PATTERN)
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }
+  return [trimmed];
+}
 
 /**
  * Expand lineup display names into searchable solo artists.
  * - `GREEN VELVET B2B STEVE ANGELLO` → two artists
+ * - `JOHN MASAKI & KIM SANE` → two artists (when coverage keys are split)
+ * - `ABOVE & BEYOND` → one artist (duo act)
  * - `LEVELTRONICS (SUBTRONICS B2B LEVEL UP)` → LEVELTRONICS + SUBTRONICS + LEVEL UP
  * - `GHENGAR (GHASTLY)` → GHengar only (alias in parens is not crawled separately)
  */
@@ -231,21 +265,22 @@ export function expandFestivalArtistName(lineupName) {
     return [];
   }
 
+  let parts = [trimmed];
+
   const parenMatch = trimmed.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
   if (parenMatch) {
     const main = parenMatch[1].trim();
     const inner = parenMatch[2].trim();
     if (B2B_PATTERN.test(inner)) {
-      return [main, ...inner.split(B2B_PATTERN).map((part) => part.trim()).filter(Boolean)];
+      parts = [main, ...inner.split(B2B_PATTERN).map((part) => part.trim()).filter(Boolean)];
+    } else {
+      parts = main ? [main] : [];
     }
-    return main ? [main] : [];
+  } else if (B2B_PATTERN.test(trimmed)) {
+    parts = trimmed.split(B2B_PATTERN).map((part) => part.trim()).filter(Boolean);
   }
 
-  if (B2B_PATTERN.test(trimmed)) {
-    return trimmed.split(B2B_PATTERN).map((part) => part.trim()).filter(Boolean);
-  }
-
-  return [trimmed];
+  return [...new Set(parts.flatMap((part) => expandAmpersandLineupParts(part)))];
 }
 
 export function expandFestivalArtistNames(lineupNames) {
@@ -254,58 +289,15 @@ export function expandFestivalArtistNames(lineupNames) {
   ];
 }
 
-/** Force Discogs artist id when search returns the wrong homonym. */
-export const DISCOGS_LINEUP_ARTIST_IDS = {
-  KANINE: 5865864,
-  /** Discogs lists as "Sudden Death (16)" — dubstep producer Svdden Death */
-  'SVDDEN DEATH': 5375145,
-  /**
-   * HO HO ONE = Eric Kwok (郭偉亮) × Dan James Cantopop/EDM duo.
-   * No standalone Discogs page; producer half is #1889815.
-   */
-  'HOHO ONE': 1889815,
-  'DJ SNAKE': 4046989,
-  /** Discogs search homonym — UK radio DJ Marsha Smith shares the stage name */
-  MARSHMELLO: 4688591,
-  /** Discogs #561124 is a different Alan Walker */
-  'ALAN WALKER': 4827622,
-  /** Discogs #564801 is a Hong Kong sound artist */
-  ALOK: 1588397,
-  /** Discogs #911928 is a San Francisco post-rock band */
-  CARTA: 5126278,
-  /** Discogs #187821 is an R&B singer */
-  'JAMIE JONES': 434183,
-  /** Discogs #1989806 is a disambiguation stub — Rune Reilly Kölsch is #688469 */
-  KÖLSCH: 688469,
-  /** Discogs #1310846 is a different Oppidan */
-  OPPIDAN: 10423519,
-  /** Discogs lists as "Kream (4)" */
-  KREAM: 2669995,
-  MEDUZA: 7012514,
-
-  // --- World DJ Festival Japan (day 1) ---
-  /** Discogs #539626 is a US marimba player */
-  'MIKE PERRY': 781755,
-  'PORTER ROBINSON': 1095210,
-  KSHMR: 3763692,
-  /** Discogs #2624525 is Brooks (11) */
-  QUINTINO: 1437686,
-  ANGERFIST: 25958,
-  'LUCAS & STEVE': 2500315,
-  'CHEAT CODES': 4602891,
-  'LIKE MIKE': 806561,
-  'LIKE MIKE (MAIN STAGE DJ SET)': 806561,
-  'SOUND RUSH': 4440037,
-  ATMOZFEARS: 1342829,
-  VERTILE: 7233886,
-  'DUAL DAMAGE': 12581201,
-  TONESHIFTERZ: 1587633,
-  TATSUNOSHIN: 9444280,
-  /** Discogs "DAIKI (12)" — Electro House DJ, Tokyo */
-  DAIKI: 9998461,
-  /** Dream Stage hardstyle producer; stage name LILY */
-  LILY: 9333424,
-};
+/** True when the display name is a B2B or split-able `&` combo (not a solo crawl target). */
+export function isCompositeLineupDisplayName(lineupName) {
+  const trimmed = lineupName.trim();
+  if (!trimmed) {
+    return false;
+  }
+  const expanded = expandFestivalArtistName(trimmed);
+  return expanded.length > 1;
+}
 
 /** Discogs search aliases for hard-to-match EDC lineup display names. */
 export const DISCOGS_LINEUP_SEARCH_ALIASES = {
@@ -323,7 +315,7 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   VIDOJEAN: 'Vidojean',
   WHYBEATZ: 'WhyBeatz',
   '999999999': '999999999',
-  'DØMINA': 'Domina',
+  BLONDEX: 'Blondex',
   'NO1 (HONGJOONG)': 'Hongjoong',
   'BEN NICKY PRESENTS XTREME': 'Ben Nicky',
   'CASEPEAT X PURPLE RABBIT': 'Casepeat',
@@ -604,12 +596,19 @@ export function normalizeArtistNameKey(name) {
 export function getDiscogsSearchQueries(lineupName) {
   const trimmed = lineupName.trim();
   const alias = DISCOGS_LINEUP_SEARCH_ALIASES[trimmed.toUpperCase()];
+  const extracted = extractLineupDiscogsSearchNames(trimmed);
   const queries = [];
-  if (alias) {
+
+  if (trimmed) {
+    queries.push(trimmed);
+  }
+  if (alias && alias !== trimmed && !queries.includes(alias)) {
     queries.push(alias);
   }
-  if (!queries.includes(trimmed)) {
-    queries.push(trimmed);
+  for (const name of extracted) {
+    if (name !== trimmed && !queries.includes(name)) {
+      queries.push(name);
+    }
   }
   return queries;
 }

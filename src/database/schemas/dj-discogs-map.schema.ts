@@ -36,6 +36,9 @@ export class DjDiscogsMap {
   @Prop()
   reviewReason?: string;
 
+  @Prop()
+  source?: string;
+
   @Prop({
     type: [
       {

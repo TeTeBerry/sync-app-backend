@@ -7,9 +7,11 @@ import { Dj, DjDocument } from '../../database/schemas/dj.schema';
 import type { DjCatalogItem, DjSearchResult } from './dj.types';
 import {
   DISCOGS_LINEUP_SEARCH_ALIASES,
+  expandFestivalArtistName,
   matchLineupArtistToCatalog,
   normalizeArtistNameKey,
 } from './lineup-name-match.util';
+import { resolveLineupDisplayGenreFromCatalog } from '../itinerary/domain/lineup-artist-data-policy';
 import { isLineupCatalogProfileTrusted } from './lineup-catalog-profile-trust.util';
 import { DjLocaleService } from './dj-locale.service';
 import { hasCjkText } from './dj-country-zh.util';
@@ -237,6 +239,58 @@ export class DjService implements OnApplicationBootstrap {
     return this.catalogCache ?? [];
   }
 
+  /** Trusted Discogs catalog rows for a lineup name (B2B expands to multiple DJs). */
+  collectTrustedCatalogItemsForLineupName(
+    lineupName: string,
+    catalog: DjCatalogItem[],
+  ): DjCatalogItem[] {
+    const parts = expandFestivalArtistName(lineupName);
+    const seen = new Set<number>();
+    const items: DjCatalogItem[] = [];
+
+    for (const part of parts.length ? parts : [lineupName]) {
+      const match = matchLineupArtistToCatalog(part, catalog);
+      if (!match) {
+        continue;
+      }
+      const alias = DISCOGS_LINEUP_SEARCH_ALIASES[part.toUpperCase()];
+      if (
+        !isLineupCatalogProfileTrusted(part, match, {
+          allowedCatalogNames: [match.name, ...(alias ? [alias] : [])],
+        })
+      ) {
+        continue;
+      }
+      if (seen.has(match.discogsId)) {
+        continue;
+      }
+      seen.add(match.discogsId);
+      items.push(match);
+    }
+
+    return items;
+  }
+
+  /** Map lineup `artistName` → display genre from mapped Discogs catalog (B2B-aware). */
+  async resolveLineupGenreDisplayForArtists(
+    artistNames: string[],
+  ): Promise<Map<string, { genre: string; genreLabel: string }>> {
+    const unique = [
+      ...new Set(artistNames.map((name) => name.trim()).filter(Boolean)),
+    ];
+    if (!unique.length) {
+      return new Map();
+    }
+
+    const catalog = await this.loadCatalog();
+    const result = new Map<string, { genre: string; genreLabel: string }>();
+    for (const name of unique) {
+      const items = this.collectTrustedCatalogItemsForLineupName(name, catalog);
+      result.set(name, resolveLineupDisplayGenreFromCatalog(items));
+    }
+    return result;
+  }
+
   /** Map lineup `artistName` → Discogs catalog item (B2B / alias aware). */
   async lookupForLineupArtists(
     artistNames: string[],
@@ -251,19 +305,11 @@ export class DjService implements OnApplicationBootstrap {
     const catalog = await this.loadCatalog();
     const result = new Map<string, DjCatalogItem>();
     for (const name of unique) {
-      const match = matchLineupArtistToCatalog(name, catalog);
-      if (!match) {
-        continue;
+      const items = this.collectTrustedCatalogItemsForLineupName(name, catalog);
+      const match = items[0];
+      if (match) {
+        result.set(name, match);
       }
-      const alias = DISCOGS_LINEUP_SEARCH_ALIASES[name.toUpperCase()];
-      if (
-        !isLineupCatalogProfileTrusted(name, match, {
-          allowedCatalogNames: [match.name, ...(alias ? [alias] : [])],
-        })
-      ) {
-        continue;
-      }
-      result.set(name, match);
     }
     return result;
   }
