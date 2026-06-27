@@ -5,7 +5,7 @@ import {
   LineupArtistAvatar,
   LineupArtistAvatarDocument,
 } from '../../database/schemas/lineup-artist-avatar.schema';
-import { isRemoteLineupAvatarUrl } from './utils/lineup-avatar-ref.util';
+import { isUsableLineupAvatarUrl } from './utils/lineup-avatar-ref.util';
 
 @Injectable()
 export class LineupArtistAvatarService {
@@ -29,14 +29,14 @@ export class LineupArtistAvatarService {
 
     const rows = await this.model
       .find({ artistNameKey: { $in: keys } })
-      .select('artistNameKey avatarUrl')
+      .select('artistNameKey avatarUrl source')
       .lean()
       .exec();
 
     const result = new Map<string, string>();
     for (const row of rows) {
       const url = row.avatarUrl?.trim();
-      if (isRemoteLineupAvatarUrl(url)) {
+      if (isUsableLineupAvatarUrl(url, row.source)) {
         result.set(row.artistNameKey, url);
       }
     }

@@ -7,6 +7,8 @@
  *   npm run db:sync-lineup-artist-catalog:all
  *   SOURCE_MONGODB_URI='mongodb://127.0.0.1:27017/sync-ai' npm run db:sync-lineup-artist-catalog:all
  *   npm run db:sync-lineup-artist-catalog:all -- --cloud-only
+ *   npm run db:sync-lineup-artist-catalog:all -- --cloud-only --mirror
+ *     # upsert then delete cloud rows not present in source (full-catalog uses this)
  */
 
 import path from 'node:path';
@@ -105,6 +107,42 @@ async function upsertDjs(uri, rows) {
   return { upserted, total: count };
 }
 
+async function mirrorDjs(uri, rows) {
+  const sourceIds = [
+    ...new Set(
+      rows
+        .map((row) => row.discogsId)
+        .filter((id) => Number.isFinite(id)),
+    ),
+  ];
+
+  if (!sourceIds.length) {
+    console.warn('⚠️  source djs 为空 — 跳过 mirror 删除');
+    await mongoose.connect(uri);
+    const total = await mongoose.connection.db.collection('djs').countDocuments();
+    await mongoose.disconnect();
+    return { deleted: 0, total, sourceCount: 0 };
+  }
+
+  await mongoose.connect(uri);
+  const collection = mongoose.connection.db.collection('djs');
+
+  const deleteFilter =
+    sourceIds.length > 0
+      ? { discogsId: { $nin: sourceIds } }
+      : {};
+
+  const deleteResult = await collection.deleteMany(deleteFilter);
+  const total = await collection.countDocuments();
+  await mongoose.disconnect();
+
+  return {
+    deleted: deleteResult.deletedCount ?? 0,
+    total,
+    sourceCount: sourceIds.length,
+  };
+}
+
 async function upsertAvatars(uri, rows) {
   await mongoose.connect(uri);
   const collection = mongoose.connection.db.collection('lineup_artist_avatars');
@@ -138,7 +176,46 @@ async function upsertAvatars(uri, rows) {
   return { upserted, total: count };
 }
 
+async function mirrorAvatars(uri, rows) {
+  const validKeys = [
+    ...new Set(
+      rows
+        .filter((row) => row.artistNameKey?.trim() && row.avatarUrl?.trim())
+        .map((row) => row.artistNameKey.trim()),
+    ),
+  ];
+
+  if (!validKeys.length) {
+    console.warn('⚠️  source avatars 为空 — 跳过 mirror 删除');
+    await mongoose.connect(uri);
+    const total = await mongoose.connection.db
+      .collection('lineup_artist_avatars')
+      .countDocuments();
+    await mongoose.disconnect();
+    return { deleted: 0, total, sourceCount: 0 };
+  }
+
+  await mongoose.connect(uri);
+  const collection = mongoose.connection.db.collection('lineup_artist_avatars');
+
+  const deleteFilter =
+    validKeys.length > 0
+      ? { artistNameKey: { $nin: validKeys } }
+      : {};
+
+  const deleteResult = await collection.deleteMany(deleteFilter);
+  const total = await collection.countDocuments();
+  await mongoose.disconnect();
+
+  return {
+    deleted: deleteResult.deletedCount ?? 0,
+    total,
+    sourceCount: validKeys.length,
+  };
+}
+
 async function main() {
+  const mirror = process.argv.includes('--mirror');
   const sourceUri = resolveSourceUri();
   const targets = resolveTargets();
 
@@ -146,6 +223,9 @@ async function main() {
   const { djs, avatars } = await loadSourceCollections(sourceUri);
   console.log(`📀 djs: ${djs.length}`);
   console.log(`🖼️  lineup_artist_avatars: ${avatars.length}`);
+  if (mirror) {
+    console.log('🪞 mirror mode: targets will match source exactly (delete extras)');
+  }
 
   for (const target of targets) {
     console.log(`\n=== Syncing to ${target.label} (${maskUri(target.uri)}) ===`);
@@ -153,14 +233,31 @@ async function main() {
     console.log(
       `✅ djs: upserted ${djResult.upserted}, collection total ${djResult.total}`,
     );
+    if (mirror) {
+      const djMirror = await mirrorDjs(target.uri, djs);
+      console.log(
+        `🪞 djs mirror: deleted ${djMirror.deleted} extras, ` +
+          `now ${djMirror.total} (source ${djMirror.sourceCount})`,
+      );
+    }
+
     const avatarResult = await upsertAvatars(target.uri, avatars);
     console.log(
       `✅ lineup_artist_avatars: upserted ${avatarResult.upserted}, collection total ${avatarResult.total}`,
     );
+    if (mirror) {
+      const avatarMirror = await mirrorAvatars(target.uri, avatars);
+      console.log(
+        `🪞 avatars mirror: deleted ${avatarMirror.deleted} extras, ` +
+          `now ${avatarMirror.total} (source ${avatarMirror.sourceCount})`,
+      );
+    }
   }
 
   console.log(
-    '\n✅ DJ catalog + lineup avatar metadata synced (CDN URLs).',
+    mirror
+      ? '\n✅ DJ catalog + avatars mirrored to target(s) from source.'
+      : '\n✅ DJ catalog + lineup avatar metadata synced (CDN URLs).',
   );
   console.log(
     'Tip: run `npm run db:sync-catalog:all -- --with-itinerary` to sync festival sessions too.',

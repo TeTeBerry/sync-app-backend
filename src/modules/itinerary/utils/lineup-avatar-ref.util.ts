@@ -4,9 +4,34 @@ const CLOUD_FILE_ID_RE = /^cloud:\/\/[^/]+\/.+/;
 
 export const LINEUP_AVATAR_CLOUD_PREFIX = 'lineup-avatar/';
 
+const DISCOGS_AVATAR_HOST_RE = /(^|\.)discogs\.com/i;
+
+export function isDiscogsAvatarUrl(raw: string | undefined): boolean {
+  const trimmed = raw?.trim();
+  if (!trimmed) {
+    return false;
+  }
+  try {
+    return DISCOGS_AVATAR_HOST_RE.test(new URL(trimmed).hostname);
+  } catch {
+    return DISCOGS_AVATAR_HOST_RE.test(trimmed);
+  }
+}
+
 export function isRemoteLineupAvatarUrl(raw: string | undefined): boolean {
   const trimmed = raw?.trim();
   return Boolean(trimmed && /^https?:\/\//i.test(trimmed));
+}
+
+/** Public HTTPS avatar URL safe to expose in catalog (excludes unstable Discogs links). */
+export function isUsableLineupAvatarUrl(
+  raw: string | undefined,
+  source?: string | null,
+): boolean {
+  if (source?.trim().toLowerCase() === 'discogs') {
+    return false;
+  }
+  return isRemoteLineupAvatarUrl(raw) && !isDiscogsAvatarUrl(raw);
 }
 
 export function isLineupAvatarAssetKey(raw: string | undefined): boolean {

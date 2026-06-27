@@ -307,6 +307,52 @@ export function scoreTheAudioDbMatch(lineupName, candidate) {
   return 40;
 }
 
+/** TheAudioDB genre/style labels for cross-validation against djs.styles. */
+export function extractTheAudioDbGenres(candidate) {
+  const genres = [
+    candidate?.strGenre,
+    candidate?.strStyle,
+    candidate?.strMood,
+  ]
+    .filter(Boolean)
+    .flatMap((value) => String(value).split(/[,/;|]/))
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return [...new Set(genres)];
+}
+
+const ELECTRONIC_GENRE_HINTS = [
+  'electronic',
+  'techno',
+  'house',
+  'trance',
+  'dubstep',
+  'drum',
+  'dnb',
+  'edm',
+  'hardstyle',
+  'hardcore',
+  'minimal',
+  'deep',
+  'progressive',
+  'psytrance',
+  'psy',
+  'ambient',
+  'breakbeat',
+  'garage',
+  'detroit',
+  'industrial',
+  'rave',
+];
+
+export function isElectronicGenreCandidate(genres) {
+  if (!genres.length) {
+    return null; // unknown — neither accept nor reject on genre alone
+  }
+  const text = genres.join(' ').toLowerCase();
+  return ELECTRONIC_GENRE_HINTS.some((hint) => text.includes(hint));
+}
+
 export function createTheAudioDbClient(config) {
   const baseUrl = `https://www.theaudiodb.com/api/v1/json/${config.apiKey}`;
 
@@ -350,6 +396,8 @@ export function createTheAudioDbClient(config) {
             avatarUrl,
             score,
             searchQuery: query,
+            genres: extractTheAudioDbGenres(top),
+            theAudioDbArtistId: top?.idArtist ?? null,
           };
         }
         if (score >= 100) {

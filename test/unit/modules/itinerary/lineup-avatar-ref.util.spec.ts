@@ -1,8 +1,10 @@
 import {
   buildLineupAvatarCloudFileId,
+  isDiscogsAvatarUrl,
   isLineupAvatarAssetKey,
   isLineupAvatarCloudFileId,
   isRemoteLineupAvatarUrl,
+  isUsableLineupAvatarUrl,
 } from '@src/modules/itinerary/utils/lineup-avatar-ref.util';
 
 describe('lineup-avatar-ref.util', () => {
@@ -20,6 +22,20 @@ describe('lineup-avatar-ref.util', () => {
       true,
     );
     expect(isRemoteLineupAvatarUrl('lineup-avatar/kanine.jpg')).toBe(false);
+  });
+
+  it('rejects Discogs avatar URLs for catalog display', () => {
+    expect(isDiscogsAvatarUrl('https://i.discogs.com/example.jpg')).toBe(true);
+    expect(isDiscogsAvatarUrl('https://img.discogs.com/foo.jpg')).toBe(true);
+    expect(
+      isUsableLineupAvatarUrl('https://i.discogs.com/example.jpg', 'discogs'),
+    ).toBe(false);
+    expect(
+      isUsableLineupAvatarUrl(
+        'https://www.theaudiodb.com/images/media/artist/thumb/xyz.jpg',
+        'theaudiodb',
+      ),
+    ).toBe(true);
   });
 
   it('builds cloud file ids with optional bucket', () => {
