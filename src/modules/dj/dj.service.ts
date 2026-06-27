@@ -4,6 +4,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { RedisMemoryJsonCacheService } from '../../infra/cache/redis-memory-json-cache.service';
 import { Dj, DjDocument } from '../../database/schemas/dj.schema';
+import {
+  DjDiscogsMap,
+  DjDiscogsMapDocument,
+} from '../../database/schemas/dj-discogs-map.schema';
 import type { DjCatalogItem, DjSearchResult } from './dj.types';
 import {
   DISCOGS_LINEUP_SEARCH_ALIASES,
@@ -12,7 +16,11 @@ import {
   normalizeArtistNameKey,
 } from './lineup-name-match.util';
 import { resolveLineupDisplayGenreFromCatalog } from '../itinerary/domain/lineup-artist-data-policy';
-import { isLineupCatalogProfileTrusted } from './lineup-catalog-profile-trust.util';
+import { isLineupCatalogNameTrusted } from './lineup-catalog-profile-trust.util';
+import {
+  buildCatalogNameIndex,
+  matchLineupArtistToCatalogIndex,
+} from './catalog-name-index.util';
 import { DjLocaleService } from './dj-locale.service';
 import { hasCjkText } from './dj-country-zh.util';
 import { DJ_CHINESE_ALIASES } from './data/dj-chinese-aliases.data';
@@ -20,12 +28,33 @@ import {
   getChineseAliasesForArtistName,
   resolveCanonicalNameFromChineseAlias,
 } from './dj-chinese-aliases.util';
+import {
+  catalogItemFromHermesMapRow,
+  enrichCatalogItemFromHermesEvidence,
+  type HermesEvidencePayload,
+} from './hermes-evidence-catalog.util';
+import { isWeakCatalogGenreList } from './web-only-genre-normalize.util';
 
 const DEFAULT_LIMIT = 8;
 const MAX_LIMIT = 30;
 
 type DjCatalogPayload = {
   items: DjCatalogItem[];
+};
+
+type HermesMapRow = {
+  lineupName: string;
+  lineupNameKey: string;
+  discogsId?: number;
+  discogsName?: string;
+  hermesEvidence?: HermesEvidencePayload;
+  displayGenres?: string[];
+  displayStyles?: string[];
+};
+
+export type LineupCatalogBatchResult = {
+  catalogByLineupName: Map<string, DjCatalogItem>;
+  genreDisplayByLineupName: Map<string, { genre: string; genreLabel: string }>;
 };
 
 function escapeRegex(value: string): string {
@@ -42,6 +71,7 @@ function resolveCatalogChineseAliases(doc: DjDocument | Dj): string[] {
 
 function toCatalogItem(doc: DjDocument | Dj): DjCatalogItem {
   const chineseAliases = resolveCatalogChineseAliases(doc);
+  const urls = doc.urls?.filter((url) => url.trim()) ?? [];
   return {
     discogsId: doc.discogsId,
     name: doc.name,
@@ -50,6 +80,7 @@ function toCatalogItem(doc: DjDocument | Dj): DjCatalogItem {
     genres: doc.genres ?? [],
     styles: doc.styles ?? [],
     country: doc.country,
+    ...(urls.length ? { urls } : {}),
     representativeWorks: doc.representativeWorks ?? [],
     ...(chineseAliases.length ? { chineseAliases } : {}),
   };
@@ -59,6 +90,7 @@ function toCatalogItem(doc: DjDocument | Dj): DjCatalogItem {
 export class DjService implements OnApplicationBootstrap {
   private readonly logger = new Logger(DjService.name);
   private catalogCache: DjCatalogItem[] | null = null;
+  private catalogNameIndex: Map<string, DjCatalogItem> | null = null;
   private localVersion = '';
   private readonly dataKey: string;
   private readonly versionKey: string;
@@ -66,6 +98,8 @@ export class DjService implements OnApplicationBootstrap {
 
   constructor(
     @InjectModel(Dj.name) private readonly djModel: Model<DjDocument>,
+    @InjectModel(DjDiscogsMap.name)
+    private readonly djDiscogsMapModel: Model<DjDiscogsMapDocument>,
     private readonly jsonCache: RedisMemoryJsonCacheService,
     private readonly djLocaleService: DjLocaleService,
     config: ConfigService,
@@ -128,12 +162,22 @@ export class DjService implements OnApplicationBootstrap {
   async refreshCatalogCache(): Promise<void> {
     const docs = await this.djModel.find({}).lean().exec();
     this.catalogCache = docs.map((doc) => toCatalogItem(doc));
+    this.catalogNameIndex = buildCatalogNameIndex(this.catalogCache);
     await this.jsonCache.setJson(
       this.dataKey,
       { items: this.catalogCache } satisfies DjCatalogPayload,
       this.ttlSec,
     );
     this.localVersion = await this.jsonCache.bumpVersion(this.versionKey);
+  }
+
+  private getCatalogNameIndex(
+    catalog: DjCatalogItem[],
+  ): Map<string, DjCatalogItem> {
+    if (this.catalogCache === catalog && this.catalogNameIndex) {
+      return this.catalogNameIndex;
+    }
+    return buildCatalogNameIndex(catalog);
   }
 
   async findByDiscogsId(discogsId: number): Promise<DjCatalogItem | null> {
@@ -239,23 +283,27 @@ export class DjService implements OnApplicationBootstrap {
     return this.catalogCache ?? [];
   }
 
-  /** Trusted Discogs catalog rows for a lineup name (B2B expands to multiple DJs). */
-  collectTrustedCatalogItemsForLineupName(
+  /** Name-matched catalog rows for a lineup name (B2B expands to multiple DJs). */
+  collectCatalogItemsForLineupNameSync(
     lineupName: string,
     catalog: DjCatalogItem[],
+    catalogIndex?: Map<string, DjCatalogItem>,
   ): DjCatalogItem[] {
+    const index = catalogIndex ?? this.getCatalogNameIndex(catalog);
     const parts = expandFestivalArtistName(lineupName);
     const seen = new Set<number>();
     const items: DjCatalogItem[] = [];
 
     for (const part of parts.length ? parts : [lineupName]) {
-      const match = matchLineupArtistToCatalog(part, catalog);
+      const match =
+        matchLineupArtistToCatalogIndex(part, index) ??
+        matchLineupArtistToCatalog(part, catalog);
       if (!match) {
         continue;
       }
       const alias = DISCOGS_LINEUP_SEARCH_ALIASES[part.toUpperCase()];
       if (
-        !isLineupCatalogProfileTrusted(part, match, {
+        !isLineupCatalogNameTrusted(part, match, {
           allowedCatalogNames: [match.name, ...(alias ? [alias] : [])],
         })
       ) {
@@ -271,47 +319,188 @@ export class DjService implements OnApplicationBootstrap {
     return items;
   }
 
-  /** Map lineup `artistName` → display genre from mapped Discogs catalog (B2B-aware). */
-  async resolveLineupGenreDisplayForArtists(
+  /** @deprecated Prefer collectCatalogItemsForLineupNameSync — profile gate removed for genres. */
+  collectTrustedCatalogItemsForLineupName(
+    lineupName: string,
+    catalog: DjCatalogItem[],
+  ): DjCatalogItem[] {
+    return this.collectCatalogItemsForLineupNameSync(lineupName, catalog);
+  }
+
+  /** Trusted catalog rows for a lineup name, enriched from Hermes evidence when needed. */
+  async collectCatalogItemsForLineupName(
+    lineupName: string,
+    catalog?: DjCatalogItem[],
+    mapByKey?: Map<string, HermesMapRow>,
+  ): Promise<DjCatalogItem[]> {
+    const resolvedCatalog = catalog ?? (await this.loadCatalog());
+    const matched = this.collectCatalogItemsForLineupNameSync(
+      lineupName,
+      resolvedCatalog,
+    );
+    const evidenceMap =
+      mapByKey ?? (await this.loadHermesEvidenceByLineupNames([lineupName]));
+    return this.applyHermesEvidenceToLineupItems(
+      lineupName,
+      matched,
+      evidenceMap,
+    );
+  }
+
+  /** Batch resolve catalog items + genre display for many lineup names in one pass. */
+  async resolveLineupCatalogBatch(
     artistNames: string[],
-  ): Promise<Map<string, { genre: string; genreLabel: string }>> {
+  ): Promise<LineupCatalogBatchResult> {
     const unique = [
       ...new Set(artistNames.map((name) => name.trim()).filter(Boolean)),
     ];
     if (!unique.length) {
-      return new Map();
+      return {
+        catalogByLineupName: new Map(),
+        genreDisplayByLineupName: new Map(),
+      };
+    }
+
+    const evidenceNames = new Set(unique);
+    for (const name of unique) {
+      for (const part of expandFestivalArtistName(name)) {
+        evidenceNames.add(part);
+      }
     }
 
     const catalog = await this.loadCatalog();
-    const result = new Map<string, { genre: string; genreLabel: string }>();
+    const catalogIndex = this.getCatalogNameIndex(catalog);
+    const evidenceMap = await this.loadHermesEvidenceByLineupNames([
+      ...evidenceNames,
+    ]);
+
+    const catalogByLineupName = new Map<string, DjCatalogItem>();
+    const genreDisplayByLineupName = new Map<
+      string,
+      { genre: string; genreLabel: string }
+    >();
+
     for (const name of unique) {
-      const items = this.collectTrustedCatalogItemsForLineupName(name, catalog);
-      result.set(name, resolveLineupDisplayGenreFromCatalog(items));
+      const items = this.applyHermesEvidenceToLineupItems(
+        name,
+        this.collectCatalogItemsForLineupNameSync(name, catalog, catalogIndex),
+        evidenceMap,
+      );
+      const match = items[0];
+      if (match) {
+        catalogByLineupName.set(name, match);
+      }
+      genreDisplayByLineupName.set(
+        name,
+        resolveLineupDisplayGenreFromCatalog(items),
+      );
     }
-    return result;
+
+    return { catalogByLineupName, genreDisplayByLineupName };
+  }
+
+  private async loadHermesEvidenceByLineupNames(
+    lineupNames: string[],
+  ): Promise<Map<string, HermesMapRow>> {
+    const keys = [
+      ...new Set(
+        lineupNames.map((name) => normalizeArtistNameKey(name)).filter(Boolean),
+      ),
+    ];
+    if (!keys.length) {
+      return new Map();
+    }
+
+    const rows = await this.djDiscogsMapModel
+      .find({
+        lineupNameKey: { $in: keys },
+        $or: [
+          { hermesEvidence: { $exists: true, $ne: null } },
+          { displayGenres: { $exists: true, $ne: [] } },
+        ],
+      })
+      .select(
+        'lineupName lineupNameKey discogsId discogsName hermesEvidence displayGenres displayStyles',
+      )
+      .lean()
+      .exec();
+
+    return new Map(rows.map((row) => [row.lineupNameKey, row]));
+  }
+
+  private applyHermesEvidenceToLineupItems(
+    lineupName: string,
+    items: DjCatalogItem[],
+    mapByKey: Map<string, HermesMapRow>,
+  ): DjCatalogItem[] {
+    const mapRow = mapByKey.get(normalizeArtistNameKey(lineupName));
+    if (!mapRow) {
+      return items;
+    }
+
+    const evidencePayload = mapRow.hermesEvidence;
+    const precomputed =
+      mapRow.displayGenres?.length || mapRow.displayStyles?.length
+        ? {
+            genres: mapRow.displayGenres ?? [],
+            styles: mapRow.displayStyles ?? mapRow.displayGenres ?? [],
+          }
+        : null;
+
+    if (items.length) {
+      return items.map((item) => {
+        let enriched = item;
+        if (precomputed && isWeakCatalogGenreList(item.genres)) {
+          enriched = {
+            ...enriched,
+            genres: precomputed.genres,
+            styles: precomputed.styles,
+          };
+        }
+        if (evidencePayload) {
+          enriched = enrichCatalogItemFromHermesEvidence(
+            enriched,
+            evidencePayload,
+          );
+        }
+        return enriched;
+      });
+    }
+
+    if (precomputed && mapRow.discogsId) {
+      const base: DjCatalogItem = {
+        discogsId: mapRow.discogsId,
+        name: mapRow.discogsName?.trim() || lineupName.trim(),
+        genres: precomputed.genres,
+        styles: precomputed.styles,
+      };
+      return evidencePayload
+        ? [enrichCatalogItemFromHermesEvidence(base, evidencePayload)]
+        : [base];
+    }
+
+    if (!evidencePayload) {
+      return items;
+    }
+
+    const synthetic = catalogItemFromHermesMapRow(mapRow);
+    return synthetic ? [synthetic] : [];
+  }
+
+  /** Map lineup `artistName` → display genre from mapped Discogs catalog (B2B-aware). */
+  async resolveLineupGenreDisplayForArtists(
+    artistNames: string[],
+  ): Promise<Map<string, { genre: string; genreLabel: string }>> {
+    const batch = await this.resolveLineupCatalogBatch(artistNames);
+    return batch.genreDisplayByLineupName;
   }
 
   /** Map lineup `artistName` → Discogs catalog item (B2B / alias aware). */
   async lookupForLineupArtists(
     artistNames: string[],
   ): Promise<Map<string, DjCatalogItem>> {
-    const unique = [
-      ...new Set(artistNames.map((name) => name.trim()).filter(Boolean)),
-    ];
-    if (!unique.length) {
-      return new Map();
-    }
-
-    const catalog = await this.loadCatalog();
-    const result = new Map<string, DjCatalogItem>();
-    for (const name of unique) {
-      const items = this.collectTrustedCatalogItemsForLineupName(name, catalog);
-      const match = items[0];
-      if (match) {
-        result.set(name, match);
-      }
-    }
-    return result;
+    const batch = await this.resolveLineupCatalogBatch(artistNames);
+    return batch.catalogByLineupName;
   }
 
   async searchByStyles(
@@ -374,6 +563,7 @@ export class DjService implements OnApplicationBootstrap {
     );
     if (payload?.items) {
       this.catalogCache = payload.items;
+      this.catalogNameIndex = buildCatalogNameIndex(this.catalogCache);
       this.localVersion = remoteVersion ?? this.localVersion;
       return;
     }

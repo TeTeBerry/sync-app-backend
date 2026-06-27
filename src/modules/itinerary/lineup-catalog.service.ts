@@ -45,6 +45,16 @@ type RankedLineupCatalogPayload = {
 export class LineupCatalogService implements OnApplicationBootstrap {
   private readonly logger = new Logger(LineupCatalogService.name);
   private rankedCache: CatalogLineupArtistDto[] | null = null;
+  private artistIndexCache: {
+    entries: CatalogLineupArtistEntryInternal[];
+    catalogByLineupName: Map<string, DjCatalogItem>;
+    genreDisplayByLineupName: Map<
+      string,
+      { genre: string; genreLabel: string }
+    >;
+    avatarUrlsByKey: Map<string, string>;
+    activitiesByLegacyId: Map<number, ActivityLookupRecord>;
+  } | null = null;
   private localVersion = '';
   private readonly dataKey: string;
   private readonly versionKey: string;
@@ -168,7 +178,9 @@ export class LineupCatalogService implements OnApplicationBootstrap {
       throw new NotFoundException('Artist not found');
     }
 
-    const index = await this.buildCatalogLineupArtistIndex();
+    await this.syncRankedCatalogIfStale();
+    const index =
+      this.artistIndexCache ?? (await this.buildCatalogLineupArtistIndex());
     const entry = index.entries.find(
       (item) => artistIdFromLineupName(item.artistName) === slug,
     );
@@ -271,15 +283,23 @@ export class LineupCatalogService implements OnApplicationBootstrap {
 
   private async buildRankedCatalog(): Promise<CatalogLineupArtistDto[]> {
     const index = await this.buildCatalogLineupArtistIndex();
+    this.artistIndexCache = index;
     if (!index.entries.length) {
       return [];
     }
 
     const ranked = index.entries
       .map((entry) => this.toCatalogLineupArtistDto(entry, index))
-      .filter((entry) => Boolean(entry.thumbnail?.trim()));
+      .sort((a, b) => {
+        const aHasThumb = Boolean(a.thumbnail?.trim());
+        const bHasThumb = Boolean(b.thumbnail?.trim());
+        if (aHasThumb !== bHasThumb) {
+          return aHasThumb ? -1 : 1;
+        }
+        return compareCatalogLineupArtists(a, b);
+      });
 
-    return ranked.sort((a, b) => compareCatalogLineupArtists(a, b));
+    return ranked;
   }
 
   private async syncRankedCatalogIfStale(): Promise<void> {
@@ -373,24 +393,21 @@ export class LineupCatalogService implements OnApplicationBootstrap {
 
     const entries = [...byArtist.values()];
     const artistNames = entries.map((entry) => entry.artistName);
-    const [
-      catalogByLineupName,
-      genreDisplayByLineupName,
-      catalog,
-      avatarUrlsByKey,
-    ] = entries.length
+    const [batch, avatarUrlsByKey] = entries.length
       ? await Promise.all([
-          this.djService.lookupForLineupArtists(artistNames),
-          this.djService.resolveLineupGenreDisplayForArtists(artistNames),
-          this.djService.loadCatalog(),
+          this.djService.resolveLineupCatalogBatch(artistNames),
           this.lineupArtistAvatarService.findAvatarUrlsByArtistNames(
             artistNames,
           ),
         ])
       : [
-          new Map<string, DjCatalogItem>(),
-          new Map<string, { genre: string; genreLabel: string }>(),
-          [],
+          {
+            catalogByLineupName: new Map<string, DjCatalogItem>(),
+            genreDisplayByLineupName: new Map<
+              string,
+              { genre: string; genreLabel: string }
+            >(),
+          },
           new Map<string, string>(),
         ];
 
@@ -398,9 +415,9 @@ export class LineupCatalogService implements OnApplicationBootstrap {
       activities,
       activitiesByLegacyId,
       entries,
-      catalogByLineupName,
-      genreDisplayByLineupName,
-      catalog,
+      catalogByLineupName: batch.catalogByLineupName,
+      genreDisplayByLineupName: batch.genreDisplayByLineupName,
+      catalog: [],
       avatarUrlsByKey,
     };
   }
@@ -414,7 +431,6 @@ export class LineupCatalogService implements OnApplicationBootstrap {
         string,
         { genre: string; genreLabel: string }
       >;
-      catalog: DjCatalogItem[];
       avatarUrlsByKey: Map<string, string>;
     },
   ): CatalogLineupArtistDto {

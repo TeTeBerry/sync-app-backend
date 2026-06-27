@@ -59,12 +59,16 @@ export interface CatalogLineupArtistMemberDetail {
   genreLabel?: string;
   thumbnail?: string;
   chineseAliases?: string[];
+  country?: string;
+  profileUrls?: string[];
   profileSummary?: string;
   profileFull?: string;
   representativeTracks?: string[];
 }
 
 export interface CatalogLineupArtistDetail extends CatalogLineupArtist {
+  country?: string;
+  profileUrls?: string[];
   profileSummary?: string;
   profileFull?: string;
   representativeTracks?: string[];

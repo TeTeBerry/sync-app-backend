@@ -72,6 +72,7 @@ describe('ItineraryScheduleService discogs styles', () => {
         ['SOTA', catalog[2]],
       ]),
     ),
+    resolveLineupCatalogBatch: jest.fn(),
     resolveLineupGenreDisplayForArtists: jest.fn(),
     resolveProfileForDisplay: jest.fn(
       async (_discogsId: number, profile?: string) => profile ?? '',
@@ -87,16 +88,28 @@ describe('ItineraryScheduleService discogs styles', () => {
     jest.clearAllMocks();
     djService.resolveLineupGenreDisplayForArtists.mockImplementation(
       async (names: string[]) => {
+        const batch = await djService.resolveLineupCatalogBatch(names);
+        return batch.genreDisplayByLineupName;
+      },
+    );
+    djService.resolveLineupCatalogBatch.mockImplementation(
+      async (names: string[]) => {
         const lookup = await djService.lookupForLineupArtists(names);
-        const result = new Map<string, { genre: string; genreLabel: string }>();
+        const genreDisplayByLineupName = new Map<
+          string,
+          { genre: string; genreLabel: string }
+        >();
         for (const name of names) {
           const item = lookup.get(name);
-          result.set(
+          genreDisplayByLineupName.set(
             name,
             resolveLineupDisplayGenreFromCatalog(item ? [item] : []),
           );
         }
-        return result;
+        return {
+          catalogByLineupName: lookup,
+          genreDisplayByLineupName,
+        };
       },
     );
     activityLookup.findAllBasics.mockImplementation(() =>
@@ -153,6 +166,7 @@ describe('ItineraryScheduleService discogs styles', () => {
     const artistProfileResolver = new ArtistProfileResolver(
       lineupCatalog,
       djService as never,
+      lineupArtistAvatarService as never,
     );
 
     service = new ItineraryScheduleService(

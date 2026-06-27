@@ -70,6 +70,25 @@ export function catalogNameTrustKeys(name: string): string[] {
   return [...new Set(keys.filter(Boolean))];
 }
 
+/** Name-key match for genre/catalog lookup (profile not required). */
+export function isLineupCatalogNameTrusted(
+  lineupName: string,
+  catalogItem: LineupCatalogProfile,
+  options?: { allowedCatalogNames?: string[] },
+): boolean {
+  const lineupKey = normalizeArtistNameKey(lineupName);
+  const allowedKeys = new Set(
+    [
+      lineupKey,
+      ...(options?.allowedCatalogNames ?? []).map(normalizeArtistNameKey),
+    ].filter(Boolean),
+  );
+
+  return catalogNameTrustKeys(catalogItem.name).some((key) =>
+    allowedKeys.has(key),
+  );
+}
+
 /** Reject Discogs rows where the bio clearly describes a different person. */
 export function isLineupCatalogProfileTrusted(
   lineupName: string,

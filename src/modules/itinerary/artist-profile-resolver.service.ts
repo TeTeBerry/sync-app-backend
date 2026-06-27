@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { getChineseAliasesForArtistName } from '../dj/dj-chinese-aliases.util';
 import { expandFestivalArtistName } from '../dj/lineup-name-match.util';
+import { isLineupCatalogProfileTrusted } from '../dj/lineup-catalog-profile-trust.util';
 import { DjService } from '../dj/dj.service';
 import { buildLineupArtistProfileFallback } from './domain/lineup-artist-data-policy';
 import { resolveLineupDisplayGenreFromCatalog } from './domain/lineup-artist-data-policy';
@@ -12,6 +13,7 @@ import type {
   CatalogLineupArtistMemberDetailDto,
 } from './itinerary-schedule.types';
 import { LINEUP_SEED_GENRE_PLACEHOLDER } from '@src/data/itinerary/lineup-seed-genre.constants';
+import type { DjCatalogItem } from '../dj/dj.types';
 
 @Injectable()
 export class ArtistProfileResolver {
@@ -35,6 +37,51 @@ export class ArtistProfileResolver {
     return this.buildSoloArtistDetail(artist);
   }
 
+  private isProfileTrusted(
+    lineupName: string,
+    catalogItem?: DjCatalogItem,
+  ): boolean {
+    if (!catalogItem) {
+      return false;
+    }
+    return isLineupCatalogProfileTrusted(lineupName, catalogItem);
+  }
+
+  private pickProfileDetail(
+    lineupName: string,
+    catalogItem: DjCatalogItem | undefined,
+    displayProfile?: string,
+  ) {
+    if (!catalogItem || !this.isProfileTrusted(lineupName, catalogItem)) {
+      const curated = buildLineupArtistProfileFallback({
+        name: lineupName,
+        genre: LINEUP_SEED_GENRE_PLACEHOLDER,
+        genreLabel: LINEUP_SEED_GENRE_PLACEHOLDER,
+      });
+      return {
+        profileDetail: buildArtistProfileDetailFromCatalog(undefined),
+        representativeTracks: curated.representativeTracks,
+      };
+    }
+
+    return {
+      profileDetail: buildArtistProfileDetailFromCatalog({
+        ...catalogItem,
+        ...(displayProfile ? { profile: displayProfile } : {}),
+      }),
+      representativeTracks: [] as string[],
+    };
+  }
+
+  private pickCatalogExtras(catalogItem?: DjCatalogItem) {
+    const country = catalogItem?.country?.trim();
+    const profileUrls = catalogItem?.urls?.filter((url) => url.trim()) ?? [];
+    return {
+      ...(country ? { country } : {}),
+      ...(profileUrls.length ? { profileUrls } : {}),
+    };
+  }
+
   private async buildSoloArtistDetail(
     artist: CatalogLineupArtistDetailDto,
   ): Promise<CatalogLineupArtistDetailDto> {
@@ -46,36 +93,21 @@ export class ArtistProfileResolver {
           catalogItem.profile,
         )
       : undefined;
-    const profileDetail = buildArtistProfileDetailFromCatalog(
-      catalogItem
-        ? {
-            ...catalogItem,
-            ...(displayProfile ? { profile: displayProfile } : {}),
-          }
-        : undefined,
-    );
-    const seedFallback = catalogItem
-      ? { representativeTracks: [] as string[] }
-      : buildLineupArtistProfileFallback(artist);
-    const representativeTracks =
-      profileDetail.representativeTracks.length > 0
-        ? profileDetail.representativeTracks
-        : seedFallback.representativeTracks;
+    const { profileDetail, representativeTracks: curatedTracks } =
+      this.pickProfileDetail(artist.name, catalogItem, displayProfile);
+    const profileDetailTracks = profileDetail.representativeTracks;
 
     return {
       ...artist,
-      ...(catalogItem
+      ...this.pickCatalogExtras(catalogItem),
+      ...(catalogItem && this.isProfileTrusted(artist.name, catalogItem)
         ? profileDetail
-        : {
-            ...(seedFallback.profileSummary
-              ? {
-                  profileSummary: seedFallback.profileSummary,
-                  profileFull:
-                    seedFallback.profileFull ?? seedFallback.profileSummary,
-                }
-              : {}),
-          }),
-      ...(representativeTracks.length ? { representativeTracks } : {}),
+        : {}),
+      ...(profileDetailTracks.length
+        ? { representativeTracks: profileDetailTracks }
+        : curatedTracks.length
+          ? { representativeTracks: curatedTracks }
+          : {}),
     };
   }
 
@@ -83,16 +115,15 @@ export class ArtistProfileResolver {
     artist: CatalogLineupArtistDetailDto,
     parts: string[],
   ): Promise<CatalogLineupArtistDetailDto> {
-    const catalog = await this.djService.loadCatalog();
+    const batch = await this.djService.resolveLineupCatalogBatch(parts);
     const avatarUrls =
       await this.lineupArtistAvatarService.findAvatarUrlsByArtistNames(parts);
     const members: CatalogLineupArtistMemberDetailDto[] = [];
 
     for (const part of parts) {
-      const items = this.djService.collectTrustedCatalogItemsForLineupName(
-        part,
-        catalog,
-      );
+      const items = batch.catalogByLineupName.has(part)
+        ? [batch.catalogByLineupName.get(part)!]
+        : [];
       const catalogItem = items[0];
       const displayProfile = catalogItem
         ? await this.djService.resolveProfileForDisplay(
@@ -100,22 +131,14 @@ export class ArtistProfileResolver {
             catalogItem.profile,
           )
         : undefined;
-      const profileDetail = buildArtistProfileDetailFromCatalog(
-        catalogItem
-          ? {
-              ...catalogItem,
-              ...(displayProfile ? { profile: displayProfile } : {}),
-            }
-          : undefined,
+      const { profileDetail } = this.pickProfileDetail(
+        part,
+        catalogItem,
+        displayProfile,
       );
-      const genreDisplay = resolveLineupDisplayGenreFromCatalog(items);
-      const seedFallback = catalogItem
-        ? undefined
-        : buildLineupArtistProfileFallback({
-            name: part,
-            genre: artist.genre,
-            genreLabel: artist.genreLabel,
-          });
+      const genreDisplay =
+        batch.genreDisplayByLineupName.get(part) ??
+        resolveLineupDisplayGenreFromCatalog(items);
       const nameKey = part.trim().toLowerCase();
       const thumbnail =
         avatarUrls.get(nameKey) ??
@@ -132,19 +155,14 @@ export class ArtistProfileResolver {
         ...(genreDisplay.genre !== LINEUP_SEED_GENRE_PLACEHOLDER
           ? { genre: genreDisplay.genre, genreLabel: genreDisplay.genreLabel }
           : {}),
+        ...this.pickCatalogExtras(catalogItem),
         ...(profileDetail.profileSummary
           ? {
               profileSummary: profileDetail.profileSummary,
               profileFull:
                 profileDetail.profileFull ?? profileDetail.profileSummary,
             }
-          : seedFallback?.profileSummary
-            ? {
-                profileSummary: seedFallback.profileSummary,
-                profileFull:
-                  seedFallback.profileFull ?? seedFallback.profileSummary,
-              }
-            : {}),
+          : {}),
         ...(profileDetail.representativeTracks.length
           ? { representativeTracks: profileDetail.representativeTracks }
           : {}),

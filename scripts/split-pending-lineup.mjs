@@ -43,8 +43,15 @@ const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const runCrawl = args.includes('--crawl');
 
-function partIsCovered(part, djKeys) {
-  return djKeys.has(normalizeArtistNameKey(part));
+function partIsMapped(part, mapByKey) {
+  const row = mapByKey.get(lineupNameKeyFor(part));
+  if (!row || row.status !== 'mapped') {
+    return false;
+  }
+  if (row.source === 'combo-billing') {
+    return false;
+  }
+  return Boolean(row.discogsId);
 }
 
 async function loadDisplayNames(db) {
@@ -67,12 +74,15 @@ async function main() {
     isCompositeLineupDisplayName(name),
   );
 
-  const djs = await db.collection('djs').find({}).project({ name: 1 }).toArray();
-  const djKeys = new Set(
-    djs.map((row) => normalizeArtistNameKey(row.name ?? '')).filter(Boolean),
-  );
-
-  const maps = await mapCollection.find({}).project({ lineupNameKey: 1, status: 1, source: 1 }).toArray();
+  const maps = await mapCollection
+    .find({})
+    .project({
+      lineupNameKey: 1,
+      status: 1,
+      source: 1,
+      discogsId: 1,
+    })
+    .toArray();
   const mapByKey = new Map(maps.map((row) => [row.lineupNameKey, row]));
 
   let comboWritten = 0;
@@ -81,19 +91,19 @@ async function main() {
 
   for (const displayName of composites.sort()) {
     const parts = expandFestivalArtistName(displayName);
-    const coveredParts = parts.filter((part) => partIsCovered(part, djKeys));
+    const coveredParts = parts.filter((part) => partIsMapped(part, mapByKey));
     const allCovered = coveredParts.length === parts.length && parts.length > 0;
     const reviewReason = allCovered
       ? ''
       : `combo billing — awaiting parts: ${parts
-          .filter((part) => !partIsCovered(part, djKeys))
+          .filter((part) => !partIsMapped(part, mapByKey))
           .join(', ')}`;
 
     comboReports.push({
       displayName,
       parts,
       allCovered,
-      uncovered: parts.filter((part) => !partIsCovered(part, djKeys)),
+      uncovered: parts.filter((part) => !partIsMapped(part, mapByKey)),
     });
 
     if (dryRun) {

@@ -1,4 +1,5 @@
 import { normalizeArtistNameKey } from './festival-lineup-fallback.mjs';
+import { resolveAvatarSearchName } from './lineup-billing-guards.mjs';
 
 /** Mongo mapping: festival lineup display name → Discogs artist_id. */
 export function createDjDiscogsMapModel(mongoose) {
@@ -182,7 +183,10 @@ export async function listMappedLineupArtists(mapCollection, lineupNames) {
     targets.push({
       lineupName,
       discogsId: row.discogsId ?? null,
-      searchName: (row.discogsName ?? lineupName).trim() || lineupName,
+      searchName: resolveAvatarSearchName(
+        lineupName,
+        (row.discogsName ?? lineupName).trim() || lineupName,
+      ),
     });
   }
   return targets;

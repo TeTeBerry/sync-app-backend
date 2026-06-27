@@ -70,7 +70,7 @@ describe('web-only-dj-profile', () => {
     });
 
     assert.deepEqual(record.genres, ['Big Room']);
-    assert.deepEqual(record.styles, []);
+    assert.deepEqual(record.styles, ['Big Room']);
   });
 
   it('drops Web/DJ role metadata and keeps parenthetical sub-genres', () => {
@@ -103,6 +103,20 @@ describe('web-only-dj-profile', () => {
     assert.ok(pixzy.genres.includes('future bass'));
     assert.ok(pixzy.genres.includes('bass house'));
     assert.equal(pixzy.genres.includes('Web'), false);
+  });
+
+  it('extracts genres from integrated report when sourced facts are empty', () => {
+    const record = buildWebOnlyDjRecord({
+      lineupName: 'WREX',
+      discogsName: 'WREX',
+      discogsId: 990555555,
+      hermesEvidence: {
+        integratedReport:
+          'WREX is a house DJ from the UK with regular club bookings.',
+      },
+    });
+
+    assert.ok(record.genres.includes('House'));
   });
 
   it('detects hermes web-only map rows', () => {

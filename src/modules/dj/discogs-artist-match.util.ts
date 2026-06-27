@@ -430,16 +430,13 @@ export function filterArtistRefsByNameGate(
   lineupName: string,
   nameMatchVariants: string[],
 ): DiscogsArtistRef[] {
-  return refs.filter((ref) => {
-    if (ref.refKind === 'anv-hit') {
-      return true;
-    }
-    return isLineupDiscogsNamePlausible(
+  return refs.filter((ref) =>
+    isLineupDiscogsNamePlausible(
       lineupName,
       ref.displayName,
       nameMatchVariants,
-    );
-  });
+    ),
+  );
 }
 
 export function isStaleDiscogsMapEntry(entry: {

@@ -408,20 +408,34 @@ export function getLineupCoverageKeys(lineupName: string): string[] {
   const upper = trimmed.toUpperCase();
   const explicit = LINEUP_COVERAGE_NAME_KEYS[upper];
   if (explicit?.length) {
-    return [...new Set(explicit.map((key) => normalizeArtistNameKey(key)))];
+    return [
+      ...new Set(
+        explicit
+          .map((key) => normalizeArtistNameKey(key))
+          .filter((key) => key.length >= 3),
+      ),
+    ];
   }
 
   const expanded = expandFestivalArtistName(trimmed);
   if (expanded.length > 1) {
-    return [...new Set(expanded.map((part) => normalizeArtistNameKey(part)))];
+    return [
+      ...new Set(
+        expanded
+          .map((part) => normalizeArtistNameKey(part))
+          .filter((key) => key.length >= 3),
+      ),
+    ];
   }
 
-  const keys = [normalizeArtistNameKey(trimmed)];
+  const keys = [normalizeArtistNameKey(trimmed)].filter(
+    (key) => key.length >= 3,
+  );
   const alias = DISCOGS_LINEUP_SEARCH_ALIASES[upper];
   if (alias) {
     keys.push(normalizeArtistNameKey(alias));
   }
-  return [...new Set(keys.filter(Boolean))];
+  return [...new Set(keys.filter((key) => key.length >= 3))];
 }
 
 export function matchLineupArtistToCatalog<
@@ -447,7 +461,7 @@ export function matchLineupArtistToCatalog<
 
   for (const item of catalog) {
     const djKey = normalizeArtistNameKey(item.name);
-    if (!djKey) {
+    if (!djKey || djKey.length < 3) {
       continue;
     }
     if (targetKeys.some((targetKey) => djKey === targetKey)) {

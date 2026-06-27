@@ -78,6 +78,14 @@ export async function deleteLineupArtistAvatar(db, artistName) {
   return (result.deletedCount ?? 0) > 0;
 }
 
+/** Remove avatars saved with review flags (genre_mismatch / low_score). */
+export async function purgeReviewFlaggedLineupAvatars(db) {
+  const result = await db.collection('lineup_artist_avatars').deleteMany({
+    reviewFlag: { $in: ['genre_mismatch', 'low_score'] },
+  });
+  return result.deletedCount ?? 0;
+}
+
 export async function upsertLineupArtistAvatar(db, entry) {
   const artistName = entry.artistName.trim();
   const artistNameKey = artistName.toLowerCase();

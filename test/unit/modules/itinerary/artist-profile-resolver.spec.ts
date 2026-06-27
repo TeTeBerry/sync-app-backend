@@ -10,9 +10,9 @@ describe('ArtistProfileResolver', () => {
   };
   const djService = {
     lookupForLineupArtists: jest.fn(),
+    resolveLineupCatalogBatch: jest.fn(),
     resolveProfileForDisplay: jest.fn(),
     loadCatalog: jest.fn(),
-    collectTrustedCatalogItemsForLineupName: jest.fn(),
   };
   const lineupArtistAvatarService = {
     findAvatarUrlsByArtistNames: jest.fn(),
@@ -76,7 +76,7 @@ describe('ArtistProfileResolver', () => {
     expect(artist.members).toBeUndefined();
   });
 
-  it('uses seed fallback when Discogs profile describes a homonym', async () => {
+  it('does not synthesize profile from seed genres when catalog is empty', async () => {
     lineupCatalog.resolveCatalogLineupArtistById.mockResolvedValue({
       id: 'marshmello',
       name: 'MARSHMELLO',
@@ -90,8 +90,7 @@ describe('ArtistProfileResolver', () => {
     const artist = await resolver.getCatalogLineupArtistDetail('marshmello');
 
     expect(artist.genre).toBe('Future Bass');
-    expect(artist.profileSummary).toContain('Future Bass');
-    expect(artist.profileSummary).not.toContain('Marsha Smith');
+    expect(artist.profileSummary).toBeUndefined();
     expect(djService.resolveProfileForDisplay).not.toHaveBeenCalled();
   });
 
@@ -104,30 +103,34 @@ describe('ArtistProfileResolver', () => {
       activityCount: 1,
       thumbnail: 'https://cdn.example.com/artbat.jpg',
     });
-    djService.loadCatalog.mockResolvedValue([
-      {
-        discogsId: 1,
-        name: 'Artbat',
-        profile: 'Artbat profile',
-        genres: ['Electronic'],
-        styles: ['Techno'],
-      },
-      {
-        discogsId: 2,
-        name: 'R3hab',
-        profile: 'R3hab profile',
-        genres: ['Electronic'],
-        styles: ['Electro House'],
-      },
-    ]);
-    djService.collectTrustedCatalogItemsForLineupName.mockImplementation(
-      (part: string, catalog: Array<{ name: string }>) => {
-        const match = catalog.find(
-          (item) => item.name.toLowerCase() === part.toLowerCase(),
-        );
-        return match ? [match] : [];
-      },
-    );
+    djService.resolveLineupCatalogBatch.mockResolvedValue({
+      catalogByLineupName: new Map([
+        [
+          'ARTBAT',
+          {
+            discogsId: 1,
+            name: 'Artbat',
+            profile: 'Artbat profile',
+            genres: ['Electronic'],
+            styles: ['Techno'],
+          },
+        ],
+        [
+          'R3HAB',
+          {
+            discogsId: 2,
+            name: 'R3hab',
+            profile: 'R3hab profile',
+            genres: ['Electronic'],
+            styles: ['Electro House'],
+          },
+        ],
+      ]),
+      genreDisplayByLineupName: new Map([
+        ['ARTBAT', { genre: 'Techno', genreLabel: 'Techno' }],
+        ['R3HAB', { genre: 'Electro House', genreLabel: 'Electro House' }],
+      ]),
+    });
     djService.resolveProfileForDisplay.mockImplementation(
       async (_id: number, profile?: string) => profile,
     );

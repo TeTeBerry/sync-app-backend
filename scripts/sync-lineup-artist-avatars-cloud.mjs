@@ -45,6 +45,11 @@ import {
   isElectronicGenreCandidate,
   scoreTheAudioDbMatch,
 } from './lib/theaudiodb-avatars.mjs';
+import {
+  isDuoBillingLineupName,
+  isSoloLineupMappedToDuoDiscogs,
+  resolveAvatarSearchName,
+} from './lib/lineup-billing-guards.mjs';
 
 loadDotEnv();
 
@@ -59,9 +64,7 @@ const namesArgIndex = args.indexOf('--names');
 const urlsFileIndex = args.indexOf('--urls-file');
 const activityLegacyIdArg = args.indexOf('--activity-legacy-id');
 const activityLegacyId =
-  activityLegacyIdArg >= 0
-    ? Number(args[activityLegacyIdArg + 1])
-    : Number.NaN;
+  activityLegacyIdArg >= 0 ? Number(args[activityLegacyIdArg + 1]) : Number.NaN;
 
 const explicitNames =
   namesArgIndex >= 0
@@ -119,16 +122,18 @@ async function resolveTheAudioDbAvatar({
   audioDb,
   djsStyles,
 }) {
+  const effectiveSearchName = resolveAvatarSearchName(lineupName, searchName);
   const candidates = [];
-  if (searchName && searchName.trim()) {
-    const match = await audioDb.searchArtist(searchName);
+  if (effectiveSearchName && effectiveSearchName.trim()) {
+    const match = await audioDb.searchArtist(effectiveSearchName);
     if (match?.avatarUrl) {
       candidates.push({ ...match, searchedAs: 'searchName' });
     }
   }
   if (
     lineupName &&
-    lineupName.trim().toLowerCase() !== (searchName ?? '').trim().toLowerCase()
+    lineupName.trim().toLowerCase() !==
+      (effectiveSearchName ?? '').trim().toLowerCase()
   ) {
     const match = await audioDb.searchArtist(lineupName);
     if (match?.avatarUrl) {
@@ -155,6 +160,15 @@ async function resolveTheAudioDbAvatar({
     if (!isRemoteLineupAvatarUrl(candidate.avatarUrl)) {
       continue;
     }
+    if (
+      isDuoBillingLineupName(candidate.artistName) &&
+      !isDuoBillingLineupName(lineupName)
+    ) {
+      console.warn(
+        `⚠️  TheAudioDB 候选为组合名，跳过（lineup=${lineupName}, candidate=${candidate.artistName}）`,
+      );
+      continue;
+    }
     if (!genresAreCompatible(djsStyles, candidate.genres)) {
       console.warn(
         `⚠️  TheAudioDB genre 不匹配（lineup=${lineupName}, candidate=${candidate.artistName}, genres=${(candidate.genres ?? []).join('/')})`,
@@ -173,21 +187,6 @@ async function resolveTheAudioDbAvatar({
     };
   }
 
-  // No candidate passed the gate — return the highest-score one flagged for review
-  const best = candidates[0];
-  if (best && isRemoteLineupAvatarUrl(best.avatarUrl)) {
-    return {
-      url: best.avatarUrl,
-      source: 'theaudiodb',
-      matchScore: best.score,
-      theAudioDbArtist: best.artistName,
-      theAudioDbArtistId: best.theAudioDbArtistId ?? null,
-      theAudioDbGenres: best.genres ?? [],
-      searchQuery: best.searchQuery,
-      searchedAs: best.searchedAs,
-      reviewFlag: best.score < MIN_SCORE ? 'low_score' : 'genre_mismatch',
-    };
-  }
   return null;
 }
 
@@ -232,7 +231,9 @@ async function main() {
   const manualUrls = loadUrlsFile();
 
   if (!mongoConfig.discogsToken) {
-    console.warn('⚠️  DISCOGS_TOKEN 未设置（头像同步不再使用 Discogs，可忽略）');
+    console.warn(
+      '⚠️  DISCOGS_TOKEN 未设置（头像同步不再使用 Discogs，可忽略）',
+    );
   }
 
   await mongoose.connect(mongoConfig.mongoUri);
@@ -309,13 +310,13 @@ async function main() {
     }
 
     console.log(
-      `\n处理: ${lineupName}` +
-        (searchName ? ` → ${searchName}` : ''),
+      `\n处理: ${lineupName}` + (searchName ? ` → ${searchName}` : ''),
     );
 
-    const djsStyles = djsStyleMap.get((searchName ?? '').toLowerCase().trim())
-      ?? djsStyleMap.get(key)
-      ?? [];
+    const djsStyles =
+      djsStyleMap.get((searchName ?? '').toLowerCase().trim()) ??
+      djsStyleMap.get(key) ??
+      [];
 
     let sourceInfo;
     try {
@@ -358,9 +359,10 @@ async function main() {
       continue;
     }
 
-    const scoreLabel = sourceInfo.matchScore !== undefined
-      ? ` score=${sourceInfo.matchScore}`
-      : '';
+    const scoreLabel =
+      sourceInfo.matchScore !== undefined
+        ? ` score=${sourceInfo.matchScore}`
+        : '';
     const reviewLabel = sourceInfo.reviewFlag
       ? ` ⚠️ review=${sourceInfo.reviewFlag}`
       : '';

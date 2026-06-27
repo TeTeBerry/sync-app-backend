@@ -58,31 +58,48 @@ function stripMarkdown(text) {
     .trim();
 }
 
-function collectGenreStyles(sourcedFacts = []) {
-  const genres = [];
-  const styles = [];
-  let hadGenreFacts = false;
+function collectGenreStyles(hermesEvidence) {
+  const texts = [];
 
-  for (const fact of sourcedFacts) {
+  for (const fact of hermesEvidence?.sourcedFacts ?? []) {
     const claim = (fact.claim ?? '').toLowerCase();
     const value = (fact.value ?? '').trim();
     if (!value) {
       continue;
     }
-    if (claim.includes('genre')) {
-      hadGenreFacts = true;
-      genres.push(...sanitizeCatalogGenreTokens([value]));
+    if (
+      claim.includes('genre') ||
+      claim.includes('style') ||
+      claim.includes('hint')
+    ) {
+      texts.push(value);
     }
-    if (claim.includes('style')) {
-      hadGenreFacts = true;
-      styles.push(...sanitizeCatalogGenreTokens([value]));
+  }
+
+  const report = hermesEvidence?.integratedReport?.trim();
+  if (report) {
+    texts.push(report);
+  }
+
+  const genres = new Set();
+  const styles = new Set();
+  for (const text of texts) {
+    for (const token of sanitizeCatalogGenreTokens([text])) {
+      genres.add(token);
     }
   }
 
   return {
-    genres: [...new Set(genres)],
-    styles: [...new Set(styles)],
-    hadGenreFacts,
+    genres: [...genres],
+    styles: [...styles],
+  };
+}
+
+export function precomputeDisplayGenresFromHermesEvidence(hermesEvidence) {
+  const { genres, styles } = collectGenreStyles(hermesEvidence);
+  return {
+    displayGenres: genres,
+    displayStyles: styles.length ? styles : genres,
   };
 }
 
@@ -140,7 +157,7 @@ export function buildWebOnlyDjRecord({
   discogsId,
 }) {
   const profile = buildProfileText(hermesEvidence);
-  const { genres, styles, hadGenreFacts } = collectGenreStyles(hermesEvidence?.sourcedFacts);
+  const { genres, styles } = collectGenreStyles(hermesEvidence);
   const canonicalName = discogsName?.trim() || lineupName.trim();
 
   return {
@@ -149,8 +166,8 @@ export function buildWebOnlyDjRecord({
     name: canonicalName,
     realName: '',
     profile,
-    genres: genres.length ? genres : hadGenreFacts ? [] : ['Electronic'],
-    styles,
+    genres,
+    styles: styles.length ? styles : genres,
     country: resolveCountry(hermesEvidence?.sourcedFacts),
     urls: collectUrls(hermesEvidence),
     members: [],

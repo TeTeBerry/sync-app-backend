@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
+import type { HermesEvidencePayload } from '../../modules/dj/hermes-evidence-catalog.util';
 
 export type DjDiscogsMapDocument = HydratedDocument<DjDiscogsMap>;
 
@@ -59,6 +60,16 @@ export class DjDiscogsMap {
 
   @Prop()
   reviewedAt?: Date;
+
+  @Prop({ type: MongooseSchema.Types.Mixed })
+  hermesEvidence?: HermesEvidencePayload;
+
+  /** Precomputed display genres from hermesEvidence (avoids runtime prose parsing). */
+  @Prop({ type: [String], default: [] })
+  displayGenres?: string[];
+
+  @Prop({ type: [String], default: [] })
+  displayStyles?: string[];
 }
 
 export const DjDiscogsMapSchema = SchemaFactory.createForClass(DjDiscogsMap);

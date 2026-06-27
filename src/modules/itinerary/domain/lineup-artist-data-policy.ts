@@ -81,7 +81,7 @@ export function resolveLineupSeedGenre(
   return LINEUP_SEED_GENRE_PLACEHOLDER;
 }
 
-/** Profile/tracks when Discogs match is skipped — curated row or seed-accurate one-liner. */
+/** Profile/tracks when Discogs match is skipped — curated row only (seeds are names-only). */
 export function buildLineupArtistProfileFallback(
   artist: Pick<CatalogLineupArtist, 'name' | 'genre' | 'genreLabel'>,
 ): {
@@ -98,13 +98,5 @@ export function buildLineupArtistProfileFallback(
     };
   }
 
-  const label = artist.genreLabel?.trim() || artist.genre?.trim();
-  if (!label || label === LINEUP_SEED_GENRE_PLACEHOLDER) {
-    return { representativeTracks: [] };
-  }
-
-  return {
-    profileSummary: `${artist.name} 是以 ${label} 为主风格的电子音乐人。`,
-    representativeTracks: [],
-  };
+  return { representativeTracks: [] };
 }

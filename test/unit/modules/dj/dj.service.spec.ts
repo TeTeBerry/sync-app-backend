@@ -32,8 +32,19 @@ describe('DjService catalog cache', () => {
     }),
   };
 
+  const djDiscogsMapModel = {
+    find: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([]),
+        }),
+      }),
+    }),
+  };
+
   const service = new DjService(
     djModel as never,
+    djDiscogsMapModel as never,
     jsonCache as never,
     { localizeProfile: jest.fn() } as never,
     config as never,

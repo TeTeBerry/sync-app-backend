@@ -277,3 +277,16 @@ export function sanitizeCatalogGenreTokens(
 
   return [...normalized];
 }
+
+const WEAK_CATALOG_GENRE_EXACT = new Set(['electronic', 'dance', 'edm', 'pop']);
+
+/** True when sanitized genres/styles carry no specific sub-style signal. */
+export function isWeakCatalogGenreList(tokens: string[] | undefined): boolean {
+  const sanitized = sanitizeCatalogGenreTokens(tokens);
+  if (!sanitized.length) {
+    return true;
+  }
+  return sanitized.every((token) =>
+    WEAK_CATALOG_GENRE_EXACT.has(token.toLowerCase()),
+  );
+}
