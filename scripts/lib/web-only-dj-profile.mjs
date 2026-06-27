@@ -1,4 +1,5 @@
 import { normalizeArtistNameKey } from './festival-lineup-fallback.mjs';
+import { sanitizeCatalogGenreTokens } from './web-only-genre-normalize.mjs';
 
 /** Reserved synthetic ids for LINEUP_MANUAL_DJ_PROFILES — avoid collision. */
 const RESERVED_SYNTHETIC_DISCOGS_IDS = new Set([990000008, 990000009]);
@@ -58,8 +59,9 @@ function stripMarkdown(text) {
 }
 
 function collectGenreStyles(sourcedFacts = []) {
-  const genres = new Set();
-  const styles = new Set();
+  const genres = [];
+  const styles = [];
+  let hadGenreFacts = false;
 
   for (const fact of sourcedFacts) {
     const claim = (fact.claim ?? '').toLowerCase();
@@ -68,26 +70,19 @@ function collectGenreStyles(sourcedFacts = []) {
       continue;
     }
     if (claim.includes('genre')) {
-      for (const part of value.split(/[,;/·|]/)) {
-        const trimmed = part.trim();
-        if (trimmed) {
-          genres.add(trimmed);
-        }
-      }
+      hadGenreFacts = true;
+      genres.push(...sanitizeCatalogGenreTokens([value]));
     }
     if (claim.includes('style')) {
-      for (const part of value.split(/[,;/·|]/)) {
-        const trimmed = part.trim();
-        if (trimmed) {
-          styles.add(trimmed);
-        }
-      }
+      hadGenreFacts = true;
+      styles.push(...sanitizeCatalogGenreTokens([value]));
     }
   }
 
   return {
-    genres: [...genres],
-    styles: [...styles],
+    genres: [...new Set(genres)],
+    styles: [...new Set(styles)],
+    hadGenreFacts,
   };
 }
 
@@ -145,7 +140,7 @@ export function buildWebOnlyDjRecord({
   discogsId,
 }) {
   const profile = buildProfileText(hermesEvidence);
-  const { genres, styles } = collectGenreStyles(hermesEvidence?.sourcedFacts);
+  const { genres, styles, hadGenreFacts } = collectGenreStyles(hermesEvidence?.sourcedFacts);
   const canonicalName = discogsName?.trim() || lineupName.trim();
 
   return {
@@ -154,7 +149,7 @@ export function buildWebOnlyDjRecord({
     name: canonicalName,
     realName: '',
     profile,
-    genres: genres.length ? genres : ['Electronic'],
+    genres: genres.length ? genres : hadGenreFacts ? [] : ['Electronic'],
     styles,
     country: resolveCountry(hermesEvidence?.sourcedFacts),
     urls: collectUrls(hermesEvidence),

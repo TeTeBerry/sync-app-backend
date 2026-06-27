@@ -1,6 +1,7 @@
 import {
   buildLineupOnlyArtistPerformanceSeed,
   hasItineraryCatalogSeed,
+  isPublishedSchedulePerformance,
   resolveItineraryCatalogSeed,
   resolveLineupDjs,
 } from '@src/modules/itinerary/domain/itinerary-catalog.util';
@@ -155,6 +156,30 @@ describe('itinerary-catalog.util', () => {
     expect(seed.every((perf) => perf.endMinutes === -1)).toBe(true);
     expect(seed.every((perf) => perf.dateKey === 'dec18')).toBe(true);
     expect(seed.some((perf) => perf.artistName === 'MARTIN GARRIX')).toBe(true);
+    expect(seed.every((perf) => !isPublishedSchedulePerformance(perf))).toBe(
+      true,
+    );
+  });
+
+  it('detects published schedule performances by set time', () => {
+    expect(
+      isPublishedSchedulePerformance({
+        startMinutes: 1320,
+        startTime: '22:00',
+      }),
+    ).toBe(true);
+    expect(
+      isPublishedSchedulePerformance({
+        startMinutes: -1,
+        startTime: '',
+      }),
+    ).toBe(false);
+    expect(
+      isPublishedSchedulePerformance({
+        startMinutes: 0,
+        startTime: '',
+      }),
+    ).toBe(false);
   });
 
   it('returns lineup DJs without performances for EDC Thailand', () => {

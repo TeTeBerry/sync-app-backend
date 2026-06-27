@@ -22,6 +22,22 @@ describe('lineup-artist-data-policy', () => {
     });
   });
 
+  it('sanitizes web-only marketing prose for lineup display', () => {
+    expect(
+      resolveLineupDisplayGenreFromCatalog([
+        {
+          styles: [],
+          genres: [
+            "mainstage electronic dance music ('explosive synths, driving energy, strong dancefloor impact')",
+          ],
+        },
+      ]),
+    ).toEqual({
+      genre: 'Big Room',
+      genreLabel: 'Big Room',
+    });
+  });
+
   it('returns placeholder when catalog has no styles or genres', () => {
     expect(resolveLineupDisplayGenreFromCatalog([])).toEqual({
       genre: '风格待补充',

@@ -5,6 +5,7 @@ import {
   formatDiscogsStyleLabel,
   mergeDiscogsStyleLabels,
 } from '@src/modules/dj/discogs-style-label.util';
+import { sanitizeCatalogGenreTokens } from '@src/modules/dj/web-only-genre-normalize.util';
 
 import { LINEUP_SEED_GENRE_PLACEHOLDER } from '@src/data/itinerary/lineup-seed-genre.constants';
 
@@ -20,13 +21,13 @@ function resolvePrimaryGenreFromCatalogItems(
   genreLabel: string,
 ): string {
   for (const item of items) {
-    const style = item.styles?.find((value) => value.trim())?.trim();
+    const style = sanitizeCatalogGenreTokens(item.styles)[0];
     if (style) {
       return style;
     }
   }
   for (const item of items) {
-    const genre = item.genres?.find((value) => value.trim())?.trim();
+    const genre = sanitizeCatalogGenreTokens(item.genres)[0];
     if (genre) {
       return genre;
     }

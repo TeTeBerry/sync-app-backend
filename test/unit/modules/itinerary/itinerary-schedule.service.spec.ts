@@ -4,6 +4,7 @@ import { DiscogsGenreEnrichmentService } from '@src/modules/itinerary/discogs-ge
 import { LineupCatalogService } from '@src/modules/itinerary/lineup-catalog.service';
 import { ArtistProfileResolver } from '@src/modules/itinerary/artist-profile-resolver.service';
 import { resolveLineupDisplayGenreFromCatalog } from '@src/modules/itinerary/domain/lineup-artist-data-policy';
+import { buildLineupOnlyArtistPerformanceSeed } from '@src/modules/itinerary/domain/itinerary-catalog.util';
 
 describe('ItineraryScheduleService discogs styles', () => {
   const performanceModel = {
@@ -258,6 +259,22 @@ describe('ItineraryScheduleService discogs styles', () => {
     performanceModel.find.mockReturnValue({
       lean: jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue([]),
+      }),
+    });
+
+    const schedule = await service.getSchedule(5);
+
+    expect(schedule.schedulePublished).toBe(false);
+    expect(schedule.performances).toHaveLength(0);
+    expect(schedule.djs.length).toBeGreaterThan(0);
+    expect(schedule.djs.some((dj) => dj.name === 'MARTIN GARRIX')).toBe(true);
+  });
+
+  it('keeps schedulePublished false when Mongo only has lineup-only placeholder rows', async () => {
+    const lineupOnly = buildLineupOnlyArtistPerformanceSeed(5).slice(0, 3);
+    performanceModel.find.mockReturnValue({
+      lean: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue(lineupOnly),
       }),
     });
 

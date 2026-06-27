@@ -1,4 +1,5 @@
 import type { DjCatalogItem } from './dj.types';
+import { sanitizeCatalogGenreTokens } from './web-only-genre-normalize.util';
 
 const MAX_STYLE_PARTS = 4;
 const STYLE_PLACEHOLDER = '风格待补充';
@@ -8,11 +9,8 @@ export function mergeDiscogsStyleLabels(
 ): string {
   const styles = new Set<string>();
   for (const item of items) {
-    for (const style of item.styles ?? []) {
-      const trimmed = style.trim();
-      if (trimmed) {
-        styles.add(trimmed);
-      }
+    for (const style of sanitizeCatalogGenreTokens(item.styles)) {
+      styles.add(style);
     }
   }
   if (styles.size) {
@@ -21,11 +19,8 @@ export function mergeDiscogsStyleLabels(
 
   const genres = new Set<string>();
   for (const item of items) {
-    for (const genre of item.genres ?? []) {
-      const trimmed = genre.trim();
-      if (trimmed) {
-        genres.add(trimmed);
-      }
+    for (const genre of sanitizeCatalogGenreTokens(item.genres)) {
+      genres.add(genre);
     }
   }
   if (genres.size) {
@@ -38,18 +33,14 @@ export function mergeDiscogsStyleLabels(
 export function formatDiscogsStyleLabel(
   item: Pick<DjCatalogItem, 'styles' | 'genres'>,
 ): string {
-  const styles = (item.styles ?? [])
-    .map((style) => style.trim())
-    .filter(Boolean)
+  const styles = sanitizeCatalogGenreTokens(item.styles)
     .slice(0, MAX_STYLE_PARTS)
     .join(' · ');
   if (styles) {
     return styles;
   }
 
-  const genres = (item.genres ?? [])
-    .map((genre) => genre.trim())
-    .filter(Boolean)
+  const genres = sanitizeCatalogGenreTokens(item.genres)
     .slice(0, MAX_STYLE_PARTS)
     .join(' · ');
   return genres || STYLE_PLACEHOLDER;

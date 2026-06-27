@@ -26,6 +26,7 @@ import {
   resolveLineupDjs,
   buildLineupOnlyArtistPerformanceSeed,
   LINEUP_ONLY_CATALOG_ACTIVITY_LEGACY_IDS,
+  isPublishedSchedulePerformance,
 } from './domain/itinerary-catalog.util';
 import { ItineraryCacheService } from './itinerary-cache.service';
 import {
@@ -219,16 +220,19 @@ export class ItineraryScheduleService implements OnModuleInit {
         activityLegacyId,
         performances as ArtistPerformance[],
       );
-    const schedulePublished = styledPerformances.length > 0;
+    const publishedPerformances = styledPerformances.filter(
+      isPublishedSchedulePerformance,
+    );
+    const schedulePublished = publishedPerformances.length > 0;
     const djs = schedulePublished
-      ? this.aggregateDjs(styledPerformances)
-      : await this.discogsGenre.applyDiscogsStylesToLineupDjs(
+      ? this.aggregateDjs(publishedPerformances)
+      : await this.resolveUnpublishedLineupDjs(
           activityLegacyId,
-          resolveLineupDjs(activityLegacyId),
+          styledPerformances,
         );
     const conflicts = options?.selectedDjIds?.length
       ? this.conflictService.detectConflicts(
-          styledPerformances,
+          publishedPerformances,
           options.selectedDjIds,
         )
       : [];
@@ -242,7 +246,7 @@ export class ItineraryScheduleService implements OnModuleInit {
         bannerDateLabel: s.bannerDateLabel,
       })),
       djs,
-      performances: styledPerformances.map((p) => ({
+      performances: publishedPerformances.map((p) => ({
         artistId: p.artistId,
         artistName: p.artistName,
         dateKey: p.dateKey,
@@ -402,6 +406,19 @@ export class ItineraryScheduleService implements OnModuleInit {
         styledByActivity.get(perf.activityLegacyId)?.get(perf.artistId) ??
         perf.genreLabel,
     }));
+  }
+
+  private async resolveUnpublishedLineupDjs(
+    activityLegacyId: number,
+    performances: ArtistPerformance[],
+  ): Promise<ItineraryDjDto[]> {
+    const seedDjs = resolveLineupDjs(activityLegacyId);
+    const lineupDjs =
+      seedDjs.length > 0 ? seedDjs : this.aggregateDjs(performances);
+    return this.discogsGenre.applyDiscogsStylesToLineupDjs(
+      activityLegacyId,
+      lineupDjs,
+    );
   }
 
   private aggregateDjs(performances: ArtistPerformance[]): ItineraryDjDto[] {

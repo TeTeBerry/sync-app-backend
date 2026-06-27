@@ -73,6 +73,17 @@ const LINEUP_ONLY_STAGE_LABELS: Record<string, string> = {
 /** Minutes sentinel when official timetable is not published yet. */
 export const LINEUP_ONLY_UNPUBLISHED_MINUTES = -1;
 
+/** True when a performance row carries an official set time (not lineup-only placeholder). */
+export function isPublishedSchedulePerformance(perf: {
+  startMinutes: number;
+  startTime?: string;
+}): boolean {
+  if (perf.startMinutes === LINEUP_ONLY_UNPUBLISHED_MINUTES) {
+    return false;
+  }
+  return perf.startMinutes >= 0 && Boolean(perf.startTime?.trim());
+}
+
 export type LineupOnlyPerformanceSeed = {
   activityLegacyId: number;
   dateKey: string;

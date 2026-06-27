@@ -36,4 +36,15 @@ describe('discogs-style-label.util', () => {
       }),
     ).toBe('风格待补充');
   });
+
+  it('sanitizes web-only marketing prose stored in genres', () => {
+    expect(
+      formatDiscogsStyleLabel({
+        styles: [],
+        genres: [
+          "mainstage electronic dance music ('explosive synths, driving energy, strong dancefloor impact')",
+        ],
+      }),
+    ).toBe('Big Room');
+  });
 });
