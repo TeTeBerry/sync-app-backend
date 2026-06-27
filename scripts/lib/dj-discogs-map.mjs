@@ -89,6 +89,37 @@ export async function upsertDjDiscogsMapMapped(collection, input) {
   );
 }
 
+export async function upsertDjDiscogsMapComboBilling(collection, input) {
+  const lineupNameKey = lineupNameKeyFor(input.lineupName);
+  const now = new Date();
+  const parts = (input.parts ?? []).map((part) => part.trim()).filter(Boolean);
+
+  await collection.updateOne(
+    { lineupNameKey },
+    {
+      $set: {
+        lineupName: input.lineupName.trim(),
+        status: 'mapped',
+        source: 'combo-billing',
+        matchScore: 100,
+        searchQuery: input.lineupName.trim(),
+        reviewReason: input.reviewReason ?? '',
+        discoveryStrategyId: 'lineup-split',
+        candidateScores: [],
+        comboParts: parts,
+        mappedAt: now,
+        reviewedAt: now,
+      },
+      $unset: {
+        discogsId: '',
+        discogsName: '',
+      },
+      $setOnInsert: { lineupNameKey },
+    },
+    { upsert: true },
+  );
+}
+
 export async function upsertDjDiscogsMapPendingReview(collection, input) {
   const lineupNameKey = lineupNameKeyFor(input.lineupName);
   const now = new Date();
@@ -133,7 +164,12 @@ export async function listMappedLineupArtists(mapCollection, lineupNames) {
   }
 
   const rows = await mapCollection
-    .find({ lineupNameKey: { $in: keys }, status: 'mapped' })
+    .find({
+      lineupNameKey: { $in: keys },
+      status: 'mapped',
+      source: { $ne: 'combo-billing' },
+      discogsId: { $exists: true, $ne: null },
+    })
     .toArray();
   const byKey = new Map(rows.map((row) => [row.lineupNameKey, row]));
 

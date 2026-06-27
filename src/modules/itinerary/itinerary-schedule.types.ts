@@ -2,6 +2,7 @@ import type { ItineraryConflict } from './domain/itinerary-conflict.util';
 import type {
   CatalogLineupArtist,
   CatalogLineupArtistDetail,
+  CatalogLineupArtistMemberDetail,
   CatalogLineupArtistNextActivity,
 } from '@sync/activity-contracts';
 
@@ -34,6 +35,9 @@ export type CatalogLineupArtistNextActivityDto =
 export type CatalogLineupArtistDto = CatalogLineupArtist;
 
 export type CatalogLineupArtistDetailDto = CatalogLineupArtistDetail;
+
+export type CatalogLineupArtistMemberDetailDto =
+  CatalogLineupArtistMemberDetail;
 
 export type CatalogLineupArtistEntryInternal = {
   artistName: string;

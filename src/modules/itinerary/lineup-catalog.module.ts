@@ -35,6 +35,7 @@ import { LINEUP_CATALOG_PORT } from './ports/lineup-catalog.port';
     LINEUP_CATALOG_PORT,
     LineupCatalogService,
     DiscogsGenreEnrichmentService,
+    LineupArtistAvatarService,
   ],
 })
 export class LineupCatalogModule {}

@@ -2,14 +2,17 @@ import { extractLineupDiscogsSearchNames } from './lineup-discogs-search.mjs';
 
 const B2B_PATTERN = /\s+B2B\s+/i;
 const AMPERSAND_PATTERN = /\s+&\s+/;
+const COLLAB_X_PATTERN = /\s+[X×]\s+/i;
 
-/** Festival duo acts that share one Discogs artist page — do not split on `&`. */
+/** Festival duo acts that share one Discogs artist page — do not split on `&` / `X`. */
 const DUO_LINEUP_ACTS = new Set([
   'ABOVE & BEYOND',
   'ALY & FILA',
+  'COSMIC GATE',
   'D-BLOCK & S-TE-FAN',
   'DIMITRI VEGAS & LIKE MIKE',
   'ELI & FUR',
+  'JKYL & HYDE',
   'LUCAS & STEVE',
   'MATISSE & SADKO',
   'TAIKI & NULIGHT',
@@ -23,14 +26,33 @@ function expandAmpersandLineupParts(lineupName) {
   if (DUO_LINEUP_ACTS.has(trimmed.toUpperCase())) {
     return [trimmed];
   }
-  const coverage = LINEUP_COVERAGE_NAME_KEYS[trimmed.toUpperCase()];
-  if (coverage?.length > 1) {
-    return trimmed
-      .split(AMPERSAND_PATTERN)
-      .map((part) => part.trim())
-      .filter(Boolean);
+  return trimmed
+    .split(AMPERSAND_PATTERN)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function stripLineupPresentsSuffix(lineupName) {
+  const trimmed = lineupName.trim();
+  const idx = trimmed.search(/\s+PRESENTS?\b[\s:.\-]/i);
+  if (idx < 0) {
+    return trimmed;
   }
-  return [trimmed];
+  return trimmed.slice(0, idx).trim();
+}
+
+function expandCollaboratorXParts(lineupName) {
+  const trimmed = lineupName.trim();
+  if (!trimmed || !COLLAB_X_PATTERN.test(trimmed)) {
+    return trimmed ? [trimmed] : [];
+  }
+  if (DUO_LINEUP_ACTS.has(trimmed.toUpperCase())) {
+    return [trimmed];
+  }
+  return trimmed
+    .split(COLLAB_X_PATTERN)
+    .map((part) => stripLineupPresentsSuffix(part.trim()))
+    .filter(Boolean);
 }
 
 /**
@@ -54,15 +76,30 @@ export function expandFestivalArtistName(lineupName) {
     const main = parenMatch[1].trim();
     const inner = parenMatch[2].trim();
     if (B2B_PATTERN.test(inner)) {
-      parts = [main, ...inner.split(B2B_PATTERN).map((part) => part.trim()).filter(Boolean)];
+      parts = [
+        main,
+        ...inner
+          .split(B2B_PATTERN)
+          .map((part) => part.trim())
+          .filter(Boolean),
+      ];
     } else {
       parts = main ? [main] : [];
     }
   } else if (B2B_PATTERN.test(trimmed)) {
-    parts = trimmed.split(B2B_PATTERN).map((part) => part.trim()).filter(Boolean);
+    parts = trimmed
+      .split(B2B_PATTERN)
+      .map((part) => part.trim())
+      .filter(Boolean);
   }
 
-  return [...new Set(parts.flatMap((part) => expandAmpersandLineupParts(part)))];
+  return [
+    ...new Set(
+      parts
+        .flatMap((part) => expandAmpersandLineupParts(part))
+        .flatMap((part) => expandCollaboratorXParts(part)),
+    ),
+  ];
 }
 
 export function expandFestivalArtistNames(lineupNames) {
@@ -85,19 +122,19 @@ export function isCompositeLineupDisplayName(lineupName) {
 export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   'AFEM SYKO': 'Afem Syko',
   'LEVEL UP': 'Level Up',
-  'LEVELTRONICS': 'Subtronics',
+  LEVELTRONICS: 'Subtronics',
   'NOISE MAFIA': 'Noise Mafia',
   'SHOWTEK HARDSTYLE SET': 'Showtek',
   'SPACE 92 X POPOF PRESENT: TURBULENCES': 'Space 92',
   'TAIKI NULIGHT': 'Taiki & Nulight',
   /** WUKONG × Bassjackers — see https://djmag.com/top100djs/2025/83/wukong */
-  'WUJACKERS': 'Wukong',
+  WUJACKERS: 'Wukong',
   'GHENGAR (GHASTLY)': 'Ghengar',
   GHENGAR: 'Ghengar',
   'VIDOJEAN (VJ X OL)': 'Vidojean',
   VIDOJEAN: 'Vidojean',
   WHYBEATZ: 'WhyBeatz',
-  '999999999': '999999999',
+  999999999: '999999999',
   BLONDEX: 'Blondex',
   'NO1 (HONGJOONG)': 'Hongjoong',
   'BEN NICKY PRESENTS XTREME': 'Ben Nicky',
@@ -124,7 +161,7 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   VEGAS: 'Vegas (2)',
   'ELI & FUR': 'Eli & Fur',
   YOTTO: 'Yotto',
-  MORTEN: 'Morten',
+  MORTEN: 'Morten (4)',
   STRYKER: 'Stryker',
   'SPACE 92': 'Space 92',
   HONEYLUV: 'Honeyluv',
@@ -271,7 +308,10 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   'THE PITCHER & SLIM SHORE PRESENT THIS IS WHO WE ARE!': 'The Pitcher',
   'DEVIN WILD - AMONG THE NOISE': 'Devin Wild',
   'DEEZL: AEON': 'Deezl',
-  'CRYEX': 'Cryex',
+  CRYEX: 'Cryex',
+  'END OF LINE: CRYEX': 'Cryex',
+  'INNER CIRCLE SHOWCASE: XENSE': 'Xense',
+  'QLUBTEMPO PARADE: LUNA': 'Luna',
   'EVIL ACTIVITIES': 'Evil Activities',
   'GEZELLIGE UPTEMPO': 'Gezellige Uptempo',
   'GHOST-LACTIXX': 'Ghostlactixx',
@@ -279,10 +319,96 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   'BREAK BY DL': 'Break by DL',
   'FIGHT SWITCH': 'Fight Switch',
   'DIRTY LIL MONKEYZ': 'Dirty Lil Monkeyz',
-  'ARABIERQANTUS': 'Arabierqantus',
-  'COENFETTI': 'Coenfetti',
-  'FEESTNATION': 'Feestnation',
-  'MURDOCK': 'Murdock',
+  ARABIERQANTUS: 'Arabierqantus',
+  COENFETTI: 'Coenfetti',
+  FEESTNATION: 'Feestnation',
+  MURDOCK: 'Murdock',
+
+  // --- Combo parts (split billing → Discogs search) ---
+  'PURPLE RABBIT': 'Purple Rabbit',
+  SHANG: 'Shang',
+  DEPARTS: 'Departs',
+  GASDROP: 'Gasdrop',
+  'BASS CHASERZ': 'Bass Chaserz',
+  'HANS GLOCK': 'Hans Glock',
+  'FEEST MODULATORS': 'Feest Modulators',
+  'DIKKE BAAP PRESENTS GEZELLIGE BAAP': 'Dikke Baap',
+  'DIKKE BAAP - BOUNCE SET': 'Dikke Baap',
+  JEBROER: 'JeBroer',
+  DEEPACK: 'Deepack',
+  'MARK WITH A K': 'Mark With A K',
+  'MC CHUCKY': 'MC Chucky',
+  'PAT B': 'Pat B',
+  'MISS PUSS': 'Miss Puss',
+  'KZ BEATZ': 'Kz Beatz',
+  'NELLY IS NOT MY NAME': 'Nelly Is Not My Name',
+  'POPOF PRESENT: TURBULENCES': 'Popof',
+  YUNPI: 'Yunpi',
+  LOUD: 'Loud (7)',
+  FOUT: 'Fout',
+  CRO: 'Cro (3)',
+  STEENWOLK: 'Steenwolk',
+  SUGAH: 'Sugah',
+  '$AVVY': '$Avvy',
+  'WES S': 'Wes S',
+  'SLIM SHORE PRESENT THIS IS WHO WE ARE!': 'Slim Shore',
+  ME: 'Me (3)',
+
+  // --- Pending solos / showcase billings ---
+  COONE: 'Coone',
+  NAKADIA: 'Nakadia',
+  DADOO: 'Dadoo',
+  FIRAGA: 'Firaga',
+  'SAINT LUDO': 'Saint Ludo',
+  BOTCASH: 'Botcash',
+  'SOFI TUKKER': 'Sofi Tukker',
+  'SVDDEN DEATH': 'Svdden Death',
+  BASSCON: 'Basscon',
+  TWINSICK: 'Twinsick',
+  'THE SPOTLIGHT WITH HYSTA': 'Hysta',
+  'ARTCORE WITH RUFFNECK': 'Artcore',
+  'ABADDON PURE DOMINATION FT. MC RECKLESS': 'Abaddon',
+  'AMIGO - UPTEMPO FIESTA': 'Amigo',
+  'BASS CHASERZ - DE REÜNIE': 'Bass Chaserz',
+  'BASS SHAKER - BELGIAN BOYBAND': 'Bass Shaker',
+  'DEVIN WILD - AMONG THE NOISE': 'Devin Wild',
+  'WILDSTYLEZ - BACK 2 BASICS': 'Wildstylez',
+  'ROOLER - 3 HOUR SET': 'Rooler',
+  'AUDIOTRICZ LIVE': 'Audiotricz',
+  'NOISECONTROLLERS TWO DECADES': 'Noisecontrollers',
+  'GUNZ FOR HIRE - XV THE UNDERGROUND KINGS': 'Gunz For Hire',
+  'ENCORE WITH PHUTURE NOIZE': 'Phuture Noize',
+  'VERTILE: EVERYTHING CHANGES LIVE': 'Vertile',
+  'DEEZL: AEON': 'Deezl',
+  'GEZELLIGE UPTEMPO B2B DIKKE BAAP PRESENTS GEZELLIGE BAAP': 'Gezellige Uptempo',
+  'PIOLINI B2B DIKKE BAAP - BOUNCE SET': 'Piolini',
+  'NELLY IS NOT MY NAME B2B KYØN': 'Nelly Is Not My Name',
+  'PAT B B2B MISS PUSS': 'Pat B',
+  'MARK WITH A K & MC CHUCKY B2B DEEPACK': 'Mark With A K',
+  'SMILE B2B KZ BEATZ': 'Smile',
+  'CASPER YU B2B SHANG': 'Casper Yu',
+  'YUNPI B2B 417': 'Yunpi',
+  'LNY TNZ X JEBROER': 'LNY TNZ',
+  'SPACE 92 X POPOF PRESENT: TURBULENCES': 'Space 92',
+  'GASDROP X BASS CHASERZ X DR. RUDE X HANS GLOCK': 'Gasdrop',
+  'GASDROP X FEEST MODULATORS': 'Gasdrop',
+  'THE PITCHER & SLIM SHORE PRESENT THIS IS WHO WE ARE!': 'The Pitcher',
+  'LOUD & FOUT': 'Loud (7)',
+  'T & SUGAH': 'T & Sugah',
+  'WES S & $AVVY': 'Wes S',
+  'CRO & STEENVOLK': 'Cro (3)',
+  RØZ: 'Roz',
+  ONEJ: 'Onej',
+  MUZIE: 'Muzie',
+  KINHAU: 'KinHau',
+  'KNOW GOOD': 'Know Good',
+  'FACTORY 93 PRESENTS': 'Factory 93',
+  'INSOMNIAC RECORDS TAKEOVER': 'Insomniac Records',
+  'DREAMSTATE PRESENTS ELECTRIK SEOUL': 'Dreamstate',
+  'BASSRUSH EXPERIENCE': 'Bassrush',
+  'AREA X': 'Area X',
+  TRIPTICAL: 'Triptical',
+  'TRIPTICAL NOTE': 'Triptical',
 };
 
 /**
@@ -292,13 +418,32 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
 export const DISCOGS_LINEUP_SEARCH_FALLBACKS = {
   GHENGAR: ['Ghastly'],
   'GHENGAR (GHASTLY)': ['Ghastly'],
+  MORTEN: ['Morten Breum', 'Morten (26)'],
+  JEBROER: ['JeBroer', 'Jebroer'],
+  COONE: ['Coone (2)'],
+  DEPARTS: ['Departs (2)'],
+  NAKADIA: ['Nakadia (2)'],
+  DADOO: ['Dadoo (2)'],
+  YUNPI: ['Yunpi'],
+  'DIKKE BAAP - BOUNCE SET': ['Dikke Baap'],
+  'DIKKE BAAP PRESENTS GEZELLIGE BAAP': ['Dikke Baap'],
+  'SLIM SHORE PRESENT THIS IS WHO WE ARE!': ['Slim Shore', 'The Pitcher'],
+  'NELLY IS NOT MY NAME': ['Nelly Is Not My Name'],
+  GASDROP: ['Gasdrop'],
+  'FEEST MODULATORS': ['Feest Modulators'],
+  'PURPLE RABBIT': ['Purple Rabbit'],
+  DEEPACK: ['Deepack'],
+  SHANG: ['Shang (2)'],
+  'KZ BEATZ': ['Kz Beatz'],
+  'PAT B': ['Pat B'],
+  'MISS PUSS': ['Miss Puss'],
 };
 
 /** Lineup display name → normalized keys of acceptable `djs.name` matches. */
 export const LINEUP_COVERAGE_NAME_KEYS = {
-  'LEVELTRONICS': ['subtronics', 'levelup'],
+  LEVELTRONICS: ['subtronics', 'levelup'],
   'SHOWTEK HARDSTYLE SET': ['showtek'],
-  'WUJACKERS': ['wukong', 'bassjackers'],
+  WUJACKERS: ['wukong', 'bassjackers'],
   'GHENGAR (GHASTLY)': ['ghengar', 'ghastly'],
   GHENGAR: ['ghengar', 'ghastly'],
   'VIDOJEAN (VJ X OL)': ['vidojean'],
@@ -343,6 +488,36 @@ export const LINEUP_COVERAGE_NAME_KEYS = {
   'RETROVISION B2B JEONGHYEON': ['retrovision', 'jeonghyeon'],
   'MAAM & KOKI': ['maam', 'koki'],
   'BLACK TIGER SEX MACHINE': ['blacktigersexmachine'],
+  'LEVELTRONICS (SUBTRONICS B2B LEVEL UP)': ['subtronics', 'levelup'],
+  'GEZELLIGE UPTEMPO B2B DIKKE BAAP PRESENTS GEZELLIGE BAAP': [
+    'gezelligeuptempo',
+    'dikkebaap',
+  ],
+  'PIOLINI B2B DIKKE BAAP - BOUNCE SET': ['piolini', 'dikkebaap'],
+  'LNY TNZ X JEBROER': ['lnytnz', 'jebroer'],
+  'SPACE 92 X POPOF PRESENT: TURBULENCES': ['space92', 'popof'],
+  'GASDROP X BASS CHASERZ X DR. RUDE X HANS GLOCK': [
+    'gasdrop',
+    'basschaserz',
+    'drrude',
+    'hansglock',
+  ],
+  'GASDROP X FEEST MODULATORS': ['gasdrop', 'feestmodulators'],
+  'MARK WITH A K & MC CHUCKY B2B DEEPACK': [
+    'markwithak',
+    'mcchucky',
+    'deepack',
+  ],
+  'NELLY IS NOT MY NAME B2B KYØN': ['nellyisnotmyname', 'kyon'],
+  'PAT B B2B MISS PUSS': ['patb', 'misspuss'],
+  'LOUD & FOUT': ['loud', 'fout'],
+  'T & SUGAH': ['t', 'sugah'],
+  'WES S & $AVVY': ['wess', 'avvy'],
+  'CRO & STEENVOLK': ['cro', 'steenwolk'],
+  'THE PITCHER & SLIM SHORE PRESENT THIS IS WHO WE ARE!': [
+    'thepitcher',
+    'slimshore',
+  ],
 };
 
 /**
@@ -450,12 +625,19 @@ export function getDiscogsSearchQueries(lineupName) {
 
 export function getLineupCoverageKeys(lineupName) {
   const trimmed = lineupName.trim();
-  const keys = [normalizeArtistNameKey(trimmed)];
-  const extras = LINEUP_COVERAGE_NAME_KEYS[trimmed.toUpperCase()];
-  if (extras) {
-    keys.push(...extras.map((key) => normalizeArtistNameKey(key)));
+  const upper = trimmed.toUpperCase();
+  const explicit = LINEUP_COVERAGE_NAME_KEYS[upper];
+  if (explicit?.length) {
+    return [...new Set(explicit.map((key) => normalizeArtistNameKey(key)))];
   }
-  const alias = DISCOGS_LINEUP_SEARCH_ALIASES[trimmed.toUpperCase()];
+
+  const expanded = expandFestivalArtistName(trimmed);
+  if (expanded.length > 1) {
+    return [...new Set(expanded.map((part) => normalizeArtistNameKey(part)))];
+  }
+
+  const keys = [normalizeArtistNameKey(trimmed)];
+  const alias = DISCOGS_LINEUP_SEARCH_ALIASES[upper];
   if (alias) {
     keys.push(normalizeArtistNameKey(alias));
   }

@@ -52,10 +52,24 @@ export interface CatalogLineupArtist {
   chineseAliases?: string[];
 }
 
+/** One DJ in a B2B / combo lineup billing name. */
+export interface CatalogLineupArtistMemberDetail {
+  name: string;
+  genre?: string;
+  genreLabel?: string;
+  thumbnail?: string;
+  chineseAliases?: string[];
+  profileSummary?: string;
+  profileFull?: string;
+  representativeTracks?: string[];
+}
+
 export interface CatalogLineupArtistDetail extends CatalogLineupArtist {
   profileSummary?: string;
   profileFull?: string;
   representativeTracks?: string[];
+  /** Populated when the lineup billing name expands to multiple DJs (e.g. B2B). */
+  members?: CatalogLineupArtistMemberDetail[];
 }
 
 /** A single DJ pick in a set-vote ballot. */

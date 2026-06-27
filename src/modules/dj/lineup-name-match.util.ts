@@ -2,13 +2,16 @@
 
 const B2B_PATTERN = /\s+B2B\s+/i;
 const AMPERSAND_PATTERN = /\s+&\s+/;
+const COLLAB_X_PATTERN = /\s+[X×]\s+/i;
 
 const DUO_LINEUP_ACTS = new Set([
   'ABOVE & BEYOND',
   'ALY & FILA',
+  'COSMIC GATE',
   'D-BLOCK & S-TE-FAN',
   'DIMITRI VEGAS & LIKE MIKE',
   'ELI & FUR',
+  'JKYL & HYDE',
   'LUCAS & STEVE',
   'MATISSE & SADKO',
   'TAIKI & NULIGHT',
@@ -55,7 +58,7 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   VEGAS: 'Vegas (2)',
   'ELI & FUR': 'Eli & Fur',
   YOTTO: 'Yotto',
-  MORTEN: 'Morten',
+  MORTEN: 'Morten (4)',
   STRYKER: 'Stryker',
   'SPACE 92': 'Space 92',
   HONEYLUV: 'Honeyluv',
@@ -163,6 +166,10 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   'LIKE MIKE (MAIN STAGE DJ SET)': 'Like Mike',
   ANGERFIST: 'Angerfist',
   VERTILE: 'Vertile',
+  CRYEX: 'Cryex',
+  'END OF LINE: CRYEX': 'Cryex',
+  'INNER CIRCLE SHOWCASE: XENSE': 'Xense',
+  'QLUBTEMPO PARADE: LUNA': 'Luna',
   'DUAL DAMAGE': 'Dual Damage',
   TONESHIFTERZ: 'Toneshifterz',
   ATMOZFEARS: 'Atmozfears',
@@ -182,6 +189,54 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   SMACK: 'Smack',
   PAWLOWSKI: 'Pawlowski',
   KiBØ: 'Kibo',
+  'PURPLE RABBIT': 'Purple Rabbit',
+  SHANG: 'Shang',
+  DEPARTS: 'Departs',
+  GASDROP: 'Gasdrop',
+  'BASS CHASERZ': 'Bass Chaserz',
+  'HANS GLOCK': 'Hans Glock',
+  'FEEST MODULATORS': 'Feest Modulators',
+  'DIKKE BAAP PRESENTS GEZELLIGE BAAP': 'Dikke Baap',
+  'DIKKE BAAP - BOUNCE SET': 'Dikke Baap',
+  JEBROER: 'JeBroer',
+  DEEPACK: 'Deepack',
+  'MARK WITH A K': 'Mark With A K',
+  'MC CHUCKY': 'MC Chucky',
+  'PAT B': 'Pat B',
+  'MISS PUSS': 'Miss Puss',
+  'KZ BEATZ': 'Kz Beatz',
+  'NELLY IS NOT MY NAME': 'Nelly Is Not My Name',
+  'POPOF PRESENT: TURBULENCES': 'Popof',
+  YUNPI: 'Yunpi',
+  LOUD: 'Loud (7)',
+  FOUT: 'Fout',
+  CRO: 'Cro (3)',
+  STEENWOLK: 'Steenwolk',
+  SUGAH: 'Sugah',
+  $AVVY: '$Avvy',
+  'WES S': 'Wes S',
+  'SLIM SHORE PRESENT THIS IS WHO WE ARE!': 'Slim Shore',
+  ME: 'Me (3)',
+  COONE: 'Coone',
+  NAKADIA: 'Nakadia',
+  DADOO: 'Dadoo',
+  FIRAGA: 'Firaga',
+  'SAINT LUDO': 'Saint Ludo',
+  BOTCASH: 'Botcash',
+  'SOFI TUKKER': 'Sofi Tukker',
+  'SVDDEN DEATH': 'Svdden Death',
+  BASSCON: 'Basscon',
+  TWINSICK: 'Twinsick',
+  'THE SPOTLIGHT WITH HYSTA': 'Hysta',
+  'ABADDON PURE DOMINATION FT. MC RECKLESS': 'Abaddon',
+  'LNY TNZ X JEBROER': 'LNY TNZ',
+  'GASDROP X BASS CHASERZ X DR. RUDE X HANS GLOCK': 'Gasdrop',
+  'GASDROP X FEEST MODULATORS': 'Gasdrop',
+  'THE PITCHER & SLIM SHORE PRESENT THIS IS WHO WE ARE!': 'The Pitcher',
+  'LOUD & FOUT': 'Loud (7)',
+  'T & SUGAH': 'T & Sugah',
+  'WES S & $AVVY': 'Wes S',
+  'CRO & STEENVOLK': 'Cro (3)',
 };
 
 export const LINEUP_COVERAGE_NAME_KEYS: Record<string, string[]> = {
@@ -232,6 +287,36 @@ export const LINEUP_COVERAGE_NAME_KEYS: Record<string, string[]> = {
   'RETROVISION B2B JEONGHYEON': ['retrovision', 'jeonghyeon'],
   'MAAM & KOKI': ['maam', 'koki'],
   'BLACK TIGER SEX MACHINE': ['blacktigersexmachine'],
+  'LEVELTRONICS (SUBTRONICS B2B LEVEL UP)': ['subtronics', 'levelup'],
+  'GEZELLIGE UPTEMPO B2B DIKKE BAAP PRESENTS GEZELLIGE BAAP': [
+    'gezelligeuptempo',
+    'dikkebaap',
+  ],
+  'PIOLINI B2B DIKKE BAAP - BOUNCE SET': ['piolini', 'dikkebaap'],
+  'LNY TNZ X JEBROER': ['lnytnz', 'jebroer'],
+  'SPACE 92 X POPOF PRESENT: TURBULENCES': ['space92', 'popof'],
+  'GASDROP X BASS CHASERZ X DR. RUDE X HANS GLOCK': [
+    'gasdrop',
+    'basschaserz',
+    'drrude',
+    'hansglock',
+  ],
+  'GASDROP X FEEST MODULATORS': ['gasdrop', 'feestmodulators'],
+  'MARK WITH A K & MC CHUCKY B2B DEEPACK': [
+    'markwithak',
+    'mcchucky',
+    'deepack',
+  ],
+  'NELLY IS NOT MY NAME B2B KYØN': ['nellyisnotmyname', 'kyon'],
+  'PAT B B2B MISS PUSS': ['patb', 'misspuss'],
+  'LOUD & FOUT': ['loud', 'fout'],
+  'T & SUGAH': ['t', 'sugah'],
+  'WES S & $AVVY': ['wess', 'avvy'],
+  'CRO & STEENVOLK': ['cro', 'steenwolk'],
+  'THE PITCHER & SLIM SHORE PRESENT THIS IS WHO WE ARE!': [
+    'thepitcher',
+    'slimshore',
+  ],
 };
 
 function expandAmpersandLineupParts(lineupName: string): string[] {
@@ -242,14 +327,33 @@ function expandAmpersandLineupParts(lineupName: string): string[] {
   if (DUO_LINEUP_ACTS.has(trimmed.toUpperCase())) {
     return [trimmed];
   }
-  const coverage = LINEUP_COVERAGE_NAME_KEYS[trimmed.toUpperCase()];
-  if (coverage?.length > 1) {
-    return trimmed
-      .split(AMPERSAND_PATTERN)
-      .map((part) => part.trim())
-      .filter(Boolean);
+  return trimmed
+    .split(AMPERSAND_PATTERN)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function stripLineupPresentsSuffix(lineupName: string): string {
+  const trimmed = lineupName.trim();
+  const idx = trimmed.search(/\s+PRESENTS?\b[\s:.\-]/i);
+  if (idx < 0) {
+    return trimmed;
   }
-  return [trimmed];
+  return trimmed.slice(0, idx).trim();
+}
+
+function expandCollaboratorXParts(lineupName: string): string[] {
+  const trimmed = lineupName.trim();
+  if (!trimmed || !COLLAB_X_PATTERN.test(trimmed)) {
+    return trimmed ? [trimmed] : [];
+  }
+  if (DUO_LINEUP_ACTS.has(trimmed.toUpperCase())) {
+    return [trimmed];
+  }
+  return trimmed
+    .split(COLLAB_X_PATTERN)
+    .map((part) => stripLineupPresentsSuffix(part.trim()))
+    .filter(Boolean);
 }
 
 export function expandFestivalArtistName(lineupName: string): string[] {
@@ -283,7 +387,11 @@ export function expandFestivalArtistName(lineupName: string): string[] {
   }
 
   return [
-    ...new Set(parts.flatMap((part) => expandAmpersandLineupParts(part))),
+    ...new Set(
+      parts
+        .flatMap((part) => expandAmpersandLineupParts(part))
+        .flatMap((part) => expandCollaboratorXParts(part)),
+    ),
   ];
 }
 
@@ -297,12 +405,19 @@ export function normalizeArtistNameKey(name: string): string {
 
 export function getLineupCoverageKeys(lineupName: string): string[] {
   const trimmed = lineupName.trim();
-  const keys = [normalizeArtistNameKey(trimmed)];
-  const extras = LINEUP_COVERAGE_NAME_KEYS[trimmed.toUpperCase()];
-  if (extras) {
-    keys.push(...extras.map((key) => normalizeArtistNameKey(key)));
+  const upper = trimmed.toUpperCase();
+  const explicit = LINEUP_COVERAGE_NAME_KEYS[upper];
+  if (explicit?.length) {
+    return [...new Set(explicit.map((key) => normalizeArtistNameKey(key)))];
   }
-  const alias = DISCOGS_LINEUP_SEARCH_ALIASES[trimmed.toUpperCase()];
+
+  const expanded = expandFestivalArtistName(trimmed);
+  if (expanded.length > 1) {
+    return [...new Set(expanded.map((part) => normalizeArtistNameKey(part)))];
+  }
+
+  const keys = [normalizeArtistNameKey(trimmed)];
+  const alias = DISCOGS_LINEUP_SEARCH_ALIASES[upper];
   if (alias) {
     keys.push(normalizeArtistNameKey(alias));
   }

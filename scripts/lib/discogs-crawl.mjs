@@ -3,6 +3,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'node:child_process';
 import {
+  expandFestivalArtistName,
   expandFestivalArtistNames,
   getLineupCoverageKeys,
   LINEUP_MANUAL_DJ_PROFILES,
@@ -626,7 +627,14 @@ export async function listPendingReviewCatalogArtists(db, config) {
 }
 
 export function isLineupArtistCovered(lineupName, djs) {
-  const targetKeys = getLineupCoverageKeys(lineupName);
+  const trimmed = lineupName.trim();
+  const expanded = expandFestivalArtistName(trimmed);
+
+  if (expanded.length > 1) {
+    return expanded.every((part) => isLineupArtistCovered(part, djs));
+  }
+
+  const targetKeys = getLineupCoverageKeys(trimmed);
   if (!targetKeys.length) {
     return true;
   }

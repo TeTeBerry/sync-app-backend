@@ -4,6 +4,7 @@ export type {
   BackendActivity,
   CatalogLineupArtist,
   CatalogLineupArtistDetail,
+  CatalogLineupArtistMemberDetail,
   CatalogLineupArtistNextActivity,
   SetVoteLeaderboardEntry,
   SetVotePick,
