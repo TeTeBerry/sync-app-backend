@@ -5,7 +5,7 @@
 import { execSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { getDiscogsTrustedNameVariants } from './festival-lineup-fallback.mjs';
+import { getLineupVerifyNameVariants } from './lineup-real-artist-catalog.mjs';
 import { createDiscogsClient, getCrawlConfig } from './discogs-crawl.mjs';
 import { resolveDistRoot, requireFromDist } from './resolve-dist-root.mjs';
 
@@ -105,8 +105,9 @@ export async function verifyLineupDiscogsMatch({
 
   const {
     scoreDiscogsArtistCandidate,
-    decideDiscogsArtistMatch,
+    isLineupDiscogsNamePlausible,
     DISCOGS_MATCH_RELEASE_SAMPLE_SIZE,
+    DISCOGS_REVIEW_REASON,
   } = loadMatchUtil();
 
   const { discogsGet } = createDiscogsClient(config);
@@ -141,29 +142,27 @@ export async function verifyLineupDiscogsMatch({
     releaseSamples,
   };
 
-  const nameMatchVariants = getDiscogsTrustedNameVariants(trimmed);
+  const nameMatchVariants = getLineupVerifyNameVariants(trimmed);
   const scored = scoreDiscogsArtistCandidate(trimmed, candidate);
-  const candidateById = new Map([[candidate.id, candidate]]);
-  const decision = decideDiscogsArtistMatch(trimmed, [scored], {
+  const nameGatePassed = isLineupDiscogsNamePlausible(
+    trimmed,
+    candidate.name,
     nameMatchVariants,
-    candidateById,
-    searchQuery: `hermes-verify:#${discogsId}`,
-  });
+    { discogsAliases: candidate.aliases },
+  );
 
-  const accepted =
-    decision.status === 'mapped' && decision.discogsId === discogsId;
+  const accepted = nameGatePassed;
 
   return {
     accepted,
     matchScore: scored.total,
     discogsName: candidate.name,
-    decision: decision.status,
-    reviewReason:
-      decision.status === 'pending_review'
-        ? decision.reviewReason
-        : accepted
+    decision: accepted ? 'mapped' : 'pending_review',
+    reviewReason: !nameGatePassed
+      ? DISCOGS_REVIEW_REASON.nameMismatch(candidate.name)
+      : accepted
           ? undefined
-          : `v3 scorer rejected (score=${scored.total})`,
+          : `v3 scorer note (score=${scored.total})`,
   };
 }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Rebuild `djs` rows for hermes-v4-web mapped artists from stored hermesEvidence.
+ * Rebuild `djs` rows for web-only mapped artists from stored hermesEvidence.
  *
  * Usage:
  *   npm run db:rebuild-web-only-djs:dry-run
@@ -49,7 +49,7 @@ async function main() {
   const rows = await mapCollection
     .find({
       status: 'mapped',
-      source: 'hermes-v4-web',
+      source: { $in: ['hermes-v4-web', 'musicbrainz-web'] },
       hermesEvidence: { $exists: true, $ne: null },
     })
     .toArray();
@@ -100,7 +100,7 @@ async function main() {
   await closeDjDiscogsRedisCache();
 
   console.log(
-    `\nDone. ${updated} rebuilt, ${skipped} skipped (${rows.length} hermes-v4-web rows scanned).`,
+    `\nDone. ${updated} rebuilt, ${skipped} skipped (${rows.length} web-only rows scanned).`,
   );
 }
 

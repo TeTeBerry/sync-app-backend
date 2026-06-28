@@ -252,6 +252,54 @@ export async function purgeManualStubForLineup({
   return true;
 }
 
+export function enrichDjRecordFromV4Hermes(
+  data,
+  bundle,
+  { displayGenres = [], displayStyles = [] } = {},
+) {
+  const enriched = { ...data };
+  if (displayGenres.length) {
+    enriched.genres = [
+      ...new Set([...(enriched.genres ?? []), ...displayGenres]),
+    ];
+  }
+  if (displayStyles.length) {
+    enriched.styles = [
+      ...new Set([...(enriched.styles ?? []), ...displayStyles]),
+    ];
+  }
+
+  const profileFallback =
+    bundle.discogs?.profile?.trim() ||
+    bundle.rationale?.trim() ||
+    enriched.name?.trim() ||
+    '';
+  if (!enriched.profile?.trim() && profileFallback.length >= 20) {
+    enriched.profile = profileFallback.substring(0, 600);
+  }
+
+  return enriched;
+}
+
+export function isV4HermesLandableDjRecord(
+  data,
+  discogs,
+  { displayGenres = [], displayStyles = [] } = {},
+) {
+  if (discogs.isVerifiableDiscogsDjRecord(data)) {
+    return true;
+  }
+
+  if (displayGenres.length || displayStyles.length) {
+    return true;
+  }
+
+  return (
+    (data.styles?.length ?? 0) > 0 &&
+    (data.representativeWorks?.length ?? 0) > 0
+  );
+}
+
 export async function applyV4DiscogsLanding({
   mapCollection,
   Dj,
@@ -278,8 +326,17 @@ export async function applyV4DiscogsLanding({
     };
   }
 
-  const data = await discogs.buildDjRecord(discogsId);
-  if (!discogs.isVerifiableDiscogsDjRecord(data)) {
+  const data = enrichDjRecordFromV4Hermes(
+    await discogs.buildDjRecord(discogsId),
+    bundle,
+    { displayGenres, displayStyles },
+  );
+  if (
+    !isV4HermesLandableDjRecord(data, discogs, {
+      displayGenres,
+      displayStyles,
+    })
+  ) {
     throw new Error(`Discogs #${discogsId} 资料未通过校验`);
   }
 

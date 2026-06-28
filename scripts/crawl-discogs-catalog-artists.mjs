@@ -6,10 +6,12 @@
  * 1. Lineup English name from festival
  * 2. dj_discogs_map — mapped hit → artist_id → GET /artists/{id} → profile（简介）
  * 3. Miss → v3 tiered search (genre=Electronic) → score → write map
- * 4. pending_review → map only, skip djs (no fabricated profiles)
- * 5. mapped but Discogs 无可用资料 → downgrade to pending_review, skip djs
- * 5. Main styles: top 5 releases aggregated after artist_id is known
- * 6. Avatars: run db:sync-lineup-avatars after crawl (mapped names only)
+ * 4. Discogs pending / thin → v3b MusicBrainz deterministic match → map + djs
+ * 5. pending_review → map only, skip djs (no fabricated profiles)
+ * 6. mapped but Discogs 无可用资料 → MB 补查 → 仍失败则 pending_review
+ * 7. Main styles: top 5 releases aggregated after artist_id is known
+ * 8. Avatars: run db:sync-lineup-avatars after crawl (mapped names only)
+ * 9. Remaining missing profile → Hermes v4 (hybrid / full-catalog)
  *
  * Usage:
  *   npm run db:crawl-catalog-artists
@@ -19,6 +21,7 @@
  *   npm run db:crawl-catalog-artists -- --activity-legacy-id 6 --rematch
  *   npm run db:crawl-catalog-artists -- --pending-review-only --rematch
  *   npm run db:crawl-catalog-artists -- --rematch-mapped
+ *   npm run db:crawl-catalog-artists -- --rematch-mapped --names "SLOTH"
  */
 
 import mongoose from 'mongoose';
@@ -30,7 +33,6 @@ import {
   createDjDiscogsMapModel,
   createDjModel,
   crawlArtistNames,
-  expandFestivalArtistNames,
   findMissingCatalogArtists,
   listPendingReviewCatalogArtists,
   listPendingReviewLineupArtists,
@@ -40,12 +42,15 @@ import {
   loadDotEnv,
   partitionLineupArtistCoverage,
   listAllMappedLineupNames,
+  resolveRematchMappedPlan,
 } from './lib/discogs-crawl.mjs';
+import { createMusicBrainzClient } from './lib/musicbrainz-artist-resolve.mjs';
 
 loadDotEnv();
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
+const skipMusicBrainz = args.includes('--skip-musicbrainz');
 const pendingReviewOnly = args.includes('--pending-review-only');
 const rematchMapped = args.includes('--rematch-mapped');
 let rematch = args.includes('--rematch') || pendingReviewOnly || rematchMapped;
@@ -115,19 +120,36 @@ async function main() {
   const DjDiscogsMap = createDjDiscogsMapModel(mongoose);
   const mapCollection = DjDiscogsMap.collection;
   const discogs = createDiscogsClient(config);
+  const musicBrainz = skipMusicBrainz ? null : createMusicBrainzClient();
 
   const scopedToActivity = Number.isFinite(activityLegacyId);
   let allNames;
   let targets;
   let covered = [];
+  let rematchClearNames = null;
+  let rematchMappedScoped = false;
 
   if (rematchMapped) {
     const mappedNames = await listAllMappedLineupNames(mapCollection);
-    allNames = expandFestivalArtistNames(mappedNames);
-    targets = allNames;
-    console.log(
-      `♻️  rematch-mapped：当前 mapped ${mappedNames.length} 条 → 拆分后 ${targets.length} 位 solo 艺人`,
-    );
+    const plan = resolveRematchMappedPlan({
+      mappedLineupNames: mappedNames,
+      explicitNames,
+    });
+    targets = plan.targets;
+    rematchClearNames = plan.toClear;
+    rematchMappedScoped = plan.scopedToExplicitNames;
+    allNames = targets;
+
+    if (plan.scopedToExplicitNames) {
+      console.log(
+        `♻️  rematch-mapped（指定 ${targets.length} 位，不清全库 mapped ${plan.mappedRowCount} 条）`,
+      );
+    } else {
+      console.warn(
+        `⚠️  rematch-mapped 全库：将清除 mapped ${plan.mappedRowCount} 条并重抓 ${targets.length} 位 solo；` +
+          '仅补缺请用 --names "ARTIST"',
+      );
+    }
   } else {
     allNames = scopedToActivity
       ? await loadActivityLineupArtistNames(db, activityLegacyId)
@@ -146,7 +168,11 @@ async function main() {
   if (pendingReviewOnly) {
     console.log(`⏸  仅待复核艺人 ${targets.length} 位（自动 rematch）`);
   } else if (rematchMapped) {
-    console.log(`🔎 严格搜索重匹配 ${targets.length} 位（原 mapped，B2B/& 已拆分）`);
+    console.log(
+      rematchMappedScoped
+        ? `🔎 指定艺人 rematch ${targets.length} 位`
+        : `🔎 严格搜索重匹配 ${targets.length} 位（原 mapped，B2B/& 已拆分）`,
+    );
   } else if (scopedToActivity) {
     console.log(
       `🎤 活动 #${activityLegacyId} 阵容 ${allNames.length} 位（B2B 已拆分）`,
@@ -182,39 +208,46 @@ async function main() {
   targets.forEach((name, index) => console.log(`  ${index + 1}. ${name}`));
 
   if (dryRun) {
-    console.log('\n(dry-run，未调用 Discogs)');
+    console.log(
+      `\n(dry-run，未调用 Discogs${skipMusicBrainz ? '' : ' / MusicBrainz'})`,
+    );
     await mongoose.disconnect();
     await closeDjDiscogsRedisCache();
     return;
   }
 
   if (rematch) {
-    const mappedNames = rematchMapped
-      ? await listAllMappedLineupNames(mapCollection)
-      : [];
-    const toClear = rematchMapped
-      ? [...new Set([...mappedNames, ...targets])]
-      : targets;
-    const cleared = await clearLineupArtistRematchState(mapCollection, toClear);
+    const toClear = rematchMapped ? (rematchClearNames ?? targets) : targets;
+    const cleared = await clearLineupArtistRematchState(mapCollection, toClear, {
+      forceProtected: rematchMapped,
+    });
     console.log(
       `\n♻️  rematch：清除映射 ${cleared.clearedMaps} 条` +
         `，Redis 主风格 ${cleared.clearedStyleRedis} 条`,
     );
   }
 
-  const { upserted, missed, pendingReview } = await crawlArtistNames({
+  const { upserted, missed, pendingReview, mbApplied } = await crawlArtistNames({
     artistNames: targets,
     discogs,
     Dj,
     mapCollection,
     label: '目录阵容',
+    ...(musicBrainz
+      ? {
+          musicBrainz,
+          discogsToken: config.discogsToken,
+          skipMusicBrainz: false,
+        }
+      : { skipMusicBrainz: true }),
   });
 
   const cacheBumped = await bumpDjCatalogCacheVersion();
   console.log(
     `\n🏁 完成：新增 ${upserted} 条` +
+      (mbApplied ? `（含 MB ${mbApplied}）` : '') +
       (missed ? `，未识别/失败 ${missed} 位` : '') +
-      (pendingReview ? `，待复核 ${pendingReview} 位` : ''),
+      (pendingReview ? `，待复核 ${pendingReview} 位（可交 v4）` : ''),
   );
   if (cacheBumped) {
     console.log('♻️  已 bump DJ catalog 缓存版本');

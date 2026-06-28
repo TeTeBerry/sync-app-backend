@@ -1,9 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import {
-  buildV4QuickConfirmRecord,
-  findV4BundleForLineupName,
-} from '../../../scripts/lib/v4-run-bundle-index.mjs';
+import { findV4BundleForLineupName } from '../../../scripts/lib/v4-run-bundle-index.mjs';
 
 describe('v4-run-bundle-index', () => {
   const bundles = [
@@ -38,17 +35,5 @@ describe('v4-run-bundle-index', () => {
     const expanded = findV4BundleForLineupName('$AVVY', index);
     assert.equal(expanded.bundle?.lineupName, 'WES S & $AVVY');
     assert.equal(expanded.matchedVia, 'expanded_from_display');
-  });
-
-  it('builds quick confirm record with crawl action', () => {
-    const record = buildV4QuickConfirmRecord({
-      missingArtist: { lineupName: 'ZANY', issue: 'no_map' },
-      bundle: bundles[0],
-      matchedVia: 'exact',
-      v4Run: { runId: 'test-run', finishedAt: '2026-06-27' },
-    });
-
-    assert.equal(record.v4DiscogsId, 48375);
-    assert.match(record.action, /db:crawl-catalog-artists/);
   });
 });

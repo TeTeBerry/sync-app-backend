@@ -3,8 +3,11 @@ import { describe, it } from 'node:test';
 import {
   collectRealSoloArtistTargets,
   expandRealSoloArtistTargets,
+  getLineupVerifyNameVariants,
   hasMappedRealArtistData,
+  isBillingLineupDisplayName,
   isLineupNonArtistLabel,
+  normalizeLineupArtistNameForMatch,
 } from '../../../scripts/lib/lineup-real-artist-catalog.mjs';
 
 describe('lineup-real-artist-catalog', () => {
@@ -34,6 +37,48 @@ describe('lineup-real-artist-catalog', () => {
     assert.deepEqual(expandRealSoloArtistTargets('GECK-O "THE SOUL SHAKER"'), [
       'GECK-O',
     ]);
+    assert.equal(
+      normalizeLineupArtistNameForMatch('THAROZA - LIVE OR DIE'),
+      'THAROZA',
+    );
+    assert.equal(
+      normalizeLineupArtistNameForMatch('EZG - MAXIMAAL!'),
+      'EZG',
+    );
+    assert.deepEqual(expandRealSoloArtistTargets('SHOWTEK HARDSTYLE SET'), [
+      'SHOWTEK',
+    ]);
+    assert.deepEqual(expandRealSoloArtistTargets('KRISTA BOURGEOIS LIVE'), [
+      'KRISTA BOURGEOIS',
+    ]);
+  });
+
+  it('flags billing display names for split / v4 shunt', () => {
+    assert.equal(isBillingLineupDisplayName('RAN-D & ADARO'), true);
+    assert.equal(isBillingLineupDisplayName('EZG - MAXIMAAL!'), true);
+    assert.equal(isBillingLineupDisplayName('SHOWTEK HARDSTYLE SET'), true);
+    assert.equal(isBillingLineupDisplayName('COONE'), false);
+    assert.equal(isBillingLineupDisplayName('DEFQON.1 LEGENDS'), false);
+  });
+
+  it('builds verify variants from stripped billing and aliases', () => {
+    const tharoza = getLineupVerifyNameVariants('THAROZA - LIVE OR DIE');
+    assert.ok(tharoza.includes('THAROZA'));
+
+    const party = getLineupVerifyNameVariants('PARTYRASER');
+    assert.ok(party.includes('Partyraiser'));
+
+    const scot = getLineupVerifyNameVariants('SCOT PROJECT');
+    assert.ok(scot.includes('DJ Scot Project'));
+
+    const me = getLineupVerifyNameVariants('ME');
+    assert.ok(me.includes('&Me'));
+
+    const purple = getLineupVerifyNameVariants('PURPLE RABBIT');
+    assert.ok(purple.includes('DJ Purple Rabbit'));
+
+    const firaga = getLineupVerifyNameVariants('Firaga');
+    assert.ok(firaga.includes('Dj Firaga'));
   });
 
   it('splits comma-separated artist lists from billing rows', () => {

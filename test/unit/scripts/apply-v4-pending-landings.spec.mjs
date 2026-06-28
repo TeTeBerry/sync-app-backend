@@ -3,6 +3,8 @@ import { describe, it } from 'node:test';
 import {
   buildHermesEvidenceFromV4Bundle,
   confidenceToMatchScore,
+  enrichDjRecordFromV4Hermes,
+  isV4HermesLandableDjRecord,
   shouldApplyV4Bundle,
 } from '../../../scripts/lib/apply-v4-pending-landings.mjs';
 
@@ -68,6 +70,16 @@ describe('apply-v4-pending-landings', () => {
     );
     assert.equal(result.accepted, false);
     assert.match(result.reviewReason ?? '', /Wrong person/i);
+
+    const wes = await verifyBundleForApply(
+      {
+        discogs: { id: 171280, name: 'Partyraiser' },
+      },
+      'WES S',
+      { verify: false },
+    );
+    assert.equal(wes.accepted, false);
+    assert.match(wes.reviewReason ?? '', /Wrong person/i);
   });
 
   it('rejects no_match without discogs', () => {
@@ -81,6 +93,44 @@ describe('apply-v4-pending-landings', () => {
         { minConfidence: 'medium' },
       ),
       false,
+    );
+  });
+
+  it('lands thin discogs rows when v4 hermes has display genres', () => {
+    const discogs = {
+      isVerifiableDiscogsDjRecord: () => false,
+    };
+    const enriched = enrichDjRecordFromV4Hermes(
+      { profile: '', styles: [], genres: [], representativeWorks: [] },
+      { rationale: 'Dutch hardcore DJ with verified festival bookings.' },
+      { displayGenres: ['Hardcore'], displayStyles: ['Hardcore'] },
+    );
+    assert.ok(enriched.styles.includes('Hardcore'));
+    assert.ok(enriched.profile.length >= 20);
+    assert.equal(
+      isV4HermesLandableDjRecord(enriched, discogs, {
+        displayGenres: ['Hardcore'],
+        displayStyles: ['Hardcore'],
+      }),
+      true,
+    );
+  });
+
+  it('lands disambiguation profiles when release styles exist', () => {
+    const discogs = {
+      isVerifiableDiscogsDjRecord: () => false,
+    };
+    assert.equal(
+      isV4HermesLandableDjRecord(
+        {
+          profile: 'For the techno artist please use [a=123]',
+          styles: ['Techno'],
+          representativeWorks: [{ title: 'EP' }],
+        },
+        discogs,
+        {},
+      ),
+      true,
     );
   });
 });

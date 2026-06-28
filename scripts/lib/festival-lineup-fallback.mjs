@@ -138,6 +138,8 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   BLONDEX: 'Blondex',
   'NO1 (HONGJOONG)': 'Hongjoong',
   'BEN NICKY PRESENTS XTREME': 'Ben Nicky',
+  'BEN NICKY': 'Ben Nicky',
+  'DEVIN WILD': 'Devin Wild',
   'CASEPEAT X PURPLE RABBIT': 'Casepeat',
   OPPIDAN: 'Oppidan (2)',
   'ALY & FILA': 'Aly & Fila',
@@ -154,6 +156,9 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   WHITENO1SE: 'Whiteno1se',
   BLASTOYZ: 'Blastoyz',
   'SUB ZERO PROJECT': 'Sub Zero Project',
+  PARTYRASER: 'Partyraiser',
+  'SCOT PROJECT': 'DJ Scot Project',
+  PAVO: 'DJ Pavo',
   'XCLUB.': 'X Club',
   SM1LE: 'SM1LE',
   'JELLE DK': 'Jelle DK',
@@ -168,6 +173,9 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   'AMBER BROOS': 'Amber Broos',
   'MAD MAXX': 'Mad Maxx',
   FLOSSTRADAMUS: 'Flosstradamus',
+  FLOSSTRADAMUSS: 'Flosstradamus',
+  NUTTRIX: 'Nuttrix',
+  'DJ SALLY': 'DJ Sally',
   'MATISSE & SADKO': 'Matisse & Sadko',
   'LUCAS & STEVE': 'Lucas & Steve',
   'KEVIN DE VRIES': 'Kevin de Vries',
@@ -259,7 +267,7 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   'MIKE BOND': 'Mike Bond',
   'VEDRAN CAR': 'Vedran Car',
   LORENZO: 'Lorenzo',
-  BROZ: 'Broz',
+  BROZ: 'Broz Rodriguez',
   JAMLES: 'Jamles',
   'JAMES CARTER': 'James Carter',
 
@@ -325,7 +333,7 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   MURDOCK: 'Murdock',
 
   // --- Combo parts (split billing → Discogs search) ---
-  'PURPLE RABBIT': 'Purple Rabbit',
+  'PURPLE RABBIT': 'DJ Purple Rabbit',
   SHANG: 'Shang',
   DEPARTS: 'Departs',
   GASDROP: 'Gasdrop',
@@ -352,13 +360,15 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   '$AVVY': '$Avvy',
   'WES S': 'Wes S',
   'SLIM SHORE PRESENT THIS IS WHO WE ARE!': 'Slim Shore',
-  ME: 'Me (3)',
+  ME: '&Me',
 
   // --- Pending solos / showcase billings ---
   COONE: 'Coone',
   NAKADIA: 'Nakadia',
   DADOO: 'Dadoo',
-  FIRAGA: 'Firaga',
+  FIRAGA: 'Dj Firaga',
+  Firaga: 'Dj Firaga',
+  'FREDDY CHASERZ': 'Bass Chaserz',
   'SAINT LUDO': 'Saint Ludo',
   BOTCASH: 'Botcash',
   'SOFI TUKKER': 'Sofi Tukker',
@@ -431,12 +441,13 @@ export const DISCOGS_LINEUP_SEARCH_FALLBACKS = {
   'NELLY IS NOT MY NAME': ['Nelly Is Not My Name'],
   GASDROP: ['Gasdrop'],
   'FEEST MODULATORS': ['Feest Modulators'],
-  'PURPLE RABBIT': ['Purple Rabbit'],
+  'PURPLE RABBIT': ['Purple Rabbit', 'DJ Purple Rabbit'],
   DEEPACK: ['Deepack'],
   SHANG: ['Shang (2)'],
   'KZ BEATZ': ['Kz Beatz'],
   'PAT B': ['Pat B'],
   'MISS PUSS': ['Miss Puss'],
+  ME: ['Me (3)'],
 };
 
 /** Lineup display name → normalized keys of acceptable `djs.name` matches. */
@@ -562,6 +573,29 @@ export function normalizeArtistNameKey(name) {
 }
 
 /** Trusted display names for strict Discogs name gate (lineup + explicit alias only). */
+export function expandDjHonorificNameVariants(names) {
+  const expanded = new Set(names.filter(Boolean));
+
+  for (const name of names) {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    if (!/^DJ[\s.]/i.test(trimmed)) {
+      expanded.add(`DJ ${trimmed}`);
+      expanded.add(`Dj ${trimmed}`);
+    }
+
+    const stripped = trimmed.replace(/^DJ[\s.]*/i, '').trim();
+    if (stripped && stripped !== trimmed) {
+      expanded.add(stripped);
+    }
+  }
+
+  return [...expanded];
+}
+
 export function getDiscogsTrustedNameVariants(lineupName) {
   const trimmed = lineupName.trim();
   if (!trimmed) {
@@ -586,7 +620,7 @@ export function getDiscogsTrustedNameVariants(lineupName) {
       variants.push(inner);
     }
   }
-  return variants;
+  return expandDjHonorificNameVariants(variants);
 }
 
 export function getDiscogsSearchQueries(lineupName) {

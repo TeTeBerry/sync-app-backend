@@ -32,6 +32,10 @@ import {
   allocateSyntheticDiscogsId,
   isSyntheticDiscogsId,
 } from './web-only-dj-profile.mjs';
+import {
+  resolveMusicBrainzArtistMatch,
+} from './musicbrainz-artist-resolve.mjs';
+import { isProtectedLineupMapSource } from './lineup-map-source.mjs';
 
 export { closeDjDiscogsRedisCache, deleteDjStylesRedisCache } from './discogs-redis-cache.mjs';
 export { createDjDiscogsMapModel } from './dj-discogs-map.mjs';
@@ -45,16 +49,27 @@ export {
 export async function clearLineupArtistRematchState(
   mapCollection,
   lineupNames,
+  options = {},
 ) {
   let clearedMaps = 0;
   let clearedStyleRedis = 0;
+  const forceProtected = Boolean(options.forceProtected);
 
   for (const lineupName of lineupNames) {
-    const existing = await deleteDjDiscogsMapEntry(mapCollection, lineupName);
-    if (existing) {
+    const existing = await findDjDiscogsMapEntry(mapCollection, lineupName);
+    if (
+      existing &&
+      isProtectedLineupMapSource(existing.source) &&
+      !forceProtected
+    ) {
+      continue;
+    }
+
+    const deleted = await deleteDjDiscogsMapEntry(mapCollection, lineupName);
+    if (deleted) {
       clearedMaps += 1;
-      if (existing.discogsId) {
-        if (await deleteDjStylesRedisCache(existing.discogsId)) {
+      if (deleted.discogsId) {
+        if (await deleteDjStylesRedisCache(deleted.discogsId)) {
           clearedStyleRedis += 1;
         }
       }
@@ -62,6 +77,35 @@ export async function clearLineupArtistRematchState(
   }
 
   return { clearedMaps, clearedStyleRedis };
+}
+
+/**
+ * Plan targets + map rows to clear for --rematch-mapped.
+ * When explicitNames is set, only those lineup rows are rematched (never the full catalog).
+ */
+export function resolveRematchMappedPlan({
+  mappedLineupNames,
+  explicitNames = null,
+}) {
+  const mappedRows = [...new Set((mappedLineupNames ?? []).map((n) => n.trim()).filter(Boolean))];
+  const expandedMapped = expandFestivalArtistNames(mappedRows);
+
+  if (explicitNames?.length) {
+    const targets = [...new Set(explicitNames.map((n) => n.trim()).filter(Boolean))];
+    return {
+      targets,
+      toClear: targets,
+      scopedToExplicitNames: true,
+      mappedRowCount: mappedRows.length,
+    };
+  }
+
+  return {
+    targets: expandedMapped,
+    toClear: [...new Set([...mappedRows, ...expandedMapped])],
+    scopedToExplicitNames: false,
+    mappedRowCount: mappedRows.length,
+  };
 }
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -631,21 +675,96 @@ export function isLineupArtistCovered(lineupName, djs) {
   const expanded = expandFestivalArtistName(trimmed);
 
   if (expanded.length > 1) {
-    return expanded.every((part) => isLineupArtistCovered(part, djs));
+    return expanded.every((part) => findMatchingDjForLineup(part, djs) != null);
+  }
+
+  return findMatchingDjForLineup(lineupName, djs) != null;
+}
+
+/** Match a solo lineup name to an existing djs row when dj_discogs_map was deleted. */
+export function findMatchingDjForLineup(lineupName, djs) {
+  const trimmed = lineupName.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const expanded = expandFestivalArtistName(trimmed);
+  if (expanded.length !== 1) {
+    return null;
   }
 
   const targetKeys = getLineupCoverageKeys(trimmed);
   if (!targetKeys.length) {
-    return true;
+    return null;
   }
 
-  return djs.some((dj) => {
+  const matches = djs.filter((dj) => {
     const djKey = normalizeArtistNameKey(dj.name ?? '');
     if (!djKey) {
       return false;
     }
     return targetKeys.some((targetKey) => djKey === targetKey);
   });
+
+  if (!matches.length) {
+    return null;
+  }
+  if (matches.length === 1) {
+    return matches[0];
+  }
+
+  const lineupKey = normalizeArtistNameKey(trimmed);
+  return (
+    matches.find((dj) => normalizeArtistNameKey(dj.name ?? '') === lineupKey) ??
+    matches[0]
+  );
+}
+
+export function collectOrphanLineupMapRepairs({ missingArtists, djs }) {
+  const repairs = [];
+  const ambiguous = [];
+
+  for (const artist of missingArtists) {
+    if (artist.issue !== 'no_map') {
+      continue;
+    }
+
+    const trimmed = artist.lineupName.trim();
+    const expanded = expandFestivalArtistName(trimmed);
+    if (expanded.length !== 1) {
+      continue;
+    }
+
+    const targetKeys = getLineupCoverageKeys(trimmed);
+    const matches = djs.filter((dj) => {
+      const djKey = normalizeArtistNameKey(dj.name ?? '');
+      return djKey && targetKeys.some((targetKey) => djKey === targetKey);
+    });
+
+    if (!matches.length) {
+      continue;
+    }
+    if (matches.length > 1) {
+      ambiguous.push({
+        lineupName: trimmed,
+        discogsIds: matches.map((dj) => dj.discogsId),
+      });
+      continue;
+    }
+
+    const dj = matches[0];
+    if (!dj.discogsId || !Number.isFinite(dj.discogsId)) {
+      continue;
+    }
+
+    repairs.push({
+      lineupName: trimmed,
+      discogsId: dj.discogsId,
+      discogsName: dj.name,
+    });
+  }
+
+  return { repairs, ambiguous };
 }
 
 export async function upsertDjRecord(Dj, data) {
@@ -667,11 +786,52 @@ export async function crawlArtistNames({
   Dj,
   mapCollection,
   label = '艺人',
+  musicBrainz = null,
+  discogsToken = '',
+  skipMusicBrainz = false,
+  mbMinMatch = 'strong',
 }) {
   let upserted = 0;
   let missed = 0;
   let pendingReview = 0;
+  let mbApplied = 0;
   const seenDiscogsIds = new Set();
+
+  const djs = musicBrainz ? await Dj.find({}).lean() : [];
+  const djById = new Map(djs.map((row) => [row.discogsId, row]));
+
+  async function tryMusicBrainzFallback(lineupName, contextLabel) {
+    if (skipMusicBrainz || !musicBrainz) {
+      return false;
+    }
+
+    const mbResult = await resolveMusicBrainzArtistMatch({
+      lineupName,
+      mapCollection,
+      Dj,
+      discogs,
+      discogsToken,
+      musicBrainz,
+      minMatch: mbMinMatch,
+      djById,
+    });
+
+    if (mbResult.status === 'mapped') {
+      if (!mbResult.fromCache) {
+        mbApplied += 1;
+        upserted += 1;
+        console.log(
+          `→ MB 补落地 (${contextLabel}): #${mbResult.discogsId ?? '—'} ${mbResult.discogsName ?? lineupName}`,
+        );
+      }
+      if (mbResult.discogsId) {
+        seenDiscogsIds.add(mbResult.discogsId);
+      }
+      return true;
+    }
+
+    return false;
+  }
 
   for (const artistName of artistNames) {
     console.log(`\n查找 ${label}:`, artistName);
@@ -704,6 +864,9 @@ export async function crawlArtistNames({
     try {
       const match = await discogs.resolveArtistMatch(artistName, mapCollection);
       if (match.status === 'pending_review') {
+        if (await tryMusicBrainzFallback(artistName, 'discogs pending')) {
+          continue;
+        }
         pendingReview += 1;
         console.warn('⏸  待复核:', artistName, '-', match.reviewReason);
         continue;
@@ -750,6 +913,9 @@ export async function crawlArtistNames({
         });
 
         if (!discogs.isVerifiableDiscogsDjRecord(data)) {
+          if (await tryMusicBrainzFallback(artistName, 'web-only thin')) {
+            continue;
+          }
           pendingReview += 1;
           await upsertDjDiscogsMapPendingReview(mapCollection, {
             lineupName: artistName,
@@ -793,6 +959,9 @@ export async function crawlArtistNames({
         prefetchedArtist: match.prefetchedArtist,
       });
       if (!discogs.isVerifiableDiscogsDjRecord(data)) {
+        if (await tryMusicBrainzFallback(artistName, 'discogs thin record')) {
+          continue;
+        }
         pendingReview += 1;
         await upsertDjDiscogsMapPendingReview(mapCollection, {
           lineupName: artistName,
@@ -823,7 +992,7 @@ export async function crawlArtistNames({
     }
   }
 
-  return { upserted, missed, pendingReview };
+  return { upserted, missed, pendingReview, mbApplied };
 }
 
 export async function bumpDjCatalogCacheVersion() {

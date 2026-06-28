@@ -1,11 +1,11 @@
 /**
- * Lineup name → Discogs artist_id resolver (v3).
+ * Lineup name → Discogs artist_id resolver (v3a).
  *
  * 1. Festival lineup English name
  * 2. dj_discogs_map (Mongo) — mapped hit → artist_id
  * 3. Miss → tiered database/search (genre=Electronic) → score → write map
  * 4. With artist_id → GET /artists/{id} → profile → upsert djs
- * 5. pending_review → map only, skip djs
+ * 5. pending_review → v3b MusicBrainz (see musicbrainz-artist-resolve.mjs) → else map only
  */
 import { execSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -24,6 +24,7 @@ import {
   upsertDjDiscogsMapPendingReview,
 } from './dj-discogs-map.mjs';
 import { isHermesWebOnlyMap } from './web-only-dj-profile.mjs';
+import { isProtectedLineupMapSource } from './lineup-map-source.mjs';
 import {
   getDiscogsSearchRedisCache,
   setDiscogsSearchRedisCache,
@@ -519,6 +520,20 @@ export function createDiscogsArtistResolver(config, discogsGet, delay) {
         fromCache: true,
         cacheLayer: 'mongo',
         webOnly: true,
+        hermesEvidence: cached.hermesEvidence,
+      };
+    }
+
+    if (cached?.status === 'mapped' && isProtectedLineupMapSource(cached.source)) {
+      return {
+        status: 'mapped',
+        discogsId: cached.discogsId ?? null,
+        discogsName: cached.discogsName ?? trimmed,
+        searchQuery: cached.searchQuery ?? `#map:${cached.source}`,
+        discoveryStrategyId: cached.discoveryStrategyId,
+        fromCache: true,
+        cacheLayer: 'mongo',
+        webOnly: isHermesWebOnlyMap(cached),
         hermesEvidence: cached.hermesEvidence,
       };
     }

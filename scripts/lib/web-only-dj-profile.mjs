@@ -20,6 +20,7 @@ export function isHermesWebOnlyMap(row) {
   return (
     row?.status === 'mapped' &&
     (row.source === 'hermes-v4-web' ||
+      row.source === 'musicbrainz-web' ||
       isSyntheticDiscogsId(row.discogsId) ||
       (!row.discogsId && row.hermesEvidence))
   );
@@ -103,18 +104,40 @@ export function precomputeDisplayGenresFromHermesEvidence(hermesEvidence) {
   };
 }
 
+function resolveDisambiguation(sourcedFacts = []) {
+  for (const fact of sourcedFacts) {
+    if (/^disambiguation$/i.test(fact.claim?.trim() ?? '')) {
+      const value = fact.value?.trim();
+      if (value) {
+        return value;
+      }
+    }
+  }
+  return '';
+}
+
 function buildProfileText(hermesEvidence) {
   const report = hermesEvidence?.integratedReport?.trim();
+  let profile = '';
   if (report) {
-    return stripMarkdown(report).substring(0, 600);
+    profile = stripMarkdown(report);
+  } else {
+    const snippets = (hermesEvidence?.web ?? [])
+      .filter((row) => row.relevance === 'high' || row.relevance === 'medium')
+      .map((row) => row.snippet?.trim())
+      .filter(Boolean);
+    profile = [...new Set(snippets)].join(' ');
   }
 
-  const snippets = (hermesEvidence?.web ?? [])
-    .filter((row) => row.relevance === 'high' || row.relevance === 'medium')
-    .map((row) => row.snippet?.trim())
-    .filter(Boolean);
+  const disambiguation = resolveDisambiguation(hermesEvidence?.sourcedFacts);
+  if (
+    disambiguation &&
+    !profile.toLowerCase().includes(disambiguation.toLowerCase())
+  ) {
+    profile = profile ? `${profile} — ${disambiguation}` : disambiguation;
+  }
 
-  return [...new Set(snippets)].join(' ').substring(0, 600);
+  return profile.substring(0, 600);
 }
 
 function collectUrls(hermesEvidence) {

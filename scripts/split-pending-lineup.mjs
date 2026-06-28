@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 /**
- * Split composite lineup billings → combo-billing map rows + solo crawl targets.
+ * Split composite / billing lineup rows → combo-billing map rows + solo crawl targets.
+ *
+ * Uses expandRealSoloArtistTargets: B2B / & / X, quoted set titles,
+ * dash/colon subtitles (EZG - MAXIMAAL!, THAROZA - LIVE OR DIE), trailing LIVE/SET.
  *
  * 1. Composite display names (B2B / & / X) → dj_discogs_map source=combo-billing
  * 2. Expanded solo parts missing from map → queued for v3 crawl
@@ -22,11 +25,11 @@ import {
   upsertDjDiscogsMapComboBilling,
 } from './lib/dj-discogs-map.mjs';
 import {
-  expandFestivalArtistName,
-  expandFestivalArtistNames,
-  isCompositeLineupDisplayName,
-  normalizeArtistNameKey,
-} from './lib/festival-lineup-fallback.mjs';
+  collectRealSoloArtistTargets,
+  expandRealSoloArtistTargets,
+  isBillingLineupDisplayName,
+  isLineupNonArtistLabel,
+} from './lib/lineup-real-artist-catalog.mjs';
 import {
   findMissingCatalogArtists,
   getCrawlConfig,
@@ -70,8 +73,8 @@ async function main() {
   const mapCollection = createDjDiscogsMapModel(mongoose).collection;
 
   const displayNames = await loadDisplayNames(db);
-  const composites = displayNames.filter((name) =>
-    isCompositeLineupDisplayName(name),
+  const billings = displayNames.filter((name) =>
+    isBillingLineupDisplayName(name),
   );
 
   const maps = await mapCollection
@@ -89,8 +92,8 @@ async function main() {
   let comboFullCoverage = 0;
   const comboReports = [];
 
-  for (const displayName of composites.sort()) {
-    const parts = expandFestivalArtistName(displayName);
+  for (const displayName of billings.sort()) {
+    const parts = expandRealSoloArtistTargets(displayName);
     const coveredParts = parts.filter((part) => partIsMapped(part, mapByKey));
     const allCovered = coveredParts.length === parts.length && parts.length > 0;
     const reviewReason = allCovered
@@ -121,8 +124,7 @@ async function main() {
     }
   }
 
-  const expanded = expandFestivalArtistNames(displayNames);
-  const soloTargets = expanded.filter((name) => !isCompositeLineupDisplayName(name));
+  const soloTargets = collectRealSoloArtistTargets(displayNames);
   const missingSolo = soloTargets.filter(
     (name) => !mapByKey.has(lineupNameKeyFor(name)),
   );
@@ -139,11 +141,16 @@ async function main() {
     .toArray();
   const pendingSolos = pendingRows
     .map((row) => row.lineupName?.trim())
-    .filter((name) => name && !isCompositeLineupDisplayName(name));
+    .filter(
+      (name) =>
+        name &&
+        !isBillingLineupDisplayName(name) &&
+        !isLineupNonArtistLabel(name),
+    );
 
   console.log(`\n=== Split pending lineup ${dryRun ? '(dry-run)' : ''} ===`);
   console.log(`📋 阵容 display names: ${displayNames.length}`);
-  console.log(`🔗 组合 billing: ${composites.length}`);
+  console.log(`🔗 组合 / billing: ${billings.length}`);
   if (!dryRun) {
     console.log(`   写入 combo-billing: ${comboWritten}（全员覆盖 ${comboFullCoverage}）`);
   }

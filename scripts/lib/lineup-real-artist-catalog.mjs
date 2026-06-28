@@ -1,5 +1,7 @@
 import {
   expandFestivalArtistName,
+  getDiscogsTrustedNameVariants,
+  isCompositeLineupDisplayName,
   normalizeArtistNameKey,
 } from './festival-lineup-fallback.mjs';
 import { precomputeDisplayGenresFromHermesEvidence } from './web-only-dj-profile.mjs';
@@ -22,31 +24,57 @@ function stripQuotedSetTitles(lineupName) {
     .trim();
 }
 
+function stripTrailingBillingSuffix(lineupName) {
+  let name = lineupName.trim();
+  name = name.replace(/\s+HARDSTYLE\s+SET$/i, '').trim();
+  name = name.replace(
+    /\s+(?:BOUNCE|CROSSOVER|REVERSE\s+BASS|HARDSTYLE)\s+SET$/i,
+    '',
+  ).trim();
+  if (/\s+SET$/i.test(name)) {
+    const base = name.replace(/\s+SET$/i, '').trim();
+    if (base && base.split(/\s+/).length >= 1) {
+      name = base;
+    }
+  }
+  if (/\s+LIVE$/i.test(name)) {
+    const base = name.replace(/\s+LIVE$/i, '').trim();
+    if (base.length >= 3) {
+      name = base;
+    }
+  }
+  return name;
+}
+
 function stripBillingSubtitle(lineupName) {
-  const colonIdx = lineupName.indexOf(':');
-  if (colonIdx > 0 && colonIdx < lineupName.length - 8) {
-    const tail = lineupName.slice(colonIdx + 1).trim();
+  let name = stripTrailingBillingSuffix(lineupName);
+
+  const colonIdx = name.indexOf(':');
+  if (colonIdx > 0 && colonIdx < name.length - 8) {
+    const tail = name.slice(colonIdx + 1).trim();
     if (NON_ARTIST_LABEL_PATTERN.test(tail) || tail.split(/\s+/).length >= 3) {
-      return lineupName.slice(0, colonIdx).trim();
+      return name.slice(0, colonIdx).trim();
     }
   }
 
-  const dashMatch = lineupName.match(/^(.+?)\s+-\s+(.+)$/);
+  const dashMatch = name.match(/^(.+?)\s+-\s+(.+)$/);
   if (dashMatch) {
     const left = dashMatch[1].trim();
     const right = dashMatch[2].trim();
     if (
       NON_ARTIST_LABEL_PATTERN.test(right) ||
-      /\b(?:LIVE|SHOW|SET|CLASSICS|DNA|BAKK?EN|REÜNIE|REUNIE|BOYBAND|ZAAG|BASS|GOLDSCHOOL|MIEN|FIESTA|DOMINATION|OUTTA)\b/i.test(
+      /\b(?:LIVE|SHOW|SET|CLASSICS|DNA|BAKK?EN|REÜNIE|REUNIE|BOYBAND|ZAAG|BASS|GOLDSCHOOL|MIEN|FIESTA|DOMINATION|OUTTA|MAXIMAAL)\b/i.test(
         right,
       ) ||
-      right.split(/\s+/).length >= 2
+      right.split(/\s+/).length >= 2 ||
+      (right.split(/\s+/).length === 1 &&
+        normalizeArtistNameKey(left) !== normalizeArtistNameKey(right))
     ) {
       return left;
     }
   }
 
-  return lineupName.trim();
+  return name.trim();
 }
 
 function stripFtSuffix(lineupName) {
@@ -158,10 +186,68 @@ export function isLineupNonArtistLabel(lineupName) {
   return false;
 }
 
-function normalizeTargetName(lineupName) {
+/**
+ * True when a lineup display row is a billing label (combo, set title, alias)
+ * rather than a crawlable solo artist key.
+ */
+export function isBillingLineupDisplayName(lineupName) {
+  const trimmed = lineupName.trim();
+  if (!trimmed || trimmed === '国内艺人') {
+    return false;
+  }
+  if (isLineupNonArtistLabel(trimmed)) {
+    return false;
+  }
+  if (isCompositeLineupDisplayName(trimmed)) {
+    return true;
+  }
+  const parts = expandRealSoloArtistTargets(trimmed);
+  if (parts.length > 1) {
+    return true;
+  }
+  if (
+    parts.length === 1 &&
+    normalizeArtistNameKey(parts[0]) !== normalizeArtistNameKey(trimmed)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** Strip set titles / billing subtitles before solo expansion or Discogs verify. */
+export function normalizeLineupArtistNameForMatch(lineupName) {
   return stripFtSuffix(
     stripPresentsSuffix(stripBillingSubtitle(stripQuotedSetTitles(lineupName))),
   );
+}
+
+function normalizeTargetName(lineupName) {
+  return normalizeLineupArtistNameForMatch(lineupName);
+}
+
+/**
+ * Name variants for Discogs verify / name gate — same canonical artist name as
+ * solo expansion, plus trusted search aliases on raw and stripped forms.
+ */
+export function getLineupVerifyNameVariants(lineupName) {
+  const trimmed = lineupName.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  const normalized = normalizeLineupArtistNameForMatch(trimmed);
+  const variants = new Set();
+
+  for (const name of [trimmed, normalized]) {
+    if (!name) {
+      continue;
+    }
+    for (const variant of getDiscogsTrustedNameVariants(name)) {
+      variants.add(variant);
+    }
+  }
+
+  return [...variants];
 }
 
 /**
@@ -275,7 +361,12 @@ export function hasMappedRealArtistData(mapRow, dj) {
     return true;
   }
 
-  if (mapRow.source === 'hermes-v4-web' && mapRow.hermesEvidence) {
+  if (
+    (mapRow.source === 'hermes-v4-web' ||
+      mapRow.source === 'musicbrainz-web' ||
+      mapRow.source === 'musicbrainz-discogs') &&
+    mapRow.hermesEvidence
+  ) {
     return true;
   }
 

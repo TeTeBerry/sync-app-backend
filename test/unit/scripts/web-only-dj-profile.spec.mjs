@@ -128,11 +128,40 @@ describe('web-only-dj-profile', () => {
       }),
     );
     assert.ok(
+      isHermesWebOnlyMap({
+        status: 'mapped',
+        source: 'musicbrainz-web',
+        discogsId: 990222222,
+      }),
+    );
+    assert.ok(
       !isHermesWebOnlyMap({
         status: 'mapped',
         source: 'hermes-v4',
         discogsId: 42,
       }),
     );
+  });
+
+  it('includes MB disambiguation in profile from sourced facts', () => {
+    const record = buildWebOnlyDjRecord({
+      lineupName: 'DJ Sally',
+      discogsName: 'DJ SALLY',
+      discogsId: 999948489,
+      hermesEvidence: {
+        integratedReport:
+          '### DJ Sally\n\n- MusicBrainz: DJ SALLY\n- 类型: Person',
+        sourcedFacts: [
+          {
+            claim: 'Disambiguation',
+            value: 'Chinese Tech House DJ',
+            source: 'MusicBrainz',
+          },
+        ],
+      },
+    });
+
+    assert.match(record.profile, /Chinese Tech House DJ/);
+    assert.match(record.profile, /Person/);
   });
 });
