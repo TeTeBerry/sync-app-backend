@@ -290,14 +290,8 @@ export class LineupCatalogService implements OnApplicationBootstrap {
 
     const ranked = index.entries
       .map((entry) => this.toCatalogLineupArtistDto(entry, index))
-      .sort((a, b) => {
-        const aHasThumb = Boolean(a.thumbnail?.trim());
-        const bHasThumb = Boolean(b.thumbnail?.trim());
-        if (aHasThumb !== bHasThumb) {
-          return aHasThumb ? -1 : 1;
-        }
-        return compareCatalogLineupArtists(a, b);
-      });
+      .filter((artist) => Boolean(artist.thumbnail?.trim()))
+      .sort(compareCatalogLineupArtists);
 
     return ranked;
   }
