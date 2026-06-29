@@ -22,6 +22,7 @@ import {
 import { SelectTravelGuideBudgetTierDto } from './dto/select-travel-guide-budget-tier.dto';
 import { TravelGuideBudgetTierService } from './travel-guide-budget-tier.service';
 import { TravelGuideGenerationJobService } from './travel-guide-generation-job.service';
+import { TravelGuideQuoteRefreshService } from './travel-guide-quote-refresh.service';
 import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
 
 @ApiTags('travel-guide')
@@ -31,6 +32,7 @@ export class TravelGuideGlobalController {
     private readonly generationJobService: TravelGuideGenerationJobService,
     private readonly savedPlanService: TravelGuideSavedPlanService,
     private readonly budgetTierService: TravelGuideBudgetTierService,
+    private readonly quoteRefreshService: TravelGuideQuoteRefreshService,
     private readonly publicRateLimit: PublicApiRateLimitService,
   ) {}
 
@@ -53,11 +55,27 @@ export class TravelGuideGlobalController {
   async getSavedPlan(@Param('guideId') guideId: string, @Req() req: Request) {
     await this.publicRateLimit.assertAllowedAsync('travel_guide_plan', req);
 
-    const plan = await this.savedPlanService.findByGuideId(guideId);
-    if (!plan) {
+    const saved = await this.savedPlanService.findByGuideId(guideId);
+    if (!saved) {
       throw new NotFoundException('攻略不存在或已过期');
     }
-    return plan;
+
+    const refreshedPlan = await this.quoteRefreshService.refreshSavedPlanQuotes(
+      {
+        plan: saved.plan,
+        activityLegacyId: saved.activityLegacyId,
+        form: saved.form,
+        accommodationNights:
+          saved.form.accommodationNights ?? saved.plan.accommodationNights,
+      },
+    );
+
+    if (refreshedPlan !== saved.plan) {
+      await this.savedPlanService.updatePlan(guideId, refreshedPlan);
+      return { ...saved, plan: refreshedPlan };
+    }
+
+    return saved;
   }
 
   @Patch('plans/:guideId/budget-tier')

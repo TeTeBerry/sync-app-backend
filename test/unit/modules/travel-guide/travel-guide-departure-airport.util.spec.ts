@@ -2,6 +2,11 @@ import {
   filterDomesticTransportHints,
   resolveDepartureAirportLabel,
   resolveDestinationAirportLabel,
+  resolveFlightDestinationAirportKeyword,
+  resolveKnownDepartureCityCode,
+  resolveKnownDestinationCityCode,
+  resolveRollingGoHotelCountryCode,
+  resolveRollingGoHotelPlace,
 } from '../../../../src/modules/travel-guide/domain/travel-guide-departure-airport.util';
 import {
   buildInterCityTransportLines,
@@ -21,6 +26,38 @@ describe('travel-guide-departure-airport.util', () => {
       '普吉机场 Shuttle 可用',
     ]);
     expect(filtered).toEqual(['普吉机场 Shuttle 可用']);
+  });
+
+  it('resolveKnownDestinationCityCode maps 深圳 to SZX', () => {
+    expect(resolveKnownDestinationCityCode('深圳')).toBe('SZX');
+  });
+
+  it('resolveKnownDepartureCityCode maps 深圳 to SZX', () => {
+    expect(resolveKnownDepartureCityCode('深圳')).toBe('SZX');
+  });
+
+  it('resolveFlightDestinationAirportKeyword maps Pattaya to 曼谷', () => {
+    expect(
+      resolveFlightDestinationAirportKeyword({
+        destinationCity: '芭提雅',
+        venueTitle: 'Wisdom Valley Pattaya',
+      }),
+    ).toBe('曼谷');
+  });
+
+  it('resolveRollingGoHotelCountryCode maps Pattaya to TH', () => {
+    expect(
+      resolveRollingGoHotelCountryCode({
+        destinationCity: '芭提雅',
+        venueTitle: 'Wisdom Valley',
+      }),
+    ).toBe('TH');
+  });
+
+  it('resolveRollingGoHotelPlace uses city head', () => {
+    expect(
+      resolveRollingGoHotelPlace({ destinationCity: '芭提雅 Wisdom Valley' }),
+    ).toBe('芭提雅');
   });
 });
 

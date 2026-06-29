@@ -247,6 +247,36 @@ export default () => ({
     },
   },
 
+  /** RollingGo MCP — 出行攻略机票/酒店参考价（可选） */
+  rollinggo: {
+    enabled: cleanEnv(process.env.ROLLINGGO_ENABLED, 'false') === 'true',
+    apiKey: cleanEnv(
+      process.env.ROLLINGGO_API_KEY ?? process.env.ROLLINGGO_MCP_API_KEY,
+    ),
+    hotelMcpUrl: cleanEnv(
+      process.env.ROLLINGGO_HOTEL_MCP_URL,
+      'https://mcp.rollinggo.cn/mcp',
+    ),
+    flightMcpUrl: cleanEnv(
+      process.env.ROLLINGGO_FLIGHT_MCP_URL,
+      'https://mcp.rollinggo.cn/mcp/flight',
+    ),
+    /** Airport / hotel MCP calls */
+    timeoutMs: parseInt(
+      cleanEnv(process.env.ROLLINGGO_TIMEOUT_MS, '15000'),
+      10,
+    ),
+    /** searchFlights is often slower than airport/hotel lookups */
+    flightTimeoutMs: parseInt(
+      cleanEnv(process.env.ROLLINGGO_FLIGHT_TIMEOUT_MS, '30000'),
+      10,
+    ),
+    quoteCacheTtlSec: parseInt(
+      cleanEnv(process.env.ROLLINGGO_QUOTE_CACHE_TTL_SEC, '3600'),
+      10,
+    ),
+  },
+
   /** AI 出行攻略 — 高德地图 Web 服务 */
   amap: {
     key: cleanEnv(

@@ -53,10 +53,10 @@ describe('mergeRankedHotelsWithLlmPolish', () => {
 
 describe('hotels and nightlife lists', () => {
   it('returns up to 6 hotels and nightlife spots with reasons', () => {
-    const picks = {
-      nearby: rankedPoi({ name: '近酒店', distanceM: 400 }),
-      cityCenter: rankedPoi({ name: '远酒店', distanceM: 2200 }),
-    };
+    const schemeHotels = [
+      rankedPoi({ name: '近酒店', distanceM: 400 }),
+      rankedPoi({ name: '远酒店', distanceM: 2200 }),
+    ];
     const hotelList = Array.from({ length: 6 }, (_, i) =>
       rankedPoi({
         name: `酒店${i + 1}`,
@@ -64,8 +64,8 @@ describe('hotels and nightlife lists', () => {
         rating: 4.2 + i * 0.1,
       }),
     );
-    hotelList[0] = picks.nearby;
-    hotelList[1] = picks.cityCenter;
+    hotelList[0] = schemeHotels[0]!;
+    hotelList[1] = schemeHotels[1]!;
 
     const items = hotelsFromRanked(
       hotelList,
@@ -73,11 +73,12 @@ describe('hotels and nightlife lists', () => {
       '双床',
       ['¥300-450', '¥450-600'],
       undefined,
-      picks,
+      schemeHotels,
+      'standard',
     );
     expect(items).toHaveLength(6);
-    expect(items[0]?.reason).toContain('距会场');
-    expect(items[2]?.reason).toMatch(/备选|适中|商圈/);
+    expect(items[0]?.reason).toContain('综合');
+    expect(items[2]?.reason).toMatch(/备选|适中|商圈|综合/);
 
     const nightlife = nightlifeFromRanked(
       [

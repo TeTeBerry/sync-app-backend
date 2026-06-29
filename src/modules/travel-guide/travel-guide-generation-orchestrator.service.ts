@@ -5,6 +5,7 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import {
   assertUserUgcTexts,
@@ -34,7 +35,26 @@ import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
 import {
   buildTravelGuideGenerationCacheKey,
   normalizeTravelGuideGenerationParams,
+  reconcileDepartureCityForCache,
 } from './domain/travel-guide-generation-cache.util';
+import { applyTravelQuoteEnrichment } from './domain/travel-guide-quote-merge.util';
+import { buildPlanHotelByTierFromMapRankings } from './domain/travel-guide-map-hotel-tier.util';
+import { buildMinimalMapContextForQuote } from './domain/travel-guide-quote-map-context.util';
+import { travelGuideRegionKind } from './domain/travel-guide-international.util';
+import { shouldFetchTravelQuote } from './domain/travel-guide-quote.util';
+import {
+  isPlanQuoteFresh,
+  resolveQuoteCacheTtlMs,
+} from './domain/travel-guide-quote-freshness.util';
+import { TravelQuoteEnrichmentService } from './travel-quote-enrichment.service';
+import {
+  reportTravelGuideProgress,
+  type TravelGuideProgressReporter,
+} from './domain/travel-guide-generation-progress.util';
+
+export type TravelGuideGenerateOptions = {
+  onProgress?: TravelGuideProgressReporter;
+};
 
 @Injectable()
 export class TravelGuideGenerationOrchestrator {
@@ -43,6 +63,7 @@ export class TravelGuideGenerationOrchestrator {
   constructor(
     private readonly activityService: ActivityService,
     private readonly amap: AmapMapService,
+    private readonly config: ConfigService,
     private readonly poiPipeline: TravelGuidePoiPipeline,
     private readonly llmPolish: TravelGuideLlmPolishService,
     private readonly generationCache: TravelGuideGenerationCacheService,
@@ -50,13 +71,18 @@ export class TravelGuideGenerationOrchestrator {
     private readonly savedPlanService: TravelGuideSavedPlanService,
     private readonly userProfileSync: UserProfileSyncService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
+    private readonly quoteEnrichment: TravelQuoteEnrichmentService,
   ) {}
 
   async generate(
     activityLegacyId: number,
     dto: GenerateTravelGuideDto,
     actor: RequestActor,
+    options?: TravelGuideGenerateOptions,
   ): Promise<{ plan: TravelGuidePlan; guideId?: string }> {
+    const onProgress = options?.onProgress;
+    await reportTravelGuideProgress(onProgress, 'validating');
+
     if (!this.amap.enabled) {
       throw new ServiceUnavailableException(
         'AI 出行攻略依赖高德地图，请配置 AMAP_KEY 后重试',
@@ -81,8 +107,17 @@ export class TravelGuideGenerationOrchestrator {
     const accommodationNights =
       dto.accommodationNights ?? parseActivityDayCount(activity.date);
 
+    const departure = dto.departure.trim();
+    const departureCity = reconcileDepartureCityForCache(
+      departure,
+      dto.departureCity?.trim(),
+    );
+
+    const { departureCity: _dtoDepartureCity, ...dtoRest } = dto;
     const generationDto: GenerateTravelGuideDto = {
-      ...dto,
+      ...dtoRest,
+      departure,
+      ...(departureCity ? { departureCity } : {}),
       accommodationNights,
       budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
     };
@@ -93,31 +128,64 @@ export class TravelGuideGenerationOrchestrator {
       accommodationNights,
     );
     const cacheKey = buildTravelGuideGenerationCacheKey(cacheParams);
-    const cachedPlan = await this.generationCache.findPlan(cacheKey);
-    if (cachedPlan) {
-      this.logger.log(
-        `travel guide cache hit activity=${activityLegacyId} key=${cacheKey.slice(0, 8)}`,
-      );
-      return this.finishWithPlan(
-        dto,
-        accommodationNights,
-        actor,
-        activityLegacyId,
-        applyTravelGuideAccommodationPreference(
-          cachedPlan,
-          accommodationNights,
-        ),
-      );
-    }
+    const skipGenerationCache = generationDto.forceRegenerate === true;
 
-    const fuzzyPlan = await this.generationCache.findSimilarPlan(cacheParams);
-    if (fuzzyPlan) {
-      return this.finishWithPlan(
-        dto,
-        accommodationNights,
-        actor,
-        activityLegacyId,
-        applyTravelGuideAccommodationPreference(fuzzyPlan, accommodationNights),
+    if (!skipGenerationCache) {
+      const cachedPlan = await this.generationCache.findPlan(cacheKey);
+      if (cachedPlan) {
+        this.logger.log(
+          `travel guide cache hit activity=${activityLegacyId} key=${cacheKey.slice(0, 8)}`,
+        );
+        const { plan: enriched, quoteRefreshed } =
+          await this.enrichCachedPlanWithQuotes(
+            cachedPlan,
+            activity,
+            generationDto,
+            accommodationNights,
+            onProgress,
+          );
+        if (quoteRefreshed) {
+          await this.generationCache.savePlan(
+            cacheKey,
+            activityLegacyId,
+            cacheParams,
+            enriched,
+          );
+        }
+        await reportTravelGuideProgress(onProgress, 'completed');
+        return this.finishWithPlan(
+          dto,
+          accommodationNights,
+          actor,
+          activityLegacyId,
+          enriched,
+        );
+      }
+
+      const fuzzyPlan = await this.generationCache.findSimilarPlan(cacheParams);
+      if (fuzzyPlan) {
+        this.logger.log(
+          `travel guide fuzzy cache hit activity=${activityLegacyId}`,
+        );
+        const { plan: enriched } = await this.enrichCachedPlanWithQuotes(
+          fuzzyPlan,
+          activity,
+          generationDto,
+          accommodationNights,
+          onProgress,
+        );
+        await reportTravelGuideProgress(onProgress, 'completed');
+        return this.finishWithPlan(
+          dto,
+          accommodationNights,
+          actor,
+          activityLegacyId,
+          enriched,
+        );
+      }
+    } else {
+      this.logger.log(
+        `travel guide force regenerate activity=${activityLegacyId} departure="${generationDto.departure.trim()}"`,
       );
     }
 
@@ -137,15 +205,20 @@ export class TravelGuideGenerationOrchestrator {
         (await this.generationCache.findPlan(cacheKey)) ??
         (await this.generationCache.findSimilarPlan(cacheParams));
       if (racingPlan) {
+        const { plan: enriched } = await this.enrichCachedPlanWithQuotes(
+          racingPlan,
+          activity,
+          generationDto,
+          accommodationNights,
+          onProgress,
+        );
+        await reportTravelGuideProgress(onProgress, 'completed');
         return this.finishWithPlan(
           dto,
           accommodationNights,
           actor,
           activityLegacyId,
-          applyTravelGuideAccommodationPreference(
-            racingPlan,
-            accommodationNights,
-          ),
+          enriched,
         );
       }
       throw new ServiceUnavailableException(
@@ -154,12 +227,30 @@ export class TravelGuideGenerationOrchestrator {
     }
 
     try {
+      await reportTravelGuideProgress(onProgress, 'map_poi');
       const { mapCtx, ranked } = await this.poiPipeline.run(
         activity,
         generationDto,
         accommodationNights,
       );
 
+      const quoteEligible = shouldFetchTravelQuote(
+        activity,
+        generationDto,
+        mapCtx,
+      );
+
+      const quoteSnapshot = quoteEligible
+        ? await this.quoteEnrichment.run(
+            activity,
+            generationDto,
+            mapCtx,
+            accommodationNights,
+            { onProgress },
+          )
+        : null;
+
+      await reportTravelGuideProgress(onProgress, 'ai_writing');
       const llmPayload = await this.llmPolish.buildPayloadFromMap(
         activity,
         generationDto,
@@ -168,21 +259,51 @@ export class TravelGuideGenerationOrchestrator {
         ranked,
       );
 
+      await reportTravelGuideProgress(onProgress, 'assembling');
+      const mapHotelByTier =
+        accommodationNights > 0 &&
+        travelGuideRegionKind(activity) === 'domestic'
+          ? buildPlanHotelByTierFromMapRankings(
+              this.poiPipeline.rankHotelsForAllTiers(mapCtx, generationDto),
+              {
+                accommodationNights,
+                headcount: generationDto.headcount,
+                activity,
+                selectedBudgetTier: generationDto.budgetTier,
+              },
+            )
+          : undefined;
+
+      const basePlan = buildTravelGuidePlan({
+        activity,
+        departure: generationDto.departure.trim(),
+        headcount: generationDto.headcount,
+        budgetTier: generationDto.budgetTier!,
+        accommodationNights,
+        selfDrive: generationDto.selfDrive,
+        llm: llmPayload,
+        mapSourcedOnly: true,
+        interCity: quoteEligible || Boolean(mapCtx.interCity),
+      });
+
       const plan = applyTravelGuideAccommodationPreference(
-        buildTravelGuidePlan({
-          activity,
-          departure: generationDto.departure.trim(),
-          headcount: generationDto.headcount,
-          budgetTier: generationDto.budgetTier!,
-          accommodationNights,
-          selfDrive: generationDto.selfDrive,
-          llm: llmPayload,
-          mapSourcedOnly: true,
-          interCity: Boolean(mapCtx.interCity),
-        }),
+        applyTravelQuoteEnrichment(
+          mapHotelByTier
+            ? { ...basePlan, hotelByTier: mapHotelByTier }
+            : basePlan,
+          quoteSnapshot,
+          {
+            headcount: generationDto.headcount,
+            accommodationNights,
+            regionKind: travelGuideRegionKind(activity),
+            interCity: quoteEligible || Boolean(mapCtx.interCity),
+            budgetTier: generationDto.budgetTier!,
+          },
+        ),
         accommodationNights,
       );
 
+      await reportTravelGuideProgress(onProgress, 'finishing');
       await this.generationCache.savePlan(
         cacheKey,
         activityLegacyId,
@@ -190,6 +311,7 @@ export class TravelGuideGenerationOrchestrator {
         plan,
       );
 
+      await reportTravelGuideProgress(onProgress, 'completed');
       return this.finishWithPlan(
         dto,
         accommodationNights,
@@ -205,6 +327,95 @@ export class TravelGuideGenerationOrchestrator {
         accommodationNights,
       );
     }
+  }
+
+  /** 缓存命中时按需补跑 RollingGo（受 quote TTL 与 forceRegenerate 约束）。 */
+  private async enrichCachedPlanWithQuotes(
+    plan: TravelGuidePlan,
+    activity: Awaited<ReturnType<ActivityService['findByLegacyId']>>,
+    dto: GenerateTravelGuideDto,
+    accommodationNights: number,
+    onProgress?: TravelGuideProgressReporter,
+  ): Promise<{ plan: TravelGuidePlan; quoteRefreshed: boolean }> {
+    if (!activity) {
+      return {
+        plan: applyTravelGuideAccommodationPreference(
+          plan,
+          accommodationNights,
+        ),
+        quoteRefreshed: false,
+      };
+    }
+
+    const mapCtx = buildMinimalMapContextForQuote(plan, activity, dto);
+    const quoteEligible = shouldFetchTravelQuote(activity, dto, mapCtx);
+    if (!quoteEligible) {
+      return {
+        plan: applyTravelGuideAccommodationPreference(
+          plan,
+          accommodationNights,
+        ),
+        quoteRefreshed: false,
+      };
+    }
+
+    const quoteTtlMs = resolveQuoteCacheTtlMs(
+      this.config.get<number>('rollinggo.quoteCacheTtlSec'),
+    );
+    if (dto.forceRegenerate !== true && isPlanQuoteFresh(plan, quoteTtlMs)) {
+      this.logger.log(
+        `travel guide quote cache fresh activity=${activity.legacyId} fetchedAt=${plan.quoteFetchedAt}`,
+      );
+      return {
+        plan: applyTravelGuideAccommodationPreference(
+          plan,
+          accommodationNights,
+        ),
+        quoteRefreshed: false,
+      };
+    }
+
+    const quoteSnapshot = await this.quoteEnrichment.run(
+      activity,
+      dto,
+      mapCtx,
+      accommodationNights,
+      { onProgress },
+    );
+
+    if (
+      !quoteSnapshot?.flight &&
+      !quoteSnapshot?.hotel &&
+      !quoteSnapshot?.flightByTier
+    ) {
+      return {
+        plan: applyTravelGuideAccommodationPreference(
+          plan,
+          accommodationNights,
+        ),
+        quoteRefreshed: false,
+      };
+    }
+
+    const enriched = applyTravelQuoteEnrichment(plan, quoteSnapshot, {
+      headcount: dto.headcount,
+      accommodationNights,
+      regionKind: travelGuideRegionKind(activity),
+      interCity: quoteEligible || Boolean(mapCtx.interCity),
+      budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
+    });
+
+    return {
+      plan: applyTravelGuideAccommodationPreference(
+        enriched,
+        accommodationNights,
+      ),
+      quoteRefreshed: Boolean(
+        quoteSnapshot?.flight ||
+        quoteSnapshot?.hotel ||
+        quoteSnapshot?.flightByTier,
+      ),
+    };
   }
 
   private async finishWithPlan(

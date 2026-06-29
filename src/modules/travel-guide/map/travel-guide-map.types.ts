@@ -87,6 +87,7 @@ export interface RankedMapPoi extends RawMapPoi {
 }
 
 export interface TravelGuideAccommodationPicks {
+  schemeHotels: RankedMapPoi[];
   nearby: RankedMapPoi;
   cityCenter: RankedMapPoi;
 }

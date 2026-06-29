@@ -91,26 +91,31 @@ describe('travel guide enhanced sections', () => {
     expect(essentials.payment.some((p) => /Suica|Pasmo/.test(p))).toBe(true);
   });
 
-  it('picks nearby and city center accommodation schemes', () => {
+  it('picks multiple tier-matched accommodation schemes', () => {
     const hotels = [
-      rankedPoi({ name: '近酒店', distanceM: 400 }),
-      rankedPoi({ name: '远酒店', distanceM: 2200 }),
+      rankedPoi({ name: '近酒店', distanceM: 400, avgPrice: 420 }),
+      rankedPoi({ name: '中距酒店', distanceM: 1200, avgPrice: 450 }),
+      rankedPoi({ name: '远酒店', distanceM: 2200, avgPrice: 480 }),
+      rankedPoi({ name: '备选四', distanceM: 2600, avgPrice: 520 }),
+      rankedPoi({ name: '备选五', distanceM: 3000, avgPrice: 550 }),
     ];
     const picks = pickAccommodationSchemes(hotels, 'standard');
+    expect(picks.schemeHotels.length).toBeGreaterThanOrEqual(3);
     expect(picks.nearby.name).toBe('近酒店');
-    expect(picks.cityCenter.name).toBe('远酒店');
+    expect(picks.cityCenter.name).not.toBe(picks.nearby.name);
 
     const schemes = accommodationSchemesFromRanked(
-      picks,
+      picks.schemeHotels,
       '2 晚',
       '双床',
       ['¥300-450', '¥450-600'],
       undefined,
+      'standard',
     );
-    expect(schemes).toHaveLength(2);
-    expect(schemes[0]?.label).toBe('就近方案');
-    expect(schemes[1]?.label).toBe('市中心方案');
-    expect(schemes[0]?.reason).toContain('距会场');
+    expect(schemes.length).toBeGreaterThanOrEqual(3);
+    expect(schemes[0]?.label).toBe('综合首推');
+    expect(schemes[1]?.label).toBe('场馆周边');
+    expect(schemes[0]?.reason).toContain('综合');
   });
 
   it('builds full budget breakdown by user tier', () => {
@@ -159,13 +164,22 @@ describe('travel guide enhanced sections', () => {
     };
     const ranked: TravelGuideRankedCandidates = {
       hotels: [
-        rankedPoi({ name: '近酒店', distanceM: 500 }),
-        rankedPoi({ name: '远酒店', distanceM: 2500 }),
+        rankedPoi({ name: '近酒店', distanceM: 500, avgPrice: 420 }),
+        rankedPoi({ name: '中距酒店', distanceM: 1500, avgPrice: 450 }),
+        rankedPoi({ name: '远酒店', distanceM: 2500, avgPrice: 480 }),
+        rankedPoi({ name: '备选四', distanceM: 2800, avgPrice: 520 }),
+        rankedPoi({ name: '备选五', distanceM: 3200, avgPrice: 550 }),
       ],
-      accommodationPicks: {
-        nearby: rankedPoi({ name: '近酒店', distanceM: 500 }),
-        cityCenter: rankedPoi({ name: '远酒店', distanceM: 2500 }),
-      },
+      accommodationPicks: pickAccommodationSchemes(
+        [
+          rankedPoi({ name: '近酒店', distanceM: 500, avgPrice: 420 }),
+          rankedPoi({ name: '中距酒店', distanceM: 1500, avgPrice: 450 }),
+          rankedPoi({ name: '远酒店', distanceM: 2500, avgPrice: 480 }),
+          rankedPoi({ name: '备选四', distanceM: 2800, avgPrice: 520 }),
+          rankedPoi({ name: '备选五', distanceM: 3200, avgPrice: 550 }),
+        ],
+        'standard',
+      ),
       parking: [],
       nightlife: [
         {
@@ -191,7 +205,7 @@ describe('travel guide enhanced sections', () => {
       } as import('../../../../src/database/schemas/activity.schema').Activity,
     });
 
-    expect(payload.accommodationSchemes).toHaveLength(2);
+    expect(payload.accommodationSchemes!.length).toBeGreaterThanOrEqual(3);
     expect(payload.hotels.length).toBeGreaterThanOrEqual(2);
     expect(payload.hotels[0]?.reason).toBeTruthy();
     expect(payload.nightlifeSpots[0]?.reason).toBeTruthy();

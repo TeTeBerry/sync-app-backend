@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AMAP_WS } from './amap.capabilities';
-import { parseAmapCost, formatAmapTextField } from './amap-poi-fields.util';
+import {
+  parseAmapCost,
+  formatAmapTextField,
+  parseAmapLocation,
+} from './amap-poi-fields.util';
 import { MapApiRateLimiter } from './map-api-rate-limiter';
 import type { GeocodedPlace, RawMapPoi } from './travel-guide-map.types';
 import type { MapPoiKind } from './travel-guide-map.types';
@@ -38,7 +42,7 @@ type InputTipsItem = {
   name?: string;
   address?: string | string[];
   district?: string | string[];
-  location?: string;
+  location?: string | string[];
 };
 
 type InputTipsResponse = AmapBaseResponse & {
@@ -491,15 +495,6 @@ export class AmapMapService {
 
 function toAmapLocation(lat: number, lng: number): string {
   return `${lng},${lat}`;
-}
-
-function parseAmapLocation(
-  location?: string,
-): { lat: number; lng: number } | null {
-  if (!location?.trim()) return null;
-  const [lng, lat] = location.split(',').map((v) => Number(v.trim()));
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { lat, lng };
 }
 
 function formatPoiAddress(address?: string | string[]): string {

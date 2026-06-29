@@ -5,7 +5,12 @@ import { resolveAvatarSearchName } from './lineup-billing-guards.mjs';
 export function createDjDiscogsMapModel(mongoose) {
   const schema = new mongoose.Schema(
     {
-      lineupNameKey: { type: String, unique: true, required: true, index: true },
+      lineupNameKey: {
+        type: String,
+        unique: true,
+        required: true,
+        index: true,
+      },
       lineupName: { type: String, required: true },
       discogsId: { type: Number },
       discogsName: { type: String },
@@ -90,8 +95,32 @@ export async function upsertDjDiscogsMapMapped(collection, input) {
   );
 }
 
+/** True when billing row already has a real Discogs map — do not replace with combo-billing. */
+export function shouldPreserveBillingDiscogsMap(existing) {
+  if (!existing) {
+    return false;
+  }
+  if (existing.source === 'combo-billing') {
+    return false;
+  }
+  return (
+    existing.status === 'mapped' &&
+    Number.isFinite(existing.discogsId) &&
+    existing.discogsId > 0
+  );
+}
+
 export async function upsertDjDiscogsMapComboBilling(collection, input) {
   const lineupNameKey = lineupNameKeyFor(input.lineupName);
+  const existing = await collection.findOne({ lineupNameKey });
+  if (shouldPreserveBillingDiscogsMap(existing)) {
+    return {
+      written: false,
+      skipped: true,
+      reason: 'preserved_discogs_mapped',
+    };
+  }
+
   const now = new Date();
   const parts = (input.parts ?? []).map((part) => part.trim()).filter(Boolean);
 
@@ -119,6 +148,7 @@ export async function upsertDjDiscogsMapComboBilling(collection, input) {
     },
     { upsert: true },
   );
+  return { written: true, skipped: false };
 }
 
 export async function upsertDjDiscogsMapPendingReview(collection, input) {
@@ -155,9 +185,7 @@ export async function upsertDjDiscogsMapPendingReview(collection, input) {
 export async function listMappedLineupArtists(mapCollection, lineupNames) {
   const keys = [
     ...new Set(
-      lineupNames
-        .map((name) => lineupNameKeyFor(name))
-        .filter(Boolean),
+      lineupNames.map((name) => lineupNameKeyFor(name)).filter(Boolean),
     ),
   ];
   if (!keys.length) {
@@ -180,13 +208,12 @@ export async function listMappedLineupArtists(mapCollection, lineupNames) {
     if (!row) {
       continue;
     }
+    const discogsName = (row.discogsName ?? lineupName).trim() || lineupName;
     targets.push({
       lineupName,
       discogsId: row.discogsId ?? null,
-      searchName: resolveAvatarSearchName(
-        lineupName,
-        (row.discogsName ?? lineupName).trim() || lineupName,
-      ),
+      discogsName,
+      searchName: resolveAvatarSearchName(lineupName, discogsName),
     });
   }
   return targets;

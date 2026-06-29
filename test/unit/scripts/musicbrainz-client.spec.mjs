@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   createMusicBrainzClient,
+  isRetryableMbStatus,
   lineupNameMatchesMbArtist,
   normalizeMbNameKey,
   parseDiscogsIdFromUrl,
@@ -40,5 +41,11 @@ describe('musicbrainz-client', () => {
 
   it('parses discogs artist id from url', () => {
     assert.equal(parseDiscogsIdFromUrl('https://www.discogs.com/artist/123'), 123);
+  });
+
+  it('flags retryable MusicBrainz HTTP statuses', () => {
+    assert.equal(isRetryableMbStatus(503), true);
+    assert.equal(isRetryableMbStatus(429), true);
+    assert.equal(isRetryableMbStatus(404), false);
   });
 });

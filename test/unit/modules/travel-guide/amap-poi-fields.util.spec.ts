@@ -1,6 +1,7 @@
 import {
   formatAmapTextField,
   parseAmapCost,
+  parseAmapLocation,
 } from '@src/modules/travel-guide/map/amap-poi-fields.util';
 
 describe('formatAmapTextField', () => {
@@ -18,6 +19,25 @@ describe('formatAmapTextField', () => {
     expect(formatAmapTextField(undefined)).toBe('');
     expect(formatAmapTextField('[]')).toBe('');
     expect(formatAmapTextField([])).toBe('');
+  });
+});
+
+describe('parseAmapLocation', () => {
+  it('parses lng,lat string', () => {
+    expect(parseAmapLocation('116.397428,39.90923')).toEqual({
+      lng: 116.397428,
+      lat: 39.90923,
+    });
+  });
+
+  it('ignores empty array from inputtips without coordinates', () => {
+    expect(parseAmapLocation([])).toBeNull();
+  });
+
+  it('ignores invalid values', () => {
+    expect(parseAmapLocation(undefined)).toBeNull();
+    expect(parseAmapLocation('[]')).toBeNull();
+    expect(parseAmapLocation({})).toBeNull();
   });
 });
 

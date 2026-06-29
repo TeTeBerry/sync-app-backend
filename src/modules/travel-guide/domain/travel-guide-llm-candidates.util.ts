@@ -2,6 +2,7 @@ import type {
   RankedMapPoi,
   TravelGuideRankedCandidates,
 } from '../map/travel-guide-map.types';
+import { TRAVEL_GUIDE_TIER_HOTEL_LIST_LIMIT } from './travel-guide-accommodation.constants';
 
 export type TravelGuideLlmCandidatePoi = {
   name: string;
@@ -36,7 +37,9 @@ export function compactCandidatesForLlm(
   ranked: TravelGuideRankedCandidates,
 ): TravelGuideLlmCandidates {
   return {
-    hotels: ranked.hotels.slice(0, 6).map(slimPoi),
+    hotels: ranked.hotels
+      .slice(0, TRAVEL_GUIDE_TIER_HOTEL_LIST_LIMIT)
+      .map(slimPoi),
     nightlife: ranked.nightlife.slice(0, 6).map(slimPoi),
     parking: ranked.parking.slice(0, 4).map(slimPoi),
   };

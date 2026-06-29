@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * Run Hermes v4 (web + Discogs research) for artists still missing real profile.
+ * Run Hermes v4 (web + Discogs research) for artists missing profile bio text.
  *
- * Targets `collectArtistsMissingRealProfile` scope: pending_review, no_map,
- * mapped_no_real_profile, manual_stub.
+ * Targets `collectArtistsMissingProfileText` scope: no_map, pending_review,
+ * mapped_no_real_profile, manual_stub, and empty_profile (mapped + genres but
+ * no djs.profile / Hermes integrated report).
  *
  * Re-fetches the missing list after each batch (so fixed artists drop out).
  * Invokes v4 via tsx directly (avoids nested `npm run` exiting before the loop continues).
@@ -13,7 +14,8 @@
  *   npm run db:run-v4-missing-profiles
  *   npm run db:run-v4-missing-profiles -- --limit 12 --batch-size 6
  *   npm run db:run-v4-missing-profiles -- --all-at-once
- *   npm run db:run-v4-missing-profiles -- --issue pending_review
+ *   npm run db:run-v4-missing-profiles -- --issue empty_profile
+ *   npm run db:run-v4-missing-profiles -- --scope missing-real
  */
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -28,6 +30,7 @@ import {
   loadAllCatalogLineupDisplayNames,
   loadDotEnv,
 } from './lib/discogs-crawl.mjs';
+import { collectArtistsMissingProfileText } from './lib/lineup-real-artist-catalog.mjs';
 import { collectArtistsMissingRealProfile } from './lib/lineup-real-artist-catalog.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -59,7 +62,7 @@ function readNumberArg(flag, fallback) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
-async function loadMissingArtists({ issueFilter = '' } = {}) {
+async function loadMissingArtists({ issueFilter = '', scope = 'profile-text' } = {}) {
   const config = getCrawlConfig();
   await mongoose.connect(config.mongoUri);
   const db = mongoose.connection.db;
@@ -71,7 +74,12 @@ async function loadMissingArtists({ issueFilter = '' } = {}) {
   const djs = await Dj.find({}).lean();
   const djById = new Map(djs.map((row) => [row.discogsId, row]));
 
-  let missing = collectArtistsMissingRealProfile({
+  const collect =
+    scope === 'missing-real'
+      ? collectArtistsMissingRealProfile
+      : collectArtistsMissingProfileText;
+
+  let missing = collect({
     displayNames,
     mapByKey,
     djById,
@@ -147,15 +155,26 @@ async function rebuildWebOnlyDjs() {
   });
 }
 
+async function backfillDjProfilesFromHermes() {
+  await runCommand('npm', ['run', 'db:backfill-dj-profiles-from-hermes'], {
+    cwd: backendRoot,
+    env: {},
+  });
+}
+
 async function main() {
   const limit = readNumberArg('--limit', 0);
   const batchSize = allAtOnce ? 0 : readNumberArg('--batch-size', 6);
   const issueFilter = readArg('--issue');
+  const scope = readArg('--scope') || 'profile-text';
 
-  const { missing: initialMissing } = await loadMissingArtists({ issueFilter });
+  const { missing: initialMissing } = await loadMissingArtists({
+    issueFilter,
+    scope,
+  });
 
   if (!initialMissing.length) {
-    console.log('🎉 无缺真实资料艺人，无需 v4 补全');
+    console.log('🎉 无缺简介艺人，无需 v4 补全');
     return;
   }
 
@@ -168,7 +187,7 @@ async function main() {
     ? 1
     : Math.ceil(names.length / (batchSize || 1));
 
-  console.log(`\n缺真实资料: ${names.length} 位`);
+  console.log(`\n缺简介: ${names.length} 位（scope=${scope}）`);
   if (allAtOnce) {
     console.log('模式: 一次性（全部艺人单次 v4 子进程）');
   } else {
@@ -211,7 +230,10 @@ async function main() {
   let processed = 0;
 
   while (true) {
-    const { missing: currentMissing } = await loadMissingArtists({ issueFilter });
+    const { missing: currentMissing } = await loadMissingArtists({
+      issueFilter,
+      scope,
+    });
     if (!currentMissing.length) {
       console.log('\n🎉 缺资料名单已清空');
       break;
@@ -251,9 +273,11 @@ async function main() {
 
   console.log('\n── rebuild-web-only-djs（v4 web-only mapped → djs）──');
   await rebuildWebOnlyDjs();
+  console.log('\n── backfill-dj-profiles-from-hermes（Discogs mapped 简介 → djs）──');
+  await backfillDjProfilesFromHermes();
   await closeDjDiscogsRedisCache();
 
-  console.log('\n🏁 v4 缺资料补全跑完。建议复查:');
+  console.log('\n🏁 v4 缺简介补全跑完。建议复查:');
   console.log('npm run db:report-manual-confirmation-artists');
 }
 

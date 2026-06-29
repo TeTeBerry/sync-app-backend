@@ -27,8 +27,15 @@ import {
 } from './domain/travel-guide-generation-cache.util';
 import { TravelGuideGenerationService } from './travel-guide-generation.service';
 import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cache.service';
+import {
+  TRAVEL_GUIDE_PROGRESS,
+  type TravelGuideProgressReporter,
+} from './domain/travel-guide-generation-progress.util';
 
 const JOB_TTL_MS = 60 * 60 * 1000;
+const STALE_PENDING_JOB_MS = 90 * 1000;
+/** LLM + quotes rarely exceed a few minutes; fail orphaned running jobs sooner. */
+const STALE_RUNNING_JOB_MS = 4 * 60 * 1000;
 const ACTIVE_JOB_STATUSES: TravelGuideGenerationJobStatus[] = [
   'pending',
   'running',
@@ -54,20 +61,42 @@ export class TravelGuideGenerationJobService {
     actor: RequestActor,
   ): Promise<{ jobId: string }> {
     const dedupeKey = await this.buildDedupeKey(activityLegacyId, dto);
-    const existing = await this.model
-      .findOne({
-        ownerUserId: actor.resolvedUserId,
-        dedupeKey,
-        status: { $in: ACTIVE_JOB_STATUSES },
-      })
-      .lean()
-      .exec();
 
-    if (existing) {
-      this.logger.debug(
-        `travel guide job deduped activity=${activityLegacyId} job=${existing.jobId}`,
+    if (dto.forceRegenerate === true) {
+      await this.failActiveJobsForDedupeKey(actor.resolvedUserId, dedupeKey);
+    } else {
+      const existing = await this.findActiveJob(
+        actor.resolvedUserId,
+        dedupeKey,
       );
-      return { jobId: existing.jobId };
+
+      if (existing) {
+        if (isStaleActiveJob(existing)) {
+          await this.failJob(existing.jobId, '攻略生成任务超时，请重试');
+        } else if (
+          existing.status === 'pending' ||
+          existing.status === 'running'
+        ) {
+          if (existing.status === 'pending') {
+            void this.runJob(
+              existing.jobId,
+              activityLegacyId,
+              dto,
+              actor,
+            ).catch((error) => {
+              this.logger.error(
+                `travel guide job ${existing.jobId} re-run crashed: ${
+                  error instanceof Error ? error.message : error
+                }`,
+              );
+            });
+          }
+          this.logger.debug(
+            `travel guide job deduped activity=${activityLegacyId} job=${existing.jobId}`,
+          );
+          return { jobId: existing.jobId };
+        }
+      }
     }
 
     const jobId = randomUUID();
@@ -109,6 +138,7 @@ export class TravelGuideGenerationJobService {
     return {
       jobId: doc.jobId,
       status: doc.status,
+      progress: doc.progress,
       plan: doc.plan,
       errorMessage: doc.errorMessage,
     };
@@ -122,12 +152,51 @@ export class TravelGuideGenerationJobService {
       await this.activityService.findByLegacyId(activityLegacyId);
     const accommodationNights =
       dto.accommodationNights ?? parseActivityDayCount(activity?.date);
-    return buildTravelGuideGenerationCacheKey(
+    const paramsKey = buildTravelGuideGenerationCacheKey(
       normalizeTravelGuideGenerationParams(
         activityLegacyId,
         dto,
         accommodationNights,
       ),
+    );
+    const guideId = dto.guideId?.trim();
+    return guideId ? `${paramsKey}:${guideId}` : paramsKey;
+  }
+
+  private findActiveJob(ownerUserId: string, dedupeKey: string) {
+    return this.model
+      .findOne({
+        ownerUserId,
+        dedupeKey,
+        status: { $in: ACTIVE_JOB_STATUSES },
+      })
+      .lean()
+      .exec();
+  }
+
+  private async failActiveJobsForDedupeKey(
+    ownerUserId: string,
+    dedupeKey: string,
+  ): Promise<void> {
+    await this.model.updateMany(
+      {
+        ownerUserId,
+        dedupeKey,
+        status: { $in: ACTIVE_JOB_STATUSES },
+      },
+      {
+        $set: {
+          status: 'failed',
+          errorMessage: '已重新生成攻略',
+        },
+      },
+    );
+  }
+
+  private async failJob(jobId: string, errorMessage: string): Promise<void> {
+    await this.model.updateOne(
+      { jobId },
+      { $set: { status: 'failed', errorMessage } },
     );
   }
 
@@ -145,15 +214,26 @@ export class TravelGuideGenerationJobService {
       return;
     }
 
+    const onProgress = this.createJobProgressReporter(jobId);
+    await onProgress(TRAVEL_GUIDE_PROGRESS.queued);
+
     try {
       const { plan } = await this.generationService.generate(
         activityLegacyId,
         dto,
         actor,
+        { onProgress },
       );
       await this.model.updateOne(
         { jobId },
-        { $set: { status: 'completed', plan, errorMessage: undefined } },
+        {
+          $set: {
+            status: 'completed',
+            plan,
+            errorMessage: undefined,
+            progress: TRAVEL_GUIDE_PROGRESS.completed,
+          },
+        },
       );
       await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
         actor.resolvedUserId,
@@ -167,6 +247,39 @@ export class TravelGuideGenerationJobService {
       );
     }
   }
+
+  private createJobProgressReporter(
+    jobId: string,
+  ): TravelGuideProgressReporter {
+    return async (progress) => {
+      try {
+        await this.model.updateOne({ jobId }, { $set: { progress } }).exec();
+      } catch (error) {
+        this.logger.debug(
+          `travel guide job ${jobId} progress update failed: ${
+            error instanceof Error ? error.message : error
+          }`,
+        );
+      }
+    };
+  }
+}
+
+function isStaleActiveJob(job: {
+  status: TravelGuideGenerationJobStatus;
+  updatedAt?: Date;
+  createdAt?: Date;
+}): boolean {
+  const ts = job.updatedAt ?? job.createdAt;
+  if (!ts) return false;
+  const ageMs = Date.now() - new Date(ts).getTime();
+  if (job.status === 'pending') {
+    return ageMs > STALE_PENDING_JOB_MS;
+  }
+  if (job.status === 'running') {
+    return ageMs > STALE_RUNNING_JOB_MS;
+  }
+  return false;
 }
 
 function formatTravelGuideJobError(error: unknown): string {

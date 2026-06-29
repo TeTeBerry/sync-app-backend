@@ -89,6 +89,80 @@ describe('travel-guide-transport.util', () => {
 
     expect(venueOptions.some((o) => /Kakao T|AREX/i.test(o.label))).toBe(true);
     expect(venueOptions.some((o) => /高铁|BTS/.test(o.label))).toBe(false);
+
+    const railOption = venueOptions.find((o) => /AREX/i.test(o.label));
+    expect(railOption).toBeDefined();
+    const railText = railOption!.lines.join(' ');
+    expect(railText).toMatch(/AREX|地铁 1 号线|Kakao T/);
+    expect(railText).not.toMatch(/曼谷|BTS|MRT|天铁|Grab/);
+  });
+
+  it('uses Korea urban rail copy for Seoul Land venues', () => {
+    const venueOptions = buildVenueTransportOptions({
+      departure: '上海',
+      venueTitle: 'Seoul Land',
+      venueReadableAddress: '韩国首尔·首尔乐园 Seoul Land',
+      selfDrive: false,
+      interCity: true,
+      transportHints: ['AREX 至首尔站转地铁 4 号线'],
+      destinationCity: '首尔',
+      activity: {
+        name: 'S2O Korea 2026',
+        location: '韩国·首尔乐园 Seoul Land',
+        region: 'overseas' as const,
+      },
+    });
+
+    const railOption = venueOptions.find((o) => /AREX/i.test(o.label));
+    expect(railOption).toBeDefined();
+    const railText = railOption!.lines.join(' ');
+    expect(railText).toContain('Seoul Land');
+    expect(railText).not.toMatch(/曼谷|BTS|MRT|天铁|Grab/);
+  });
+
+  it('drops Bangkok-only LLM polish lines for Korea venues', () => {
+    const profile = resolveDestinationTransportProfile({
+      destinationCity: '仁川',
+      activity: koreaActivity,
+    });
+    const ranked = buildVenueTransportOptions({
+      departure: '上海',
+      venueTitle: 'Inspire Entertainment Resort',
+      venueReadableAddress: '韩国仁川·Inspire Entertainment Resort',
+      selfDrive: false,
+      interCity: true,
+      transportHints: ['AREX 机场铁路'],
+      destinationCity: '仁川',
+      activity: koreaActivity,
+    });
+    const merged = mergeVenueTransportWithLlmPolish(
+      ranked,
+      [
+        {
+          label: 'AREX 机场铁路 + 仁川地铁 1 号线',
+          lines: [
+            '曼谷活动日可乘 BTS（天铁）或 MRT（地铁）至最近站点，再步行或短途 Grab 至会场。',
+            '高峰时段天铁可能限流，备 Grab 作为散场备选；注意末班车时间。',
+          ],
+        },
+      ],
+      {
+        departure: '上海',
+        venueTitle: 'Inspire Entertainment Resort',
+        venueReadableAddress: '韩国仁川·Inspire Entertainment Resort',
+        selfDrive: false,
+        interCity: true,
+        transportHints: ['AREX 机场铁路'],
+        destinationCity: '仁川',
+        activity: koreaActivity,
+      },
+    );
+
+    const railText = merged.find((o) => /AREX/i.test(o.label))?.lines.join(' ');
+    expect(railText).not.toMatch(/曼谷|BTS|MRT|天铁|Grab/);
+    expect(
+      sanitizeVenueTransportOptions(profile, merged).join(' '),
+    ).not.toMatch(/曼谷|BTS|MRT|Grab/);
   });
 
   it('resolves korea transport profile with urban rail', () => {

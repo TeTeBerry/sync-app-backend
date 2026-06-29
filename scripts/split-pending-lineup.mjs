@@ -89,6 +89,7 @@ async function main() {
   const mapByKey = new Map(maps.map((row) => [row.lineupNameKey, row]));
 
   let comboWritten = 0;
+  let comboSkipped = 0;
   let comboFullCoverage = 0;
   const comboReports = [];
 
@@ -110,14 +111,22 @@ async function main() {
     });
 
     if (dryRun) {
+      const existing = mapByKey.get(lineupNameKeyFor(displayName));
+      if (existing?.discogsId && existing.source !== 'combo-billing') {
+        comboSkipped += 1;
+      }
       continue;
     }
 
-    await upsertDjDiscogsMapComboBilling(mapCollection, {
+    const result = await upsertDjDiscogsMapComboBilling(mapCollection, {
       lineupName: displayName,
       parts,
       reviewReason,
     });
+    if (result.skipped) {
+      comboSkipped += 1;
+      continue;
+    }
     comboWritten += 1;
     if (allCovered) {
       comboFullCoverage += 1;
@@ -152,7 +161,11 @@ async function main() {
   console.log(`📋 阵容 display names: ${displayNames.length}`);
   console.log(`🔗 组合 / billing: ${billings.length}`);
   if (!dryRun) {
-    console.log(`   写入 combo-billing: ${comboWritten}（全员覆盖 ${comboFullCoverage}）`);
+    console.log(
+      `   写入 combo-billing: ${comboWritten}（保留原 Discogs mapped ${comboSkipped}，全员覆盖 ${comboFullCoverage}）`,
+    );
+  } else if (comboSkipped) {
+    console.log(`   将保留原 Discogs mapped: ${comboSkipped}`);
   }
   console.log(`🎤 展开 solo（无 map 行）: ${missingSolo.length}`);
   console.log(`📦 catalog 未覆盖: ${missingCatalog.length}`);

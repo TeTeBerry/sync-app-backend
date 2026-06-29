@@ -18,6 +18,7 @@ import {
   upsertDjDiscogsMapPendingReview,
 } from './lib/dj-discogs-map.mjs';
 import { clearLineupArtistRematchState, loadDotEnv } from './lib/discogs-crawl.mjs';
+import { isProtectedLineupMapSource } from './lib/lineup-map-source.mjs';
 import { resolveDistRoot, requireFromDist } from './lib/resolve-dist-root.mjs';
 import { execSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -104,6 +105,9 @@ async function main() {
   const suspicious = [];
 
   for (const row of mapped) {
+    if (row.source === 'combo-billing' || isProtectedLineupMapSource(row.source)) {
+      continue;
+    }
     const verdict = inspectMapRow(row);
     if (verdict) {
       suspicious.push({

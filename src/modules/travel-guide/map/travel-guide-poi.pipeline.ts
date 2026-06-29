@@ -1,35 +1,16 @@
 import {
   BadRequestException,
   Injectable,
-  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import type { HunyuanReasoningEffort } from '../../../infra/llm/text-llm.client';
-import { LlmService } from '../../../infra/llm/llm.service';
-import { ActivityService } from '../../activity/activity.service';
+import type { Activity } from '../../../database/schemas/activity.schema';
 import type { GenerateTravelGuideDto } from '../dto/generate-travel-guide.dto';
-import {
-  budgetTierHotelNightRanges,
-  budgetTierLabel,
-  resolveTravelGuideBudgetTier,
-} from '../domain/parse-activity-days.util';
-import type { LlmTravelGuidePayload } from '../domain/travel-guide-llm.types';
 import { isTravelGuideAbroad } from '../domain/travel-guide-international.util';
-import { sanitizeLlmTravelGuidePayload } from '../domain/travel-guide-payload-normalize.util';
-import { stripLlmAccommodationPayload } from '../domain/travel-guide-accommodation-preference.util';
-import {
-  mapCandidatesToLlmFallback,
-  mergeAccommodationSchemesWithLlmPolish,
-  mergeNightlifeWithLlmPolish,
-  mergeRankedHotelsWithLlmPolish,
-} from './travel-guide-map-plan.builder';
-import { mergeVenueTransportWithLlmPolish } from '../domain/travel-guide-transport.util';
-import { compactCandidatesForLlm } from '../domain/travel-guide-llm-candidates.util';
+import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
 import type {
   TravelGuideMapContext,
-  TravelGuideMapLlmInput,
   TravelGuideRankedCandidates,
+  RankedMapPoi,
 } from './travel-guide-map.types';
 import { TravelGuidePoiCollector } from './travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from './travel-guide-poi.ranker';
@@ -42,7 +23,7 @@ export class TravelGuidePoiPipeline {
   ) {}
 
   async run(
-    activity: Parameters<TravelGuidePoiCollector['collect']>[0],
+    activity: Activity,
     generationDto: GenerateTravelGuideDto,
     accommodationNights: number,
   ): Promise<{
@@ -61,17 +42,26 @@ export class TravelGuidePoiPipeline {
       ranked,
       Boolean(generationDto.selfDrive),
       accommodationNights,
+      isTravelGuideAbroad(activity),
     );
 
     return { mapCtx, ranked };
+  }
+
+  rankHotelsForAllTiers(
+    mapCtx: TravelGuideMapContext,
+    generationDto: GenerateTravelGuideDto,
+  ): Partial<Record<TravelGuideBudgetTier, RankedMapPoi[]>> {
+    return this.poiRanker.rankHotelsForAllTiers(mapCtx, generationDto);
   }
 
   private assertRankedCandidates(
     ranked: TravelGuideRankedCandidates,
     selfDrive: boolean,
     accommodationNights: number,
+    abroad: boolean,
   ): void {
-    if (accommodationNights > 0 && !ranked.hotels.length) {
+    if (accommodationNights > 0 && !ranked.hotels.length && !abroad) {
       throw new BadRequestException(
         '场馆附近未检索到符合预算的酒店推荐，请调整预算档位或稍后重试',
       );
@@ -81,7 +71,7 @@ export class TravelGuidePoiPipeline {
         '场馆附近未检索到散场/餐饮推荐，请稍后重试',
       );
     }
-    if (selfDrive && !ranked.parking.length) {
+    if (selfDrive && !ranked.parking.length && !abroad) {
       throw new BadRequestException('自驾模式下未检索到停车场，请稍后重试');
     }
   }

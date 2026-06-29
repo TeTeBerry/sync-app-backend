@@ -73,5 +73,10 @@ describe('TravelGuidePoiCollector', () => {
         (call: [{ abroad?: boolean }]) => call[0].abroad === true,
       ),
     ).toBe(true);
+    expect(
+      searchPoisCached.mock.calls.some(
+        (call: [{ kind?: string }]) => call[0].kind === 'hotel',
+      ),
+    ).toBe(false);
   });
 });

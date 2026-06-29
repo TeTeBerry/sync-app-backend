@@ -1,4 +1,5 @@
 import type { GeocodedPlace } from './travel-guide-map.types';
+import { normalizeQuoteDestinationCity } from '../domain/travel-guide-rollinggo-geo.util';
 
 /** 直线距离超过该值视为跨城，不再用出发地→场馆的市内公交规划 */
 export const INTERCITY_DISTANCE_THRESHOLD_M = 80_000;
@@ -27,12 +28,12 @@ export function isInterCityByDistance(
   return haversineDistanceM(departure, venue) > INTERCITY_DISTANCE_THRESHOLD_M;
 }
 
-/** 从活动 location「深圳·xxx」提取目的地城市名 */
-export function destinationCityFromActivityLocation(location?: string): string {
-  const loc = location?.trim() ?? '';
-  if (!loc) return '';
-  const city = loc.split(/[·,，]/)[0]?.trim();
-  return city || loc;
+/** 从活动 location 提取目的地城市名（报价 / 跨城判断共用） */
+export function destinationCityFromActivityLocation(
+  location?: string,
+  activityArea?: string,
+): string {
+  return normalizeQuoteDestinationCity(location, activityArea);
 }
 
 /**
@@ -55,6 +56,7 @@ export function departureTextImpliesOtherCity(
     '上海',
     '北京',
     '广州',
+    '深圳',
     '杭州',
     '南京',
     '武汉',

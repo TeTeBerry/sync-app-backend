@@ -144,6 +144,31 @@ function buildHotels(
   return tiers[budgetTier];
 }
 
+/** 海外住宿占位（RollingGo 查询后会覆盖），禁止走高德酒店 POI。 */
+export function buildAbroadAccommodationMapPayload(
+  activity: Activity,
+  budgetTier: TravelGuideBudgetTier,
+  headcount: number,
+  accommodationNights: number,
+): Pick<LlmTravelGuidePayload, 'hotels' | 'accommodationSchemes'> {
+  const schemes =
+    buildAccommodationSchemes(
+      activity.location ?? '',
+      budgetTier,
+      headcount,
+      accommodationNights,
+      activity,
+    ) ?? [];
+  return {
+    hotels: schemes.map((scheme) => ({
+      name: scheme.name,
+      note: scheme.note,
+      bookingHint: scheme.bookingHint,
+    })),
+    accommodationSchemes: schemes,
+  };
+}
+
 function buildAccommodationSchemes(
   location: string,
   budgetTier: TravelGuideBudgetTier,

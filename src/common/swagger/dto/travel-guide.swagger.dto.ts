@@ -28,6 +28,12 @@ export class TravelGuideGenerationJobResultDto {
 
   @ApiPropertyOptional()
   errorMessage?: string;
+
+  @ApiPropertyOptional()
+  progress?: {
+    step: string;
+    percent: number;
+  };
 }
 
 export class TravelGuidePlanReadResultDto {

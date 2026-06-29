@@ -86,6 +86,7 @@ export class TravelGuideLlmPolishService {
         mapPayload,
         Boolean(dto.selfDrive),
         accommodationNights,
+        isTravelGuideAbroad(activity),
       )
     ) {
       if (
@@ -93,6 +94,7 @@ export class TravelGuideLlmPolishService {
           mapPayload,
           Boolean(dto.selfDrive),
           accommodationNights,
+          isTravelGuideAbroad(activity),
         )
       ) {
         throw new ServiceUnavailableException('攻略内容生成失败，请稍后重试');
@@ -162,6 +164,7 @@ export class TravelGuideLlmPolishService {
         payload,
         Boolean(dto.selfDrive),
         accommodationNights,
+        isTravelGuideAbroad(activity),
       )
     ) {
       throw new ServiceUnavailableException('攻略内容生成失败，请稍后重试');
@@ -250,6 +253,7 @@ export class TravelGuideLlmPolishService {
           sanitized,
           dto.selfDrive,
           accommodationNights,
+          isTravelGuideAbroad(activity),
         )
       ) {
         return null;
@@ -267,18 +271,20 @@ export class TravelGuideLlmPolishService {
     result: LlmTravelGuidePayload | null,
     selfDrive?: boolean,
     accommodationNights = 1,
+    abroad = false,
   ): result is LlmTravelGuidePayload {
     if (!result?.transportLines?.length) return false;
-    if (accommodationNights > 0) {
+    if (accommodationNights > 0 && !abroad) {
       const hasHotels =
-        result.accommodationSchemes?.length === 2 || result.hotels?.length >= 2;
+        (result.accommodationSchemes?.length ?? 0) >= 2 &&
+        (result.hotels?.length ?? 0) >= 2;
       if (!hasHotels) return false;
     }
     if (!result.nightlifeSpots?.length) return false;
     if (!result.ticketChannels?.length) return false;
     if (!result.budgetItems?.length) return false;
     if (!result.venueTransportOptions?.length) return false;
-    if (selfDrive && !result.parkingLines?.length) {
+    if (selfDrive && !abroad && !result.parkingLines?.length) {
       return false;
     }
     return true;

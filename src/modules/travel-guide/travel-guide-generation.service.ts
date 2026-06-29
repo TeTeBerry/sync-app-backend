@@ -3,6 +3,7 @@ import type { RequestActor } from '../../common/auth/request-actor.types';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
 import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 import { TravelGuideGenerationOrchestrator } from './travel-guide-generation-orchestrator.service';
+import type { TravelGuideGenerateOptions } from './travel-guide-generation-orchestrator.service';
 
 @Injectable()
 export class TravelGuideGenerationService {
@@ -14,7 +15,8 @@ export class TravelGuideGenerationService {
     activityLegacyId: number,
     dto: GenerateTravelGuideDto,
     actor: RequestActor,
+    options?: TravelGuideGenerateOptions,
   ): Promise<{ plan: TravelGuidePlan; guideId?: string }> {
-    return this.orchestrator.generate(activityLegacyId, dto, actor);
+    return this.orchestrator.generate(activityLegacyId, dto, actor, options);
   }
 }

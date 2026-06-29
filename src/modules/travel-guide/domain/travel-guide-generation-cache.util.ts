@@ -1,7 +1,10 @@
 import { createHash } from 'crypto';
 import type { GenerateTravelGuideDto } from '../dto/generate-travel-guide.dto';
 import { resolveTravelGuideBudgetTier } from './parse-activity-days.util';
-import { normalizeDepartureCityLabel } from '../map/travel-guide-departure-suggestions.util';
+import {
+  findDepartureCityAnchor,
+  normalizeDepartureCityLabel,
+} from '../map/travel-guide-departure-suggestions.util';
 
 export type TravelGuideGenerationCacheParams = {
   activityLegacyId: number;
@@ -19,10 +22,10 @@ export function normalizeTravelGuideGenerationParams(
   accommodationNights: number,
 ): TravelGuideGenerationCacheParams {
   const departure = dto.departure.trim().replace(/\s+/g, ' ');
-  const departureCity = dto.departureCity?.trim()
-    ? (normalizeDepartureCityLabel(dto.departureCity.trim()) ??
-      dto.departureCity.trim())
-    : '';
+  const departureCity = reconcileDepartureCityForCache(
+    departure,
+    dto.departureCity?.trim(),
+  );
 
   return {
     activityLegacyId,
@@ -87,4 +90,23 @@ export function buildTravelGuideGenerationCacheKey(
     mapDataVersion: TRAVEL_GUIDE_MAP_DATA_VERSION,
   });
   return createHash('sha256').update(canonical).digest('hex');
+}
+
+/** Keep departureCity aligned with departure text when user switches cities. */
+export function reconcileDepartureCityForCache(
+  departure: string,
+  departureCity?: string,
+): string {
+  const anchor = findDepartureCityAnchor(departure);
+  const picked = departureCity?.trim()
+    ? normalizeDepartureCityLabel(departureCity.trim())
+    : '';
+
+  if (anchor) {
+    if (!picked || picked === anchor || departure.startsWith(anchor)) {
+      return anchor;
+    }
+  }
+
+  return picked;
 }

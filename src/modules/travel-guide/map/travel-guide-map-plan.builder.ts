@@ -1,12 +1,20 @@
 import type { Activity } from '../../../database/schemas/activity.schema';
 import type {
   TravelGuideAccommodationScheme,
+  TravelGuideBudgetTier,
   TravelGuideHotelItem,
   TravelGuideSpotItem,
   TravelGuideTicketChannel,
 } from '@sync/travel-guide-contracts';
 import type { LlmTravelGuidePayload } from '../domain/travel-guide-llm.types';
+import {
+  TRAVEL_GUIDE_TIER_HOTEL_LIST_LIMIT,
+  TRAVEL_GUIDE_TIER_HOTEL_SCHEME_COUNT,
+  tierAccommodationSchemeLabel,
+  tierAccommodationSchemeReason,
+} from '../domain/travel-guide-accommodation.constants';
 import { buildTravelGuideBudgetItems } from '../domain/travel-guide-budget-estimate.util';
+import { buildAbroadAccommodationMapPayload } from '../domain/travel-guide-fallback.builder';
 import {
   buildTravelGuideDocumentItems,
   buildTravelGuideEssentials,
@@ -26,12 +34,7 @@ import type {
   TravelGuideRankedCandidates,
 } from './travel-guide-map.types';
 
-const NEARBY_SCHEME_REASON =
-  '距会场最近，散场后回程最短，适合连刷多日、不想早起赶路或想最大化在场时间的 Raver。';
-const CITY_CENTER_SCHEME_REASON =
-  '市中心/商圈配套更全，餐饮购物与次日出行方便，适合首次到访、想兼顾城市体验的玩家。';
-
-export const TRAVEL_GUIDE_HOTEL_LIST_LIMIT = 6;
+export { TRAVEL_GUIDE_TIER_HOTEL_LIST_LIMIT as TRAVEL_GUIDE_HOTEL_LIST_LIMIT };
 export const TRAVEL_GUIDE_NIGHTLIFE_LIST_LIMIT = 6;
 
 export function buildTransportLinesFromMap(
@@ -95,12 +98,13 @@ export function hotelsFromRanked(
   roomHint: string,
   priceBands: [string, string],
   activity?: Pick<Activity, 'region'>,
-  picks?: { nearby: RankedMapPoi; cityCenter: RankedMapPoi },
+  schemeHotels?: RankedMapPoi[],
+  budgetTier: TravelGuideBudgetTier = 'standard',
 ): TravelGuideHotelItem[] {
   const bookingHint = activity
     ? travelGuideHotelBookingHint(activity)
     : '携程 / 美团';
-  const picked = ranked.slice(0, TRAVEL_GUIDE_HOTEL_LIST_LIMIT);
+  const picked = ranked.slice(0, TRAVEL_GUIDE_TIER_HOTEL_LIST_LIMIT);
   if (!picked.length) return [];
 
   return picked.map((p, index) => {
@@ -111,42 +115,37 @@ export function hotelsFromRanked(
     return {
       name: p.name,
       note: `起步约 ¥${p.avgPrice ?? band}/晚 · ${distanceText}${ratingText} · ${nightLabel} · ${roomHint}`,
-      reason: hotelReasonFromPoi(p, picks),
+      reason: hotelReasonFromPoi(p, schemeHotels, budgetTier),
       bookingHint,
     };
   });
 }
 
 export function accommodationSchemesFromRanked(
-  picks: { nearby: RankedMapPoi; cityCenter: RankedMapPoi },
+  schemeHotels: RankedMapPoi[],
   nightLabel: string,
   roomHint: string,
   priceBands: [string, string],
   activity?: Pick<Activity, 'region'>,
+  budgetTier: TravelGuideBudgetTier = 'standard',
 ): TravelGuideAccommodationScheme[] {
   const bookingHint = activity
     ? travelGuideHotelBookingHint(activity)
     : '携程 / 美团 / 飞猪';
-  return [
-    schemeFromPoi(
-      picks.nearby,
-      '就近方案',
-      NEARBY_SCHEME_REASON,
-      nightLabel,
-      roomHint,
-      priceBands[0],
-      bookingHint,
-    ),
-    schemeFromPoi(
-      picks.cityCenter,
-      '市中心方案',
-      CITY_CENTER_SCHEME_REASON,
-      nightLabel,
-      roomHint,
-      priceBands[1],
-      bookingHint,
-    ),
-  ];
+
+  return schemeHotels
+    .slice(0, TRAVEL_GUIDE_TIER_HOTEL_SCHEME_COUNT)
+    .map((poi, index) =>
+      schemeFromPoi(
+        poi,
+        tierAccommodationSchemeLabel(index, budgetTier),
+        tierAccommodationSchemeReason(poi, budgetTier, index),
+        nightLabel,
+        roomHint,
+        index === 0 ? priceBands[0] : priceBands[1],
+        bookingHint,
+      ),
+    );
 }
 
 function schemeFromPoi(
@@ -261,35 +260,49 @@ export function mapCandidatesToLlmFallback(
   const regionKind = travelGuideRegionKind(input.activity);
   const interCity = Boolean(ctx.interCity);
   const needsAccommodation = input.accommodationNights > 0;
+  const useRollingGoAccommodation =
+    needsAccommodation &&
+    regionKind !== 'domestic' &&
+    ranked.hotels.length === 0;
 
-  const picks = needsAccommodation
-    ? (ranked.accommodationPicks ?? {
-        nearby: ranked.hotels[0]!,
-        cityCenter: ranked.hotels[1] ?? ranked.hotels[0]!,
-      })
-    : undefined;
+  let hotels: LlmTravelGuidePayload['hotels'] = [];
+  let schemes: LlmTravelGuidePayload['accommodationSchemes'] = [];
 
-  const schemes =
-    needsAccommodation && picks
+  if (useRollingGoAccommodation) {
+    const abroadPayload = buildAbroadAccommodationMapPayload(
+      input.activity,
+      ranked.budgetTier,
+      input.headcount,
+      input.accommodationNights,
+    );
+    hotels = abroadPayload.hotels;
+    schemes = abroadPayload.accommodationSchemes ?? [];
+  } else if (needsAccommodation) {
+    const schemeHotels =
+      ranked.accommodationPicks?.schemeHotels ??
+      (ranked.hotels.length
+        ? ranked.hotels.slice(0, TRAVEL_GUIDE_TIER_HOTEL_SCHEME_COUNT)
+        : []);
+    schemes = schemeHotels.length
       ? accommodationSchemesFromRanked(
-          picks,
+          schemeHotels,
           nightLabel,
           room,
           ranked.hotelPriceBand,
           input.activity,
+          ranked.budgetTier,
         )
       : [];
-
-  const hotels = needsAccommodation
-    ? hotelsFromRanked(
-        ranked.hotels,
-        nightLabel,
-        room,
-        ranked.hotelPriceBand,
-        input.activity,
-        picks,
-      )
-    : [];
+    hotels = hotelsFromRanked(
+      ranked.hotels,
+      nightLabel,
+      room,
+      ranked.hotelPriceBand,
+      input.activity,
+      schemeHotels,
+      ranked.budgetTier,
+    );
+  }
 
   const documentItems =
     regionKind !== 'domestic'
@@ -324,15 +337,25 @@ export function mapCandidatesToLlmFallback(
       : undefined,
     nightlifeSpots: nightlifeFromRanked(ranked.nightlife, ctx.eventEndHour),
     tipItems: needsAccommodation
-      ? [
-          '以上交通、住宿与散场点位来自高德地图周边检索，并结合预算与距离智能排序。',
-          '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
-          '酒店与餐厅评分以地图平台展示为准，下单前建议在 OTA 再确认价格与房态。',
-        ]
-      : [
-          '以上交通与散场点位来自高德地图周边检索，并结合距离智能排序。',
-          '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
-        ],
+      ? regionKind !== 'domestic'
+        ? [
+            '散场与夜宵点位来自精选推荐；住宿由 RollingGo 实时查询，下单前请在 OTA 核实价格与房态。',
+            '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
+          ]
+        : [
+            '以上交通、住宿与散场点位来自高德地图周边检索，并结合预算与距离智能排序。',
+            '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
+            '酒店与餐厅评分以地图平台展示为准，下单前建议在 OTA 再确认价格与房态。',
+          ]
+      : regionKind !== 'domestic'
+        ? [
+            '散场与夜宵点位来自精选推荐，并结合距离智能排序。',
+            '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
+          ]
+        : [
+            '以上交通与散场点位来自高德地图周边检索，并结合距离智能排序。',
+            '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
+          ],
     documentItems,
     ticketChannels: buildTicketChannels(input.activity),
     essentials,
@@ -369,10 +392,15 @@ function formatNightlifeNote(p: RankedMapPoi): string {
 
 function hotelReasonFromPoi(
   p: RankedMapPoi,
-  picks?: { nearby: RankedMapPoi; cityCenter: RankedMapPoi },
+  schemeHotels?: RankedMapPoi[],
+  budgetTier: TravelGuideBudgetTier = 'standard',
 ): string {
-  if (picks?.nearby.name === p.name) return NEARBY_SCHEME_REASON;
-  if (picks?.cityCenter.name === p.name) return CITY_CENTER_SCHEME_REASON;
+  if (schemeHotels?.length) {
+    const index = schemeHotels.findIndex((h) => h.name === p.name);
+    if (index >= 0) {
+      return tierAccommodationSchemeReason(p, budgetTier, index);
+    }
+  }
 
   const parts: string[] = [];
   if (p.distanceM <= 800) {

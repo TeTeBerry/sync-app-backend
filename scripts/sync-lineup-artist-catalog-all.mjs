@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Sync Discogs DJ catalog + lineup avatar metadata to local + cloud MongoDB.
+ * Sync DJ catalog (djs + dj_discogs_map + lineup avatars) between local and cloud MongoDB.
  * Avatar URLs are public HTTPS CDN links (Discogs / TheAudioDB); this script copies metadata only.
  *
  * Usage:
@@ -9,6 +9,8 @@
  *   npm run db:sync-lineup-artist-catalog:all -- --cloud-only
  *   npm run db:sync-lineup-artist-catalog:all -- --cloud-only --mirror
  *     # upsert then delete cloud rows not present in source (full-catalog uses this)
+ *   npm run db:pull-lineup-artist-catalog-from-cloud
+ *     # mirror cloud → local (djs + dj_discogs_map + avatars)
  */
 
 import path from 'node:path';
@@ -26,7 +28,33 @@ function maskUri(uri) {
   return uri.replace(/:[^:@/]+@/, ':***@');
 }
 
+function resolveLocalUri() {
+  return (
+    process.env.LOCAL_MONGODB_URI ??
+    process.env.MONGODB_URI ??
+    'mongodb://127.0.0.1:27017/sync-ai'
+  );
+}
+
+function resolveCloudUri() {
+  return (
+    process.env.CLOUD_MONGODB_URI ??
+    readEnvValue(path.join(ROOT, '.env.production'), 'MONGODB_URI')
+  );
+}
+
 function resolveSourceUri() {
+  const fromCloud = process.argv.includes('--from-cloud');
+  if (fromCloud) {
+    const cloudUri = resolveCloudUri();
+    if (!cloudUri) {
+      throw new Error(
+        'Cloud URI required for --from-cloud. Set CLOUD_MONGODB_URI or MONGODB_URI in .env.production',
+      );
+    }
+    return cloudUri;
+  }
+
   return (
     process.env.SOURCE_MONGODB_URI ??
     process.env.LOCAL_MONGODB_URI ??
@@ -35,19 +63,19 @@ function resolveSourceUri() {
 }
 
 function resolveTargets() {
+  const fromCloud = process.argv.includes('--from-cloud');
   const syncLocal = process.argv.includes('--with-local');
   const cloudOnly = process.argv.includes('--cloud-only');
   const localOnly = process.argv.includes('--local-only');
   const targets = [];
 
-  const localUri =
-    process.env.LOCAL_MONGODB_URI ??
-    process.env.MONGODB_URI ??
-    'mongodb://127.0.0.1:27017/sync-ai';
+  const localUri = resolveLocalUri();
+  const cloudUri = resolveCloudUri();
 
-  const cloudUri =
-    process.env.CLOUD_MONGODB_URI ??
-    readEnvValue(path.join(ROOT, '.env.production'), 'MONGODB_URI');
+  if (fromCloud) {
+    targets.push({ label: 'local', uri: localUri });
+    return targets;
+  }
 
   if (syncLocal && !cloudOnly) {
     targets.push({ label: 'local', uri: localUri });
@@ -69,12 +97,13 @@ function resolveTargets() {
 async function loadSourceCollections(sourceUri) {
   await mongoose.connect(sourceUri);
   const db = mongoose.connection.db;
-  const [djs, avatars] = await Promise.all([
+  const [djs, avatars, maps] = await Promise.all([
     db.collection('djs').find({}).toArray(),
     db.collection('lineup_artist_avatars').find({}).toArray(),
+    db.collection('dj_discogs_map').find({}).toArray(),
   ]);
   await mongoose.disconnect();
-  return { djs, avatars };
+  return { djs, avatars, maps };
 }
 
 async function upsertDjs(uri, rows) {
@@ -140,6 +169,73 @@ async function mirrorDjs(uri, rows) {
     deleted: deleteResult.deletedCount ?? 0,
     total,
     sourceCount: sourceIds.length,
+  };
+}
+
+async function upsertMaps(uri, rows) {
+  await mongoose.connect(uri);
+  const collection = mongoose.connection.db.collection('dj_discogs_map');
+  let upserted = 0;
+
+  for (const row of rows) {
+    const { _id, createdAt, updatedAt, ...payload } = row;
+    void _id;
+    void updatedAt;
+    const lineupNameKey = payload.lineupNameKey?.trim();
+    if (!lineupNameKey || !payload.lineupName?.trim()) {
+      continue;
+    }
+    await collection.updateOne(
+      { lineupNameKey },
+      {
+        $set: {
+          ...payload,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: { createdAt: createdAt ?? new Date() },
+      },
+      { upsert: true },
+    );
+    upserted += 1;
+  }
+
+  const count = await collection.countDocuments();
+  await mongoose.disconnect();
+  return { upserted, total: count };
+}
+
+async function mirrorMaps(uri, rows) {
+  const validKeys = [
+    ...new Set(
+      rows
+        .map((row) => row.lineupNameKey?.trim())
+        .filter(Boolean),
+    ),
+  ];
+
+  if (!validKeys.length) {
+    console.warn('⚠️  source dj_discogs_map 为空 — 跳过 mirror 删除');
+    await mongoose.connect(uri);
+    const total = await mongoose.connection.db
+      .collection('dj_discogs_map')
+      .countDocuments();
+    await mongoose.disconnect();
+    return { deleted: 0, total, sourceCount: 0 };
+  }
+
+  await mongoose.connect(uri);
+  const collection = mongoose.connection.db.collection('dj_discogs_map');
+
+  const deleteResult = await collection.deleteMany({
+    lineupNameKey: { $nin: validKeys },
+  });
+  const total = await collection.countDocuments();
+  await mongoose.disconnect();
+
+  return {
+    deleted: deleteResult.deletedCount ?? 0,
+    total,
+    sourceCount: validKeys.length,
   };
 }
 
@@ -215,13 +311,17 @@ async function mirrorAvatars(uri, rows) {
 }
 
 async function main() {
-  const mirror = process.argv.includes('--mirror');
+  const mirror = process.argv.includes('--mirror') || process.argv.includes('--from-cloud');
+  const fromCloud = process.argv.includes('--from-cloud');
   const sourceUri = resolveSourceUri();
   const targets = resolveTargets();
 
-  console.log(`\n=== Loading source (${maskUri(sourceUri)}) ===`);
-  const { djs, avatars } = await loadSourceCollections(sourceUri);
+  console.log(
+    `\n=== Loading source (${fromCloud ? 'cloud → local' : 'push'}) ${maskUri(sourceUri)} ===`,
+  );
+  const { djs, avatars, maps } = await loadSourceCollections(sourceUri);
   console.log(`📀 djs: ${djs.length}`);
+  console.log(`🗺️  dj_discogs_map: ${maps.length}`);
   console.log(`🖼️  lineup_artist_avatars: ${avatars.length}`);
   if (mirror) {
     console.log('🪞 mirror mode: targets will match source exactly (delete extras)');
@@ -229,6 +329,19 @@ async function main() {
 
   for (const target of targets) {
     console.log(`\n=== Syncing to ${target.label} (${maskUri(target.uri)}) ===`);
+
+    const mapResult = await upsertMaps(target.uri, maps);
+    console.log(
+      `✅ dj_discogs_map: upserted ${mapResult.upserted}, collection total ${mapResult.total}`,
+    );
+    if (mirror) {
+      const mapMirror = await mirrorMaps(target.uri, maps);
+      console.log(
+        `🪞 maps mirror: deleted ${mapMirror.deleted} extras, ` +
+          `now ${mapMirror.total} (source ${mapMirror.sourceCount})`,
+      );
+    }
+
     const djResult = await upsertDjs(target.uri, djs);
     console.log(
       `✅ djs: upserted ${djResult.upserted}, collection total ${djResult.total}`,
@@ -256,9 +369,12 @@ async function main() {
 
   console.log(
     mirror
-      ? '\n✅ DJ catalog + avatars mirrored to target(s) from source.'
-      : '\n✅ DJ catalog + lineup avatar metadata synced (CDN URLs).',
+      ? '\n✅ DJ catalog + maps + avatars mirrored to target(s) from source.'
+      : '\n✅ DJ catalog + maps + lineup avatar metadata synced (CDN URLs).',
   );
+  if (fromCloud) {
+    console.log('   本地已与云端对齐，可重新跑 crawl / full-catalog（建议加 --skip-purge-stubs）');
+  }
   console.log(
     'Tip: run `npm run db:sync-catalog:all -- --with-itinerary` to sync festival sessions too.',
   );

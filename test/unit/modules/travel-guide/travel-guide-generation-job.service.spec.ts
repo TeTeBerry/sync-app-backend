@@ -21,6 +21,7 @@ describe('TravelGuideGenerationJobService', () => {
     create: jest.fn(),
     findOne: jest.fn(),
     updateOne: jest.fn(),
+    updateMany: jest.fn(),
   };
 
   function mockFindOneLean(result: unknown) {
@@ -40,6 +41,10 @@ describe('TravelGuideGenerationJobService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     activityService.findByLegacyId.mockResolvedValue({ date: '2026-07-04' });
+    model.updateOne.mockReturnValue({
+      exec: () => Promise.resolve({ modifiedCount: 1 }),
+    });
+    model.updateMany.mockResolvedValue({ modifiedCount: 0 });
     const moduleRef = await Test.createTestingModule({
       providers: [
         TravelGuideGenerationJobService,
@@ -88,11 +93,87 @@ describe('TravelGuideGenerationJobService', () => {
     );
   });
 
-  it('reuses active job with same params instead of creating duplicate', async () => {
+  it('reuses active job with same guideId and params', async () => {
     mockFindOneLean({
       jobId: 'existing-job',
       ownerUserId: 'user-1',
       status: 'running',
+      updatedAt: new Date(),
+    });
+
+    const result = await service.createJob(
+      4,
+      {
+        guideId: 'guide-abc12345',
+        departure: '上海虹桥',
+        headcount: 2,
+        budgetTier: 'standard',
+      },
+      actor,
+    );
+
+    expect(result).toEqual({ jobId: 'existing-job' });
+    expect(model.create).not.toHaveBeenCalled();
+  });
+
+  it('creates a new job when guideId differs even if params match', async () => {
+    mockFindOneLean(null);
+    model.create.mockResolvedValue({});
+    model.updateOne.mockResolvedValue({ modifiedCount: 1 });
+    generationService.generate.mockResolvedValue({
+      plan: { activityName: 'Test' },
+    });
+
+    const result = await service.createJob(
+      4,
+      {
+        guideId: 'brand-new-guide-id',
+        departure: '上海虹桥',
+        headcount: 2,
+        budgetTier: 'standard',
+      },
+      actor,
+    );
+
+    expect(result.jobId).not.toBe('existing-job');
+    expect(model.create).toHaveBeenCalled();
+  });
+
+  it('forceRegenerate fails active jobs and creates a new one', async () => {
+    mockFindOneLean(null);
+    model.create.mockResolvedValue({});
+    model.updateOne.mockResolvedValue({ modifiedCount: 1 });
+    generationService.generate.mockResolvedValue({
+      plan: { activityName: 'Test' },
+    });
+
+    await service.createJob(
+      4,
+      {
+        guideId: 'guide-abc12345',
+        departure: '上海虹桥',
+        headcount: 2,
+        budgetTier: 'standard',
+        forceRegenerate: true,
+      },
+      actor,
+    );
+
+    expect(model.updateMany).toHaveBeenCalled();
+    expect(model.create).toHaveBeenCalled();
+    expect(model.findOne).not.toHaveBeenCalled();
+  });
+
+  it('re-kicks pending job when deduped', async () => {
+    mockFindOneLean({
+      jobId: 'pending-job',
+      ownerUserId: 'user-1',
+      status: 'pending',
+      updatedAt: new Date(),
+    });
+    model.updateOne.mockResolvedValue({ modifiedCount: 1 });
+    generationService.generate.mockResolvedValue({
+      plan: { activityName: 'Test' },
     });
 
     const result = await service.createJob(
@@ -105,8 +186,43 @@ describe('TravelGuideGenerationJobService', () => {
       actor,
     );
 
-    expect(result).toEqual({ jobId: 'existing-job' });
+    expect(result).toEqual({ jobId: 'pending-job' });
     expect(model.create).not.toHaveBeenCalled();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(generationService.generate).toHaveBeenCalled();
+  });
+
+  it('creates a new job when the active dedupe match is stale', async () => {
+    mockFindOneLean({
+      jobId: 'stale-job',
+      ownerUserId: 'user-1',
+      status: 'pending',
+      updatedAt: new Date(Date.now() - 5 * 60 * 1000),
+    });
+    model.create.mockResolvedValue({});
+    model.updateOne.mockResolvedValue({ modifiedCount: 1 });
+    generationService.generate.mockResolvedValue({
+      plan: { activityName: 'Test' },
+    });
+
+    const result = await service.createJob(
+      4,
+      {
+        departure: '上海虹桥',
+        headcount: 2,
+        budgetTier: 'standard',
+      },
+      actor,
+    );
+
+    expect(result.jobId).not.toBe('stale-job');
+    expect(model.create).toHaveBeenCalled();
+    expect(model.updateOne).toHaveBeenCalledWith(
+      { jobId: 'stale-job' },
+      expect.objectContaining({
+        $set: expect.objectContaining({ status: 'failed' }),
+      }),
+    );
   });
 
   it('returns completed job view for owner', async () => {

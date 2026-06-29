@@ -14,6 +14,7 @@ import { TravelGuideGuardService } from '@src/modules/travel-guide/travel-guide-
 import { TravelGuideSavedPlanService } from '@src/modules/travel-guide/travel-guide-saved-plan.service';
 import { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
+import { TravelQuoteEnrichmentService } from '@src/modules/travel-guide/travel-quote-enrichment.service';
 import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 
 const testActor = {
@@ -68,8 +69,11 @@ describe('TravelGuideGenerationService cache', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: (key: string) =>
-              key === 'hunyuan.travelGuideReasoningEffort' ? 'high' : undefined,
+            get: (key: string) => {
+              if (key === 'hunyuan.travelGuideReasoningEffort') return 'high';
+              if (key === 'rollinggo.quoteCacheTtlSec') return 3600;
+              return undefined;
+            },
           },
         },
         {
@@ -115,6 +119,10 @@ describe('TravelGuideGenerationService cache', () => {
           provide: WechatContentSecurityService,
           useValue: { assertTextsSafe: jest.fn().mockResolvedValue(undefined) },
         },
+        {
+          provide: TravelQuoteEnrichmentService,
+          useValue: { run: jest.fn().mockResolvedValue(null) },
+        },
       ],
     }).compile();
 
@@ -140,5 +148,46 @@ describe('TravelGuideGenerationService cache', () => {
       departure: '上海',
       departureCity: undefined,
     });
+  });
+
+  it('bypasses cache when forceRegenerate is true', async () => {
+    findPlan.mockResolvedValue(cachedPlan);
+    collect.mockResolvedValue({
+      mapCtx: {
+        venue: { title: 'Venue', address: '深圳', lat: 22.7, lng: 113.9 },
+        venueReadableAddress: '深圳',
+        venueSource: 'api',
+        transportSource: 'api',
+        transportHints: [],
+        interCity: true,
+        pois: [
+          {
+            name: '酒店',
+            kind: 'hotel',
+            lat: 22.7,
+            lng: 113.9,
+            distanceM: 100,
+          },
+        ],
+        eventEndHour: 23.5,
+        collectedAt: new Date().toISOString(),
+      },
+      ranked: {
+        hotels: [{ name: '酒店A', note: 'n', reason: 'r', distanceM: 100 }],
+        nightlife: [{ name: 'spot', note: 'n', reason: 'r', distanceM: 200 }],
+        parking: [],
+      },
+    });
+
+    await expect(
+      service.generate(
+        4,
+        { ...dto, departure: '北京', forceRegenerate: true },
+        testActor,
+      ),
+    ).rejects.toThrow();
+
+    expect(findPlan).not.toHaveBeenCalled();
+    expect(collect).toHaveBeenCalled();
   });
 });

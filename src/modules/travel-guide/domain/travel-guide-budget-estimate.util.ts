@@ -3,6 +3,8 @@ import type {
   TravelGuideBudgetItem,
 } from '@sync/travel-guide-contracts';
 import { budgetTierHotelNightRanges } from './parse-activity-days.util';
+import { findBudgetTierSnapshot } from './travel-guide-budget-tier-ranges.util';
+import type { TravelGuideBudgetTierSnapshot } from '@sync/travel-guide-contracts';
 import type { TravelGuideRegionKind } from './travel-guide-international.util';
 
 function parseRangeMid(range: string): number {
@@ -30,6 +32,7 @@ export function buildTravelGuideBudgetItems(input: {
   interCity: boolean;
   regionKind: TravelGuideRegionKind;
   selfDrive: boolean;
+  budgetTierSnapshots?: TravelGuideBudgetTierSnapshot[];
 }): TravelGuideBudgetItem[] {
   const {
     budgetTier,
@@ -38,14 +41,23 @@ export function buildTravelGuideBudgetItems(input: {
     interCity,
     regionKind,
     selfDrive,
+    budgetTierSnapshots,
   } = input;
   const rooms = roomCount(headcount);
-  const hotelRanges = budgetTierHotelNightRanges(budgetTier);
-  const primaryMid = parseRangeMid(hotelRanges.primary);
-  const secondaryMid = parseRangeMid(hotelRanges.secondary);
-  const hotelMid = Math.round((primaryMid + secondaryMid) / 2);
-  const hotelMin = Math.round(hotelMid * 0.85) * rooms * accommodationNights;
-  const hotelMax = Math.round(hotelMid * 1.15) * rooms * accommodationNights;
+  const tierSnap = findBudgetTierSnapshot(budgetTier, budgetTierSnapshots);
+  let hotelMin: number;
+  let hotelMax: number;
+  if (tierSnap) {
+    hotelMin = tierSnap.nightlyMin * rooms * accommodationNights;
+    hotelMax = tierSnap.nightlyMax * rooms * accommodationNights;
+  } else {
+    const hotelRanges = budgetTierHotelNightRanges(budgetTier);
+    const primaryMid = parseRangeMid(hotelRanges.primary);
+    const secondaryMid = parseRangeMid(hotelRanges.secondary);
+    const hotelMid = Math.round((primaryMid + secondaryMid) / 2);
+    hotelMin = Math.round(hotelMid * 0.85) * rooms * accommodationNights;
+    hotelMax = Math.round(hotelMid * 1.15) * rooms * accommodationNights;
+  }
 
   const items: TravelGuideBudgetItem[] = [];
 

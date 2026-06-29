@@ -141,12 +141,9 @@ function buildPoiSearchTasks(
   accommodationNights: number,
 ): PoiSearchTask[] {
   const tasks: PoiSearchTask[] = [];
-  if (accommodationNights > 0) {
+  if (accommodationNights > 0 && !abroad) {
     const hotelKeywords = hotelSearchKeywordsForBudgetTier(
       resolveTravelGuideBudgetTier(budgetTier),
-      {
-        abroad,
-      },
     );
     tasks.push(
       ...hotelKeywords.map((keyword) => ({

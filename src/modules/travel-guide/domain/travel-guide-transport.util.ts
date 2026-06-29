@@ -257,6 +257,69 @@ function pickVenueTransportHint(
   return hints.find((h) => pattern.test(h) && !isInterCityTransportLine(h));
 }
 
+function buildOverseasUrbanRailVenueLines(
+  input: TravelGuideTransportBuildInput,
+  profile: DestinationTransportProfile,
+): string[] {
+  const venue = input.venueTitle;
+  const dest = profile.destinationCity;
+
+  if (profile.thailand && profile.bangkok) {
+    return [
+      `曼谷活动日可乘 BTS（天铁）或 MRT（地铁）至最近站点，再步行或短途 Grab 至「${venue}」。`,
+      '高峰时段天铁可能限流，备 Grab 作为散场备选；注意末班车时间。',
+      pickVenueTransportHint(input.transportHints, /BTS|MRT|天铁|地铁/) ??
+        '以 Google Maps 实时路线为准。',
+    ];
+  }
+
+  if (profile.korea) {
+    return [
+      `活动日可乘 AREX 机场铁路至仁川站，转地铁 1 号线往永宗岛方向至会场附近站，再步行或 Kakao T 短驳至「${venue}」。`,
+      '高峰时段地铁可能限流，备 Kakao T 作为散场备选；注意末班车时间。',
+      pickVenueTransportHint(
+        input.transportHints,
+        /AREX|地铁|Kakao|仁川|永宗/,
+      ) ?? '以 Naver Map / Google Maps 实时路线为准。',
+    ];
+  }
+
+  if (profile.japan) {
+    return [
+      `活动日可乘山手线 / 东京 Metro / 临海线等轨道交通至最近站点，再步行或短途网约车至「${venue}」。`,
+      '高峰时段电车可能拥挤，备 Uber Japan / Japan Taxi 作为散场备选；注意末班车时间。',
+      pickVenueTransportHint(
+        input.transportHints,
+        /山手线|Metro|临海线|地铁|电车|羽田|成田/,
+      ) ?? '以 Google Maps / Navitime 实时路线为准。',
+    ];
+  }
+
+  return [
+    `在${dest}乘当地轨道交通至最近站点，再步行或短途打车至「${venue}」。`,
+    '散场高峰建议提前预约车辆；注意末班车时间。',
+    pickVenueTransportHint(input.transportHints, /地铁|轻轨|铁路|电车/) ??
+      '以 Google Maps 实时路线为准。',
+  ];
+}
+
+function overseasVenueLineForbidden(
+  profile: DestinationTransportProfile,
+  line: string,
+): boolean {
+  if (profile.thailand) return false;
+  if (/曼谷|bangkok|BTS|MRT|天铁|Grab|Bolt|双条车|Songthaew/i.test(line)) {
+    return true;
+  }
+  if (profile.japan && /Kakao T|AREX|仁川地铁/.test(line)) {
+    return true;
+  }
+  if (!profile.korea && /Kakao T|AREX|仁川地铁/.test(line)) {
+    return true;
+  }
+  return false;
+}
+
 /** 过滤 LLM 或模板中不符合目的地能力的会场接驳项 */
 export function sanitizeVenueTransportOptions(
   profile: DestinationTransportProfile,
@@ -269,7 +332,9 @@ export function sanitizeVenueTransportOptions(
   });
   return options
     .map((opt) => {
-      const lines = filterVenueTransportLines(opt.lines);
+      const lines = filterVenueTransportLines(opt.lines).filter(
+        (line) => !overseasVenueLineForbidden(profile, line),
+      );
       if (!lines.length) return null;
       return { label: opt.label, lines };
     })
@@ -613,12 +678,7 @@ function buildOverseasVenueOptions(
   if (caps.urbanRail.available) {
     options.push({
       label: caps.urbanRail.label,
-      lines: [
-        `曼谷活动日可乘 BTS（天铁）或 MRT（地铁）至最近站点，再步行或短途 Grab 至「${venue}」。`,
-        '高峰时段天铁可能限流，备 Grab 作为散场备选；注意末班车时间。',
-        pickVenueTransportHint(input.transportHints, /BTS|MRT|天铁|地铁/) ??
-          '以 Google Maps 实时路线为准。',
-      ],
+      lines: buildOverseasUrbanRailVenueLines(input, profile),
     });
   }
 

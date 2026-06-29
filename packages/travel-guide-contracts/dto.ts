@@ -11,6 +11,8 @@ export type AiGuidePlanFormValues = {
 
 export type GenerateTravelGuidePayload = AiGuidePlanFormValues & {
   guideId?: string;
+  /** 重新生成时跳过服务端生成缓存，强制走完整 pipeline */
+  forceRegenerate?: boolean;
 };
 
 export type TravelGuidePlaceSuggestion = {
@@ -24,3 +26,21 @@ export type TravelGuideGenerationJobStatus =
   | 'running'
   | 'completed'
   | 'failed';
+
+export type TravelGuideGenerationProgressStep =
+  | 'queued'
+  | 'validating'
+  | 'map_poi'
+  | 'quotes_hotels'
+  | 'quotes_flights'
+  /** @deprecated 兼容旧任务；新任务请用 quotes_hotels / quotes_flights */
+  | 'quotes'
+  | 'ai_writing'
+  | 'assembling'
+  | 'finishing'
+  | 'completed';
+
+export type TravelGuideGenerationJobProgress = {
+  step: TravelGuideGenerationProgressStep;
+  percent: number;
+};

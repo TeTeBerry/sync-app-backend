@@ -152,24 +152,24 @@ export class TravelGuideGeoCacheService {
     departureCity?: string;
     activity?: Pick<
       import('../../../database/schemas/activity.schema').Activity,
-      'name' | 'location' | 'region'
+      'name' | 'location' | 'region' | 'area'
     >;
   }): Promise<ResolvedTransport> {
     const hot = findHotActivityProfile(input.activityLegacyId);
     const abroadActivity =
       input.activity != null && isTravelGuideAbroad(input.activity);
-    if (hot && !abroadActivity) {
+    if (hot) {
       const interCity = matchHotInterCityRoute(hot, input.departureText);
       if (interCity) {
+        const hubLegHint = abroadActivity
+          ? `机场接驳（${interCity.hub.hubLabel} → 场馆）：${interCity.hub.transitHint ?? '可按地图导航或预约接驳'}`
+          : `抵深后接驳（${interCity.hub.hubLabel} → 场馆）：${interCity.hub.transitHint ?? '打车或地铁前往会场'}`;
         return {
           driving: interCity.hub.driving,
           source: 'hot_path',
           interCity: true,
           hotHubLabel: `${interCity.origin.originLabel} → ${interCity.hub.hubLabel}`,
-          hintLines: [
-            ...interCity.origin.primaryLegHints,
-            `抵深后接驳（${interCity.hub.hubLabel} → 场馆）：${interCity.hub.transitHint ?? '打车或地铁前往会场'}`,
-          ],
+          hintLines: [...interCity.origin.primaryLegHints, hubLegHint],
         };
       }
 
@@ -202,7 +202,10 @@ export class TravelGuideGeoCacheService {
     const departure = await this.resolveDeparture(
       input.departureText,
       input.activity
-        ? destinationCityFromActivityLocation(input.activity.location)
+        ? destinationCityFromActivityLocation(
+            input.activity.location,
+            input.activity.area,
+          )
         : input.destinationCity,
       input.departureCity,
     );

@@ -45,4 +45,9 @@ export class GenerateTravelGuideDto {
   @Min(0)
   @Max(7)
   accommodationNights?: number;
+
+  /** 重新生成时跳过 generation cache，避免切换出发地仍返回旧攻略 */
+  @IsOptional()
+  @IsBoolean()
+  forceRegenerate?: boolean;
 }

@@ -64,4 +64,42 @@ describe('TravelGuidePoiPipeline', () => {
       pipeline.run(activity, generationDto, 2),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it('allows empty ranked hotels for abroad multi-night stay', async () => {
+    const abroadActivity = {
+      legacyId: 6,
+      name: 'World DJ Festival Japan 2026',
+      date: '07/04-05',
+      location: '东京 海の森水上競技場',
+      region: 'overseas',
+    } as never;
+    const mapCtx = { venue: { title: '海の森水上競技場' } };
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        TravelGuidePoiPipeline,
+        {
+          provide: TravelGuidePoiCollector,
+          useValue: { collect: jest.fn().mockResolvedValue(mapCtx) },
+        },
+        {
+          provide: TravelGuidePoiRanker,
+          useValue: {
+            rank: jest.fn().mockReturnValue({
+              hotels: [],
+              nightlife: [{ name: '夜宵' }],
+              parking: [],
+            }),
+          },
+        },
+      ],
+    }).compile();
+
+    const pipeline = moduleRef.get(TravelGuidePoiPipeline);
+    await expect(
+      pipeline.run(abroadActivity, generationDto, 2),
+    ).resolves.toEqual({
+      mapCtx,
+      ranked: expect.objectContaining({ hotels: [] }),
+    });
+  });
 });

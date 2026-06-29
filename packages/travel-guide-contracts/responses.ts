@@ -1,5 +1,8 @@
 import type { AiGuidePlanFormValues } from './dto';
-import type { TravelGuideGenerationJobStatus } from './dto';
+import type {
+  TravelGuideGenerationJobProgress,
+  TravelGuideGenerationJobStatus,
+} from './dto';
 import type { TravelGuidePlan } from './types';
 
 export interface GenerateTravelGuideResult {
@@ -18,6 +21,7 @@ export type TravelGuidePlanReadResult = {
 export type TravelGuideGenerationJobResult = {
   jobId: string;
   status: TravelGuideGenerationJobStatus;
+  progress?: TravelGuideGenerationJobProgress;
   plan?: TravelGuidePlan;
   errorMessage?: string;
 };

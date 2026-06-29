@@ -13,6 +13,7 @@ import type {
   TravelGuidePlan,
   TravelGuidePlanReadResult,
 } from '@sync/travel-guide-contracts';
+import { resolveTravelGuideBudgetTier } from './domain/parse-activity-days.util';
 import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cache.service';
 
 export type TravelGuideSavedPlanView = TravelGuidePlanReadResult;
@@ -123,6 +124,12 @@ export class TravelGuideSavedPlanService {
     };
   }
 
+  async updatePlan(guideId: string, plan: TravelGuidePlan): Promise<void> {
+    const id = guideId.trim();
+    if (!id) return;
+    await this.model.updateOne({ guideId: id }, { $set: { plan } });
+  }
+
   async updateBudgetTier(
     guideId: string,
     ownerUserId: string,
@@ -170,7 +177,7 @@ function buildSavedPlanForm(
       ? { departureCity: dto.departureCity.trim() }
       : {}),
     headcount: dto.headcount,
-    ...(dto.budgetTier ? { budgetTier: dto.budgetTier } : {}),
+    budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
     ...(dto.selfDrive != null ? { selfDrive: dto.selfDrive } : {}),
     accommodationNights,
   };

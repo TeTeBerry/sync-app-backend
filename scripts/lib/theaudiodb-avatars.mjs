@@ -330,6 +330,7 @@ const ELECTRONIC_GENRE_HINTS = [
   'drum',
   'dnb',
   'edm',
+  'dance',
   'hardstyle',
   'hardcore',
   'minimal',

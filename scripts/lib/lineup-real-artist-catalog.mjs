@@ -4,6 +4,7 @@ import {
   isCompositeLineupDisplayName,
   normalizeArtistNameKey,
 } from './festival-lineup-fallback.mjs';
+import { extractMainLineupArtist } from './lineup-discogs-search.mjs';
 import { precomputeDisplayGenresFromHermesEvidence } from './web-only-dj-profile.mjs';
 import { sanitizeCatalogGenreTokens } from './web-only-genre-normalize.mjs';
 
@@ -216,8 +217,8 @@ export function isBillingLineupDisplayName(lineupName) {
 
 /** Strip set titles / billing subtitles before solo expansion or Discogs verify. */
 export function normalizeLineupArtistNameForMatch(lineupName) {
-  return stripFtSuffix(
-    stripPresentsSuffix(stripBillingSubtitle(stripQuotedSetTitles(lineupName))),
+  return stripBillingSubtitle(
+    stripQuotedSetTitles(extractMainLineupArtist(lineupName)),
   );
 }
 
@@ -439,4 +440,71 @@ export function collectArtistsMissingRealProfile({
   }
 
   return missing;
+}
+
+/** Whether lineup artist has displayable profile bio (djs.profile or Hermes evidence). */
+export function hasCatalogProfileText(mapRow, dj) {
+  return Boolean(profileFromMapRow(mapRow, dj)?.trim());
+}
+
+export function classifyMissingProfileText(mapRow, dj) {
+  if (!mapRow) {
+    return 'no_map';
+  }
+  if (mapRow.status === 'pending_review') {
+    return 'pending_review';
+  }
+  if (mapRow.source === 'manual-stub') {
+    return 'manual_stub';
+  }
+  if (
+    mapRow.status === 'mapped' &&
+    mapRow.discogsId &&
+    hasMappedRealArtistData(mapRow, dj)
+  ) {
+    return 'empty_profile';
+  }
+  return classifyMissingRealArtistData(mapRow, dj);
+}
+
+export function buildMissingProfileTextRecord({ lineupName, mapRow, dj }) {
+  const issue = classifyMissingProfileText(mapRow, dj);
+  return {
+    ...buildMissingRealArtistRecord({ lineupName, mapRow, dj }),
+    issue,
+  };
+}
+
+/** Artists missing profile bio — includes mapped rows with genres but empty djs.profile. */
+export function collectArtistsMissingProfileText({
+  displayNames,
+  mapByKey,
+  djById,
+}) {
+  const targets = collectRealSoloArtistTargets(displayNames);
+  const missing = [];
+
+  for (const lineupName of targets) {
+    const mapRow = mapByKey.get(normalizeArtistNameKey(lineupName)) ?? null;
+    const dj = mapRow?.discogsId ? djById.get(mapRow.discogsId) ?? null : null;
+
+    if (hasCatalogProfileText(mapRow, dj)) {
+      continue;
+    }
+
+    missing.push(
+      buildMissingProfileTextRecord({
+        lineupName,
+        mapRow,
+        dj,
+      }),
+    );
+  }
+
+  return missing;
+}
+
+/** Drop stage / contest / billing labels — not crawl targets. */
+export function filterCrawlableLineupNames(names) {
+  return names.filter((name) => !isLineupNonArtistLabel(name));
 }

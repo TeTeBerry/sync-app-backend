@@ -17,6 +17,17 @@ export function formatAmapTextField(value: unknown): string {
   return '';
 }
 
+/** Parse Amap `location` ("lng,lat") which may arrive as string or string[]. */
+export function parseAmapLocation(
+  location?: unknown,
+): { lat: number; lng: number } | null {
+  const normalized = formatAmapTextField(location);
+  if (!normalized) return null;
+  const [lng, lat] = normalized.split(',').map((v) => Number(v.trim()));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
 /** Normalize Amap POI `biz_ext.cost` (string | number | array) to yuan per person. */
 export function parseAmapCost(
   cost?: string | number | string[],

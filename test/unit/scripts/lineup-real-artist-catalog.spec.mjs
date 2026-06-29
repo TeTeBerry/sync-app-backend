@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  collectArtistsMissingProfileText,
   collectRealSoloArtistTargets,
   expandRealSoloArtistTargets,
+  filterCrawlableLineupNames,
   getLineupVerifyNameVariants,
+  hasCatalogProfileText,
   hasMappedRealArtistData,
   isBillingLineupDisplayName,
   isLineupNonArtistLabel,
@@ -128,5 +131,56 @@ describe('lineup-real-artist-catalog', () => {
       ),
       true,
     );
+  });
+
+  it('flags empty_profile when mapped with genres but no bio', () => {
+    const mapRow = {
+      status: 'mapped',
+      discogsId: 42,
+      source: 'festival-crawl',
+      displayGenres: ['Techno'],
+    };
+    const dj = { discogsId: 42, genres: ['Techno'], profile: '' };
+
+    assert.equal(hasMappedRealArtistData(mapRow, dj), true);
+    assert.equal(hasCatalogProfileText(mapRow, dj), false);
+
+    const missing = collectArtistsMissingProfileText({
+      displayNames: ['COONE'],
+      mapByKey: new Map([['coone', mapRow]]),
+      djById: new Map([[42, dj]]),
+    });
+    assert.equal(missing.length, 1);
+    assert.equal(missing[0].issue, 'empty_profile');
+  });
+
+  it('skips artists with hermes integrated report as profile', () => {
+    const mapRow = {
+      status: 'mapped',
+      discogsId: 7,
+      source: 'festival-crawl',
+      displayGenres: ['Hardstyle'],
+      hermesEvidence: {
+        integratedReport: 'COONE is a Belgian hardstyle DJ.',
+      },
+    };
+    const dj = { discogsId: 7, genres: ['Hardstyle'], profile: '' };
+
+    assert.equal(hasCatalogProfileText(mapRow, dj), true);
+    const missing = collectArtistsMissingProfileText({
+      displayNames: ['COONE'],
+      mapByKey: new Map([['coone', mapRow]]),
+      djById: new Map([[7, dj]]),
+    });
+    assert.equal(missing.length, 0);
+  });
+
+  it('filterCrawlableLineupNames drops stage labels', () => {
+    const filtered = filterCrawlableLineupNames([
+      'COONE',
+      'DEFQON.1 LEGENDS',
+      'THE ENDSHOW',
+    ]);
+    assert.deepEqual(filtered, ['COONE']);
   });
 });

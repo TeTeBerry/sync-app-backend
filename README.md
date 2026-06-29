@@ -110,6 +110,8 @@ See `package.json` for DB maintenance and media scripts.
 | `JWT_SECRET` | **Required in production** (≥ 32 chars) |
 | `WECHAT_MINI_APP_ID` / `WECHAT_MINI_APP_SECRET` | WeChat mini program login |
 | `AMAP_KEY` | Amap Web API for travel guide POI / routes |
+| `ROLLINGGO_ENABLED` | `true` enables RollingGo MCP quote enrichment in travel guides |
+| `ROLLINGGO_API_KEY` | RollingGo MCP API key (from [rollinggo.store/apply](https://rollinggo.store/apply)) |
 | `CLOUDBASE_ENV_ID` / `CLOUDBASE_STORAGE_BUCKET` | Validate `cloud://` fileIDs from the mini program |
 | `CHROMA_URL` | Chroma HTTP base; empty disables RAG |
 | `CORS_ORIGINS` | H5 CORS allowlist (comma-separated); mini program can leave empty |

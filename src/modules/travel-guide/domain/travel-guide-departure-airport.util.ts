@@ -57,6 +57,110 @@ const DEPARTURE_AIRPORTS: Record<string, AirportInfo> = {
   东京: { name: '羽田/成田国际机场', iata: 'HND/NRT' },
 };
 
+function primaryIataCode(iata: string): string | undefined {
+  const primary = iata.split('/')[0]?.trim().toUpperCase();
+  return primary?.length === 3 ? primary : undefined;
+}
+
+/** 已知出发城市 → RollingGo 航班 searchFlights 城市码（优先于 MCP 机场搜索）。 */
+export function resolveKnownDepartureCityCode(
+  cityLabel: string,
+): string | undefined {
+  const city = cityLabel.trim();
+  const airport = DEPARTURE_AIRPORTS[city];
+  if (!airport) return undefined;
+  return primaryIataCode(airport.iata);
+}
+
+/** 国内/港澳台目的地城市 → IATA（与出发城市共用映射，支持 RollingGo 国内线）。 */
+export function resolveKnownDestinationCityCode(
+  cityLabel: string,
+): string | undefined {
+  return resolveKnownDepartureCityCode(cityLabel);
+}
+
+/** 任意中国城市名 → RollingGo 航班三字码（出发/到达通用）。 */
+export function resolveKnownCityAirportCode(
+  cityLabel: string,
+): string | undefined {
+  return resolveKnownDepartureCityCode(cityLabel);
+}
+
+/**
+ * 境外/特殊目的地 → RollingGo searchAirports 关键词。
+ * 芭提雅等无独立国际机场的城市，映射到主要门户机场（如曼谷）。
+ */
+export function resolveFlightDestinationAirportKeyword(input: {
+  destinationCity: string;
+  venueTitle?: string;
+  venueAddress?: string;
+}): string {
+  const corpus =
+    `${input.destinationCity} ${input.venueTitle ?? ''} ${input.venueAddress ?? ''}`.toLowerCase();
+
+  if (/普吉|phuket|patong/.test(corpus)) return '普吉';
+  if (/清迈|chiang\s*mai/.test(corpus)) return '清迈';
+  if (/苏梅|samui|koh\s*samui/.test(corpus)) return '苏梅岛';
+  if (/芭提雅|pattaya|曼谷|bangkok|泰国|thailand/.test(corpus)) return '曼谷';
+
+  if (/韩国|korea|首尔|seoul|仁川|incheon|釜山|busan/.test(corpus)) {
+    return /釜山|busan/.test(corpus) ? '釜山' : '首尔';
+  }
+  if (
+    /日本|japan|东京|tokyo|大阪|osaka|北海道|sapporo|札幌|冲绳|okinawa|那霸|naha/.test(
+      corpus,
+    )
+  ) {
+    if (/大阪|osaka/.test(corpus)) return '大阪';
+    if (/北海道|sapporo|札幌/.test(corpus)) return '札幌';
+    if (/冲绳|okinawa|那霸|naha/.test(corpus)) return '冲绳';
+    return '东京';
+  }
+
+  if (/香港|hong\s*kong/.test(corpus)) return '香港';
+  if (/澳门|macau/.test(corpus)) return '澳门';
+  if (/台北|taoyuan|高雄|台湾|taipei/.test(corpus)) return '台北';
+
+  const head = input.destinationCity.split(/\s+/)[0]?.trim();
+  return head || input.destinationCity.trim();
+}
+
+export function resolveRollingGoHotelCountryCode(input: {
+  destinationCity: string;
+  venueTitle?: string;
+  venueAddress?: string;
+}): string | undefined {
+  const corpus =
+    `${input.destinationCity} ${input.venueTitle ?? ''} ${input.venueAddress ?? ''}`.toLowerCase();
+
+  if (
+    /泰国|thailand|曼谷|bangkok|芭提雅|pattaya|普吉|phuket|清迈|chiang|苏梅|samui/.test(
+      corpus,
+    )
+  ) {
+    return 'TH';
+  }
+  if (/韩国|korea|首尔|seoul|仁川|incheon|釜山|busan/.test(corpus)) return 'KR';
+  if (
+    /日本|japan|东京|tokyo|大阪|osaka|冲绳|okinawa|北海道|sapporo/.test(corpus)
+  ) {
+    return 'JP';
+  }
+  if (/香港|hong\s*kong/.test(corpus)) return 'HK';
+  if (/澳门|macau/.test(corpus)) return 'MO';
+  if (/台湾|taipei|台北|高雄|kaohsiung/.test(corpus)) return 'TW';
+  return undefined;
+}
+
+export function resolveRollingGoHotelPlace(input: {
+  destinationCity: string;
+}): string {
+  return (
+    input.destinationCity.split(/\s+/)[0]?.trim() ||
+    input.destinationCity.trim()
+  );
+}
+
 export function resolveDepartureCityLabel(
   departureText: string,
   departureCity?: string,

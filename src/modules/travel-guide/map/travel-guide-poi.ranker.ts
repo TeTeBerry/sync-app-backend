@@ -6,6 +6,10 @@ import {
 } from '../domain/parse-activity-days.util';
 import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
 import { isAfterpartyMapPoi } from './travel-guide-afterparty.constants';
+import {
+  TRAVEL_GUIDE_TIER_HOTEL_LIST_LIMIT,
+  TRAVEL_GUIDE_TIER_HOTEL_SCHEME_COUNT,
+} from '../domain/travel-guide-accommodation.constants';
 import type {
   RankedMapPoi,
   RawMapPoi,
@@ -181,7 +185,35 @@ export class TravelGuidePoiRanker {
               ...sortBucket(above, 'asc'),
             ];
 
-    return ordered.map((x) => x.poi).slice(0, 8);
+    return ordered
+      .map((x) => x.poi)
+      .slice(0, TRAVEL_GUIDE_TIER_HOTEL_LIST_LIMIT);
+  }
+
+  /** 三档预算各排一批酒店，供 hotelByTier 档位切换。 */
+  rankHotelsForAllTiers(
+    ctx: TravelGuideMapContext,
+    dto: GenerateTravelGuideDto,
+    options?: { minHotelRating?: number },
+  ): Partial<Record<TravelGuideBudgetTier, RankedMapPoi[]>> {
+    const minHotelRating = options?.minHotelRating ?? DEFAULT_MIN_HOTEL_RATING;
+    const hotelPois = ctx.pois.filter((p) => p.kind === 'hotel');
+    const tiers: TravelGuideBudgetTier[] = ['economy', 'standard', 'comfort'];
+    const result: Partial<Record<TravelGuideBudgetTier, RankedMapPoi[]>> = {};
+
+    for (const tier of tiers) {
+      const hotels = this.pickHotelsForBudget(
+        hotelPois,
+        tier,
+        minHotelRating,
+        ctx.eventEndHour,
+      );
+      if (hotels.length) {
+        result[tier] = hotels;
+      }
+    }
+
+    return result;
   }
 }
 
@@ -215,16 +247,14 @@ function estimateHotelPrice(
   return TIER_PRICE_MID[tier];
 }
 
-/** 双方案：就近（预算档位内优先）+ 备选（同档或次档、距会场更远/商圈） */
-export function pickAccommodationSchemes(
+/** 同档位综合推荐多家：首推 + 距离/商圈分散的备选 */
+export function pickTierAccommodationHotels(
   hotels: RankedMapPoi[],
   budgetTier: TravelGuideBudgetTier = 'standard',
-): {
-  nearby: RankedMapPoi;
-  cityCenter: RankedMapPoi;
-} {
+  limit = TRAVEL_GUIDE_TIER_HOTEL_SCHEME_COUNT,
+): RankedMapPoi[] {
   if (!hotels.length) {
-    throw new Error('pickAccommodationSchemes requires at least one hotel');
+    throw new Error('pickTierAccommodationHotels requires at least one hotel');
   }
 
   const [min, max] = TIER_PRICE_RANGE[budgetTier];
@@ -232,18 +262,57 @@ export function pickAccommodationSchemes(
     const price = estimateHotelPrice(h, budgetTier);
     return price >= min && price <= max;
   });
-  const primaryPool = inBand.length >= 2 ? inBand : hotels;
+  const pool = inBand.length >= 2 ? inBand : hotels;
+  const picks: RankedMapPoi[] = [];
+  const used = new Set<string>();
 
-  const nearby = primaryPool[0]!;
-  const cityCenter =
-    primaryPool.find(
-      (h) => h.name !== nearby.name && h.distanceM >= nearby.distanceM,
-    ) ??
-    primaryPool.find((h) => h.name !== nearby.name) ??
-    hotels.find((h) => h.name !== nearby.name) ??
-    nearby;
+  const push = (hotel: RankedMapPoi | undefined) => {
+    if (!hotel || used.has(hotel.name) || picks.length >= limit) return;
+    picks.push(hotel);
+    used.add(hotel.name);
+  };
 
-  return { nearby, cityCenter };
+  push(pool[0]);
+
+  const nearbyRef = pool[0]?.distanceM ?? 0;
+  push(
+    pool.find((h) => !used.has(h.name) && h.distanceM >= nearbyRef + 400) ??
+      pool.find((h) => !used.has(h.name)),
+  );
+
+  for (const hotel of pool) {
+    if (picks.length >= limit) break;
+    if (used.has(hotel.name)) continue;
+    const tooClose = picks.some(
+      (picked) => Math.abs(picked.distanceM - hotel.distanceM) < 250,
+    );
+    if (tooClose && picks.length >= 3) continue;
+    push(hotel);
+  }
+
+  for (const hotel of hotels) {
+    if (picks.length >= limit) break;
+    push(hotel);
+  }
+
+  return picks;
+}
+
+/** @deprecated 保留 nearby/cityCenter 字段供旧测试；请用 pickTierAccommodationHotels */
+export function pickAccommodationSchemes(
+  hotels: RankedMapPoi[],
+  budgetTier: TravelGuideBudgetTier = 'standard',
+): {
+  schemeHotels: RankedMapPoi[];
+  nearby: RankedMapPoi;
+  cityCenter: RankedMapPoi;
+} {
+  const schemeHotels = pickTierAccommodationHotels(hotels, budgetTier);
+  return {
+    schemeHotels,
+    nearby: schemeHotels[0]!,
+    cityCenter: schemeHotels[1] ?? schemeHotels[0]!,
+  };
 }
 
 function lateNightScore(poi: RawMapPoi, eventEndHour: number): number {

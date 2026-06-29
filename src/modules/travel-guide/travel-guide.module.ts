@@ -37,6 +37,11 @@ import { TravelGuideLlmPolishService } from './travel-guide-llm-polish.service';
 import { TravelGuideBudgetTierService } from './travel-guide-budget-tier.service';
 import { TravelGuideGuardService } from './travel-guide-guard.service';
 import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
+import { RollingGoMcpClient } from './infra/rollinggo/rollinggo-mcp.client';
+import { RollingGoTravelQuoteAdapter } from './infra/rollinggo/rollinggo-travel-quote.adapter';
+import { TRAVEL_QUOTE_PORT } from './ports/travel-quote.port';
+import { TravelGuideQuoteRefreshService } from './travel-guide-quote-refresh.service';
+import { TravelQuoteEnrichmentService } from './travel-quote-enrichment.service';
 
 @Module({
   imports: [
@@ -80,6 +85,14 @@ import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
     TravelGuideBudgetTierService,
     TravelGuideGuardService,
     TravelGuideSavedPlanService,
+    RollingGoMcpClient,
+    RollingGoTravelQuoteAdapter,
+    {
+      provide: TRAVEL_QUOTE_PORT,
+      useExisting: RollingGoTravelQuoteAdapter,
+    },
+    TravelQuoteEnrichmentService,
+    TravelGuideQuoteRefreshService,
   ],
   exports: [
     TravelGuideGenerationService,

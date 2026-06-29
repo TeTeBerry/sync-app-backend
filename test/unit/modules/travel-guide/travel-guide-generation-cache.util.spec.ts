@@ -1,6 +1,7 @@
 import {
   buildTravelGuideGenerationCacheKey,
   normalizeTravelGuideGenerationParams,
+  reconcileDepartureCityForCache,
 } from '@src/modules/travel-guide/domain/travel-guide-generation-cache.util';
 
 describe('travel-guide-generation-cache.util', () => {
@@ -36,5 +37,28 @@ describe('travel-guide-generation-cache.util', () => {
       ),
     );
     expect(standard).not.toBe(economy);
+  });
+
+  it('reconcileDepartureCityForCache drops stale city when departure switches', () => {
+    expect(reconcileDepartureCityForCache('北京', '上海')).toBe('北京');
+    expect(reconcileDepartureCityForCache('上海虹桥', '上海')).toBe('上海');
+  });
+
+  it('differs cache key when departure city changes', () => {
+    const shanghai = buildTravelGuideGenerationCacheKey(
+      normalizeTravelGuideGenerationParams(
+        4,
+        { ...baseDto, departure: '上海', departureCity: '上海' },
+        2,
+      ),
+    );
+    const beijing = buildTravelGuideGenerationCacheKey(
+      normalizeTravelGuideGenerationParams(
+        4,
+        { ...baseDto, departure: '北京', departureCity: '北京' },
+        2,
+      ),
+    );
+    expect(shanghai).not.toBe(beijing);
   });
 });

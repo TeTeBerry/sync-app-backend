@@ -116,6 +116,10 @@ function resolveDisambiguation(sourcedFacts = []) {
   return '';
 }
 
+export function buildHermesCatalogProfileText(hermesEvidence) {
+  return buildProfileText(hermesEvidence);
+}
+
 function buildProfileText(hermesEvidence) {
   const report = hermesEvidence?.integratedReport?.trim();
   let profile = '';

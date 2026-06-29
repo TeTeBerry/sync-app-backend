@@ -36,6 +36,7 @@ import {
   resolveMusicBrainzArtistMatch,
 } from './musicbrainz-artist-resolve.mjs';
 import { isProtectedLineupMapSource } from './lineup-map-source.mjs';
+import { filterCrawlableLineupNames } from './lineup-real-artist-catalog.mjs';
 
 export { closeDjDiscogsRedisCache, deleteDjStylesRedisCache } from './discogs-redis-cache.mjs';
 export { createDjDiscogsMapModel } from './dj-discogs-map.mjs';
@@ -626,7 +627,7 @@ export async function partitionLineupArtistCoverage(db, expectedNames) {
 export async function findMissingCatalogArtists(db, config) {
   const expected = await loadAllCatalogLineupArtistNames(db, config);
   const { missing } = await partitionLineupArtistCoverage(db, expected);
-  return missing;
+  return filterCrawlableLineupNames(missing);
 }
 
 /** Lineup names in scope that have dj_discogs_map status=pending_review. */
@@ -662,8 +663,10 @@ export async function listPendingReviewLineupArtists(db, lineupNames) {
     pending.push(byKey.get(key) ?? name);
   }
 
-  return pending;
+  return filterCrawlableLineupNames(pending);
 }
+
+export { filterCrawlableLineupNames } from './lineup-real-artist-catalog.mjs';
 
 export async function listPendingReviewCatalogArtists(db, config) {
   const expected = await loadAllCatalogLineupArtistNames(db, config);
@@ -791,6 +794,14 @@ export async function crawlArtistNames({
   skipMusicBrainz = false,
   mbMinMatch = 'strong',
 }) {
+  const crawlTargets = filterCrawlableLineupNames(artistNames);
+  const skippedLabels = artistNames.length - crawlTargets.length;
+  if (skippedLabels > 0) {
+    console.log(
+      `ℹ️  跳过 ${skippedLabels} 个非艺人标签（stage/contest/legends 等）`,
+    );
+  }
+
   let upserted = 0;
   let missed = 0;
   let pendingReview = 0;
@@ -833,7 +844,7 @@ export async function crawlArtistNames({
     return false;
   }
 
-  for (const artistName of artistNames) {
+  for (const artistName of crawlTargets) {
     console.log(`\n查找 ${label}:`, artistName);
     const manualProfile =
       LINEUP_MANUAL_DJ_PROFILES[artistName.trim().toUpperCase()];

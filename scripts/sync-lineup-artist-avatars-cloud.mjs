@@ -40,11 +40,12 @@ import {
 import { listMappedLineupArtists } from './lib/dj-discogs-map.mjs';
 import {
   createTheAudioDbClient,
-  extractTheAudioDbGenres,
   getTheAudioDbConfig,
-  isElectronicGenreCandidate,
-  scoreTheAudioDbMatch,
 } from './lib/theaudiodb-avatars.mjs';
+import {
+  evaluateAvatarGenreGate,
+  bestCatalogMatchScore,
+} from './lib/lineup-avatar-match.mjs';
 import {
   isDuoBillingLineupName,
   isSoloLineupMappedToDuoDiscogs,
@@ -93,23 +94,61 @@ function hasStoredAvatar(row) {
   return isStoredLineupAvatarUrl(row?.avatarUrl, row?.source);
 }
 
-function genresAreCompatible(djsStyles, candidateGenres) {
-  if (!GENRE_CHECK) {
-    return true;
-  }
-  const electronic = isElectronicGenreCandidate(candidateGenres);
-  if (electronic === null) {
-    // TheAudioDB has no genre info — don't reject
-    return true;
-  }
-  if (!electronic) {
-    // TheAudioDB says non-electronic → reject unless djs has no styles either
-    if (!djsStyles?.length) {
-      return true;
+function genresAreCompatible({
+  djsStyles,
+  djsGenres,
+  candidateGenres,
+  lineupName,
+  searchName,
+  discogsName,
+  candidateArtistName,
+  djProfile,
+  matchScore,
+}) {
+  return evaluateAvatarGenreGate({
+    genreCheckEnabled: GENRE_CHECK,
+    djsStyles,
+    djsGenres,
+    candidateGenres,
+    lineupName,
+    searchName,
+    discogsName,
+    candidateArtistName,
+    djProfile,
+    matchScore,
+  });
+}
+
+function dedupeAudioDbCandidates(candidates) {
+  const seen = new Set();
+  const unique = [];
+  for (const candidate of candidates) {
+    const key =
+      candidate.theAudioDbArtistId ??
+      candidate.avatarUrl ??
+      candidate.artistName;
+    if (!key || seen.has(key)) {
+      continue;
     }
-    return false;
+    seen.add(key);
+    unique.push(candidate);
   }
-  return true;
+  return unique;
+}
+
+function corroborationLabel(reason) {
+  switch (reason) {
+    case 'crossover_guest_corroborated':
+      return '跨界嘉宾：Discogs profile + catalog 名字一致';
+    case 'electronic_dj_corroborated':
+      return '电子 DJ：Discogs profile + catalog 名字一致';
+    case 'electronic_catalog_corroborated':
+      return 'catalog genres 含 Electronic + 名字一致';
+    case 'catalog_alias_electronic_match':
+      return '阵容别名 ↔ catalog 名一致 + 电子 genre';
+    default:
+      return reason;
+  }
 }
 
 /**
@@ -119,8 +158,11 @@ function genresAreCompatible(djsStyles, candidateGenres) {
 async function resolveTheAudioDbAvatar({
   lineupName,
   searchName,
+  discogsName,
   audioDb,
   djsStyles,
+  djsGenres,
+  djProfile,
 }) {
   const effectiveSearchName = resolveAvatarSearchName(lineupName, searchName);
   const candidates = [];
@@ -145,15 +187,25 @@ async function resolveTheAudioDbAvatar({
     return null;
   }
 
-  // Prefer highest score; tie-break: searchName (canonical) first
-  candidates.sort((a, b) => {
+  const ranked = dedupeAudioDbCandidates(candidates).map((candidate) => ({
+    ...candidate,
+    score: bestCatalogMatchScore(
+      lineupName,
+      effectiveSearchName,
+      discogsName,
+      candidate,
+    ),
+  }));
+
+  // Prefer highest catalog-wide score; tie-break: searchName (canonical) first
+  ranked.sort((a, b) => {
     if (b.score !== a.score) {
       return b.score - a.score;
     }
     return a.searchedAs === 'searchName' ? -1 : 1;
   });
 
-  for (const candidate of candidates) {
+  for (const candidate of ranked) {
     if (candidate.score < MIN_SCORE) {
       continue;
     }
@@ -169,11 +221,35 @@ async function resolveTheAudioDbAvatar({
       );
       continue;
     }
-    if (!genresAreCompatible(djsStyles, candidate.genres)) {
+    const genreVerdict = genresAreCompatible({
+      djsStyles,
+      djsGenres,
+      candidateGenres: candidate.genres,
+      lineupName,
+      searchName: effectiveSearchName,
+      discogsName,
+      candidateArtistName: candidate.artistName,
+      djProfile,
+      matchScore: candidate.score,
+    });
+    if (!genreVerdict.accept) {
       console.warn(
-        `⚠️  TheAudioDB genre 不匹配（lineup=${lineupName}, candidate=${candidate.artistName}, genres=${(candidate.genres ?? []).join('/')})`,
+        `⚠️  TheAudioDB 未通过校验（lineup=${lineupName}, candidate=${candidate.artistName}, genres=${(candidate.genres ?? []).join('/')}, reason=${genreVerdict.reason}）`,
       );
       continue;
+    }
+    if (
+      [
+        'crossover_guest_corroborated',
+        'electronic_dj_corroborated',
+        'electronic_catalog_corroborated',
+        'catalog_alias_electronic_match',
+      ].includes(genreVerdict.reason) &&
+      GENRE_CHECK
+    ) {
+      console.log(
+        `   ✓ 交叉校验通过（${corroborationLabel(genreVerdict.reason)}）`,
+      );
     }
     return {
       url: candidate.avatarUrl,
@@ -193,9 +269,12 @@ async function resolveTheAudioDbAvatar({
 async function resolveSourceUrl({
   lineupName,
   searchName,
+  discogsName,
   manualUrls,
   audioDb,
   djsStyles,
+  djsGenres,
+  djProfile,
 }) {
   const manual = manualUrls[lineupName]?.trim();
   if (manual && isRemoteLineupAvatarUrl(manual)) {
@@ -205,25 +284,31 @@ async function resolveSourceUrl({
   return resolveTheAudioDbAvatar({
     lineupName,
     searchName,
+    discogsName,
     audioDb,
     djsStyles,
+    djProfile,
   });
 }
 
-async function loadDjsStyleMap(db) {
+async function loadDjsCatalogMap(db) {
   const rows = await db
     .collection('djs')
     .find({})
-    .project({ name: 1, styles: 1 })
+    .project({ name: 1, discogsId: 1, styles: 1, genres: 1, profile: 1 })
     .toArray();
+  const byDiscogsId = new Map();
   const byNameKey = new Map();
   for (const row of rows) {
+    if (Number.isFinite(row.discogsId)) {
+      byDiscogsId.set(row.discogsId, row);
+    }
     const key = (row.name ?? '').toLowerCase().trim();
     if (key) {
-      byNameKey.set(key, row.styles ?? []);
+      byNameKey.set(key, row);
     }
   }
-  return byNameKey;
+  return { byDiscogsId, byNameKey };
 }
 
 async function main() {
@@ -251,7 +336,7 @@ async function main() {
 
   const mapCollection = createDjDiscogsMapModel(mongoose).collection;
   const audioDb = createTheAudioDbClient(getTheAudioDbConfig());
-  const djsStyleMap = await loadDjsStyleMap(db);
+  const djsCatalog = await loadDjsCatalogMap(db);
 
   const lineupNames = explicitNames?.length
     ? explicitNames
@@ -283,7 +368,7 @@ async function main() {
   console.log('✅ MongoDB:', mongoConfig.mongoUri);
   console.log('🌐 头像模式：CDN 直链（TheAudioDB / manual），不上传 CloudBase');
   console.log(
-    `   分数门槛 ≥${MIN_SCORE}${GENRE_CHECK ? ' + genre 交叉校验' : ''}`,
+    `   分数门槛 ≥${MIN_SCORE}${GENRE_CHECK ? ' + genre/身份交叉校验' : ''}`,
   );
   console.log(
     `ℹ️  仅处理 dj_discogs_map 已确认艺人（mapped）；未确认 ${skippedUnmapped} 位已跳过`,
@@ -299,7 +384,7 @@ async function main() {
   let removed = 0;
   let flagged = 0;
 
-  for (const { lineupName, searchName, discogsId } of targets) {
+  for (const { lineupName, searchName, discogsName, discogsId } of targets) {
     const key = lineupName.trim().toLowerCase();
     const existing = byKey.get(key);
 
@@ -313,19 +398,28 @@ async function main() {
       `\n处理: ${lineupName}` + (searchName ? ` → ${searchName}` : ''),
     );
 
-    const djsStyles =
-      djsStyleMap.get((searchName ?? '').toLowerCase().trim()) ??
-      djsStyleMap.get(key) ??
-      [];
+    const djRow =
+      (Number.isFinite(discogsId)
+        ? djsCatalog.byDiscogsId.get(discogsId)
+        : null) ??
+      djsCatalog.byNameKey.get((searchName ?? '').toLowerCase().trim()) ??
+      djsCatalog.byNameKey.get(key) ??
+      null;
+    const djsStyles = djRow?.styles ?? [];
+    const djsGenres = djRow?.genres ?? [];
+    const djProfile = djRow?.profile ?? '';
 
     let sourceInfo;
     try {
       sourceInfo = await resolveSourceUrl({
         lineupName,
         searchName,
+        discogsName,
         manualUrls,
         audioDb,
         djsStyles,
+        djsGenres,
+        djProfile,
       });
     } catch (error) {
       missed += 1;

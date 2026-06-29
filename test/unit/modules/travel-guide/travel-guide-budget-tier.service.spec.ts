@@ -6,6 +6,7 @@ import { ActivityService } from '@src/modules/activity/activity.service';
 import { AmapMapService } from '@src/modules/travel-guide/map/amap.service';
 import { TravelGuidePoiCollector } from '@src/modules/travel-guide/map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from '@src/modules/travel-guide/map/travel-guide-poi.ranker';
+import { TravelQuoteEnrichmentService } from '@src/modules/travel-guide/travel-quote-enrichment.service';
 import { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 
@@ -42,7 +43,21 @@ const basePlan: TravelGuidePlan = {
   tips: { title: '提示', items: ['tip'] },
   budget: {
     title: '预算参考（全程 · 合计）',
-    items: [{ label: '住宿', range: '约 ¥1200–1800' }],
+    items: [
+      { label: '机票（往返）', range: '约 ¥5286–14396' },
+      { label: '住宿', range: '约 ¥2240–5760' },
+      { label: '合计参考（全员）', range: '约 ¥7526–20556' },
+    ],
+  },
+  budgetTierSnapshots: [
+    { tier: 'economy', nightlyMin: 1120, nightlyMax: 2030, currency: 'CNY' },
+    { tier: 'standard', nightlyMin: 2030, nightlyMax: 2880, currency: 'CNY' },
+    { tier: 'comfort', nightlyMin: 4560, nightlyMax: 4560, currency: 'CNY' },
+  ],
+  quoteTierSources: {
+    economy: 'rollinggo',
+    standard: 'rollinggo',
+    comfort: 'rollinggo',
   },
 };
 
@@ -108,6 +123,13 @@ describe('TravelGuideBudgetTierService', () => {
         { provide: TravelGuidePoiCollector, useValue: { collect } },
         { provide: TravelGuidePoiRanker, useValue: { rank } },
         {
+          provide: TravelQuoteEnrichmentService,
+          useValue: {
+            run: jest.fn(),
+            fetchHotelQuoteForTier: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
           provide: UserProfileSyncService,
           useValue: { applyTravelGuideHints },
         },
@@ -115,6 +137,16 @@ describe('TravelGuideBudgetTierService', () => {
     }).compile();
 
     service = moduleRef.get(TravelGuideBudgetTierService);
+  });
+
+  it('skips POI collect when plan already has hotels and tier snapshots', async () => {
+    await service.selectBudgetTier(
+      'guide-1',
+      { budgetTier: 'economy' },
+      testActor,
+    );
+
+    expect(collect).not.toHaveBeenCalled();
   });
 
   it('updates saved plan and writes budget hints on tier select', async () => {
@@ -129,7 +161,20 @@ describe('TravelGuideBudgetTierService', () => {
       'wx_owner',
       'economy',
       expect.objectContaining({
-        budgetLabel: '经济(¥150-300/晚)',
+        budgetLabel: '经济(¥1120-2030/晚)',
+        budget: expect.objectContaining({
+          items: expect.arrayContaining([
+            expect.objectContaining({
+              label: '机票（往返）',
+              range: '约 ¥5286–14396',
+            }),
+            expect.objectContaining({ label: '住宿', range: '约 ¥2240–4060' }),
+            expect.objectContaining({
+              label: '合计参考（全员）',
+              range: '约 ¥7526–18456',
+            }),
+          ]),
+        }),
       }),
     );
     expect(applyTravelGuideHints).toHaveBeenCalledWith(testActor, {
@@ -171,6 +216,13 @@ describe('TravelGuideBudgetTierService', () => {
         { provide: TravelGuidePoiCollector, useValue: { collect } },
         { provide: TravelGuidePoiRanker, useValue: { rank } },
         {
+          provide: TravelQuoteEnrichmentService,
+          useValue: {
+            run: jest.fn(),
+            fetchHotelQuoteForTier: jest.fn(),
+          },
+        },
+        {
           provide: UserProfileSyncService,
           useValue: { applyTravelGuideHints },
         },
@@ -207,6 +259,13 @@ describe('TravelGuideBudgetTierService', () => {
         { provide: AmapMapService, useValue: { enabled: true } },
         { provide: TravelGuidePoiCollector, useValue: { collect } },
         { provide: TravelGuidePoiRanker, useValue: { rank } },
+        {
+          provide: TravelQuoteEnrichmentService,
+          useValue: {
+            run: jest.fn(),
+            fetchHotelQuoteForTier: jest.fn(),
+          },
+        },
         {
           provide: UserProfileSyncService,
           useValue: { applyTravelGuideHints },

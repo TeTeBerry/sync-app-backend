@@ -5,6 +5,13 @@
 
 const DEFAULT_BASE_URL = 'https://musicbrainz.org/ws/2';
 const DEFAULT_MIN_INTERVAL_MS = 1100;
+const DEFAULT_MAX_RETRIES = 5;
+
+function isRetryableMbStatus(status) {
+  return status === 429 || status === 502 || status === 503 || status === 504;
+}
+
+export { isRetryableMbStatus };
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -76,6 +83,10 @@ export function createMusicBrainzClient(options = {}) {
     500,
     Number(options.minIntervalMs ?? DEFAULT_MIN_INTERVAL_MS) || DEFAULT_MIN_INTERVAL_MS,
   );
+  const maxRetries = Math.max(
+    0,
+    Number(options.maxRetries ?? DEFAULT_MAX_RETRIES) || DEFAULT_MAX_RETRIES,
+  );
 
   let lastRequestAt = 0;
 
@@ -87,7 +98,7 @@ export function createMusicBrainzClient(options = {}) {
     lastRequestAt = Date.now();
   }
 
-  async function fetchJson(path, params = {}) {
+  async function fetchJson(path, params = {}, attempt = 0) {
     await throttle();
     const url = new URL(`${baseUrl}${path}`);
     url.searchParams.set('fmt', 'json');
@@ -105,6 +116,14 @@ export function createMusicBrainzClient(options = {}) {
     });
 
     if (!response.ok) {
+      if (isRetryableMbStatus(response.status) && attempt < maxRetries) {
+        const waitMs = minIntervalMs * (attempt + 2);
+        console.warn(
+          `MusicBrainz ${response.status}，${waitMs}ms 后重试 (${attempt + 1}/${maxRetries}): ${path}`,
+        );
+        await sleep(waitMs);
+        return fetchJson(path, params, attempt + 1);
+      }
       const body = await response.text().catch(() => '');
       throw new Error(
         `MusicBrainz ${response.status} ${response.statusText}: ${body.slice(0, 200)}`,

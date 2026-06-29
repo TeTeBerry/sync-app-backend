@@ -1,10 +1,15 @@
 export type {
   TravelGuideBudgetTier,
+  TravelGuideBudgetTierSnapshot,
   TravelGuideHotelItem,
   TravelGuideAccommodationScheme,
   TravelGuideSpotItem,
   TravelGuideTicketChannel,
   TravelGuideVenueTransportOption,
+  TravelGuideFlightLeg,
+  TravelGuideFlightOffer,
+  TravelGuideFlightTierQuote,
+  TravelGuideHotelTierAccommodation,
   TravelGuideBudgetItem,
   TravelGuidePlan,
 } from './types';
@@ -14,6 +19,8 @@ export type {
   GenerateTravelGuidePayload,
   TravelGuidePlaceSuggestion,
   TravelGuideGenerationJobStatus,
+  TravelGuideGenerationProgressStep,
+  TravelGuideGenerationJobProgress,
 } from './dto';
 
 export type {

@@ -4,7 +4,10 @@ import type {
   TravelGuidePlan,
   AiGuidePlanFormValues,
 } from '@sync/travel-guide-contracts';
-import type { TravelGuideGenerationJobStatus } from '@sync/travel-guide-contracts';
+import type {
+  TravelGuideGenerationJobProgress,
+  TravelGuideGenerationJobStatus,
+} from '@sync/travel-guide-contracts';
 
 export type { TravelGuideGenerationJobStatus };
 
@@ -38,6 +41,9 @@ export class TravelGuideGenerationJob {
 
   @Prop()
   errorMessage?: string;
+
+  @Prop({ type: Object })
+  progress?: TravelGuideGenerationJobProgress;
 
   @Prop({ required: true, index: true })
   expiresAt!: Date;
