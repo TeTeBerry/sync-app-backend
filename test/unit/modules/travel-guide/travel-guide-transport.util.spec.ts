@@ -310,6 +310,67 @@ describe('travel-guide-transport.util', () => {
     expect(options.some((o) => /公交|网约车/.test(o.label))).toBe(true);
   });
 
+  it('uses amap transit detail lines for same-city domestic transport', () => {
+    const detailLines = [
+      '步行约 350 米至世博大道站',
+      '乘坐地铁13号线：世博大道 → 世博会博物馆（3 站，约 20 分钟）（世博大道进站）',
+      '从世博会博物馆出站后步行约 420 米至会场',
+    ];
+    const transportLines = buildInterCityTransportLines({
+      departure: '浦东新区',
+      venueTitle: '上海世博展览馆',
+      venueReadableAddress: '上海市浦东新区国展路1099号',
+      selfDrive: false,
+      interCity: false,
+      route: {
+        distanceM: 12500,
+        durationSec: 2400,
+        distanceKm: 12.5,
+        durationMin: 40,
+      },
+      transitDetailLines: detailLines,
+      transportHints: [],
+      destinationCity: '上海',
+      activity: {
+        name: 'Tomorrowland Shanghai',
+        location: '上海·世博展览馆',
+        region: 'domestic' as const,
+      },
+    });
+
+    expect(transportLines.join(' ')).toMatch(/地铁13号线/);
+    expect(transportLines.join(' ')).toMatch(/12\.5 km/);
+
+    const venueOptions = buildVenueTransportOptions({
+      departure: '浦东新区',
+      venueTitle: '上海世博展览馆',
+      venueReadableAddress: '上海市浦东新区国展路1099号',
+      selfDrive: false,
+      interCity: false,
+      route: {
+        distanceM: 12500,
+        durationSec: 2400,
+        distanceKm: 12.5,
+        durationMin: 40,
+      },
+      transitDetailLines: detailLines,
+      transportHints: [],
+      destinationCity: '上海',
+      activity: {
+        name: 'Tomorrowland Shanghai',
+        location: '上海·世博展览馆',
+        region: 'domestic' as const,
+      },
+    });
+
+    const railOption = venueOptions.find((o) => /地铁/.test(o.label));
+    expect(railOption).toBeDefined();
+    expect(railOption!.lines.join(' ')).toMatch(/地铁13号线/);
+    expect(railOption!.lines.join(' ')).not.toMatch(
+      /乘地铁\/公交至会场最近站点/,
+    );
+  });
+
   it('keeps map venue options when LLM invents invalid modes', () => {
     const input = {
       departure: '上海',

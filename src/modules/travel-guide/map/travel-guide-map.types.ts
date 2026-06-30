@@ -1,4 +1,5 @@
 import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
+import type { TransitRouteSummary } from './amap-transit-route.util';
 
 export type MapPoiKind =
   | 'hotel'
@@ -40,6 +41,11 @@ export interface DrivingRouteSummary {
   durationMin: number;
 }
 
+export type {
+  TransitRouteSummary,
+  TransitRouteStep,
+} from './amap-transit-route.util';
+
 export type TravelGuideGeoSource = 'hot_path' | 'database' | 'api' | 'none';
 
 export interface ResolvedVenue {
@@ -51,6 +57,7 @@ export interface ResolvedVenue {
 export interface ResolvedTransport {
   driving?: DrivingRouteSummary;
   transit?: DrivingRouteSummary;
+  transitDetail?: TransitRouteSummary;
   walking?: DrivingRouteSummary;
   source: TravelGuideGeoSource;
   hotHubLabel?: string;
@@ -68,6 +75,7 @@ export interface TravelGuideMapContext {
   departure?: GeocodedPlace;
   drivingRoute?: DrivingRouteSummary;
   transitRoute?: DrivingRouteSummary;
+  transitDetail?: TransitRouteSummary;
   transportSource: TravelGuideGeoSource;
   transportHints: string[];
   interCity?: boolean;

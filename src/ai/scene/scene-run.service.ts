@@ -7,12 +7,18 @@ import type {
 } from '@sync/scene-contracts';
 import type { SceneHandler } from './handlers/scene-handler.interface';
 import { EventsKnowledgeSearchSceneHandler } from './handlers/events-knowledge-search.handler';
+import { FestivalStorySceneHandler } from './handlers/festival-story.handler';
+import { LineupDjSceneHandler } from './handlers/lineup-dj.handler';
+import { RecruitApplyComposeSceneHandler } from './handlers/recruit-apply-compose.handler';
 import { RecruitComposeSceneHandler } from './handlers/recruit-compose.handler';
 import { RecruitSearchSceneHandler } from './handlers/recruit-search.handler';
 
 const SUPPORTED_SCENES: SceneId[] = [
   'recruit_search',
   'recruit_compose',
+  'recruit_apply_compose',
+  'lineup_dj',
+  'festival_story',
   'events_knowledge_search',
 ];
 
@@ -23,11 +29,17 @@ export class SceneRunService {
   constructor(
     recruitSearchHandler: RecruitSearchSceneHandler,
     recruitComposeHandler: RecruitComposeSceneHandler,
+    recruitApplyComposeHandler: RecruitApplyComposeSceneHandler,
+    lineupDjHandler: LineupDjSceneHandler,
+    festivalStoryHandler: FestivalStorySceneHandler,
     eventsKnowledgeSearchHandler: EventsKnowledgeSearchSceneHandler,
   ) {
     this.handlers = new Map<SceneId, SceneHandler>([
       [recruitSearchHandler.scene, recruitSearchHandler],
       [recruitComposeHandler.scene, recruitComposeHandler],
+      [recruitApplyComposeHandler.scene, recruitApplyComposeHandler],
+      [lineupDjHandler.scene, lineupDjHandler],
+      [festivalStoryHandler.scene, festivalStoryHandler],
       [eventsKnowledgeSearchHandler.scene, eventsKnowledgeSearchHandler],
     ]);
   }

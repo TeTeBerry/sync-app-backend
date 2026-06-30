@@ -1,5 +1,6 @@
 import {
   isElectronicGenreCandidate,
+  isTheAudioDbHomonymBio,
   scoreTheAudioDbMatch,
 } from './theaudiodb-avatars.mjs';
 
@@ -130,6 +131,27 @@ export function isElectronicDjProfile(profile) {
   return false;
 }
 
+const HOMONYM_STUB_FOLLOWER_CEILING = 50_000;
+
+/**
+ * Reject TheAudioDB merged homonym pages that attach the wrong person's photo.
+ * Example: search.php?s=fisher → US vocal Fisher (4k followers), not Fisher (OZ).
+ */
+export function isTheAudioDbHomonymStub({
+  candidateBiography,
+  candidateGenres,
+  candidateFollowers,
+}) {
+  if (!isTheAudioDbHomonymBio(candidateBiography)) {
+    return false;
+  }
+  if (isElectronicGenreCandidate(candidateGenres ?? []) === true) {
+    return false;
+  }
+  const followers = Number(candidateFollowers ?? 0);
+  return !followers || followers < HOMONYM_STUB_FOLLOWER_CEILING;
+}
+
 /**
  * Multi-signal genre + identity gate for TheAudioDB avatar candidates.
  *
@@ -141,6 +163,8 @@ export function evaluateAvatarGenreGate({
   djsStyles,
   djsGenres,
   candidateGenres,
+  candidateBiography,
+  candidateFollowers,
   lineupName,
   searchName,
   discogsName,
@@ -150,6 +174,19 @@ export function evaluateAvatarGenreGate({
 }) {
   if (!genreCheckEnabled) {
     return { accept: true, reason: 'genre_check_disabled' };
+  }
+
+  if (
+    isTheAudioDbHomonymStub({
+      candidateBiography,
+      candidateGenres,
+      candidateFollowers,
+    }) &&
+    (isElectronicGenreCandidate(djsGenres ?? []) === true ||
+      isElectronicDjProfile(djProfile) ||
+      (djsStyles?.length ?? 0) > 0)
+  ) {
+    return { accept: false, reason: 'homonym_disambiguation_stub' };
   }
 
   const identityAligned = isCatalogIdentityAligned({

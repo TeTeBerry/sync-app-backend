@@ -405,6 +405,8 @@ export interface TravelGuideTransportBuildInput {
   selfDrive: boolean;
   interCity: boolean;
   route?: DrivingRouteSummary;
+  /** 高德公交/地铁逐步明细（同城非自驾） */
+  transitDetailLines?: string[];
   transportHints: string[];
   destinationCity?: string;
   departureCity?: string;
@@ -594,6 +596,13 @@ function buildSameCityTransportLines(
     );
   } else if (selfDrive) {
     lines.push(`自驾导航「${venueTitle}」，出发前在地图 App 查看实时路况。`);
+  } else if (input.transitDetailLines?.length) {
+    lines.push(...input.transitDetailLines);
+    if (route) {
+      lines.push(
+        `全程参考：约 ${route.distanceKm} km / ${route.durationMin} 分钟（含步行接驳，以出发日为准）。`,
+      );
+    }
   } else if (route) {
     const modeHint = profile.hasUrbanRail ? '地铁/公交/网约车' : '公交/网约车';
     lines.push(
@@ -821,14 +830,20 @@ function buildDomesticVenueOptions(
   }
 
   if (caps.urbanRail.available) {
+    const urbanLines = input.transitDetailLines?.length
+      ? [
+          ...input.transitDetailLines,
+          '散场高峰地铁可能限流，备用网约车；以高德实时公交为准，提前查末班车时间。',
+        ]
+      : [
+          `在${dest}乘地铁/公交至会场最近站点，步行或短途打车至「${input.venueTitle}」。`,
+          pickVenueTransportHint(input.transportHints, /地铁|公交|线/) ??
+            '以高德/百度实时公交为准；散场高峰地铁可能限流。',
+          '备用网约车，提前查末班车时间。',
+        ];
     options.push({
       label: caps.urbanRail.label,
-      lines: [
-        `在${dest}乘地铁/公交至会场最近站点，步行或短途打车至「${input.venueTitle}」。`,
-        pickVenueTransportHint(input.transportHints, /地铁|公交|线/) ??
-          '以高德/百度实时公交为准；散场高峰地铁可能限流。',
-        '备用网约车，提前查末班车时间。',
-      ],
+      lines: urbanLines,
     });
   } else if (!input.interCity) {
     options.push({

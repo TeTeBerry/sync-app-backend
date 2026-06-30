@@ -28,6 +28,8 @@ import {
   normalizeTravelPlanSplitCount,
 } from './domain/travel-plan-save-normalize.util';
 import type { SaveTravelPlanDto } from './dto/save-travel-plan.dto';
+import { UserGoalService } from '../goal/goal.service';
+import { hasMeaningfulTravelPlanData } from '../profile/utils/profile-activity-eligibility.util';
 
 @Injectable()
 export class TravelPlanService {
@@ -38,6 +40,7 @@ export class TravelPlanService {
     private readonly sessionModel: Model<FestivalSessionDocument>,
     private readonly activityService: ActivityService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
+    private readonly goalService: UserGoalService,
   ) {}
 
   private normalizeActivityConfirmations(
@@ -176,6 +179,17 @@ export class TravelPlanService {
     const savedAt =
       (doc as { updatedAt?: Date }).updatedAt?.toISOString() ??
       new Date().toISOString();
+
+    if (
+      hasMeaningfulTravelPlanData({
+        nodes,
+        activityConfirmations,
+        activityPriceOverrides,
+        splitCount: splitCount ?? undefined,
+      })
+    ) {
+      await this.goalService.subscribeOnEngagement(actor, activityLegacyId);
+    }
 
     return {
       ok: true as const,

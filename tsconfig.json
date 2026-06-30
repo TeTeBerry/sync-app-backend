@@ -11,7 +11,10 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@src/*": ["src/*"]
+      "@src/*": ["src/*"],
+      "@sync/agent-capabilities-contracts": ["packages/agent-capabilities-contracts"],
+      "@sync/scene-contracts": ["packages/scene-contracts"],
+      "@sync/partner-contracts": ["packages/partner-contracts"]
     },
     "moduleResolution": "node",
     "incremental": true,

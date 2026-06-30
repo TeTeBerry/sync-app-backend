@@ -13,7 +13,6 @@ import {
 } from '../../common/media/user-ugc-text.util';
 import { ActivityService } from '../activity/activity.service';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
-import { UserProfileSyncService } from '../user/user-profile-sync.service';
 import { AmapMapService } from './map/amap.service';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
 import { buildTravelGuidePlan } from './domain/travel-guide-fallback.builder';
@@ -39,6 +38,7 @@ import {
 } from './domain/travel-guide-generation-cache.util';
 import { applyTravelQuoteEnrichment } from './domain/travel-guide-quote-merge.util';
 import { buildPlanHotelByTierFromMapRankings } from './domain/travel-guide-map-hotel-tier.util';
+import { buildPlanHotelByTierFromHotPath } from './domain/travel-guide-abroad-accommodation.util';
 import { buildMinimalMapContextForQuote } from './domain/travel-guide-quote-map-context.util';
 import { travelGuideRegionKind } from './domain/travel-guide-international.util';
 import { shouldFetchTravelQuote } from './domain/travel-guide-quote.util';
@@ -69,7 +69,6 @@ export class TravelGuideGenerationOrchestrator {
     private readonly generationCache: TravelGuideGenerationCacheService,
     private readonly travelGuideGuard: TravelGuideGuardService,
     private readonly savedPlanService: TravelGuideSavedPlanService,
-    private readonly userProfileSync: UserProfileSyncService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly quoteEnrichment: TravelQuoteEnrichmentService,
   ) {}
@@ -260,9 +259,9 @@ export class TravelGuideGenerationOrchestrator {
       );
 
       await reportTravelGuideProgress(onProgress, 'assembling');
+      const regionKind = travelGuideRegionKind(activity);
       const mapHotelByTier =
-        accommodationNights > 0 &&
-        travelGuideRegionKind(activity) === 'domestic'
+        accommodationNights > 0 && regionKind === 'domestic'
           ? buildPlanHotelByTierFromMapRankings(
               this.poiPipeline.rankHotelsForAllTiers(mapCtx, generationDto),
               {
@@ -272,7 +271,12 @@ export class TravelGuideGenerationOrchestrator {
                 selectedBudgetTier: generationDto.budgetTier,
               },
             )
-          : undefined;
+          : accommodationNights > 0
+            ? buildPlanHotelByTierFromHotPath(activity, {
+                accommodationNights,
+                headcount: generationDto.headcount,
+              })
+            : undefined;
 
       const basePlan = buildTravelGuidePlan({
         activity,
@@ -425,17 +429,13 @@ export class TravelGuideGenerationOrchestrator {
     activityLegacyId: number,
     plan: TravelGuidePlan,
   ): Promise<{ plan: TravelGuidePlan; guideId?: string }> {
-    this.userProfileSync.applyTravelGuideHints(actor, {
-      departure: dto.departure,
-      departureCity: dto.departureCity,
-    });
-
     const guideId = await this.persistSavedPlanIfRequested(
       dto,
       accommodationNights,
       actor.resolvedUserId,
       activityLegacyId,
       plan,
+      actor,
     );
     return guideId ? { plan, guideId } : { plan };
   }
@@ -446,6 +446,7 @@ export class TravelGuideGenerationOrchestrator {
     ownerUserId: string,
     activityLegacyId: number,
     plan: TravelGuidePlan,
+    actor: RequestActor,
   ): Promise<string | undefined> {
     const guideId = dto.guideId?.trim();
     if (!guideId) return undefined;
@@ -457,6 +458,7 @@ export class TravelGuideGenerationOrchestrator {
       dto,
       accommodationNights,
       plan,
+      actor,
     );
     return guideId;
   }

@@ -15,6 +15,7 @@
  *   npm run db:sync-lineup-avatars -- --names "KANINE,SUBTRONICS"
  *   npm run db:sync-lineup-avatars -- --activity-legacy-id 2
  *   npm run db:sync-lineup-avatars:force -- --names "KANINE"
+ *   npm run db:refresh-lineup-avatars              # 全量重拉（homonym-safe）
  *   LINEUP_AVATAR_MIN_SCORE=80 npm run db:sync-lineup-avatars   # score gate (default 80)
  *   LINEUP_AVATAR_GENRE_CHECK=0 npm run db:sync-lineup-avatars  # disable genre cross-check
  */
@@ -98,6 +99,8 @@ function genresAreCompatible({
   djsStyles,
   djsGenres,
   candidateGenres,
+  candidateBiography,
+  candidateFollowers,
   lineupName,
   searchName,
   discogsName,
@@ -110,6 +113,8 @@ function genresAreCompatible({
     djsStyles,
     djsGenres,
     candidateGenres,
+    candidateBiography,
+    candidateFollowers,
     lineupName,
     searchName,
     discogsName,
@@ -159,15 +164,20 @@ async function resolveTheAudioDbAvatar({
   lineupName,
   searchName,
   discogsName,
+  catalogUrls,
   audioDb,
   djsStyles,
   djsGenres,
   djProfile,
 }) {
   const effectiveSearchName = resolveAvatarSearchName(lineupName, searchName);
+  const searchOptions = { billingName: lineupName, catalogUrls };
   const candidates = [];
   if (effectiveSearchName && effectiveSearchName.trim()) {
-    const match = await audioDb.searchArtist(effectiveSearchName);
+    const match = await audioDb.searchArtist(
+      effectiveSearchName,
+      searchOptions,
+    );
     if (match?.avatarUrl) {
       candidates.push({ ...match, searchedAs: 'searchName' });
     }
@@ -177,7 +187,7 @@ async function resolveTheAudioDbAvatar({
     lineupName.trim().toLowerCase() !==
       (effectiveSearchName ?? '').trim().toLowerCase()
   ) {
-    const match = await audioDb.searchArtist(lineupName);
+    const match = await audioDb.searchArtist(lineupName, searchOptions);
     if (match?.avatarUrl) {
       candidates.push({ ...match, searchedAs: 'lineupName' });
     }
@@ -225,6 +235,8 @@ async function resolveTheAudioDbAvatar({
       djsStyles,
       djsGenres,
       candidateGenres: candidate.genres,
+      candidateBiography: candidate.biography,
+      candidateFollowers: candidate.followers,
       lineupName,
       searchName: effectiveSearchName,
       discogsName,
@@ -270,6 +282,7 @@ async function resolveSourceUrl({
   lineupName,
   searchName,
   discogsName,
+  catalogUrls,
   manualUrls,
   audioDb,
   djsStyles,
@@ -285,8 +298,10 @@ async function resolveSourceUrl({
     lineupName,
     searchName,
     discogsName,
+    catalogUrls,
     audioDb,
     djsStyles,
+    djsGenres,
     djProfile,
   });
 }
@@ -295,7 +310,14 @@ async function loadDjsCatalogMap(db) {
   const rows = await db
     .collection('djs')
     .find({})
-    .project({ name: 1, discogsId: 1, styles: 1, genres: 1, profile: 1 })
+    .project({
+      name: 1,
+      discogsId: 1,
+      styles: 1,
+      genres: 1,
+      profile: 1,
+      urls: 1,
+    })
     .toArray();
   const byDiscogsId = new Map();
   const byNameKey = new Map();
@@ -408,6 +430,7 @@ async function main() {
     const djsStyles = djRow?.styles ?? [];
     const djsGenres = djRow?.genres ?? [];
     const djProfile = djRow?.profile ?? '';
+    const catalogUrls = djRow?.urls ?? [];
 
     let sourceInfo;
     try {
@@ -415,6 +438,7 @@ async function main() {
         lineupName,
         searchName,
         discogsName,
+        catalogUrls,
         manualUrls,
         audioDb,
         djsStyles,

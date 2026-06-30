@@ -6,10 +6,6 @@ import {
   type IActivityLookupPort,
 } from '../activity/ports/activity-lookup.port';
 import {
-  ACTIVITY_REGISTRATION_REPOSITORY,
-  IActivityRegistrationRepository,
-} from '../activity/registration/interfaces/activity-registration.repository.interface';
-import {
   POST_READ_PORT,
   type IPostReadPort,
 } from '../partner/ports/post-read.port';
@@ -24,6 +20,7 @@ import {
   DEV_PROFILE_STORM_LEGACY_ID,
   shouldInjectDevProfileStorm,
 } from './utils/dev-profile-storm-activity.util';
+import { ProfileActivityEligibilityService } from './profile-activity-eligibility.service';
 import type {
   ProfileActivityItem,
   ProfileSummary,
@@ -36,13 +33,12 @@ export type ProfileActivityItemDto = ProfileActivityItem;
 @Injectable()
 export class ProfileSummaryService {
   constructor(
-    @Inject(ACTIVITY_REGISTRATION_REPOSITORY)
-    private readonly registrationRepository: IActivityRegistrationRepository,
     @Inject(ACTIVITY_LOOKUP_PORT)
     private readonly activityLookup: IActivityLookupPort,
     @Inject(POST_READ_PORT)
     private readonly postRead: IPostReadPort,
     private readonly userService: UserService,
+    private readonly activityEligibility: ProfileActivityEligibilityService,
   ) {}
 
   async getSummary(
@@ -55,24 +51,13 @@ export class ProfileSummaryService {
     const isOwner =
       !viewerId || !ownerExternalId || viewerId === ownerExternalId;
 
-    const [profile, registrations, ownerPosts] = await Promise.all([
+    const [profile, eligibleLegacyIds, ownerPosts] = await Promise.all([
       this.userService.resolveProfile(actor),
-      this.registrationRepository.findByOwner(filter),
+      this.activityEligibility.listEligibleActivityLegacyIds(actor),
       this.postRead.listByOwner(actor),
     ]);
 
-    const visibleRegistrations = registrations.filter(
-      (registration) => registration.activityLegacyId !== 3,
-    );
-    const events =
-      visibleRegistrations.length +
-      (shouldInjectDevProfileStorm(
-        visibleRegistrations.map(
-          (registration) => registration.activityLegacyId,
-        ),
-      )
-        ? 1
-        : 0);
+    const activityStats = await this.countActivityStats(eligibleLegacyIds);
 
     const privacyLevel =
       (profile as { privacyLevel?: 'public' | 'friends' | 'private' })
@@ -88,34 +73,68 @@ export class ProfileSummaryService {
       bio: canView ? (profile?.bio ?? '') : '',
       avatar: profile?.avatar?.trim() ?? '',
       stats: {
-        events,
+        events: activityStats.total,
+        ongoingEvents: activityStats.ongoing,
         posts,
       },
     };
   }
 
+  private async countActivityStats(
+    eligibleLegacyIds: number[],
+  ): Promise<{ total: number; ongoing: number }> {
+    const activityMap =
+      await this.activityLookup.findByLegacyIds(eligibleLegacyIds);
+
+    let ongoing = 0;
+    for (const activityLegacyId of eligibleLegacyIds) {
+      const activity = activityMap.get(activityLegacyId);
+      const title = activity?.name ?? `活动 ${activityLegacyId}`;
+      const date = activity?.date ?? '';
+      if (resolveProfileActivityStatus(date, title) === 'registered') {
+        ongoing += 1;
+      }
+    }
+
+    let total = eligibleLegacyIds.length;
+    if (shouldInjectDevProfileStorm(eligibleLegacyIds)) {
+      total += 1;
+      const stormActivity = await this.activityLookup.findByLegacyId(
+        DEV_PROFILE_STORM_LEGACY_ID,
+      );
+      if (stormActivity) {
+        const status = resolveProfileActivityStatus(
+          stormActivity.date ?? '',
+          stormActivity.name,
+        );
+        if (status === 'registered') {
+          ongoing += 1;
+        }
+      }
+    }
+
+    return { total, ongoing };
+  }
+
   async listActivities(actor: RequestActor): Promise<ProfileActivityItemDto[]> {
-    const filter = ownerFilterFromActor(actor);
-    const registrations = (
-      await this.registrationRepository.findByOwner(filter)
-    ).filter((registration) => registration.activityLegacyId !== 3);
+    const eligibleLegacyIds =
+      await this.activityEligibility.listEligibleActivityLegacyIds(actor);
 
-    const activityMap = await this.activityLookup.findByLegacyIds(
-      registrations.map((registration) => registration.activityLegacyId),
-    );
+    const activityMap =
+      await this.activityLookup.findByLegacyIds(eligibleLegacyIds);
 
-    const items = registrations.map((registration) => {
-      const activity = activityMap.get(registration.activityLegacyId);
-      const title = activity?.name ?? `活动 ${registration.activityLegacyId}`;
+    const items = eligibleLegacyIds.map((activityLegacyId) => {
+      const activity = activityMap.get(activityLegacyId);
+      const title = activity?.name ?? `活动 ${activityLegacyId}`;
       const date = activity?.date ?? '';
       return {
-        id: String(registration.activityLegacyId),
+        id: String(activityLegacyId),
         title,
         date,
         location: activity?.location ?? '',
         image: activity?.image ?? '',
         status: resolveProfileActivityStatus(date, title),
-        activityLegacyId: String(registration.activityLegacyId),
+        activityLegacyId: String(activityLegacyId),
       };
     });
 
@@ -127,7 +146,7 @@ export class ProfileSummaryService {
     return appendDevProfileStormActivity(
       sorted,
       stormActivity,
-      registrations.map((registration) => registration.activityLegacyId),
+      eligibleLegacyIds,
     );
   }
 

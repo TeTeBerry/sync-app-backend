@@ -7,6 +7,7 @@ import {
   filterCrawlableLineupNames,
   getLineupVerifyNameVariants,
   hasCatalogProfileText,
+  hasPersistedDjProfile,
   hasMappedRealArtistData,
   isBillingLineupDisplayName,
   isLineupNonArtistLabel,
@@ -154,7 +155,7 @@ describe('lineup-real-artist-catalog', () => {
     assert.equal(missing[0].issue, 'empty_profile');
   });
 
-  it('skips artists with hermes integrated report as profile', () => {
+  it('still flags missing when only hermes report is on map', () => {
     const mapRow = {
       status: 'mapped',
       discogsId: 7,
@@ -167,6 +168,33 @@ describe('lineup-real-artist-catalog', () => {
     const dj = { discogsId: 7, genres: ['Hardstyle'], profile: '' };
 
     assert.equal(hasCatalogProfileText(mapRow, dj), true);
+    assert.equal(hasPersistedDjProfile(dj), false);
+    const missing = collectArtistsMissingProfileText({
+      displayNames: ['COONE'],
+      mapByKey: new Map([['coone', mapRow]]),
+      djById: new Map([[7, dj]]),
+    });
+    assert.equal(missing.length, 1);
+    assert.equal(missing[0].issue, 'empty_profile');
+  });
+
+  it('skips artists once djs.profile is persisted', () => {
+    const mapRow = {
+      status: 'mapped',
+      discogsId: 7,
+      source: 'hermes-v4',
+      displayGenres: ['Hardstyle'],
+      hermesEvidence: {
+        integratedReport: 'COONE is a Belgian hardstyle DJ.',
+      },
+    };
+    const dj = {
+      discogsId: 7,
+      genres: ['Hardstyle'],
+      profile: 'COONE is a Belgian hardstyle DJ.',
+    };
+
+    assert.equal(hasPersistedDjProfile(dj), true);
     const missing = collectArtistsMissingProfileText({
       displayNames: ['COONE'],
       mapByKey: new Map([['coone', mapRow]]),

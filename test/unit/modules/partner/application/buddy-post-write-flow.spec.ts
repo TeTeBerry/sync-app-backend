@@ -10,7 +10,6 @@ import type { IActivityLookupPort } from '@src/modules/activity/ports/activity-l
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
 import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
-import type { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import type { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
 import type { BffReadCacheInvalidationService } from '@src/infra/cache/bff-read-cache.service';
 
@@ -55,9 +54,9 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
     assessPost: jest.fn(),
   } as unknown as IPostModerationPort;
 
-  const userProfileSync = {
-    applyBuddyPostHints: jest.fn(),
-  } as unknown as UserProfileSyncService;
+  const goalService = {
+    subscribeOnEngagement: jest.fn().mockResolvedValue(undefined),
+  };
 
   const accountRisk = {
     assertCanPublish: jest.fn().mockResolvedValue(undefined),
@@ -86,13 +85,13 @@ describe('Buddy post write flow (REST form → PostWriteService)', () => {
     service = new PostWriteService(
       repository,
       userService,
-      userProfileSync,
       accountRisk,
       activityLookup,
       postNotification,
       postModeration,
       wechatContentSecurity,
       bffCacheInvalidation,
+      goalService as never,
     );
     (userService.resolveProfile as jest.Mock).mockResolvedValue({
       name: 'Test User',

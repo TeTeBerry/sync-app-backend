@@ -225,14 +225,6 @@ export function userMatchProfilesEqual(
   return leftBudget === rightBudget;
 }
 
-export function hasUserMatchProfileSignal(profile: UserMatchProfile): boolean {
-  return Boolean(
-    profile.city?.trim() ||
-    (profile.favorGenres?.length ?? 0) > 0 ||
-    profile.budgetLevel,
-  );
-}
-
 export function hasUserMatchProfileHints(
   hints: UserMatchProfileHints,
 ): boolean {
@@ -241,28 +233,6 @@ export function hasUserMatchProfileHints(
     (hints.favorGenres?.length ?? 0) > 0 ||
     hints.budgetLevel,
   );
-}
-
-export function buildBuddyPostProfileHints(params: {
-  body: string;
-  location?: string;
-  departureCity?: string;
-  tags?: string[];
-}): UserMatchProfileHints {
-  const body = params.body.trim();
-  const tagText = (params.tags ?? []).join(' ');
-  const city =
-    normalizeCityName(params.departureCity) ??
-    normalizeCityName(params.location) ??
-    inferDepartureCityFromText(body, params.location, tagText);
-
-  const favorGenres = extractProfileGenresFromText(`${body}\n${tagText}`);
-
-  const hints: UserMatchProfileHints = {};
-  if (city) hints.city = city;
-  if (favorGenres.length) hints.favorGenres = favorGenres;
-
-  return hints;
 }
 
 export function buildPersonalityProfileHints(params: {

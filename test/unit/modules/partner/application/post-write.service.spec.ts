@@ -8,7 +8,6 @@ import type { IActivityLookupPort } from '@src/modules/activity/ports/activity-l
 import type { IPostNotificationPort } from '@src/modules/partner/ports/post-notification.port';
 import type { IPostModerationPort } from '@src/modules/partner/ports/post-moderation.port';
 import type { AccountRiskService } from '@src/modules/account-risk/account-risk.service';
-import type { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import type { BffReadCacheInvalidationService } from '@src/infra/cache/bff-read-cache.service';
 import type { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
 
@@ -42,9 +41,9 @@ describe('PostWriteService', () => {
     assessPost: jest.fn(),
   } as unknown as IPostModerationPort;
 
-  const userProfileSync = {
-    applyBuddyPostHints: jest.fn(),
-  } as unknown as UserProfileSyncService;
+  const goalService = {
+    subscribeOnEngagement: jest.fn().mockResolvedValue(undefined),
+  };
 
   const accountRisk = {
     assertCanPublish: jest.fn().mockResolvedValue(undefined),
@@ -73,13 +72,13 @@ describe('PostWriteService', () => {
     service = new PostWriteService(
       repository,
       userService,
-      userProfileSync,
       accountRisk,
       activityLookup,
       postNotification,
       postModeration,
       wechatContentSecurity,
       bffCacheInvalidation,
+      goalService as never,
     );
   });
 
@@ -283,9 +282,9 @@ describe('PostWriteService.updatePost', () => {
     assessPost: jest.fn().mockResolvedValue({ publishable: true }),
   } as unknown as IPostModerationPort;
 
-  const userProfileSync = {
-    applyBuddyPostHints: jest.fn(),
-  } as unknown as UserProfileSyncService;
+  const goalService = {
+    subscribeOnEngagement: jest.fn().mockResolvedValue(undefined),
+  };
 
   const accountRisk = {
     recordTicketPolicyViolation: jest.fn(),
@@ -308,13 +307,13 @@ describe('PostWriteService.updatePost', () => {
     service = new PostWriteService(
       repository,
       userService,
-      userProfileSync,
       accountRisk,
       activityLookup,
       postNotification,
       postModeration,
       wechatContentSecurity,
       bffCacheInvalidation,
+      goalService as never,
     );
   });
 

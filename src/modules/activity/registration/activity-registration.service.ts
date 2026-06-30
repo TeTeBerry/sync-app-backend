@@ -154,6 +154,12 @@ export class ActivityRegistrationService {
     );
   }
 
+  async listAllRegistered(): Promise<
+    Array<{ userId: string; activityLegacyId: number }>
+  > {
+    return this.registrationRepository.findAllRegistered();
+  }
+
   async unregister(
     legacyId: number,
     actor: RequestActor,

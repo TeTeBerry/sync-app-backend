@@ -146,7 +146,8 @@ export class TravelGuideLlmPolishService {
           venueReadableAddress: mapCtx.venueReadableAddress,
           selfDrive: Boolean(dto.selfDrive),
           interCity: Boolean(mapCtx.interCity),
-          route: mapCtx.drivingRoute ?? mapCtx.transitRoute,
+          route: mapCtx.transitRoute ?? mapCtx.drivingRoute,
+          transitDetailLines: mapCtx.transitDetail?.detailLines,
           transportHints: mapCtx.transportHints,
           departureCity: dto.departureCity?.trim(),
           activity,
@@ -184,7 +185,11 @@ export class TravelGuideLlmPolishService {
 
     const budgetTier = resolveTravelGuideBudgetTier(dto.budgetTier);
     const hotelRanges = budgetTierHotelNightRanges(budgetTier);
-    const routeSummary = mapCtx.drivingRoute ?? mapCtx.transitRoute;
+    const routeSummary = dto.selfDrive
+      ? mapCtx.drivingRoute
+      : mapCtx.interCity
+        ? (mapCtx.drivingRoute ?? mapCtx.transitRoute)
+        : (mapCtx.transitRoute ?? mapCtx.drivingRoute);
     const payload: TravelGuideMapLlmInput = {
       activityName: activity.name,
       venueLabel: activity.location?.trim() || mapCtx.venue.title,
@@ -206,7 +211,11 @@ export class TravelGuideLlmPolishService {
             ...routeSummary,
             departureTitle: mapCtx.departure?.title,
             venueTitle: mapCtx.venue.title,
-            mode: mapCtx.drivingRoute ? 'driving' : 'transit',
+            mode: dto.selfDrive
+              ? 'driving'
+              : mapCtx.transitRoute
+                ? 'transit'
+                : 'driving',
           }
         : undefined,
       candidates: ranked,

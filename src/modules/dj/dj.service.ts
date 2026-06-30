@@ -18,6 +18,7 @@ import {
 import { resolveLineupDisplayGenreFromCatalog } from '../itinerary/domain/lineup-artist-data-policy';
 import { isLineupCatalogNameTrusted } from './lineup-catalog-profile-trust.util';
 import {
+  buildCatalogDiscogsIdIndex,
   buildCatalogNameIndex,
   matchLineupArtistToCatalogIndex,
 } from './catalog-name-index.util';
@@ -319,14 +320,6 @@ export class DjService implements OnApplicationBootstrap {
     return items;
   }
 
-  /** @deprecated Prefer collectCatalogItemsForLineupNameSync — profile gate removed for genres. */
-  collectTrustedCatalogItemsForLineupName(
-    lineupName: string,
-    catalog: DjCatalogItem[],
-  ): DjCatalogItem[] {
-    return this.collectCatalogItemsForLineupNameSync(lineupName, catalog);
-  }
-
   /** Trusted catalog rows for a lineup name, enriched from Hermes evidence when needed. */
   async collectCatalogItemsForLineupName(
     lineupName: string,
@@ -339,11 +332,12 @@ export class DjService implements OnApplicationBootstrap {
       resolvedCatalog,
     );
     const evidenceMap =
-      mapByKey ?? (await this.loadHermesEvidenceByLineupNames([lineupName]));
+      mapByKey ?? (await this.loadDiscogsMapByLineupNames([lineupName]));
     return this.applyHermesEvidenceToLineupItems(
       lineupName,
       matched,
       evidenceMap,
+      buildCatalogDiscogsIdIndex(resolvedCatalog),
     );
   }
 
@@ -370,7 +364,8 @@ export class DjService implements OnApplicationBootstrap {
 
     const catalog = await this.loadCatalog();
     const catalogIndex = this.getCatalogNameIndex(catalog);
-    const evidenceMap = await this.loadHermesEvidenceByLineupNames([
+    const catalogByDiscogsId = buildCatalogDiscogsIdIndex(catalog);
+    const evidenceMap = await this.loadDiscogsMapByLineupNames([
       ...evidenceNames,
     ]);
 
@@ -385,6 +380,7 @@ export class DjService implements OnApplicationBootstrap {
         name,
         this.collectCatalogItemsForLineupNameSync(name, catalog, catalogIndex),
         evidenceMap,
+        catalogByDiscogsId,
       );
       const match = items[0];
       if (match) {
@@ -399,7 +395,7 @@ export class DjService implements OnApplicationBootstrap {
     return { catalogByLineupName, genreDisplayByLineupName };
   }
 
-  private async loadHermesEvidenceByLineupNames(
+  private async loadDiscogsMapByLineupNames(
     lineupNames: string[],
   ): Promise<Map<string, HermesMapRow>> {
     const keys = [
@@ -415,6 +411,7 @@ export class DjService implements OnApplicationBootstrap {
       .find({
         lineupNameKey: { $in: keys },
         $or: [
+          { status: 'mapped', discogsId: { $exists: true, $ne: null } },
           { hermesEvidence: { $exists: true, $ne: null } },
           { displayGenres: { $exists: true, $ne: [] } },
         ],
@@ -432,10 +429,24 @@ export class DjService implements OnApplicationBootstrap {
     lineupName: string,
     items: DjCatalogItem[],
     mapByKey: Map<string, HermesMapRow>,
+    catalogByDiscogsId: Map<number, DjCatalogItem>,
   ): DjCatalogItem[] {
     const mapRow = mapByKey.get(normalizeArtistNameKey(lineupName));
     if (!mapRow) {
       return items;
+    }
+
+    let resolved = items;
+    if (!resolved.length && mapRow.discogsId) {
+      const fromCatalog = catalogByDiscogsId.get(mapRow.discogsId);
+      if (fromCatalog) {
+        resolved = [
+          {
+            ...fromCatalog,
+            name: mapRow.discogsName?.trim() || lineupName.trim(),
+          },
+        ];
+      }
     }
 
     const evidencePayload = mapRow.hermesEvidence;
@@ -447,8 +458,8 @@ export class DjService implements OnApplicationBootstrap {
           }
         : null;
 
-    if (items.length) {
-      return items.map((item) => {
+    if (resolved.length) {
+      return resolved.map((item) => {
         let enriched = item;
         if (precomputed && isWeakCatalogGenreList(item.genres)) {
           enriched = {
@@ -480,7 +491,7 @@ export class DjService implements OnApplicationBootstrap {
     }
 
     if (!evidencePayload) {
-      return items;
+      return resolved;
     }
 
     const synthetic = catalogItemFromHermesMapRow(mapRow);

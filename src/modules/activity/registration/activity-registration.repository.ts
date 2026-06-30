@@ -86,6 +86,26 @@ export class ActivityRegistrationRepository implements IActivityRegistrationRepo
     return (result.matchedCount ?? 0) > 0;
   }
 
+  async findAllRegistered(): Promise<
+    Array<{ userId: string; activityLegacyId: number }>
+  > {
+    const rows = await this.model
+      .find({ status: 'registered' })
+      .select({ userId: 1, activityLegacyId: 1 })
+      .lean();
+    return rows
+      .map((row) => ({
+        userId: String(row.userId ?? '').trim(),
+        activityLegacyId: Number(row.activityLegacyId),
+      }))
+      .filter(
+        (row) =>
+          Boolean(row.userId) &&
+          Number.isFinite(row.activityLegacyId) &&
+          row.activityLegacyId > 0,
+      );
+  }
+
   async deleteByOwnerAndActivity(
     filter: ActivityRegistrationQueryFilter,
     activityLegacyId: number,

@@ -8,6 +8,27 @@ import { summarizeVisaHint } from '../../travel-guide/domain/travel-guide-intern
 import { getFestivalVibe } from '../../../infra/chroma/data/festival-vibe.data';
 import type { ActivityLookupRecord } from '../ports/activity-lookup.port';
 
+const AREA_PREFIX_ALIASES: Record<string, string> = {
+  泰国: '泰国',
+  thailand: '泰国',
+  日本: '日本',
+  japan: '日本',
+  韩国: '韩国',
+  korea: '韩国',
+  比利时: '比利时',
+  belgium: '比利时',
+  克罗地亚: '克罗地亚',
+  croatia: '克罗地亚',
+  印尼: '印尼',
+  indonesia: '印尼',
+  美国: '美国',
+  usa: '美国',
+  上海: '上海',
+  深圳: '深圳',
+  珠海: '珠海',
+  苏州: '苏州',
+};
+
 export const COMPARE_INTENT_PATTERN =
   /对比|vs|VS|和.*(比|好)|哪个好|选哪| versus /i;
 
@@ -22,6 +43,25 @@ function normalizeCompareQuery(query: string): string {
   return query.replace(COMPARE_INTENT_PATTERN, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function tokenMatchCandidates(token: string): string[] {
+  const normalized = token.trim();
+  if (!normalized) return [];
+
+  const candidates = new Set<string>([normalized]);
+  const lower = normalized.toLowerCase();
+
+  for (const [alias] of Object.entries(AREA_PREFIX_ALIASES)) {
+    const aliasLower = alias.toLowerCase();
+    if (!lower.startsWith(aliasLower)) continue;
+    const remainder = normalized.slice(alias.length).trim();
+    if (remainder.length >= 2) {
+      candidates.add(remainder);
+    }
+  }
+
+  return [...candidates];
+}
+
 function activityMatchScore(
   activity: ActivityLookupRecord,
   token: string,
@@ -29,19 +69,31 @@ function activityMatchScore(
   const haystack = [activity.name, activity.code, ...(activity.alias ?? [])]
     .join(' ')
     .toLowerCase();
-  const normalized = token.toLowerCase();
-  if (!normalized) return 0;
-  if (haystack === normalized) return 100;
-  if (activity.code.toLowerCase() === normalized) return 90;
-  if (activity.code.toLowerCase().startsWith(`${normalized}-`)) return 85;
-  if (activity.name.toLowerCase().includes(normalized)) return 80;
-  if (
-    (activity.alias ?? []).some((alias) => alias.toLowerCase() === normalized)
-  ) {
-    return 75;
+
+  let bestScore = 0;
+  for (const candidate of tokenMatchCandidates(token)) {
+    const normalized = candidate.toLowerCase();
+    if (!normalized) continue;
+    let score = 0;
+    if (haystack === normalized) score = 100;
+    else if (activity.code.toLowerCase() === normalized) score = 90;
+    else if (activity.code.toLowerCase().startsWith(`${normalized}-`))
+      score = 85;
+    else if (activity.name.toLowerCase().includes(normalized)) score = 80;
+    else if (
+      (activity.alias ?? []).some((alias) => alias.toLowerCase() === normalized)
+    ) {
+      score = 75;
+    } else if (haystack.includes(normalized)) score = 70;
+
+    if (activity.area && candidate.includes(activity.area)) {
+      score += 5;
+    }
+
+    bestScore = Math.max(bestScore, score);
   }
-  if (haystack.includes(normalized)) return 70;
-  return 0;
+
+  return bestScore;
 }
 
 export function isCompareQuery(query: string): boolean {

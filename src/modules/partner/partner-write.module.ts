@@ -1,7 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { PostAgentAdaptersModule } from '../../ai/adapters/post-agent-adapters.module';
 import { ActivityLookupModule } from '../activity/activity-lookup.module';
+import { UserGoalModule } from '../goal/goal.module';
 import { AccountRiskModule } from '../account-risk/account-risk.module';
 import { UserModule } from '../user/user.module';
 import { PostWriteService } from './application/post-write.service';
@@ -16,6 +17,7 @@ import { MediaSecurityModule } from '../media-security/media-security.module';
     UserModule,
     AccountRiskModule,
     ActivityLookupModule,
+    forwardRef(() => UserGoalModule),
     PostAgentAdaptersModule,
   ],
   providers: [PostWriteService],

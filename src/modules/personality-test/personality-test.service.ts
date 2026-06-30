@@ -48,6 +48,7 @@ import {
   isPlurStaticAssetKey,
   isPlurStaticCloudFileId,
 } from '../../common/media/plur-media-ref.util';
+import { refreshPersonalityRecommendationGenres } from './utils/refresh-personality-recommendation-genres.util';
 
 @Injectable()
 export class PersonalityTestService {
@@ -184,14 +185,14 @@ export class PersonalityTestService {
       return null;
     }
     const upgraded = ensurePersonalityResultIdentity(doc.result);
-    if (
-      upgraded.raverNickname !== doc.result.raverNickname ||
-      upgraded.raverAvatarKey !== doc.result.raverAvatarKey ||
-      upgraded.raverIdentityVersion !== doc.result.raverIdentityVersion
-    ) {
-      await this.persistResult(trimmed, upgraded);
+    const withFreshGenres = await refreshPersonalityRecommendationGenres(
+      upgraded,
+      this.djService,
+    );
+    if (withFreshGenres !== doc.result) {
+      await this.persistResult(trimmed, withFreshGenres);
     }
-    return upgraded;
+    return withFreshGenres;
   }
 
   private async persistResult(

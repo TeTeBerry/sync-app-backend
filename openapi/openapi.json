@@ -1,6 +1,95 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/api/public/events": {
+      "get": {
+        "operationId": "PublicEventController_listEvents",
+        "parameters": [
+          {
+            "name": "month",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "region",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/events/{legacyId}.ics": {
+      "get": {
+        "operationId": "PublicEventController_getEventIcs",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/events/{legacyId}": {
+      "get": {
+        "operationId": "PublicEventController_getEvent",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/activities/health": {
       "get": {
         "operationId": "ActivityController_health",
@@ -542,6 +631,45 @@
         ]
       }
     },
+    "/api/activities/{legacyId}/engagement": {
+      "post": {
+        "operationId": "ActivityEngagementController_record",
+        "summary": "Record user engagement signal for an activity",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordActivityEngagementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "activities"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/activities/{legacyId}/itinerary/schedule": {
       "get": {
         "operationId": "ItineraryController_getSchedule",
@@ -706,6 +834,100 @@
         }
       }
     },
+    "/api/auth/wechat": {
+      "post": {
+        "operationId": "AuthController_wechatLogin",
+        "summary": "WeChat mini program login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WechatLoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JWT access token and user profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelopeDto"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AuthLoginResultDto"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "summary": "Revoke current JWT session",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelopeDto"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AuthLogoutResultDto"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/users/health": {
       "get": {
         "operationId": "UserController_health",
@@ -839,6 +1061,223 @@
         }
       }
     },
+    "/api/goals": {
+      "post": {
+        "operationId": "UserGoalController_create",
+        "summary": "Create or upsert a user goal",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserGoalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "goals"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "UserGoalController_list",
+        "summary": "List current user goals",
+        "parameters": [
+          {
+            "name": "activityLegacyId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "goals"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/goals/artifacts/{artifactId}": {
+      "get": {
+        "operationId": "UserGoalController_artifact",
+        "summary": "Fetch a goal artifact (e.g. recruit draft)",
+        "parameters": [
+          {
+            "name": "artifactId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "goals"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/goals/{id}": {
+      "get": {
+        "operationId": "UserGoalController_detail",
+        "summary": "Get goal detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "goals"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "UserGoalController_update",
+        "summary": "Update goal status or params",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserGoalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "goals"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "UserGoalController_remove",
+        "summary": "Cancel a goal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "goals"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/notifications": {
       "get": {
         "operationId": "NotificationController_list",
@@ -945,64 +1384,21 @@
         }
       }
     },
-    "/api/auth/wechat": {
+    "/api/ai/scene-run": {
       "post": {
-        "operationId": "AuthController_wechatLogin",
-        "summary": "WeChat mini program login",
+        "operationId": "SceneRunController_run",
+        "summary": "Run a single-turn Scene Agent task",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/WechatLoginDto"
+                "$ref": "#/components/schemas/SceneRunDto"
               }
             }
           }
         },
-        "responses": {
-          "200": {
-            "description": "JWT access token and user profile",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelopeDto"
-                    },
-                    {
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/AuthLoginResultDto"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/logout": {
-      "post": {
-        "operationId": "AuthController_logout",
-        "summary": "Revoke current JWT session",
-        "parameters": [],
         "responses": {
           "200": {
             "description": "Success",
@@ -1016,7 +1412,7 @@
                     {
                       "properties": {
                         "data": {
-                          "$ref": "#/components/schemas/AuthLogoutResultDto"
+                          "$ref": "#/components/schemas/SceneRunResponseDto"
                         }
                       }
                     }
@@ -1026,25 +1422,6 @@
             }
           },
           "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "auth"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ]
-      }
-    },
-    "/api/profile": {
-      "get": {
-        "operationId": "ProfileController_summary",
-        "parameters": [],
-        "responses": {
-          "200": {
             "description": "",
             "content": {
               "application/json": {
@@ -1054,56 +1431,15 @@
               }
             }
           }
-        }
-      }
-    },
-    "/api/profile/activities": {
-      "get": {
-        "operationId": "ProfileController_listActivities",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/profile/posts": {
-      "get": {
-        "operationId": "ProfileController_listPosts",
-        "parameters": [
-          {
-            "name": "limit",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "cursor",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
+        },
+        "tags": [
+          "ai"
         ],
-        "responses": {
-          "200": {
-            "description": ""
+        "security": [
+          {
+            "bearer": []
           }
-        }
+        ]
       }
     },
     "/api/posts/popular": {
@@ -1596,6 +1932,73 @@
         ]
       }
     },
+    "/api/profile": {
+      "get": {
+        "operationId": "ProfileController_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile/activities": {
+      "get": {
+        "operationId": "ProfileController_listActivities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profile/posts": {
+      "get": {
+        "operationId": "ProfileController_listPosts",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/home": {
       "get": {
         "operationId": "HomeController_summary",
@@ -1616,43 +2019,22 @@
         }
       }
     },
-    "/api/ai/scene-run": {
+    "/api/agent-capabilities/search-festivals": {
       "post": {
-        "operationId": "SceneRunController_run",
-        "summary": "Run a single-turn Scene Agent task",
+        "operationId": "AgentCapabilitiesController_searchFestivals",
+        "summary": "Search festival catalog (agent capability)",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SceneRunDto"
+                "$ref": "#/components/schemas/SearchFestivalsDto"
               }
             }
           }
         },
         "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelopeDto"
-                    },
-                    {
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/SceneRunResponseDto"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
           "201": {
             "description": "",
             "content": {
@@ -1665,7 +2047,133 @@
           }
         },
         "tags": [
-          "ai"
+          "agent-capabilities"
+        ]
+      }
+    },
+    "/api/agent-capabilities/events/{legacyId}": {
+      "get": {
+        "operationId": "AgentCapabilitiesController_getEvent",
+        "summary": "Get event detail by legacyId (agent capability)",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "agent-capabilities"
+        ]
+      }
+    },
+    "/api/agent-capabilities/events/{legacyId}/lineup": {
+      "get": {
+        "operationId": "AgentCapabilitiesController_getLineup",
+        "summary": "Get event lineup (agent capability)",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "agent-capabilities"
+        ]
+      }
+    },
+    "/api/agent-capabilities/search-public-recruits": {
+      "post": {
+        "operationId": "AgentCapabilitiesController_searchPublicRecruits",
+        "summary": "Search public recruit posts (agent capability)",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchPublicRecruitsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "agent-capabilities"
+        ]
+      }
+    },
+    "/api/agent-capabilities/draft-recruit-post": {
+      "post": {
+        "operationId": "AgentCapabilitiesController_draftRecruitPost",
+        "summary": "Generate recruit post draft (agent capability)",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftRecruitPostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "agent-capabilities"
         ],
         "security": [
           {
@@ -1674,151 +2182,54 @@
         ]
       }
     },
-    "/api/reports/status": {
-      "get": {
-        "operationId": "ReportController_status",
-        "parameters": [
-          {
-            "name": "targetId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/reports": {
+    "/api/agent-capabilities/subscribe-lineup-updates": {
       "post": {
-        "operationId": "ReportController_create",
+        "operationId": "AgentCapabilitiesController_subscribeLineupUpdates",
+        "summary": "Subscribe to lineup updates (agent capability)",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateReportDto"
+                "$ref": "#/components/schemas/SubscribeLineupUpdatesDto"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
-        }
+        },
+        "tags": [
+          "agent-capabilities"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
       }
     },
-    "/api/feedback": {
+    "/api/agent-capabilities/generate-travel-guide": {
       "post": {
-        "operationId": "FeedbackController_create",
+        "operationId": "AgentCapabilitiesController_generateTravelGuide",
+        "summary": "Start travel guide generation job (agent capability)",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateFeedbackDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/activities/{legacyId}/travel-plan/saved": {
-      "get": {
-        "operationId": "TravelPlanController_getSaved",
-        "parameters": [
-          {
-            "name": "legacyId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/activities/{legacyId}/travel-plan/save": {
-      "post": {
-        "operationId": "TravelPlanController_save",
-        "parameters": [
-          {
-            "name": "legacyId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SaveTravelPlanDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/activities/{legacyId}/travel-plan/recognize-receipt": {
-      "post": {
-        "operationId": "TravelPlanController_recognizeReceipt",
-        "parameters": [
-          {
-            "name": "legacyId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecognizeTravelPlanReceiptDto"
+                "$ref": "#/components/schemas/GenerateTravelGuideCapabilityDto"
               }
             }
           }
@@ -1834,66 +2245,15 @@
               }
             }
           }
-        }
-      }
-    },
-    "/api/activities/{legacyId}/travel-plan/recognize-receipt-async": {
-      "post": {
-        "operationId": "TravelPlanController_recognizeReceiptAsync",
-        "summary": "",
-        "description": "小程序 callContainer 请求体 ≤100KB 且单次 ≤15s；截图 OCR 走异步任务 + 轮询。",
-        "parameters": [
-          {
-            "name": "legacyId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecognizeTravelPlanReceiptDto"
-              }
-            }
-          }
         },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/activities/{legacyId}/travel-plan/receipt-recognize-jobs/{jobId}": {
-      "get": {
-        "operationId": "TravelPlanController_getReceiptRecognizeJob",
-        "parameters": [
-          {
-            "name": "jobId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
+        "tags": [
+          "agent-capabilities"
         ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
+        "security": [
+          {
+            "bearer": []
           }
-        }
+        ]
       }
     },
     "/api/activities/{legacyId}/travel-guide/generate": {
@@ -2264,6 +2624,228 @@
         "tags": [
           "travel-guide"
         ]
+      }
+    },
+    "/api/reports/status": {
+      "get": {
+        "operationId": "ReportController_status",
+        "parameters": [
+          {
+            "name": "targetId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports": {
+      "post": {
+        "operationId": "ReportController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/feedback": {
+      "post": {
+        "operationId": "FeedbackController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFeedbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/activities/{legacyId}/travel-plan/saved": {
+      "get": {
+        "operationId": "TravelPlanController_getSaved",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/activities/{legacyId}/travel-plan/save": {
+      "post": {
+        "operationId": "TravelPlanController_save",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveTravelPlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/activities/{legacyId}/travel-plan/recognize-receipt": {
+      "post": {
+        "operationId": "TravelPlanController_recognizeReceipt",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecognizeTravelPlanReceiptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/activities/{legacyId}/travel-plan/recognize-receipt-async": {
+      "post": {
+        "operationId": "TravelPlanController_recognizeReceiptAsync",
+        "summary": "",
+        "description": "小程序 callContainer 请求体 ≤100KB 且单次 ≤15s；截图 OCR 走异步任务 + 轮询。",
+        "parameters": [
+          {
+            "name": "legacyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecognizeTravelPlanReceiptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/activities/{legacyId}/travel-plan/receipt-recognize-jobs/{jobId}": {
+      "get": {
+        "operationId": "TravelPlanController_getReceiptRecognizeJob",
+        "parameters": [
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/activities/{legacyId}/festival-plan-progress": {
@@ -2684,6 +3266,21 @@
           "artistIds"
         ]
       },
+      "RecordActivityEngagementDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "lineup_viewed",
+              "recruit_searched"
+            ]
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
       "GenerateItineraryDto": {
         "type": "object",
         "properties": {
@@ -2833,50 +3430,6 @@
           "days"
         ]
       },
-      "UpdateUserMeDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1
-          },
-          "handle": {
-            "type": "string",
-            "minLength": 1
-          },
-          "location": {
-            "type": "string"
-          },
-          "bio": {
-            "type": "string"
-          },
-          "avatar": {
-            "type": "string"
-          },
-          "city": {
-            "type": "string"
-          },
-          "favorGenres": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "budgetLevel": {
-            "type": "string"
-          },
-          "notificationsEnabled": {
-            "type": "boolean"
-          },
-          "privacyLevel": {
-            "type": "string",
-            "enum": [
-              "public",
-              "private"
-            ]
-          }
-        }
-      },
       "CurrentUserDto": {
         "type": "object",
         "properties": {
@@ -2947,6 +3500,269 @@
           "ok"
         ]
       },
+      "UpdateUserMeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "handle": {
+            "type": "string",
+            "minLength": 1
+          },
+          "location": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "favorGenres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "budgetLevel": {
+            "type": "string"
+          },
+          "notificationsEnabled": {
+            "type": "boolean"
+          },
+          "privacyLevel": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ]
+          }
+        }
+      },
+      "UserGoalParamsDto": {
+        "type": "object",
+        "properties": {
+          "notifyWechat": {
+            "type": "boolean"
+          },
+          "draftRecruitOnLineup": {
+            "type": "boolean"
+          },
+          "departureCity": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateUserGoalDto": {
+        "type": "object",
+        "properties": {
+          "activityLegacyId": {
+            "type": "number",
+            "minimum": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "watch_lineup"
+            ]
+          },
+          "params": {
+            "$ref": "#/components/schemas/UserGoalParamsDto"
+          }
+        },
+        "required": [
+          "activityLegacyId",
+          "kind"
+        ]
+      },
+      "UserGoalLastResultDto": {
+        "type": "object",
+        "properties": {
+          "changeSummary": {
+            "type": "string"
+          },
+          "snapshotHash": {
+            "type": "string"
+          },
+          "artifactId": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateUserGoalDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "paused",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "params": {
+            "$ref": "#/components/schemas/UserGoalParamsDto"
+          },
+          "lastRunAt": {
+            "type": "string"
+          },
+          "lastResult": {
+            "$ref": "#/components/schemas/UserGoalLastResultDto"
+          }
+        }
+      },
+      "SceneRunResponseDto": {
+        "type": "object",
+        "properties": {
+          "effects": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/SceneInsightLineEffectDto"
+                },
+                {
+                  "$ref": "#/components/schemas/SceneReorderPostsEffectDto"
+                }
+              ]
+            }
+          },
+          "disclaimer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "effects"
+        ]
+      },
+      "BuddyPostComposeHintsDto": {
+        "type": "object",
+        "properties": {
+          "personalityType": {
+            "type": "string"
+          },
+          "favorGenres": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "setPicks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "prefillSummary": {
+            "type": "string"
+          }
+        }
+      },
+      "SceneContextDto": {
+        "type": "object",
+        "properties": {
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "search",
+              "chip",
+              "sheet_submit",
+              "page_enter"
+            ]
+          },
+          "applyPreferenceRank": {
+            "type": "boolean"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "activityLegacyId": {
+            "type": "number"
+          },
+          "artistName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "genre": {
+            "type": "string",
+            "minLength": 1
+          },
+          "postId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "postSummary": {
+            "type": "string"
+          },
+          "applicantName": {
+            "type": "string"
+          },
+          "applicantPrefs": {
+            "type": "string"
+          },
+          "dateStart": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dateEnd": {
+            "type": "string",
+            "minLength": 1
+          },
+          "location": {
+            "type": "string",
+            "minLength": 1
+          },
+          "headcount": {
+            "type": "string",
+            "minLength": 1
+          },
+          "composeHints": {
+            "$ref": "#/components/schemas/BuddyPostComposeHintsDto"
+          },
+          "regenerate": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SceneRunDto": {
+        "type": "object",
+        "properties": {
+          "scene": {
+            "type": "string",
+            "enum": [
+              "recruit_search",
+              "recruit_compose",
+              "recruit_apply_compose",
+              "lineup_dj",
+              "festival_story",
+              "prep_nudge",
+              "events_knowledge_search"
+            ]
+          },
+          "intent": {
+            "type": "string"
+          },
+          "activityLegacyId": {
+            "type": "number"
+          },
+          "input": {
+            "type": "string",
+            "minLength": 1
+          },
+          "context": {
+            "$ref": "#/components/schemas/SceneContextDto"
+          }
+        },
+        "required": [
+          "scene"
+        ]
+      },
       "EventDetailPostDto": {
         "type": "object",
         "properties": {
@@ -2974,8 +3790,11 @@
           "body": {
             "type": "string"
           },
-          "recruitStatus": {
-            "type": "string"
+          "recruitUnityTags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -3046,6 +3865,19 @@
               "type": "string"
             }
           },
+          "recruitUnityTags": {
+            "type": "string",
+            "enum": [
+              "welcome_newbie",
+              "women_friendly",
+              "multi_day",
+              "same_departure",
+              "pure_rave",
+              "afterparty_ok",
+              "early_bird",
+              "budget_friendly"
+            ]
+          },
           "listedInFeed": {
             "type": "boolean",
             "description": "Default true. False = save post but hide from activity/popular feeds."
@@ -3109,6 +3941,19 @@
             "items": {
               "type": "string"
             }
+          },
+          "recruitUnityTags": {
+            "type": "string",
+            "enum": [
+              "welcome_newbie",
+              "women_friendly",
+              "multi_day",
+              "same_departure",
+              "pure_rave",
+              "afterparty_ok",
+              "early_bird",
+              "budget_friendly"
+            ]
           },
           "recruitStatus": {
             "type": "string",
@@ -3197,118 +4042,286 @@
           "body"
         ]
       },
-      "SceneRunResponseDto": {
+      "SearchFestivalsDto": {
         "type": "object",
         "properties": {
-          "effects": {
-            "type": "array",
-            "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/SceneInsightLineEffectDto"
-                },
-                {
-                  "$ref": "#/components/schemas/SceneReorderPostsEffectDto"
-                }
-              ]
-            }
+          "query": {
+            "type": "string"
           },
-          "disclaimer": {
+          "homeCity": {
+            "type": "string"
+          }
+        }
+      },
+      "SearchPublicRecruitsDto": {
+        "type": "object",
+        "properties": {
+          "activityLegacyId": {
+            "type": "number",
+            "minimum": 1
+          },
+          "query": {
+            "type": "string"
+          },
+          "prefs": {
+            "type": "object"
+          }
+        }
+      },
+      "DraftRecruitPostDto": {
+        "type": "object",
+        "properties": {
+          "activityLegacyId": {
+            "type": "number",
+            "minimum": 1
+          },
+          "draft": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "activityLegacyId",
+          "draft"
+        ]
+      },
+      "SubscribeLineupUpdatesDto": {
+        "type": "object",
+        "properties": {
+          "activityLegacyId": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "activityLegacyId"
+        ]
+      },
+      "GenerateTravelGuideCapabilityDto": {
+        "type": "object",
+        "properties": {
+          "activityLegacyId": {
+            "type": "number",
+            "minimum": 1
+          },
+          "formData": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "activityLegacyId",
+          "formData"
+        ]
+      },
+      "TravelGuidePlanDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "summary": {
             "type": "string"
           }
         },
         "required": [
-          "effects"
+          "title"
         ]
       },
-      "BuddyPostComposeHintsDto": {
+      "GenerateTravelGuideResultDto": {
         "type": "object",
         "properties": {
-          "personalityType": {
-            "type": "string"
+          "plan": {
+            "$ref": "#/components/schemas/TravelGuidePlanDto"
           },
-          "favorGenres": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "setPicks": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "prefillSummary": {
+          "guideId": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "plan"
+        ]
       },
-      "SceneContextDto": {
+      "GenerateTravelGuideDto": {
         "type": "object",
         "properties": {
-          "trigger": {
-            "type": "object"
+          "guideId": {
+            "type": "string",
+            "description": "客户端生成的攻略 ID，用于分享冷启动与服务端只读拉取",
+            "minLength": 8,
+            "maxLength": 128
           },
-          "applyPreferenceRank": {
-            "type": "boolean"
-          },
-          "locale": {
-            "type": "string"
-          },
-          "dateStart": {
+          "departure": {
             "type": "string",
             "minLength": 1
           },
-          "dateEnd": {
+          "departureCity": {
             "type": "string",
-            "minLength": 1
-          },
-          "location": {
-            "type": "string",
-            "minLength": 1
+            "description": "POI 补全返回的城市（如「上海市」），地理编码时优先于活动举办城市"
           },
           "headcount": {
-            "type": "string",
-            "minLength": 1
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10
           },
-          "composeHints": {
-            "$ref": "#/components/schemas/BuddyPostComposeHintsDto"
-          },
-          "regenerate": {
-            "type": "boolean"
-          }
-        }
-      },
-      "SceneRunDto": {
-        "type": "object",
-        "properties": {
-          "scene": {
+          "budgetTier": {
             "type": "string",
             "enum": [
-              "recruit_search",
-              "recruit_compose",
-              "prep_nudge",
-              "events_knowledge_search"
+              "economy",
+              "standard",
+              "comfort"
             ]
           },
-          "intent": {
+          "selfDrive": {
+            "type": "boolean"
+          },
+          "accommodationNights": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 7
+          },
+          "forceRegenerate": {
+            "type": "boolean",
+            "description": "重新生成时跳过 generation cache，避免切换出发地仍返回旧攻略"
+          }
+        },
+        "required": [
+          "departure",
+          "headcount"
+        ]
+      },
+      "TravelGuideGenerationJobResultDto": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "failed"
+            ]
+          },
+          "plan": {
+            "$ref": "#/components/schemas/TravelGuidePlanDto"
+          },
+          "errorMessage": {
+            "type": "string"
+          },
+          "progress": {
+            "type": "object",
+            "properties": {
+              "step": {
+                "required": true,
+                "type": "string"
+              },
+              "percent": {
+                "required": true,
+                "type": "number"
+              }
+            }
+          }
+        },
+        "required": [
+          "jobId",
+          "status",
+          "progress"
+        ]
+      },
+      "TravelGuidePlanReadResultDto": {
+        "type": "object",
+        "properties": {
+          "guideId": {
             "type": "string"
           },
           "activityLegacyId": {
             "type": "number"
           },
-          "input": {
-            "type": "string",
-            "minLength": 1
+          "plan": {
+            "$ref": "#/components/schemas/TravelGuidePlanDto"
           },
-          "context": {
-            "$ref": "#/components/schemas/SceneContextDto"
+          "createdAt": {
+            "type": "string"
           }
         },
         "required": [
-          "scene"
+          "guideId",
+          "activityLegacyId",
+          "plan",
+          "createdAt"
         ]
+      },
+      "TravelGuideBudgetTierResultDto": {
+        "type": "object",
+        "properties": {
+          "guideId": {
+            "type": "string"
+          },
+          "budgetTier": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "guideId",
+          "budgetTier"
+        ]
+      },
+      "SelectTravelGuideBudgetTierDto": {
+        "type": "object",
+        "properties": {
+          "budgetTier": {
+            "type": "string",
+            "enum": [
+              "economy",
+              "standard",
+              "comfort"
+            ]
+          }
+        },
+        "required": [
+          "budgetTier"
+        ]
+      },
+      "PlaceSuggestionItemDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "address"
+        ]
+      },
+      "PlaceSuggestionsResultDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaceSuggestionItemDto"
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "ReverseGeocodeResultDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          }
+        }
       },
       "CreateReportDto": {
         "type": "object",
@@ -3544,199 +4557,6 @@
           "category",
           "image"
         ]
-      },
-      "TravelGuidePlanDto": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "summary": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "title"
-        ]
-      },
-      "GenerateTravelGuideResultDto": {
-        "type": "object",
-        "properties": {
-          "plan": {
-            "$ref": "#/components/schemas/TravelGuidePlanDto"
-          },
-          "guideId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "plan"
-        ]
-      },
-      "GenerateTravelGuideDto": {
-        "type": "object",
-        "properties": {
-          "guideId": {
-            "type": "string",
-            "description": "客户端生成的攻略 ID，用于分享冷启动与服务端只读拉取",
-            "minLength": 8,
-            "maxLength": 128
-          },
-          "departure": {
-            "type": "string",
-            "minLength": 1
-          },
-          "departureCity": {
-            "type": "string",
-            "description": "POI 补全返回的城市（如「上海市」），地理编码时优先于活动举办城市"
-          },
-          "headcount": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 10
-          },
-          "budgetTier": {
-            "type": "string",
-            "enum": [
-              "economy",
-              "standard",
-              "comfort"
-            ]
-          },
-          "selfDrive": {
-            "type": "boolean"
-          },
-          "accommodationNights": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 7
-          }
-        },
-        "required": [
-          "departure",
-          "headcount"
-        ]
-      },
-      "TravelGuideGenerationJobResultDto": {
-        "type": "object",
-        "properties": {
-          "jobId": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "running",
-              "completed",
-              "failed"
-            ]
-          },
-          "plan": {
-            "$ref": "#/components/schemas/TravelGuidePlanDto"
-          },
-          "errorMessage": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "jobId",
-          "status"
-        ]
-      },
-      "TravelGuidePlanReadResultDto": {
-        "type": "object",
-        "properties": {
-          "guideId": {
-            "type": "string"
-          },
-          "activityLegacyId": {
-            "type": "number"
-          },
-          "plan": {
-            "$ref": "#/components/schemas/TravelGuidePlanDto"
-          },
-          "createdAt": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "guideId",
-          "activityLegacyId",
-          "plan",
-          "createdAt"
-        ]
-      },
-      "TravelGuideBudgetTierResultDto": {
-        "type": "object",
-        "properties": {
-          "guideId": {
-            "type": "string"
-          },
-          "budgetTier": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "guideId",
-          "budgetTier"
-        ]
-      },
-      "SelectTravelGuideBudgetTierDto": {
-        "type": "object",
-        "properties": {
-          "budgetTier": {
-            "type": "string",
-            "enum": [
-              "economy",
-              "standard",
-              "comfort"
-            ]
-          }
-        },
-        "required": [
-          "budgetTier"
-        ]
-      },
-      "PlaceSuggestionItemDto": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "address": {
-            "type": "string"
-          },
-          "city": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "title",
-          "address"
-        ]
-      },
-      "PlaceSuggestionsResultDto": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PlaceSuggestionItemDto"
-            }
-          }
-        },
-        "required": [
-          "data"
-        ]
-      },
-      "ReverseGeocodeResultDto": {
-        "type": "object",
-        "properties": {
-          "label": {
-            "type": "string"
-          }
-        }
       },
       "SavePersonalityTestResultDto": {
         "type": "object",

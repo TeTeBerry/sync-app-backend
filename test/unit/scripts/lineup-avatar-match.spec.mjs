@@ -4,6 +4,7 @@ import {
   bestCatalogMatchScore,
   evaluateAvatarGenreGate,
   isCrossoverGuestProfile,
+  isTheAudioDbHomonymStub,
   normalizeAvatarPersonKey,
   stripDiscogsDisambiguation,
 } from '../../../scripts/lib/lineup-avatar-match.mjs';
@@ -69,6 +70,33 @@ describe('lineup-avatar-match', () => {
     });
     assert.equal(verdict.accept, false);
     assert.equal(verdict.reason, 'genre_mismatch_vocal_homonym');
+  });
+
+  it('rejects Fisher homonym stub for mapped house DJ', () => {
+    const fisherHomonymBio =
+      'There are 4 artists called Fisher:\n\n1) Paul Fisher aka Fisher (OZ) is a producer';
+    assert.equal(
+      isTheAudioDbHomonymStub({
+        candidateBiography: fisherHomonymBio,
+        candidateGenres: [],
+        candidateFollowers: 4164,
+      }),
+      true,
+    );
+    const verdict = evaluateAvatarGenreGate({
+      djsStyles: ['House', 'Tech House'],
+      djsGenres: ['Electronic'],
+      candidateGenres: [],
+      candidateBiography: fisherHomonymBio,
+      candidateFollowers: 4164,
+      lineupName: 'FISHER',
+      candidateArtistName: 'Fisher',
+      discogsName: 'Fisher (2)',
+      djProfile: 'Australian house DJ and producer.',
+      matchScore: 100,
+    });
+    assert.equal(verdict.accept, false);
+    assert.equal(verdict.reason, 'homonym_disambiguation_stub');
   });
 
   it('accepts electronic TheAudioDB match without corroboration', () => {

@@ -14,6 +14,7 @@ import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
 import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cache.service';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
+import { UserGoalService } from '../goal/goal.service';
 import type { ItineraryDay } from '../../database/schemas/user-itinerary.schema';
 import type { SaveItineraryDto } from './dto/save-itinerary.dto';
 import type { GenerateItineraryDto } from './dto/generate-itinerary.dto';
@@ -28,6 +29,7 @@ export class ItineraryService {
     private readonly generationService: ItineraryGenerationService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly bffCacheInvalidation: BffReadCacheInvalidationService,
+    private readonly goalService: UserGoalService,
   ) {}
 
   getSchedule(
@@ -114,6 +116,10 @@ export class ItineraryService {
       actor.resolvedUserId,
       activityLegacyId,
     );
+
+    if (days.some((day) => (day.items?.length ?? 0) > 0)) {
+      await this.goalService.subscribeOnEngagement(actor, activityLegacyId);
+    }
 
     return {
       ok: true as const,

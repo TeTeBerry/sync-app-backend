@@ -14,6 +14,7 @@ import {
 } from '../../database/schemas/travel-plan-receipt-recognize-job.schema';
 import { InfraLlmModule } from '../../infra/llm/llm.module';
 import { ActivityModule } from '../activity/activity.module';
+import { UserGoalModule } from '../goal/goal.module';
 import { AuthModule } from '../auth/auth.module';
 import { TravelPlanController } from './travel-plan.controller';
 import { TravelPlanReceiptRecognizeJobService } from './travel-plan-receipt-recognize-job.service';
@@ -24,6 +25,7 @@ import { TravelPlanService } from './travel-plan.service';
   imports: [
     InfraLlmModule,
     ActivityModule,
+    UserGoalModule,
     AuthModule,
     MongooseModule.forFeature([
       { name: UserTravelPlan.name, schema: UserTravelPlanSchema },

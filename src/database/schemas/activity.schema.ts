@@ -68,6 +68,10 @@ export class Activity {
   /** When catalog info was last verified or updated. */
   @Prop()
   infoUpdatedAt?: Date;
+
+  /** When lineup was first detected as published (false → true). */
+  @Prop()
+  lineupAnnouncedAt?: Date;
 }
 
 export const ActivitySchema = SchemaFactory.createForClass(Activity);

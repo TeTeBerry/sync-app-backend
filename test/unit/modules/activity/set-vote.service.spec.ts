@@ -6,6 +6,7 @@ import { ACTIVITY_LOOKUP_PORT } from '@src/modules/activity/ports/activity-looku
 import { ItineraryScheduleService } from '@src/modules/itinerary/itinerary-schedule.service';
 import { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import { RedisService } from '@src/redis/redis.service';
+import { UserGoalService } from '@src/modules/goal/goal.service';
 import type { RequestActor } from '@src/common/auth/request-actor.types';
 
 const actor: RequestActor = {
@@ -32,7 +33,8 @@ describe('SetVoteService', () => {
   };
   let scheduleService: { getSchedule: jest.Mock };
   let redis: { incrementRateLimit: jest.Mock; getCacheValue: jest.Mock };
-  let applyHints: jest.Mock;
+  let applySetVoteHints: jest.Mock;
+  let subscribeOnEngagement: jest.Mock;
 
   beforeEach(async () => {
     repository = {
@@ -58,7 +60,8 @@ describe('SetVoteService', () => {
       incrementRateLimit: jest.fn().mockResolvedValue(1),
       getCacheValue: jest.fn().mockResolvedValue(null),
     };
-    applyHints = jest.fn();
+    applySetVoteHints = jest.fn();
+    subscribeOnEngagement = jest.fn().mockResolvedValue(undefined);
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -75,9 +78,13 @@ describe('SetVoteService', () => {
         { provide: ItineraryScheduleService, useValue: scheduleService },
         {
           provide: UserProfileSyncService,
-          useValue: { applyHints },
+          useValue: { applySetVoteHints },
         },
         { provide: RedisService, useValue: redis },
+        {
+          provide: UserGoalService,
+          useValue: { subscribeOnEngagement },
+        },
       ],
     }).compile();
 
@@ -100,7 +107,7 @@ describe('SetVoteService', () => {
       activityLegacyId: 4,
       picks: ['dj-snake', 'martin-garrix'],
     });
-    expect(applyHints).toHaveBeenCalled();
+    expect(applySetVoteHints).toHaveBeenCalled();
   });
 
   it('rejects more than 3 picks', async () => {
@@ -156,9 +163,13 @@ describe('SetVoteService', () => {
         { provide: ItineraryScheduleService, useValue: scheduleService },
         {
           provide: UserProfileSyncService,
-          useValue: { applyHints },
+          useValue: { applySetVoteHints },
         },
         { provide: RedisService, useValue: redis },
+        {
+          provide: UserGoalService,
+          useValue: { subscribeOnEngagement },
+        },
       ],
     }).compile();
     const svc = moduleRef.get(SetVoteService);

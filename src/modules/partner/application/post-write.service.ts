@@ -6,6 +6,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import {
   isTicketPublishProhibited,
@@ -18,7 +19,6 @@ import {
 import type { PostStatus } from '../../../database/schemas/post.schema';
 import { normalizeRecruitUnityTags } from '@sync/partner-contracts';
 import { AccountRiskService } from '../../account-risk/account-risk.service';
-import { UserProfileSyncService } from '../../user/user-profile-sync.service';
 import { UserService } from '../../user/user.service';
 import {
   IPostModerationPort,
@@ -48,6 +48,7 @@ import { assertPostHasNoContactInfo } from '../utils/post-contact.util';
 import { normalizeRecruitFields } from '../utils/buddy-post-recruit.util';
 import { BffReadCacheInvalidationService } from '../../../infra/cache/bff-read-cache.service';
 import { WechatContentSecurityService } from '../../auth/wechat-content-security.service';
+import { UserGoalService } from '../../goal/goal.service';
 
 @Injectable()
 export class PostWriteService {
@@ -57,7 +58,6 @@ export class PostWriteService {
     @Inject(POST_REPOSITORY)
     private readonly repository: IPostRepository,
     private readonly userService: UserService,
-    private readonly userProfileSync: UserProfileSyncService,
     private readonly accountRisk: AccountRiskService,
     @Inject(ACTIVITY_LOOKUP_PORT)
     private readonly activityLookup: IActivityLookupPort,
@@ -67,6 +67,8 @@ export class PostWriteService {
     private readonly postModeration: IPostModerationPort,
     private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly bffCacheInvalidation: BffReadCacheInvalidationService,
+    @Inject(forwardRef(() => UserGoalService))
+    private readonly goalService: UserGoalService,
   ) {}
 
   private async toCreatedEventDetailItem(
@@ -225,19 +227,13 @@ export class PostWriteService {
 
     const postId = String(created._id);
 
-    this.userProfileSync.applyBuddyPostHints(actor, {
-      body: bodyToSave,
-      location,
-      departureCity,
-      tags: dto.tags,
-    });
-
     if (activityLegacyId != null) {
       await this.bffCacheInvalidation.invalidateHomeForUser(ownerUserId);
       await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
         ownerUserId,
         activityLegacyId,
       );
+      await this.goalService.subscribeOnEngagement(actor, activityLegacyId);
       if (status !== 'hidden' && listedInFeed) {
         void this.activityLookup.refreshCache().catch(() => undefined);
       }
@@ -417,13 +413,6 @@ export class PostWriteService {
     if (!updated) {
       throw new NotFoundException('帖子不存在');
     }
-
-    this.userProfileSync.applyBuddyPostHints(actor, {
-      body: bodyToSave,
-      location,
-      departureCity,
-      tags: dto.tags,
-    });
 
     if (activityLegacyId != null) {
       await this.bffCacheInvalidation.invalidateHomeForUser(ownerUserId);

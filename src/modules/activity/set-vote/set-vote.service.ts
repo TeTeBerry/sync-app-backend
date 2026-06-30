@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { RedisService } from '../../../redis/redis.service';
@@ -20,11 +21,11 @@ import {
 } from '../ports/activity-lookup.port';
 import { ItineraryScheduleService } from '../../itinerary/itinerary-schedule.service';
 import { UserProfileSyncService } from '../../user/user-profile-sync.service';
-import { buildSetVoteProfileHints } from '../../user/user-profile-hints.util';
 import {
   SET_VOTE_REPOSITORY,
   type ISetVoteRepository,
 } from './interfaces/set-vote.repository.interface';
+import { UserGoalService } from '../../goal/goal.service';
 
 const LEADERBOARD_LIMIT = 10;
 const REVOTE_WINDOW_SEC = 86_400;
@@ -62,6 +63,8 @@ export class SetVoteService {
     private readonly scheduleService: ItineraryScheduleService,
     private readonly userProfileSync: UserProfileSyncService,
     private readonly redis: RedisService,
+    @Inject(forwardRef(() => UserGoalService))
+    private readonly goalService: UserGoalService,
   ) {}
 
   async submit(
@@ -107,12 +110,13 @@ export class SetVoteService {
       picks: normalizedIds,
     });
 
+    await this.goalService.subscribeOnEngagement(actor, activityLegacyId);
+
     if (syncGenres) {
       const genres = resolvedPicks
         .map((pick) => pick.genre?.trim())
         .filter(Boolean) as string[];
-      const hints = buildSetVoteProfileHints({ genres });
-      void this.userProfileSync.applyHints(actor, hints, 'set_vote');
+      this.userProfileSync.applySetVoteHints(actor, { genres });
     }
 
     const totalVoters = await this.repository.countVoters(activityLegacyId);

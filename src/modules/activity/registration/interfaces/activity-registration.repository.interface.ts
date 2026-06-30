@@ -40,6 +40,9 @@ export interface IActivityRegistrationRepository {
     filter: ActivityRegistrationQueryFilter,
     activityLegacyId: number,
   ): Promise<boolean>;
+  findAllRegistered(): Promise<
+    Array<{ userId: string; activityLegacyId: number }>
+  >;
 }
 
 export const ACTIVITY_REGISTRATION_REPOSITORY = Symbol(

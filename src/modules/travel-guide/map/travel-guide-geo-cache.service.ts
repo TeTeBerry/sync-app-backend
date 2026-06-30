@@ -247,13 +247,14 @@ export class TravelGuideGeoCacheService {
       return { driving, source: 'api' };
     }
 
-    const [transit, driving] = await Promise.all([
+    const [transitDetail, driving] = await Promise.all([
       this.map.transitRoute(from, to, input.destinationCity),
       this.map.drivingRoute(from, to),
     ]);
 
     return {
-      transit: transit ?? undefined,
+      transit: transitDetail ?? undefined,
+      transitDetail: transitDetail ?? undefined,
       driving: driving ?? undefined,
       source: 'api',
     };

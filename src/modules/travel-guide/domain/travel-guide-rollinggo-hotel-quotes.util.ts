@@ -2,6 +2,7 @@ import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
 import type { RollingGoHotelRecord } from '../infra/rollinggo/rollinggo-mcp.types';
 import type { HotelQuoteSnapshot } from '../ports/travel-quote.types';
 import { TRAVEL_GUIDE_TIER_HOTEL_SCHEME_COUNT } from './travel-guide-accommodation.constants';
+import { budgetTierHotelNightRanges } from './parse-activity-days.util';
 import { filterRollingGoHotelsForBudgetTier } from './travel-guide-rollinggo-hotel-tier.util';
 import { SYNC_BUDGET_TIER_ORDER } from './travel-guide-rollinggo-flight-tier.util';
 import {
@@ -65,6 +66,23 @@ function resolveHotelCurrency(
   return regionKind === 'overseas' ? 'USD' : 'CNY';
 }
 
+function nightlyBandFromTierTemplate(tier: TravelGuideBudgetTier): {
+  min: number;
+  max: number;
+} {
+  const { primary, secondary } = budgetTierHotelNightRanges(tier);
+  const parseBand = (band: string) => {
+    const nums = band.match(/\d+/g)?.map(Number) ?? [];
+    return {
+      min: nums[0] ?? 300,
+      max: nums[nums.length - 1] ?? nums[0] ?? 600,
+    };
+  };
+  const a = parseBand(primary);
+  const b = parseBand(secondary);
+  return { min: a.min, max: Math.max(a.max, b.max) };
+}
+
 /** 三档分别查询后，按档位价位/星级排序并跨档去重，避免各档首推同一家酒店。 */
 export function buildDiversifiedRollingGoHotelQuotesByTier(
   tierRawHotels: Partial<Record<TravelGuideBudgetTier, RollingGoHotelRecord[]>>,
@@ -126,11 +144,17 @@ export function buildDiversifiedRollingGoHotelQuotesByTier(
         .filter(Boolean)
         .join('\n'),
     );
-    if (!summary.min || !summary.max) continue;
+    if ((!summary.min || !summary.max) && !recommendations.length) {
+      continue;
+    }
+
+    const templateBand = nightlyBandFromTierTemplate(tier);
+    const nightlyMin = summary.min || templateBand.min;
+    const nightlyMax = summary.max || templateBand.max;
 
     result[tier] = {
-      minPricePerNight: summary.min,
-      maxPricePerNight: summary.max,
+      minPricePerNight: nightlyMin,
+      maxPricePerNight: nightlyMax,
       currency,
       sampleCount: summary.count,
       fetchedAt,

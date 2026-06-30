@@ -220,6 +220,7 @@ export class NotificationService {
       postId?: string;
       actorUserId?: string;
       changeSummary?: string;
+      nudgeRule?: string;
       sinceMs?: number;
     },
   ): Promise<boolean> {
@@ -246,6 +247,9 @@ export class NotificationService {
     }
     if (options?.changeSummary?.trim()) {
       filter['meta.changeSummary'] = options.changeSummary.trim();
+    }
+    if (options?.nudgeRule?.trim()) {
+      filter['meta.nudgeRule'] = options.nudgeRule.trim();
     }
 
     const count = await this.notificationModel.countDocuments(filter);

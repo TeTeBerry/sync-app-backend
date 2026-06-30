@@ -65,6 +65,7 @@ export interface IPostRepository {
     userId: string,
     activityLegacyId: number,
   ): Promise<number>;
+  countListedPostsSince(activityLegacyId: number, since: Date): Promise<number>;
   incrementCommentCount(id: string): Promise<PostRecord | null>;
   decrementCommentCount(
     id: string,

@@ -266,6 +266,11 @@ export function parseEventsActivitySearchQuery(
     });
   if (keywords.length) parsed.keywords = keywords;
 
+  if (parsed.intent === 'compare') {
+    delete parsed.area;
+    delete parsed.region;
+  }
+
   return parsed;
 }
 
@@ -464,6 +469,10 @@ function isActivityEligibleForKnowledgeSearch(
   const yearHint = resolveActivityYearHint(activity);
   if (isActivityEnded(activity.date, { yearHint, now })) {
     return false;
+  }
+
+  if (parsed.intent === 'compare') {
+    return true;
   }
 
   const hasStructuredCriteria = Boolean(

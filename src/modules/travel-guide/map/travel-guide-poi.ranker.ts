@@ -198,23 +198,52 @@ export class TravelGuidePoiRanker {
   ): Partial<Record<TravelGuideBudgetTier, RankedMapPoi[]>> {
     const minHotelRating = options?.minHotelRating ?? DEFAULT_MIN_HOTEL_RATING;
     const hotelPois = ctx.pois.filter((p) => p.kind === 'hotel');
-    const tiers: TravelGuideBudgetTier[] = ['economy', 'standard', 'comfort'];
-    const result: Partial<Record<TravelGuideBudgetTier, RankedMapPoi[]>> = {};
-
-    for (const tier of tiers) {
-      const hotels = this.pickHotelsForBudget(
-        hotelPois,
-        tier,
-        minHotelRating,
-        ctx.eventEndHour,
-      );
-      if (hotels.length) {
-        result[tier] = hotels;
-      }
-    }
-
-    return result;
+    return rankHotelPoisForAllBudgetTiers(hotelPois, {
+      minHotelRating,
+      eventEndHour: ctx.eventEndHour,
+    });
   }
+
+  /** 境外 hot-path 精选酒店按档位排序（无高德 POI 时使用）。 */
+  rankRawHotelPoisForBudgetTier(
+    pois: RawMapPoi[],
+    tier: TravelGuideBudgetTier,
+    options?: { minHotelRating?: number; eventEndHour?: number },
+  ): RankedMapPoi[] {
+    return this.pickHotelsForBudget(
+      pois.filter((p) => p.kind === 'hotel'),
+      tier,
+      options?.minHotelRating ?? DEFAULT_MIN_HOTEL_RATING,
+      options?.eventEndHour ?? 23.5,
+    );
+  }
+}
+
+const sharedPoiRanker = new TravelGuidePoiRanker();
+
+export function rankHotelPoisForBudgetTier(
+  pois: RawMapPoi[],
+  tier: TravelGuideBudgetTier,
+  options?: { minHotelRating?: number; eventEndHour?: number },
+): RankedMapPoi[] {
+  return sharedPoiRanker.rankRawHotelPoisForBudgetTier(pois, tier, options);
+}
+
+export function rankHotelPoisForAllBudgetTiers(
+  pois: RawMapPoi[],
+  options?: { minHotelRating?: number; eventEndHour?: number },
+): Partial<Record<TravelGuideBudgetTier, RankedMapPoi[]>> {
+  const tiers: TravelGuideBudgetTier[] = ['economy', 'standard', 'comfort'];
+  const result: Partial<Record<TravelGuideBudgetTier, RankedMapPoi[]>> = {};
+
+  for (const tier of tiers) {
+    const hotels = rankHotelPoisForBudgetTier(pois, tier, options);
+    if (hotels.length) {
+      result[tier] = hotels;
+    }
+  }
+
+  return result;
 }
 
 function distanceScore(distanceM: number): number {

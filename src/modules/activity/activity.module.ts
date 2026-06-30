@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AgentsModule } from '../../ai/agents/agents.module';
 import { InfraChromaModule } from '../../infra/chroma/chroma.module';
@@ -19,6 +19,7 @@ import {
 import { NotificationModule } from '../notification/notification.module';
 import { LineupCatalogModule } from '../itinerary/lineup-catalog.module';
 import { ItineraryModule } from '../itinerary/itinerary.module';
+import { UserGoalModule } from '../goal/goal.module';
 import { UserModule } from '../user/user.module';
 import { ActivityLookupModule } from './activity-lookup.module';
 import { ActivityCatalogRefreshModule } from './activity-catalog-refresh.module';
@@ -31,9 +32,11 @@ import { SetVoteController } from './set-vote/set-vote.controller';
 import { SetVoteRepository } from './set-vote/set-vote.repository';
 import { SetVoteService } from './set-vote/set-vote.service';
 import { SET_VOTE_REPOSITORY } from './set-vote/interfaces/set-vote.repository.interface';
+import { ActivityEngagementModule } from './engagement/activity-engagement.module';
 
 @Module({
   imports: [
+    ActivityEngagementModule,
     LineupCatalogModule,
     ItineraryModule,
     UserModule,
@@ -44,6 +47,7 @@ import { SET_VOTE_REPOSITORY } from './set-vote/interfaces/set-vote.repository.i
     InfraChromaModule,
     InfraLlmModule,
     RedisModule,
+    forwardRef(() => UserGoalModule),
     MongooseModule.forFeature([
       { name: Activity.name, schema: ActivitySchema },
       {
@@ -78,6 +82,7 @@ import { SET_VOTE_REPOSITORY } from './set-vote/interfaces/set-vote.repository.i
     ACTIVITY_REGISTRATION_REPOSITORY,
     ActivityLookupModule,
     ActivityCatalogRefreshModule,
+    ActivityEngagementModule,
     SetVoteService,
   ],
 })

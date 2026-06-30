@@ -371,4 +371,50 @@ export class NoticeAgent {
       }),
     );
   }
+
+  async notifyProactiveNudge(params: {
+    userId: string;
+    activityLegacyId: number;
+    ruleId: string;
+    copy: string;
+    activityName?: string;
+    prefillQuery?: string;
+    openBuddyPost?: boolean;
+    openLineup?: boolean;
+    focusPosts?: boolean;
+  }): Promise<void> {
+    const displayEventName = params.activityName?.trim();
+    if (params.ruleId === 'draft_ready') {
+      await this.notificationService.createNotification({
+        userId: params.userId,
+        type: 'system',
+        title: '活动提醒',
+        body: params.copy,
+        meta: {
+          type: 'activity_update',
+          activityLegacyId: params.activityLegacyId,
+        },
+      });
+      return;
+    }
+
+    await this.notificationService.createNotification({
+      userId: params.userId,
+      type: 'system',
+      title: '活动提醒',
+      body: params.copy,
+      meta: {
+        type: 'proactive_nudge',
+        activityLegacyId: params.activityLegacyId,
+        nudgeRule: params.ruleId,
+        ...(displayEventName ? { displayEventName } : {}),
+        ...(params.prefillQuery?.trim()
+          ? { prefillQuery: params.prefillQuery.trim() }
+          : {}),
+        ...(params.openBuddyPost ? { openBuddyPost: true } : {}),
+        ...(params.openLineup ? { openLineup: true } : {}),
+        ...(params.focusPosts ? { focusPosts: true } : {}),
+      },
+    });
+  }
 }

@@ -122,6 +122,7 @@ export class TravelGuidePoiCollector {
       departure: departure ?? undefined,
       drivingRoute: transport.driving,
       transitRoute: transport.transit,
+      transitDetail: transport.transitDetail,
       transportSource: transport.source,
       transportHints,
       interCity: transport.interCity,

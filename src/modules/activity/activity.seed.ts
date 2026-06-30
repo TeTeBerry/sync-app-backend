@@ -9,7 +9,9 @@ export const ACTIVITY_SEED = [
     alias: [
       'tomorrowland',
       'tomorrowland thailand',
+      'tml',
       'tml泰国',
+      '泰国tml',
       '明日世界',
       'tmw',
     ],

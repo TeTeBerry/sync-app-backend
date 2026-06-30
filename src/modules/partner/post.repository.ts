@@ -223,6 +223,18 @@ export class PostRepository implements IPostRepository {
     return this.model.countDocuments({ userId, activityLegacyId });
   }
 
+  async countListedPostsSince(
+    activityLegacyId: number,
+    since: Date,
+  ): Promise<number> {
+    return this.model.countDocuments({
+      activityLegacyId,
+      status: { $ne: 'hidden' },
+      ...FEED_LISTED_FILTER,
+      createdAt: { $gte: since },
+    });
+  }
+
   async incrementCommentCount(id: string): Promise<PostRecord | null> {
     return this.model
       .findByIdAndUpdate(id, { $inc: { comments: 1 } }, { new: true })

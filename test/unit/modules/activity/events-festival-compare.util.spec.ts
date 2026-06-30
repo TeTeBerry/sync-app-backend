@@ -49,6 +49,16 @@ const CATALOG: ActivityLookupRecord[] = [
     region: 'overseas',
     alias: ['edc korea', '韩国edc'],
   }),
+  activity({
+    legacyId: 10,
+    name: 'Tomorrowland Thailand 2026',
+    code: 'tomorrowland',
+    date: '12/11-13',
+    location: '芭提雅 Wisdom Valley',
+    area: '泰国',
+    region: 'overseas',
+    alias: ['tomorrowland thailand', 'tml', 'tml泰国', '泰国tml'],
+  }),
 ];
 
 describe('events-festival-compare.util', () => {
@@ -62,6 +72,31 @@ describe('events-festival-compare.util', () => {
     const pair = resolveCompareActivities('storm vs ultra europe', CATALOG, []);
 
     expect(pair.map((item) => item.code)).toEqual(['storm', 'ultra-europe']);
+  });
+
+  it('resolves geo-prefixed brand tokens like 韩国edc vs 泰国tml', () => {
+    const pair = resolveCompareActivities('韩国edc vs 泰国tml', CATALOG, []);
+
+    expect(pair.map((item) => item.code)).toEqual([
+      'edc-korea',
+      'tomorrowland',
+    ]);
+  });
+
+  it('builds compare card for 韩国edc vs 泰国tml', () => {
+    const card = buildFestivalCompareKnowledgeCard({
+      query: '韩国edc vs 泰国tml',
+      parsed: { intent: 'compare' },
+      activities: CATALOG.filter((item) =>
+        ['edc-korea', 'tomorrowland'].includes(item.code),
+      ),
+      allActivities: CATALOG,
+      locale: 'zh-CN',
+    });
+
+    expect(card?.title).toBe('电音节对比');
+    expect(card?.compare?.leftName).toContain('EDC Korea');
+    expect(card?.compare?.rightName).toContain('Tomorrowland Thailand');
   });
 
   it('builds structured compare card with five rows', () => {

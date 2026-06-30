@@ -27,6 +27,14 @@ describe('user-profile-hints.util', () => {
     );
   });
 
+  it('buildTravelGuideProfileHints decodes percent-encoded departure city', () => {
+    const hints = buildTravelGuideProfileHints({
+      departure: '%E4%B8%8A%E6%B5%B7',
+    });
+
+    expect(hints.city).toBe('上海');
+  });
+
   it('buildTravelGuideProfileHints maps city and budget tier', () => {
     const hints = buildTravelGuideProfileHints({
       departure: '上海虹桥站',

@@ -34,9 +34,6 @@ const EMPTY_PROFILE_DEFAULTS = {
   location: '',
   bio: '',
   avatar: '',
-  city: '',
-  favorGenres: [] as string[],
-  budgetLevel: '',
   notificationsEnabled: true,
   privacyLevel: 'public' as const,
 };
@@ -88,6 +85,12 @@ export class UserService implements OnModuleInit {
   }
 
   private toMeDto(record: UserRecord, externalId: string): UserMeDto {
+    const city = record.city?.trim();
+    const favorGenres = (record.favorGenres ?? [])
+      .map((genre) => genre.trim())
+      .filter(Boolean);
+    const budgetLevel = record.budgetLevel?.trim();
+
     return {
       id: record.externalId ?? externalId,
       name: record.name ?? EMPTY_PROFILE_DEFAULTS.name,
@@ -95,9 +98,9 @@ export class UserService implements OnModuleInit {
       location: record.location ?? EMPTY_PROFILE_DEFAULTS.location,
       bio: record.bio ?? EMPTY_PROFILE_DEFAULTS.bio,
       avatar: record.avatar ?? EMPTY_PROFILE_DEFAULTS.avatar,
-      city: record.city ?? EMPTY_PROFILE_DEFAULTS.city,
-      favorGenres: record.favorGenres ?? EMPTY_PROFILE_DEFAULTS.favorGenres,
-      budgetLevel: record.budgetLevel ?? EMPTY_PROFILE_DEFAULTS.budgetLevel,
+      ...(city ? { city } : {}),
+      ...(favorGenres.length ? { favorGenres } : {}),
+      ...(budgetLevel ? { budgetLevel } : {}),
       notificationsEnabled:
         record.notificationsEnabled ??
         EMPTY_PROFILE_DEFAULTS.notificationsEnabled,

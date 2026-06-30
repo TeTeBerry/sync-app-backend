@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { RecruitSearchSceneHandler } from '../../../../src/ai/scene/handlers/recruit-search.handler';
+import type { ActivityEngagementService } from '../../../../src/modules/activity/engagement/activity-engagement.service';
 import type { PostService } from '../../../../src/modules/partner/post.service';
 import type { UserService } from '../../../../src/modules/user/user.service';
 
@@ -10,9 +11,13 @@ describe('RecruitSearchSceneHandler', () => {
   const userService = {
     resolveProfile: jest.fn(),
   };
+  const engagementService = {
+    markRecruitSearched: jest.fn().mockResolvedValue(undefined),
+  };
   const handler = new RecruitSearchSceneHandler(
     postService as unknown as PostService,
     userService as unknown as UserService,
+    engagementService as unknown as ActivityEngagementService,
   );
   const actor = { resolvedUserId: 'user-1' } as never;
 

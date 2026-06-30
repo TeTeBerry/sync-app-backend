@@ -100,4 +100,25 @@ describe('buildDiversifiedRollingGoHotelQuotesByTier', () => {
       'Inspire Grand Suite',
     );
   });
+
+  it('keeps recommendations when RollingGo returns names without nightly prices', () => {
+    const quotes = buildDiversifiedRollingGoHotelQuotesByTier(
+      {
+        standard: [
+          { name: 'Sleep With Me Design Hotel', address: 'Patong' },
+          { name: 'Baba Beach Club', address: 'Phuket' },
+          { name: 'Novotel Phuket Kamala Beach', address: 'Kamala' },
+        ],
+      },
+      {
+        regionKind: 'overseas',
+        countryCode: 'TH',
+        venueCoords: { lat: 7.96, lng: 98.35 },
+      },
+    );
+
+    expect(quotes.standard?.recommendations?.length).toBeGreaterThanOrEqual(2);
+    expect(quotes.standard?.minPricePerNight).toBeGreaterThan(0);
+    expect(quotes.standard?.recommendations?.[0]?.name).toBeTruthy();
+  });
 });

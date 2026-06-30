@@ -2,18 +2,14 @@
 /**
  * Run Hermes v4 (web + Discogs research) for artists missing profile bio text.
  *
- * Targets `collectArtistsMissingProfileText` scope: no_map, pending_review,
- * mapped_no_real_profile, manual_stub, and empty_profile (mapped + genres but
- * no djs.profile / Hermes integrated report).
- *
- * Re-fetches the missing list after each batch (so fixed artists drop out).
- * Invokes v4 via tsx directly (avoids nested `npm run` exiting before the loop continues).
+ * Default: one v4 subprocess for every artist missing `djs.profile`, then backfill.
+ * Use `--batch-size N` only when you need smaller v4 invocations (e.g. debugging).
  *
  * Usage:
  *   npm run db:run-v4-missing-profiles:dry-run
  *   npm run db:run-v4-missing-profiles
- *   npm run db:run-v4-missing-profiles -- --limit 12 --batch-size 6
- *   npm run db:run-v4-missing-profiles -- --all-at-once
+ *   npm run db:run-v4-missing-profiles -- --limit 12
+ *   npm run db:run-v4-missing-profiles -- --batch-size 6
  *   npm run db:run-v4-missing-profiles -- --issue empty_profile
  *   npm run db:run-v4-missing-profiles -- --scope missing-real
  */
@@ -22,6 +18,7 @@ import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import mongoose from 'mongoose';
+import { backfillDjProfilesFromHermes } from './lib/backfill-dj-profiles-from-hermes.mjs';
 import { createDjDiscogsMapModel } from './lib/dj-discogs-map.mjs';
 import {
   closeDjDiscogsRedisCache,
@@ -30,8 +27,10 @@ import {
   loadAllCatalogLineupDisplayNames,
   loadDotEnv,
 } from './lib/discogs-crawl.mjs';
-import { collectArtistsMissingProfileText } from './lib/lineup-real-artist-catalog.mjs';
-import { collectArtistsMissingRealProfile } from './lib/lineup-real-artist-catalog.mjs';
+import {
+  collectArtistsMissingProfileText,
+  collectArtistsMissingRealProfile,
+} from './lib/lineup-real-artist-catalog.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const backendRoot = resolve(__dirname, '..');
@@ -43,7 +42,6 @@ loadDotEnv();
 
 const argv = process.argv.slice(2);
 const dryRun = argv.includes('--dry-run');
-const allAtOnce = argv.includes('--all-at-once');
 
 function readArg(flag) {
   const index = argv.indexOf(flag);
@@ -93,7 +91,10 @@ async function loadMissingArtists({ issueFilter = '', scope = 'profile-text' } =
   return { missing, config };
 }
 
-function runV4Batch(batch, env) {
+function runV4Artists(artists, env) {
+  if (!artists.length) {
+    return Promise.resolve();
+  }
   if (!existsSync(tsxBin)) {
     throw new Error(
       `v4 tsx 未安装 — 请先运行: cd ${hermesRoot} && npm install --prefix v4`,
@@ -101,7 +102,7 @@ function runV4Batch(batch, env) {
   }
 
   const args = ['src/index.ts', '--include-mapped', '--no-avatars'];
-  for (const name of batch) {
+  for (const name of artists) {
     args.push('--artist', name);
   }
 
@@ -124,7 +125,7 @@ function runV4Batch(batch, env) {
         return;
       }
       const detail = signal ? ` signal ${signal}` : '';
-      reject(new Error(`v4 batch exited with code ${code ?? 'null'}${detail}`));
+      reject(new Error(`v4 exited with code ${code ?? 'null'}${detail}`));
     });
   });
 }
@@ -155,16 +156,17 @@ async function rebuildWebOnlyDjs() {
   });
 }
 
-async function backfillDjProfilesFromHermes() {
-  await runCommand('npm', ['run', 'db:backfill-dj-profiles-from-hermes'], {
-    cwd: backendRoot,
-    env: {},
-  });
+function chunkNames(names, size) {
+  const chunks = [];
+  for (let i = 0; i < names.length; i += size) {
+    chunks.push(names.slice(i, i + size));
+  }
+  return chunks;
 }
 
 async function main() {
   const limit = readNumberArg('--limit', 0);
-  const batchSize = allAtOnce ? 0 : readNumberArg('--batch-size', 6);
+  const batchSize = readNumberArg('--batch-size', 0);
   const issueFilter = readArg('--issue');
   const scope = readArg('--scope') || 'profile-text';
 
@@ -183,22 +185,15 @@ async function main() {
     names = names.slice(0, limit);
   }
 
-  const plannedBatches = allAtOnce
-    ? 1
-    : Math.ceil(names.length / (batchSize || 1));
-
   console.log(`\n缺简介: ${names.length} 位（scope=${scope}）`);
-  if (allAtOnce) {
-    console.log('模式: 一次性（全部艺人单次 v4 子进程）');
+  if (batchSize > 0) {
+    console.log(
+      `模式: 分 ${Math.ceil(names.length / batchSize)} 次 v4 子进程（每批 ${batchSize} 人）`,
+    );
   } else {
-    console.log(`计划批次数: ${plannedBatches}（每批最多 ${batchSize} 人）`);
+    console.log('模式: 一次性（全部缺简介艺人单次 v4 子进程）');
   }
-  console.log('模式: shadow=off, include-mapped, web-search=on, auto-land=on');
-  if (!allAtOnce) {
-    console.log('每批 v4 结束后会重新统计缺资料名单并自动继续下一批\n');
-  } else {
-    console.log('跑完后若仍有缺资料会再开一轮（仍不分批）\n');
-  }
+  console.log('模式: shadow=off, include-mapped, web-search=on, auto-land=on\n');
 
   for (const row of initialMissing.slice(0, 20)) {
     console.log(`  · ${row.lineupName} (${row.issue})`);
@@ -221,61 +216,46 @@ async function main() {
     HERMES_V4_SYNC_AVATARS: '0',
     HERMES_V4_AUTO_LAND_PENDING: '1',
     HERMES_V4_AUTO_LAND_MIN_CONFIDENCE: 'medium',
+    HERMES_REBUILD_WEB_ONLY_DJS: '0',
     SYNC_BACKEND_ROOT: backendRoot,
     MONGODB_URI: config.mongoUri,
     DISCOGS_TOKEN: config.discogsToken ?? '',
   };
 
-  let batchIndex = 0;
-  let processed = 0;
+  const v4Runs = batchSize > 0 ? chunkNames(names, batchSize) : [names];
 
-  while (true) {
-    const { missing: currentMissing } = await loadMissingArtists({
-      issueFilter,
-      scope,
-    });
-    if (!currentMissing.length) {
-      console.log('\n🎉 缺资料名单已清空');
-      break;
-    }
-
-    const remainingBudget = limit > 0 ? limit - processed : null;
-    if (limit > 0 && remainingBudget <= 0) {
-      console.log(`\nℹ️  已达 --limit ${limit}，停止`);
-      break;
-    }
-
-    const take = allAtOnce
-      ? currentMissing.length
-      : limit > 0
-        ? Math.min(batchSize, remainingBudget)
-        : batchSize;
-    const batch = currentMissing.slice(0, take).map((row) => row.lineupName);
-    batchIndex += 1;
-    const estimatedLeft = allAtOnce ? 1 : Math.ceil(currentMissing.length / batchSize);
-
+  for (let i = 0; i < v4Runs.length; i += 1) {
+    const artists = v4Runs[i];
     console.log(
       `\n${'='.repeat(60)}\n` +
-        (allAtOnce
-          ? `v4 一次性运行（缺资料 ${currentMissing.length} 人，本轮 ${batch.length}）\n`
-          : `v4 批次 ${batchIndex}（缺资料 ${currentMissing.length} 人，本批 ${batch.length}，预计还需约 ${estimatedLeft} 批）\n`) +
+        `v4 运行 ${i + 1}/${v4Runs.length}（${artists.length} 人）\n` +
         `${'='.repeat(60)}`,
     );
-    console.log(`艺人: ${batch.join(', ')}\n`);
-
-    await runV4Batch(batch, v4Env);
-    processed += batch.length;
-
-    console.log(
-      `\n✅ 批次 ${batchIndex} 完成 — 编排脚本继续，正在准备下一批…`,
-    );
+    console.log(`艺人: ${artists.join(', ')}\n`);
+    await runV4Artists(artists, v4Env);
   }
 
-  console.log('\n── rebuild-web-only-djs（v4 web-only mapped → djs）──');
+  console.log('\n── Hermes 资料 → djs.profile ──');
+  await mongoose.connect(config.mongoUri);
+  const backfill = await backfillDjProfilesFromHermes({ mongoose });
+  await mongoose.disconnect();
+  console.log(
+    `  backfill: ${backfill.updated} patched, ${backfill.skipped} skipped (${backfill.scanned} rows scanned)`,
+  );
+
+  console.log('\n── rebuild-web-only-djs（web-only mapped → djs）──');
   await rebuildWebOnlyDjs();
-  console.log('\n── backfill-dj-profiles-from-hermes（Discogs mapped 简介 → djs）──');
-  await backfillDjProfilesFromHermes();
   await closeDjDiscogsRedisCache();
+
+  const { missing: remaining } = await loadMissingArtists({
+    issueFilter,
+    scope,
+  });
+  if (remaining.length) {
+    console.log(`\nℹ️  仍有 ${remaining.length} 位缺简介（v4 未产出可落库资料或需人工处理）`);
+  } else {
+    console.log('\n🎉 缺简介名单已清空');
+  }
 
   console.log('\n🏁 v4 缺简介补全跑完。建议复查:');
   console.log('npm run db:report-manual-confirmation-artists');

@@ -68,3 +68,22 @@ QWEN_API_KEY=
 
 - 环境变量表：[README.md](../README.md#环境变量)
 - 架构与 Agent 表：[ARCHITECTURE.md](./ARCHITECTURE.md)
+
+## 成长计划 Token 监控
+
+- 控制台：云开发控制台 → 生文模型 → 用量（环境 `sync-prd-d7gquj4qk86da9bb2`）
+- 成长计划 Token：约 10 亿（一期）/ 10 亿（二期补发）
+- 生图额度：1 万～10 万张（二期）
+- 告警：用量达 80% / 90% / 100% 时微信官方号自动提醒
+- 礼包用尽后备：切资源点套餐，provider 改 `cloudbase`（见 [AI 资源包 FAQ](https://docs.cloudbase.net/ai/ai-inspire-plan)）
+
+### 海报 AI 背景（混元生图）
+
+- 接口：`POST /api/poster-backgrounds/generate`
+- 场景：`set_vote`（Set 票选海报）、`personality_test`（人格测试海报）
+- 实现：服务端 `@cloudbase/node-sdk` + `createImageModel('hunyuan-image')` 生图 → 上传云存储 → Redis 缓存 7 天
+- 模型：`model: hunyuan-image`（成长计划默认），可选 `POSTER_BACKGROUND_IMAGE_VERSION=v1.9`
+- 环境变量：`CLOUDBASE_ENV_ID`（必填）、`CLOUDBASE_STORAGE_BUCKET`（缓存上传）
+- 鉴权：默认复用 `HUNYUAN_API_KEY`（或 `CLOUDBASE_APIKEY`）；本地备选 `TENCENTCLOUD_SECRETID` / `TENCENTCLOUD_SECRETKEY`
+- `POSTER_BACKGROUND_ENABLED=true`、`POSTER_BACKGROUND_IMAGE_MODEL=hunyuan-image`
+- 未配置或失败时：前端自动回退渐变背景，不影响保存/分享

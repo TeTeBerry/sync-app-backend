@@ -30,6 +30,7 @@ import { ArtistProfileResolver } from './artist-profile-resolver.service';
 import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryCacheService } from './itinerary-cache.service';
 import { LineupCatalogModule } from './lineup-catalog.module';
+import { UserGoalModule } from '../goal/goal.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { LineupCatalogModule } from './lineup-catalog.module';
     AuthModule,
     CloudModule,
     DjModule,
+    UserGoalModule,
     MongooseModule.forFeature([
       { name: ArtistPerformance.name, schema: ArtistPerformanceSchema },
       { name: FestivalSession.name, schema: FestivalSessionSchema },

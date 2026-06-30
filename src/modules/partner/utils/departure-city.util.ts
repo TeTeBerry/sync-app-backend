@@ -18,10 +18,29 @@ const KNOWN_CITIES = [
   '普吉岛',
 ];
 
+function decodePercentEncodedText(value: string): string {
+  let current = value.trim();
+  if (!current) return current;
+
+  for (let i = 0; i < 3; i += 1) {
+    if (!/%[0-9A-Fa-f]{2}/.test(current)) break;
+    try {
+      const next = decodeURIComponent(current);
+      if (next === current) break;
+      current = next;
+    } catch {
+      break;
+    }
+  }
+
+  return current;
+}
+
 export function normalizeCityName(value?: string): string | undefined {
   const trimmed = value?.trim();
   if (!trimmed) return undefined;
-  const normalized = trimmed.replace(/(市|省)$/, '');
+  const decoded = decodePercentEncodedText(trimmed);
+  const normalized = decoded.replace(/(市|省)$/, '');
   for (const city of KNOWN_CITIES) {
     if (normalized === city || normalized.includes(city)) {
       return city;

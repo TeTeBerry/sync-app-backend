@@ -10,6 +10,7 @@ export type NotificationInteractionType =
   | 'comment_reply'
   | 'activity'
   | 'activity_update'
+  | 'proactive_nudge'
   | 'post_rejected'
   | 'post_hidden';
 
@@ -29,4 +30,10 @@ export interface NotificationMeta {
   parentCommentId?: string;
   /** Activity update summary (e.g. `地点已更新为 …`) for dedupe / display. */
   changeSummary?: string;
+  /** Proactive nudge rule id (N1–N4). */
+  nudgeRule?: string;
+  prefillQuery?: string;
+  openBuddyPost?: boolean;
+  openLineup?: boolean;
+  focusPosts?: boolean;
 }

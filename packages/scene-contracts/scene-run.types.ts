@@ -9,6 +9,9 @@ import type {
 export type SceneId =
   | 'recruit_search'
   | 'recruit_compose'
+  | 'recruit_apply_compose'
+  | 'lineup_dj'
+  | 'festival_story'
   | 'prep_nudge'
   | 'events_knowledge_search';
 
@@ -75,6 +78,29 @@ export interface RecruitComposeSceneContext extends SceneContext {
   regenerate?: boolean;
 }
 
+/** Context for `scene=recruit_apply_compose` (AI draft public comment when applying to join). */
+export interface RecruitApplyComposeSceneContext extends SceneContext {
+  postId: string;
+  postSummary?: string;
+  applicantName?: string;
+  applicantPrefs?: string;
+  regenerate?: boolean;
+}
+
+/** Context for `scene=lineup_dj` (AI DJ bio / intro card). */
+export interface LineupDjSceneContext extends SceneContext {
+  artistName: string;
+  activityLegacyId: number;
+  genre?: string;
+  regenerate?: boolean;
+}
+
+/** Context for `scene=festival_story` (AI structured festival summary). */
+export interface FestivalStorySceneContext extends SceneContext {
+  activityLegacyId: number;
+  regenerate?: boolean;
+}
+
 export interface SceneRunRequest {
   scene: SceneId;
   intent?: string;
@@ -133,6 +159,20 @@ export type SceneEffect =
       activityLegacyIds: number[];
       totalMatched: number;
       parsed?: EventsActivitySearchParsed;
+    }
+  | {
+      type: 'dj_bio';
+      artistName: string;
+      bio: string;
+      genres?: string[];
+      aiGenerated: true;
+    }
+  | {
+      type: 'festival_story';
+      title: string;
+      sections: { heading?: string; body: string }[];
+      sources: string[];
+      aiGenerated: true;
     };
 
 export interface SceneRunResponse {

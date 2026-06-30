@@ -3,6 +3,7 @@ import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { UserService } from '../../../modules/user/user.service';
 import type { SceneRunRequest, SceneRunResponse } from '@sync/scene-contracts';
 import { formatBuddyPostSearchParsedSummary } from '@sync/scene-contracts';
+import { ActivityEngagementService } from '../../../modules/activity/engagement/activity-engagement.service';
 import { PostService } from '../../../modules/partner/post.service';
 import type { SceneHandler } from './scene-handler.interface';
 
@@ -41,6 +42,7 @@ export class RecruitSearchSceneHandler implements SceneHandler {
   constructor(
     private readonly postService: PostService,
     private readonly userService: UserService,
+    private readonly engagementService: ActivityEngagementService,
   ) {}
 
   async run(
@@ -103,6 +105,8 @@ export class RecruitSearchSceneHandler implements SceneHandler {
       totalScanned: result.totalScanned,
       parsed: result.parsed,
     });
+
+    void this.engagementService.markRecruitSearched(actor, activityLegacyId);
 
     return { effects };
   }

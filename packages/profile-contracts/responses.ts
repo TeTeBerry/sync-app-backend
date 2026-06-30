@@ -12,7 +12,10 @@ export interface ProfileSummary {
   bio: string;
   avatar: string;
   stats: {
+    /** Total activities in 我的活动 (including ended). */
     events: number;
+    /** Subset of events that have not ended yet. */
+    ongoingEvents: number;
     posts: number;
   };
 }

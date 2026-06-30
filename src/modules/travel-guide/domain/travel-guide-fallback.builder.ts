@@ -26,6 +26,7 @@ import {
   transportSectionTitle,
   venueTransportSectionTitle,
 } from './travel-guide-transport.util';
+import { buildAbroadAccommodationFromHotPath } from './travel-guide-abroad-accommodation.util';
 
 function venueCity(location?: string): string {
   const loc = location?.trim() ?? '';
@@ -151,6 +152,16 @@ export function buildAbroadAccommodationMapPayload(
   headcount: number,
   accommodationNights: number,
 ): Pick<LlmTravelGuidePayload, 'hotels' | 'accommodationSchemes'> {
+  const curated = buildAbroadAccommodationFromHotPath(
+    activity,
+    budgetTier,
+    headcount,
+    accommodationNights,
+  );
+  if (curated.hotels.length) {
+    return curated;
+  }
+
   const schemes =
     buildAccommodationSchemes(
       activity.location ?? '',

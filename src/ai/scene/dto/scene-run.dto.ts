@@ -15,8 +15,18 @@ import type { SceneContext, SceneId } from '@sync/scene-contracts';
 const SCENE_IDS: SceneId[] = [
   'recruit_search',
   'recruit_compose',
+  'recruit_apply_compose',
+  'lineup_dj',
+  'festival_story',
   'prep_nudge',
   'events_knowledge_search',
+];
+
+const SCENE_TRIGGERS: NonNullable<SceneContext['trigger']>[] = [
+  'search',
+  'chip',
+  'sheet_submit',
+  'page_enter',
 ];
 
 class BuddyPostComposeHintsDto {
@@ -41,7 +51,7 @@ class BuddyPostComposeHintsDto {
 
 export class SceneContextDto implements SceneContext {
   @IsOptional()
-  @IsString()
+  @IsIn(SCENE_TRIGGERS)
   trigger?: SceneContext['trigger'];
 
   @IsOptional()
@@ -50,6 +60,38 @@ export class SceneContextDto implements SceneContext {
   @IsOptional()
   @IsString()
   locale?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  activityLegacyId?: number;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  artistName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  genre?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  postId?: string;
+
+  @IsOptional()
+  @IsString()
+  postSummary?: string;
+
+  @IsOptional()
+  @IsString()
+  applicantName?: string;
+
+  @IsOptional()
+  @IsString()
+  applicantPrefs?: string;
 
   @IsOptional()
   @IsString()

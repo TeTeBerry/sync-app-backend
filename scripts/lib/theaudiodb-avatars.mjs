@@ -2,6 +2,9 @@
  * Lineup display name → TheAudioDB `search.php?s=` query.
  * Keep in sync with `DISCOGS_LINEUP_SEARCH_ALIASES` in festival-lineup-fallback.mjs.
  */
+import { PREFERRED_MB_BY_LINEUP } from './lineup-rejected-discogs.mjs';
+import { extractMusicBrainzIdFromUrls } from './musicbrainz-client.mjs';
+
 export const THEAUDIODB_SEARCH_ALIASES = {
   // --- Storm / shared ---
   'AFEM SYKO': 'Afem Syko',
@@ -15,6 +18,7 @@ export const THEAUDIODB_SEARCH_ALIASES = {
   'DJ SNAKE': 'DJ Snake',
   'ERIC PRYDZ': 'Eric Prydz',
   'EXCISION': 'Excision',
+  // Fisher (OZ) — search.php?s=fisher returns a US vocal homonym stub; use MB override.
   'FISHER': 'Fisher',
   'GHENGAR': 'Ghastly',
   'GHENGAR (GHASTLY)': 'Ghastly',
@@ -251,6 +255,30 @@ export const THEAUDIODB_SEARCH_ALIASES = {
   'MURDOCK': 'Murdock',
 };
 
+/** Collect MB ids to try before TheAudioDB text search (preferred lineup + DJ urls). */
+export function collectAvatarMusicBrainzIds(lineupName, catalogUrls) {
+  const billingKey = lineupName.trim().toUpperCase();
+  const ids = [];
+  const preferred = PREFERRED_MB_BY_LINEUP[billingKey]?.mbid?.trim();
+  if (preferred) {
+    ids.push(preferred);
+  }
+  const fromUrls = extractMusicBrainzIdFromUrls(catalogUrls);
+  if (fromUrls) {
+    ids.push(fromUrls);
+  }
+  return [...new Set(ids.filter(Boolean))];
+}
+
+/** TheAudioDB biography lists multiple same-name artists (merged disambiguation stub). */
+export function isTheAudioDbHomonymBio(biography) {
+  const text = (biography ?? '').trim();
+  if (!text) {
+    return false;
+  }
+  return /\bthere are \d+ artists (?:called|named)\b/i.test(text);
+}
+
 export function normalizeArtistNameKey(name) {
   return name
     .toLowerCase()
@@ -354,6 +382,54 @@ export function isElectronicGenreCandidate(genres) {
   return ELECTRONIC_GENRE_HINTS.some((hint) => text.includes(hint));
 }
 
+/** Penalize low-follower homonym stubs; prefer the popular catalog entry when present. */
+export function scoreTheAudioDbSearchCandidate(lineupName, artist) {
+  const baseScore = scoreTheAudioDbMatch(lineupName, artist);
+  const bio = artist?.strBiography ?? '';
+  const genres = extractTheAudioDbGenres(artist);
+  if (
+    isTheAudioDbHomonymBio(bio) &&
+    isElectronicGenreCandidate(genres) !== true
+  ) {
+    const followers = Number(artist?.intFollowers ?? 0);
+    if (followers < 50_000) {
+      return baseScore - 60;
+    }
+    return baseScore + 5;
+  }
+  return baseScore;
+}
+
+/** Shaped search candidate is a low-confidence merged homonym page. */
+export function isShapedTheAudioDbHomonymStub(candidate) {
+  if (!candidate) {
+    return false;
+  }
+  return isTheAudioDbHomonymBio(candidate.biography) &&
+    isElectronicGenreCandidate(candidate.genres ?? []) !== true &&
+    Number(candidate.followers ?? 0) < 50_000;
+}
+
+export function shapeTheAudioDbCandidate(artist, { query, score, searchVia }) {
+  const avatarUrl = pickTheAudioDbAvatar(artist);
+  if (!avatarUrl) {
+    return null;
+  }
+  return {
+    artistName: artist?.strArtist ?? query,
+    avatarUrl,
+    score,
+    searchQuery: query,
+    searchVia,
+    genres: extractTheAudioDbGenres(artist),
+    theAudioDbArtistId: artist?.idArtist ?? null,
+    biography: artist?.strBiography ?? '',
+    followers: Number(artist?.intFollowers ?? 0) || null,
+    countryCode: artist?.strCountryCode?.trim() || null,
+    musicBrainzId: artist?.strMusicBrainzID?.trim() || null,
+  };
+}
+
 export function createTheAudioDbClient(config) {
   const baseUrl = `https://www.theaudiodb.com/api/v1/json/${config.apiKey}`;
 
@@ -361,8 +437,48 @@ export function createTheAudioDbClient(config) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async function searchArtist(lineupName) {
-    const queries = getTheAudioDbSearchQueries(lineupName);
+  async function lookupByMusicBrainzId(mbid, lineupName) {
+    if (!mbid?.trim()) {
+      return null;
+    }
+    await delay(config.requestDelayMs);
+    try {
+      const url = `${baseUrl}/artist-mb.php?i=${encodeURIComponent(mbid.trim())}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        return null;
+      }
+      const data = await res.json();
+      const artist = data?.artists?.[0];
+      if (!artist) {
+        return null;
+      }
+      const score = scoreTheAudioDbSearchCandidate(lineupName, artist);
+      return shapeTheAudioDbCandidate(artist, {
+        query: `mb:${mbid.trim()}`,
+        score: Math.max(score, 100),
+        searchVia: 'musicbrainz',
+      });
+    } catch (error) {
+      console.warn('TheAudioDB MB 查询失败', mbid, error.message ?? error);
+      return null;
+    }
+  }
+
+  async function searchArtist(
+    queryName,
+    { billingName, catalogUrls } = {},
+  ) {
+    const lineupName = (billingName ?? queryName).trim();
+    const mbIds = collectAvatarMusicBrainzIds(lineupName, catalogUrls);
+    for (const mbid of mbIds) {
+      const mbMatch = await lookupByMusicBrainzId(mbid, lineupName);
+      if (mbMatch?.avatarUrl && !isShapedTheAudioDbHomonymStub(mbMatch)) {
+        return mbMatch;
+      }
+    }
+
+    const queries = getTheAudioDbSearchQueries(queryName);
     let best = null;
 
     for (const query of queries) {
@@ -381,27 +497,26 @@ export function createTheAudioDbClient(config) {
 
         const ranked = [...artists].sort(
           (a, b) =>
-            scoreTheAudioDbMatch(lineupName, b) -
-            scoreTheAudioDbMatch(lineupName, a),
+            scoreTheAudioDbSearchCandidate(lineupName, b) -
+            scoreTheAudioDbSearchCandidate(lineupName, a),
         );
-        const top = ranked[0];
-        const avatarUrl = pickTheAudioDbAvatar(top);
-        if (!avatarUrl) {
-          continue;
+
+        for (const artist of ranked) {
+          const score = scoreTheAudioDbSearchCandidate(lineupName, artist);
+          const shaped = shapeTheAudioDbCandidate(artist, {
+            query,
+            score,
+            searchVia: 'search',
+          });
+          if (!shaped || isShapedTheAudioDbHomonymStub(shaped)) {
+            continue;
+          }
+          if (!best || shaped.score > best.score) {
+            best = shaped;
+          }
         }
 
-        const score = scoreTheAudioDbMatch(lineupName, top);
-        if (!best || score > best.score) {
-          best = {
-            artistName: top.strArtist ?? query,
-            avatarUrl,
-            score,
-            searchQuery: query,
-            genres: extractTheAudioDbGenres(top),
-            theAudioDbArtistId: top?.idArtist ?? null,
-          };
-        }
-        if (score >= 100) {
+        if (best?.score >= 100) {
           break;
         }
       } catch (error) {
@@ -409,10 +524,14 @@ export function createTheAudioDbClient(config) {
       }
     }
 
+    if (best && isShapedTheAudioDbHomonymStub(best)) {
+      return null;
+    }
+
     return best;
   }
 
-  return { searchArtist };
+  return { searchArtist, lookupByMusicBrainzId };
 }
 
 export function getTheAudioDbConfig() {

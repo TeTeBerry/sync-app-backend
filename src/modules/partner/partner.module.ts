@@ -54,6 +54,7 @@ import { PostDevMockSeedService } from './application/post-dev-mock-seed.service
     PartnerWriteModule,
     PostQueryService,
     PostCommentService,
+    PostSearchService,
     PartnerRepositoryModule,
   ],
 })

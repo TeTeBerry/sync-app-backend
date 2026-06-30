@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { AgentsModule } from '../../ai/agents/agents.module';
 import {
   ActivityRegistration,
   ActivityRegistrationSchema,
 } from '../../database/schemas/activity-registration.schema';
+import {
+  Activity,
+  ActivitySchema,
+} from '../../database/schemas/activity.schema';
 import { LineupCatalogModule } from '../itinerary/lineup-catalog.module';
 import { ActivityLookupModule } from './activity-lookup.module';
 import { ActivityCatalogRefreshService } from './activity-catalog-refresh.service';
@@ -17,8 +20,11 @@ import { ACTIVITY_CATALOG_REFRESH_PORT } from './ports/activity-catalog-refresh.
   imports: [
     ActivityLookupModule,
     LineupCatalogModule,
-    AgentsModule,
     MongooseModule.forFeature([
+      {
+        name: Activity.name,
+        schema: ActivitySchema,
+      },
       {
         name: ActivityRegistration.name,
         schema: ActivityRegistrationSchema,
@@ -37,6 +43,6 @@ import { ACTIVITY_CATALOG_REFRESH_PORT } from './ports/activity-catalog-refresh.
       useExisting: ActivityCatalogRefreshService,
     },
   ],
-  exports: [ACTIVITY_CATALOG_REFRESH_PORT],
+  exports: [ACTIVITY_CATALOG_REFRESH_PORT, ACTIVITY_REGISTRATION_REPOSITORY],
 })
 export class ActivityCatalogRefreshModule {}

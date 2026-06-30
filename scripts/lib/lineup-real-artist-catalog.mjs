@@ -447,6 +447,11 @@ export function hasCatalogProfileText(mapRow, dj) {
   return Boolean(profileFromMapRow(mapRow, dj)?.trim());
 }
 
+/** Whether `djs.profile` is already persisted (not map-only Hermes evidence). */
+export function hasPersistedDjProfile(dj) {
+  return Boolean(dj?.profile?.trim());
+}
+
 export function classifyMissingProfileText(mapRow, dj) {
   if (!mapRow) {
     return 'no_map';
@@ -488,7 +493,7 @@ export function collectArtistsMissingProfileText({
     const mapRow = mapByKey.get(normalizeArtistNameKey(lineupName)) ?? null;
     const dj = mapRow?.discogsId ? djById.get(mapRow.discogsId) ?? null : null;
 
-    if (hasCatalogProfileText(mapRow, dj)) {
+    if (hasPersistedDjProfile(dj)) {
       continue;
     }
 

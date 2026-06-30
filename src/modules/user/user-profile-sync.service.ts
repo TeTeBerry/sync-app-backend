@@ -3,7 +3,6 @@ import type { RequestActor } from '../../common/auth/request-actor.types';
 import type { UserMatchProfile } from './user-profile-hints.util';
 import { UserService } from './user.service';
 import {
-  buildBuddyPostProfileHints,
   buildPersonalityProfileHints,
   buildSetVoteProfileHints,
   buildTravelGuideProfileHints,
@@ -13,6 +12,7 @@ import {
   type UserMatchProfileHints,
 } from './user-profile-hints.util';
 
+/** Writes city / favorGenres / budgetLevel only from explicit user actions. */
 @Injectable()
 export class UserProfileSyncService {
   private readonly logger = new Logger(UserProfileSyncService.name);
@@ -68,14 +68,6 @@ export class UserProfileSyncService {
       );
       return false;
     }
-  }
-
-  applyBuddyPostHints(
-    actor: RequestActor,
-    params: Parameters<typeof buildBuddyPostProfileHints>[0],
-  ): void {
-    const hints = buildBuddyPostProfileHints(params);
-    void this.applyHints(actor, hints, 'buddy_post');
   }
 
   applyTravelGuideHints(

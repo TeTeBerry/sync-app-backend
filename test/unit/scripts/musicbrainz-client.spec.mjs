@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   createMusicBrainzClient,
+  extractMusicBrainzIdFromUrls,
   isRetryableMbStatus,
   lineupNameMatchesMbArtist,
   normalizeMbNameKey,
   parseDiscogsIdFromUrl,
+  parseMusicBrainzIdFromUrl,
 } from '../../../scripts/lib/musicbrainz-client.mjs';
 
 describe('musicbrainz-client', () => {
@@ -41,6 +43,21 @@ describe('musicbrainz-client', () => {
 
   it('parses discogs artist id from url', () => {
     assert.equal(parseDiscogsIdFromUrl('https://www.discogs.com/artist/123'), 123);
+  });
+
+  it('parses musicbrainz artist id from url', () => {
+    const mbid = '886dc0c9-3351-4d2d-b762-060cf1e66929';
+    assert.equal(
+      parseMusicBrainzIdFromUrl(`https://musicbrainz.org/artist/${mbid}`),
+      mbid,
+    );
+    assert.equal(
+      extractMusicBrainzIdFromUrls([
+        'https://soundcloud.com/foo',
+        `https://musicbrainz.org/artist/${mbid}`,
+      ]),
+      mbid,
+    );
   });
 
   it('flags retryable MusicBrainz HTTP statuses', () => {

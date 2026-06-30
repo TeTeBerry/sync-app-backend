@@ -7,9 +7,16 @@ import {
   parseAmapLocation,
 } from './amap-poi-fields.util';
 import { MapApiRateLimiter } from './map-api-rate-limiter';
-import type { GeocodedPlace, RawMapPoi } from './travel-guide-map.types';
+import type {
+  GeocodedPlace,
+  RawMapPoi,
+  DrivingRouteSummary,
+} from './travel-guide-map.types';
 import type { MapPoiKind } from './travel-guide-map.types';
-import type { DrivingRouteSummary } from './travel-guide-map.types';
+import {
+  buildTransitRouteSummary,
+  type TransitRouteSummary,
+} from './amap-transit-route.util';
 
 const BASE = 'https://restapi.amap.com';
 
@@ -330,7 +337,7 @@ export class AmapMapService {
     from: { lat: number; lng: number },
     to: { lat: number; lng: number },
     city?: string,
-  ): Promise<DrivingRouteSummary | null> {
+  ): Promise<TransitRouteSummary | null> {
     if (!this.enabled) return null;
     const query = new URLSearchParams({
       origin: toAmapLocation(from.lat, from.lng),
@@ -343,12 +350,7 @@ export class AmapMapService {
     const data = await this.getJson<TransitRouteResponse>(
       `${BASE}${AMAP_WS.directionTransit}?${query.toString()}`,
     );
-    const transit = data?.route?.transits?.[0];
-    if (!data || data.status !== '1' || !transit) return null;
-    return this.toDistanceSummary({
-      distance: Number(transit.distance ?? 0),
-      duration: Number(transit.duration ?? 0),
-    });
+    return buildTransitRouteSummary(data);
   }
 
   async walkingRoute(

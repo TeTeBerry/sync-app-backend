@@ -15,6 +15,8 @@ import type {
 } from '@sync/travel-guide-contracts';
 import { resolveTravelGuideBudgetTier } from './domain/parse-activity-days.util';
 import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cache.service';
+import type { RequestActor } from '../../common/auth/request-actor.types';
+import { UserGoalService } from '../goal/goal.service';
 
 export type TravelGuideSavedPlanView = TravelGuidePlanReadResult;
 
@@ -27,6 +29,7 @@ export class TravelGuideSavedPlanService {
     private readonly model: Model<TravelGuideSavedPlanDocument>,
     config: ConfigService,
     private readonly bffCacheInvalidation: BffReadCacheInvalidationService,
+    private readonly goalService: UserGoalService,
   ) {
     this.ttlSec =
       config.get<number>('travelGuide.savedPlanTtlSec') ?? 2_592_000;
@@ -39,6 +42,7 @@ export class TravelGuideSavedPlanService {
     dto: GenerateTravelGuideDto,
     accommodationNights: number,
     plan: TravelGuidePlan,
+    actor?: RequestActor,
   ): Promise<void> {
     const id = guideId.trim();
     if (!id) return;
@@ -65,19 +69,26 @@ export class TravelGuideSavedPlanService {
       ownerUserId,
       activityLegacyId,
     );
+
+    if (actor) {
+      await this.goalService.subscribeOnEngagement(actor, activityLegacyId);
+    }
   }
 
   async findLatestByOwnerAndActivity(
     ownerUserId: string,
     activityLegacyId: number,
-  ): Promise<{ guideId: string } | null> {
+  ): Promise<{ guideId: string; form: AiGuidePlanFormValues } | null> {
     const doc = await this.model
       .findOne({ ownerUserId, activityLegacyId })
       .sort({ updatedAt: -1 })
       .lean()
       .exec();
     if (!doc?.guideId?.trim()) return null;
-    return { guideId: doc.guideId.trim() };
+    return {
+      guideId: doc.guideId.trim(),
+      form: doc.form,
+    };
   }
 
   async findByGuideId(

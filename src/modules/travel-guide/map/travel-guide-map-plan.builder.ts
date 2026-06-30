@@ -37,6 +37,16 @@ import type {
 export { TRAVEL_GUIDE_TIER_HOTEL_LIST_LIMIT as TRAVEL_GUIDE_HOTEL_LIST_LIMIT };
 export const TRAVEL_GUIDE_NIGHTLIFE_LIST_LIMIT = 6;
 
+function resolveMapTransportRoute(
+  ctx: TravelGuideMapContext,
+  selfDrive: boolean,
+  interCity: boolean,
+): DrivingRouteSummary | undefined {
+  if (selfDrive) return ctx.drivingRoute;
+  if (!interCity) return ctx.transitRoute ?? ctx.drivingRoute;
+  return ctx.drivingRoute ?? ctx.transitRoute;
+}
+
 export function buildTransportLinesFromMap(
   departure: string,
   venueTitle: string,
@@ -47,6 +57,7 @@ export function buildTransportLinesFromMap(
   interCity = false,
   activity?: Activity,
   departureCity?: string,
+  transitDetailLines?: string[],
 ): string[] {
   return buildInterCityTransportLines({
     departure,
@@ -55,6 +66,7 @@ export function buildTransportLinesFromMap(
     selfDrive,
     interCity,
     route,
+    transitDetailLines,
     transportHints: hints,
     destinationCity: activity
       ? destinationCityFromActivityLocation(activity.location)
@@ -318,17 +330,25 @@ export function mapCandidatesToLlmFallback(
     interCity,
   });
 
+  const transitDetailLines = ctx.transitDetail?.detailLines;
+  const transportRoute = resolveMapTransportRoute(
+    ctx,
+    input.selfDrive,
+    interCity,
+  );
+
   return {
     transportLines: buildTransportLinesFromMap(
       input.departure,
       ctx.venue.title,
       ctx.venueReadableAddress,
       input.selfDrive,
-      ctx.drivingRoute ?? ctx.transitRoute,
+      transportRoute,
       ctx.transportHints,
       interCity,
       input.activity,
       input.departureCity,
+      transitDetailLines,
     ),
     hotels,
     accommodationSchemes: schemes,
@@ -339,7 +359,7 @@ export function mapCandidatesToLlmFallback(
     tipItems: needsAccommodation
       ? regionKind !== 'domestic'
         ? [
-            '散场与夜宵点位来自精选推荐；住宿由 RollingGo 实时查询，下单前请在 OTA 核实价格与房态。',
+            '散场与夜宵点位来自精选推荐；住宿优先 RollingGo 实时查询，无报价时展示场馆周边精选参考，下单前请在 OTA 核实价格与房态。',
             '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
           ]
         : [
@@ -365,7 +385,8 @@ export function mapCandidatesToLlmFallback(
       venueReadableAddress: ctx.venueReadableAddress,
       selfDrive: input.selfDrive,
       interCity,
-      route: ctx.drivingRoute ?? ctx.transitRoute,
+      route: transportRoute,
+      transitDetailLines,
       transportHints: ctx.transportHints,
       destinationCity: destCity,
       departureCity: input.departureCity,

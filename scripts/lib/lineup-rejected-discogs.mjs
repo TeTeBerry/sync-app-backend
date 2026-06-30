@@ -58,6 +58,11 @@ export const REJECTED_MB_BY_LINEUP = {
 
 /** Prefer this MB artist when multiple name matches exist (festival lineup context). */
 export const PREFERRED_MB_BY_LINEUP = {
+  FISHER: {
+    mbid: '886dc0c9-3351-4d2d-b762-060cf1e66929',
+    reason:
+      'Paul Fisher (OZ) — TheAudioDB search.php?s=fisher returns US vocal homonym stub id 177100.',
+  },
   'DJ SALLY': {
     mbid: '125f75fd-e2a9-4978-8099-02d9646fe1dd',
     reason: 'Chinese tech house DJ SALLY (Loop Goddess); no Discogs page.',

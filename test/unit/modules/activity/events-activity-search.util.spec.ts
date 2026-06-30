@@ -172,6 +172,15 @@ describe('events-activity-search.util', () => {
     );
   });
 
+  it('does not pin a single area on compare queries with multiple regions', () => {
+    const parsed = parseEventsActivitySearchQuery('韩国edc vs 泰国tml');
+
+    expect(parsed.intent).toBe('compare');
+    expect(parsed.area).toBeUndefined();
+    expect(parsed.region).toBeUndefined();
+    expect(parsed.keywords).toEqual(expect.arrayContaining(['韩国edc', 'tml']));
+  });
+
   it('matches Thailand EDC when lineup is in the query', () => {
     const activities = [
       activity({
@@ -239,5 +248,41 @@ describe('filterActivitiesForKnowledgeSearch', () => {
     );
 
     expect(filtered.map((item) => item.code)).toEqual(['ultra-japan']);
+  });
+
+  it('keeps both compare festivals even when areas differ', () => {
+    const now = new Date('2026-06-25T12:00:00');
+    const edcKorea = activity({
+      legacyId: 8,
+      name: 'EDC Korea 2026',
+      code: 'edc-korea',
+      date: '2026-10-03',
+      location: '韩国仁川',
+      area: '韩国',
+      region: 'overseas',
+      alias: ['edc korea', '韩国edc'],
+    });
+    const tmlThailand = activity({
+      legacyId: 1,
+      name: 'Tomorrowland Thailand 2026',
+      code: 'tomorrowland',
+      date: '12/11-13',
+      location: '芭提雅 Wisdom Valley',
+      area: '泰国',
+      region: 'overseas',
+      alias: ['tml', 'tml泰国', '泰国tml'],
+    });
+    const parsed = parseEventsActivitySearchQuery('韩国edc vs 泰国tml');
+
+    const filtered = filterActivitiesForKnowledgeSearch(
+      [edcKorea, tmlThailand],
+      parsed,
+      now,
+    );
+
+    expect(filtered.map((item) => item.code)).toEqual([
+      'edc-korea',
+      'tomorrowland',
+    ]);
   });
 });

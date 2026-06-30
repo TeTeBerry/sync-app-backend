@@ -82,3 +82,16 @@ export function matchLineupArtistToCatalogIndex(
 
   return null;
 }
+
+/** In-memory index: discogsId → catalog row. */
+export function buildCatalogDiscogsIdIndex(
+  catalog: DjCatalogItem[],
+): Map<number, DjCatalogItem> {
+  const index = new Map<number, DjCatalogItem>();
+  for (const item of catalog) {
+    if (!index.has(item.discogsId)) {
+      index.set(item.discogsId, item);
+    }
+  }
+  return index;
+}

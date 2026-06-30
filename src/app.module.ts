@@ -13,6 +13,8 @@ import { ActivityModule } from './modules/activity/activity.module';
 import { UserModule } from './modules/user/user.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { HomeModule } from './modules/home/home.module';
+import { AgentCapabilitiesModule } from './modules/agent-capabilities/agent-capabilities.module';
+import { UserGoalModule } from './modules/goal/goal.module';
 import { AiModule } from './ai/ai.module';
 import { PostAgentAdaptersModule } from './ai/adapters/post-agent-adapters.module';
 import { NotificationModule } from './modules/notification/notification.module';
@@ -21,6 +23,7 @@ import { ReportModule } from './modules/report/report.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { ActivityExperienceModule } from './modules/activity-experience/activity-experience.module';
 import { PersonalityTestModule } from './modules/personality-test/personality-test.module';
+import { PosterBackgroundModule } from './modules/poster-background/poster-background.module';
 import { MediaSecurityModule } from './modules/media-security/media-security.module';
 import { HealthModule } from './common/health/health.module';
 import { AuthCoreModule } from './common/auth/auth-core.module';
@@ -29,6 +32,9 @@ import { CloudModule } from './infra/cloud/cloud.module';
 import { ActivityContextMiddleware } from './common/middleware/activity-context.middleware';
 import { RequestActorMiddleware } from './common/middleware/request-actor.middleware';
 import { PublicApiRateLimitModule } from './common/rate-limit/public-api-rate-limit.module';
+import { PublicEventModule } from './modules/public-event/public-event.module';
+import { ProactiveNudgeModule } from './modules/notification/proactive-nudge.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -54,6 +60,7 @@ import { PublicApiRateLimitModule } from './common/rate-limit/public-api-rate-li
     CloudModule,
     RedisModule,
     PublicApiRateLimitModule,
+    PublicEventModule,
     CacheModule,
     ActivityModule,
     AuthModule,
@@ -63,14 +70,19 @@ import { PublicApiRateLimitModule } from './common/rate-limit/public-api-rate-li
     HomeModule,
     PostAgentAdaptersModule,
     PartnerModule,
+    AgentCapabilitiesModule,
     AiModule,
     NotificationModule,
     ReportModule,
     FeedbackModule,
     ActivityExperienceModule,
     PersonalityTestModule,
+    PosterBackgroundModule,
     MediaSecurityModule,
     HealthModule,
+    UserGoalModule,
+    ProactiveNudgeModule,
+    ScheduleModule.forRoot(),
   ],
   providers: [RequestActorMiddleware, ActivityContextMiddleware],
 })

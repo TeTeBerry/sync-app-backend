@@ -8,7 +8,6 @@ import { TravelGuideLlmPolishService } from '@src/modules/travel-guide/travel-gu
 import { TravelGuideGenerationCacheService } from '@src/modules/travel-guide/travel-guide-generation-cache.service';
 import { TravelGuideGuardService } from '@src/modules/travel-guide/travel-guide-guard.service';
 import { TravelGuideSavedPlanService } from '@src/modules/travel-guide/travel-guide-saved-plan.service';
-import { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import { WechatContentSecurityService } from '@src/modules/auth/wechat-content-security.service';
 import { TravelQuoteEnrichmentService } from '@src/modules/travel-guide/travel-quote-enrichment.service';
 import { TRAVEL_QUOTE_DISCLAIMER } from '@src/modules/travel-guide/domain/travel-guide-quote.util';
@@ -140,10 +139,6 @@ describe('TravelGuideGenerationOrchestrator', () => {
         {
           provide: TravelGuideSavedPlanService,
           useValue: { upsert: jest.fn() },
-        },
-        {
-          provide: UserProfileSyncService,
-          useValue: { applyTravelGuideHints: jest.fn() },
         },
         {
           provide: WechatContentSecurityService,

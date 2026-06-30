@@ -1,10 +1,13 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
-import { NoticeAgent } from '../../ai/agents/notice.agent';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { ModuleRef } from '@nestjs/core';
+import { Model } from 'mongoose';
 import type { Activity } from '../../database/schemas/activity.schema';
 import {
-  ACTIVITY_REGISTRATION_REPOSITORY,
-  type IActivityRegistrationRepository,
-} from './registration/interfaces/activity-registration.repository.interface';
+  Activity as ActivityModel,
+  ActivityDocument,
+} from '../../database/schemas/activity.schema';
+import { GoalOrchestrator } from '../goal/goal-orchestrator.service';
 import {
   ACTIVITY_LOOKUP_PORT,
   type IActivityLookupPort,
@@ -14,13 +17,14 @@ import { LineupCatalogService } from '../itinerary/lineup-catalog.service';
 
 @Injectable()
 export class ActivityCatalogRefreshService implements IActivityCatalogRefreshPort {
+  private readonly logger = new Logger(ActivityCatalogRefreshService.name);
+
   constructor(
     @Inject(ACTIVITY_LOOKUP_PORT)
     private readonly activityLookup: IActivityLookupPort,
-    @Optional() private readonly noticeAgent?: NoticeAgent,
-    @Optional()
-    @Inject(ACTIVITY_REGISTRATION_REPOSITORY)
-    private readonly registrationRepository?: IActivityRegistrationRepository,
+    private readonly moduleRef: ModuleRef,
+    @InjectModel(ActivityModel.name)
+    private readonly activityModel: Model<ActivityDocument>,
     @Optional() private readonly lineupCatalog?: LineupCatalogService,
   ) {}
 
@@ -39,35 +43,35 @@ export class ActivityCatalogRefreshService implements IActivityCatalogRefreshPor
         previousLineup.get(record.legacyId) === false &&
         record.lineupPublished === true
       ) {
-        void this.notifyActivityUpdate(record, '阵容已官宣');
+        const announcedAt = new Date();
+        await this.activityModel.updateOne(
+          { legacyId: record.legacyId },
+          { $set: { lineupAnnouncedAt: announcedAt } },
+        );
+        void this.onLineupPublished(record, '阵容已官宣');
       }
     }
   }
 
-  private async notifyActivityUpdate(
+  private async onLineupPublished(
     activity: Pick<Activity, 'legacyId' | 'name' | 'date' | 'location'>,
     changeSummary: string,
   ): Promise<void> {
-    if (!this.noticeAgent || !this.registrationRepository) {
-      return;
+    try {
+      const orchestrator = this.moduleRef.get(GoalOrchestrator, {
+        strict: false,
+      });
+      if (!orchestrator) {
+        this.logger.warn(
+          'GoalOrchestrator not available for lineup publish hook',
+        );
+        return;
+      }
+      await orchestrator.onLineupPublished(activity, changeSummary);
+    } catch (error) {
+      this.logger.warn(
+        `GoalOrchestrator lineup hook failed: ${error instanceof Error ? error.message : error}`,
+      );
     }
-
-    const [userIds, wechatUserIds] = await Promise.all([
-      this.registrationRepository.findRegisteredUserIds(activity.legacyId),
-      this.registrationRepository.findWechatActivityUpdateOptInUserIds(
-        activity.legacyId,
-      ),
-    ]);
-    if (!userIds.length) return;
-
-    void this.noticeAgent.notifyActivityUpdate(
-      userIds,
-      activity.legacyId,
-      activity.name,
-      changeSummary,
-      activity.date,
-      activity.location,
-      wechatUserIds,
-    );
   }
 }

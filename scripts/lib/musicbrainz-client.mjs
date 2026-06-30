@@ -72,6 +72,27 @@ export function parseDiscogsIdFromUrl(url) {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
+/** Parse MusicBrainz artist UUID from a profile / reference URL. */
+export function parseMusicBrainzIdFromUrl(url) {
+  const trimmed = url?.trim() ?? '';
+  if (!trimmed) {
+    return null;
+  }
+  const match = trimmed.match(/musicbrainz\.org\/artist\/([0-9a-f-]{36})/i);
+  return match?.[1] ?? null;
+}
+
+/** First MusicBrainz artist id found in a DJ `urls` list. */
+export function extractMusicBrainzIdFromUrls(urls) {
+  for (const url of urls ?? []) {
+    const id = parseMusicBrainzIdFromUrl(url);
+    if (id) {
+      return id;
+    }
+  }
+  return null;
+}
+
 export function createMusicBrainzClient(options = {}) {
   const baseUrl = options.baseUrl?.trim() || DEFAULT_BASE_URL;
   const userAgent =

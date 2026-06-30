@@ -220,6 +220,17 @@ export default () => ({
         cleanEnv(process.env.PUBLIC_API_PERSONALITY_NICKNAME_USAGE_MAX, '30'),
         10,
       ),
+      posterBackgroundMax: parseInt(
+        cleanEnv(process.env.PUBLIC_API_POSTER_BACKGROUND_MAX, '8'),
+        10,
+      ),
+      posterBackgroundWindowMs: parseInt(
+        cleanEnv(
+          process.env.PUBLIC_API_POSTER_BACKGROUND_WINDOW_MS,
+          String(24 * 60 * 60 * 1000),
+        ),
+        10,
+      ),
     },
   },
 
@@ -302,6 +313,29 @@ export default () => ({
     envId: cleanEnv(process.env.CLOUDBASE_ENV_ID),
     /** e.g. `7379-sync-prd-xxxx-1442514260` — required for server-side cloud file download. */
     storageBucket: cleanEnv(process.env.CLOUDBASE_STORAGE_BUCKET),
+    /** CloudBase Node SDK；默认复用 HUNYUAN_API_KEY（成长计划 API Key） */
+    apiKey: cleanEnv(
+      process.env.CLOUDBASE_APIKEY ?? process.env.HUNYUAN_API_KEY,
+    ),
+    secretId: cleanEnv(process.env.TENCENTCLOUD_SECRETID),
+    secretKey: cleanEnv(process.env.TENCENTCLOUD_SECRETKEY),
+  },
+
+  posterBackground: {
+    enabled:
+      cleanEnv(process.env.POSTER_BACKGROUND_ENABLED, 'true') !== 'false',
+    imageModel: cleanEnv(
+      process.env.POSTER_BACKGROUND_IMAGE_MODEL,
+      'hunyuan-image',
+    ),
+    imageVersion: cleanEnv(process.env.POSTER_BACKGROUND_IMAGE_VERSION, 'v1.9'),
+    cacheTtlSec: parseInt(
+      cleanEnv(
+        process.env.POSTER_BACKGROUND_CACHE_TTL_SEC,
+        String(7 * 24 * 60 * 60),
+      ),
+      10,
+    ),
   },
 
   itinerary: {

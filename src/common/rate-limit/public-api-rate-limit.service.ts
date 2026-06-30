@@ -14,7 +14,9 @@ export type PublicRateLimitScope =
   | 'post_ai_compose'
   | 'scene_run'
   | 'chat_session'
-  | 'personality_nickname_usage';
+  | 'personality_nickname_usage'
+  | 'poster_background'
+  | 'public_events';
 
 @Injectable()
 export class PublicApiRateLimitService {
@@ -70,6 +72,20 @@ export class PublicApiRateLimitService {
             'publicApi.rateLimit.personalityNicknameUsageMax',
           ) ?? 30,
         windowMs,
+      },
+      poster_background: {
+        maxRequests:
+          config.get<number>('publicApi.rateLimit.posterBackgroundMax') ?? 8,
+        windowMs:
+          config.get<number>('publicApi.rateLimit.posterBackgroundWindowMs') ??
+          24 * 60 * 60 * 1000,
+      },
+      public_events: {
+        maxRequests:
+          config.get<number>('publicApi.rateLimit.publicEventsMax') ?? 120,
+        windowMs:
+          config.get<number>('publicApi.rateLimit.publicEventsWindowMs') ??
+          windowMs,
       },
     };
   }
