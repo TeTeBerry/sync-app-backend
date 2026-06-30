@@ -46,6 +46,12 @@ export class GenerateTravelGuideDto {
   @Max(7)
   accommodationNights?: number;
 
+  /** 用户对行程或观演偏好的补充备注，会进入攻略生成上下文 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  note?: string;
+
   /** 重新生成时跳过 generation cache，避免切换出发地仍返回旧攻略 */
   @IsOptional()
   @IsBoolean()

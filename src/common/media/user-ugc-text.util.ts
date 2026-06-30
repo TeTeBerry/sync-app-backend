@@ -53,8 +53,9 @@ export function collectProfilePatchUgcTexts(dto: {
 export function collectTravelGuideUgcTexts(dto: {
   departure?: string;
   departureCity?: string;
+  note?: string;
 }): Array<string | undefined> {
-  return [dto.departure, dto.departureCity];
+  return [dto.departure, dto.departureCity, dto.note];
 }
 
 export function collectItinerarySaveUgcTexts(body: {

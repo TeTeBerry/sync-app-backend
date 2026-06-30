@@ -191,5 +191,6 @@ function buildSavedPlanForm(
     budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
     ...(dto.selfDrive != null ? { selfDrive: dto.selfDrive } : {}),
     accommodationNights,
+    ...(dto.note?.trim() ? { note: dto.note.trim() } : {}),
   };
 }

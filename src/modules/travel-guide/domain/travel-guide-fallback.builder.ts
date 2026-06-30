@@ -322,6 +322,7 @@ export function buildTravelGuidePlan(input: {
   budgetTier: TravelGuideBudgetTier;
   accommodationNights?: number;
   selfDrive?: boolean;
+  note?: string;
   llm?: LlmTravelGuidePayload | null;
   /** 为 true 时禁止回退到静态模板（仅接受地图/地图+AI 链路产出） */
   mapSourcedOnly?: boolean;
@@ -398,11 +399,13 @@ export function buildTravelGuidePlan(input: {
       ? []
       : buildNightlife(activity.location ?? '');
 
-  const tipItems = input.llm?.tipItems?.length
+  const note = input.note?.trim();
+  const tipItemsBase = input.llm?.tipItems?.length
     ? normalizeGuideLines(input.llm.tipItems)
     : mapSourcedOnly
       ? []
       : buildTips(selfDrive);
+  const tipItems = note ? [...tipItemsBase, `同行偏好：${note}`] : tipItemsBase;
 
   const extended = buildExtendedSections(activity, input.llm, {
     budgetTier,

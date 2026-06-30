@@ -78,6 +78,7 @@ export interface TravelGuideMapContext {
   transitDetail?: TransitRouteSummary;
   transportSource: TravelGuideGeoSource;
   transportHints: string[];
+  userNote?: string | null;
   interCity?: boolean;
   pois: RawMapPoi[];
   eventEndHour: number;

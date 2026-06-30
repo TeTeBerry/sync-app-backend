@@ -285,6 +285,7 @@ export class TravelGuideGenerationOrchestrator {
         budgetTier: generationDto.budgetTier!,
         accommodationNights,
         selfDrive: generationDto.selfDrive,
+        note: generationDto.note,
         llm: llmPayload,
         mapSourcedOnly: true,
         interCity: quoteEligible || Boolean(mapCtx.interCity),

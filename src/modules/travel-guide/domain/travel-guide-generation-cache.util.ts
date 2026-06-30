@@ -14,6 +14,7 @@ export type TravelGuideGenerationCacheParams = {
   budgetTier: GenerateTravelGuideDto['budgetTier'];
   selfDrive: boolean;
   accommodationNights: number;
+  note: string;
 };
 
 export function normalizeTravelGuideGenerationParams(
@@ -35,6 +36,7 @@ export function normalizeTravelGuideGenerationParams(
     budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
     selfDrive: Boolean(dto.selfDrive),
     accommodationNights,
+    note: dto.note?.trim().replace(/\s+/g, ' ') ?? '',
   };
 }
 
@@ -73,6 +75,7 @@ export function isFuzzyTravelGuideParamsMatch(
   if (exact.selfDrive !== candidate.selfDrive) return false;
   if (exact.departure !== candidate.departure) return false;
   if (exact.departureCity !== candidate.departureCity) return false;
+  if (exact.note !== candidate.note) return false;
   if (Math.abs(exact.headcount - candidate.headcount) > 2) return false;
   if (exact.accommodationNights === 0 || candidate.accommodationNights === 0) {
     return exact.accommodationNights === candidate.accommodationNights;

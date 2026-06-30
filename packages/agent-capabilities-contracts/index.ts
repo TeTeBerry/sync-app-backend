@@ -1,5 +1,8 @@
 // @sync/agent-capabilities-contracts
 export type {
+  AgentCapabilityCardComponent,
+  AgentCapabilityActivitySnapshot,
+  AgentCapabilityUiDirective,
   SearchFestivalsInput,
   SearchFestivalsResult,
   SearchFestivalsResultEvent,

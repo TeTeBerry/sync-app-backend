@@ -7,6 +7,7 @@ export type AiGuidePlanFormValues = {
   budgetTier?: TravelGuideBudgetTier;
   selfDrive?: boolean;
   accommodationNights?: number;
+  note?: string;
 };
 
 export type GenerateTravelGuidePayload = AiGuidePlanFormValues & {

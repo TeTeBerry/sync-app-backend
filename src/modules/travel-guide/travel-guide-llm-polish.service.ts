@@ -243,6 +243,7 @@ export class TravelGuideLlmPolishService {
       isAbroad: isTravelGuideAbroad(activity),
       activityRegion: activity.region ?? 'domestic',
       externalUrl: activity.externalUrl ?? null,
+      userNote: dto.note?.trim() || null,
     });
 
     try {
