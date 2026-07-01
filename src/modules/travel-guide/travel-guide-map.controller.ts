@@ -6,14 +6,8 @@ import {
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/auth/public.decorator';
 import { PublicApiRateLimitService } from '../../common/rate-limit/public-api-rate-limit.service';
-import { ApiOkEnvelopeResponse } from '../../common/swagger/api-response.decorator';
-import {
-  PlaceSuggestionsResultDto,
-  ReverseGeocodeResultDto,
-} from '../../common/swagger/dto/travel-guide.swagger.dto';
 import { AmapMapService } from './map/amap.service';
 import {
   findDepartureCityAnchor,
@@ -21,7 +15,6 @@ import {
   resolveSuggestionRegion,
 } from './map/travel-guide-departure-suggestions.util';
 
-@ApiTags('travel-guide')
 @Controller('travel-guide')
 export class TravelGuideMapController {
   constructor(
@@ -29,15 +22,8 @@ export class TravelGuideMapController {
     private readonly publicRateLimit: PublicApiRateLimitService,
   ) {}
 
-  /**
-   * 出发地输入提示：高德 inputtips + 本地城市库兜底
-   */
   @Public()
   @Get('place-suggestions')
-  @ApiOperation({ summary: 'Departure city place suggestions' })
-  @ApiQuery({ name: 'keyword', required: false, type: String })
-  @ApiQuery({ name: 'region', required: false, type: String })
-  @ApiOkEnvelopeResponse(PlaceSuggestionsResultDto)
   async placeSuggestions(
     @Query('keyword') keyword = '',
     @Query('region') region?: string,
@@ -72,10 +58,6 @@ export class TravelGuideMapController {
   /** GCJ-02 coordinates → short city/district label for post location metadata. */
   @Public()
   @Get('reverse-geocode')
-  @ApiOperation({ summary: 'Reverse geocode coordinates to city label' })
-  @ApiQuery({ name: 'lat', required: true, type: Number })
-  @ApiQuery({ name: 'lng', required: true, type: Number })
-  @ApiOkEnvelopeResponse(ReverseGeocodeResultDto)
   async reverseGeocode(
     @Query('lat') latRaw?: string,
     @Query('lng') lngRaw?: string,

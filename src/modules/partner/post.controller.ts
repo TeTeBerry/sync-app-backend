@@ -9,25 +9,9 @@ import {
   Query,
   UnauthorizedException,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-  ApiTags,
-} from '@nestjs/swagger';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { Public } from '../../common/auth/public.decorator';
-import {
-  ApiOkEnvelopeArrayResponse,
-  ApiOkEnvelopeResponse,
-} from '../../common/swagger/api-response.decorator';
-import {
-  EventDetailPostDto,
-  EventPostsPageDto,
-  PostCommentsPageDto,
-  PostMutationResultDto,
-} from '../../common/swagger/dto/post.swagger.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { UpdatePostRecruitDto } from './dto/update-post-recruit.dto';
@@ -36,16 +20,12 @@ import { PostService } from './post.service';
 
 const MAX_POPULAR_POSTS = 50;
 
-@ApiTags('posts')
 @Controller('posts')
 export class PostController {
   constructor(private readonly postService: PostService) {}
 
   @Public()
   @Get('popular')
-  @ApiOperation({ summary: 'List popular buddy posts' })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiOkEnvelopeArrayResponse(EventDetailPostDto)
   listPopular(
     @CurrentActor() actor: RequestActor,
     @Query('limit') limit?: string,
@@ -59,14 +39,6 @@ export class PostController {
 
   @Public()
   @Get()
-  @ApiOperation({ summary: 'List posts by activity or current user' })
-  @ApiQuery({ name: 'activityLegacyId', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'cursor', required: false, type: String })
-  @ApiQuery({ name: 'anchorPostId', required: false, type: String })
-  @ApiOkEnvelopeResponse(EventPostsPageDto, {
-    description: 'Paginated posts for an activity',
-  })
   list(
     @CurrentActor() actor: RequestActor,
     @Query('activityLegacyId') activityLegacyId?: string,
@@ -99,17 +71,11 @@ export class PostController {
   }
 
   @Post()
-  @ApiBearerAuth('bearer')
-  @ApiOperation({ summary: 'Create a buddy post' })
-  @ApiOkEnvelopeResponse(PostMutationResultDto)
   create(@Body() body: CreatePostDto, @CurrentActor() actor: RequestActor) {
     return this.postService.createPost(body, actor);
   }
 
   @Patch(':id/recruit')
-  @ApiBearerAuth('bearer')
-  @ApiOperation({ summary: 'Update post recruit status' })
-  @ApiOkEnvelopeResponse(PostMutationResultDto)
   updateRecruit(
     @Param('id') id: string,
     @Body() body: UpdatePostRecruitDto,
@@ -119,9 +85,6 @@ export class PostController {
   }
 
   @Patch(':id')
-  @ApiBearerAuth('bearer')
-  @ApiOperation({ summary: 'Update post content' })
-  @ApiOkEnvelopeResponse(PostMutationResultDto)
   update(
     @Param('id') id: string,
     @Body() body: UpdatePostDto,
@@ -131,19 +94,12 @@ export class PostController {
   }
 
   @Delete(':id')
-  @ApiBearerAuth('bearer')
-  @ApiOperation({ summary: 'Delete owned post' })
-  @ApiOkEnvelopeResponse(PostMutationResultDto)
   remove(@Param('id') id: string, @CurrentActor() actor: RequestActor) {
     return this.postService.deleteOwnedPost(id, actor);
   }
 
   @Public()
   @Get(':id/comments')
-  @ApiOperation({ summary: 'List comments for a post' })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'cursor', required: false, type: String })
-  @ApiOkEnvelopeResponse(PostCommentsPageDto)
   listComments(
     @Param('id') id: string,
     @Query('limit') limit?: string,
@@ -157,9 +113,6 @@ export class PostController {
   }
 
   @Post(':id/comments')
-  @ApiBearerAuth('bearer')
-  @ApiOperation({ summary: 'Add comment to post' })
-  @ApiOkEnvelopeResponse(PostMutationResultDto)
   addComment(
     @Param('id') id: string,
     @Body() body: CreatePostCommentDto,
@@ -174,9 +127,6 @@ export class PostController {
   }
 
   @Delete(':id/comments/:commentId')
-  @ApiBearerAuth('bearer')
-  @ApiOperation({ summary: 'Delete owned comment' })
-  @ApiOkEnvelopeResponse(PostMutationResultDto)
   removeComment(
     @Param('id') id: string,
     @Param('commentId') commentId: string,

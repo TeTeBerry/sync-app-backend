@@ -28,6 +28,8 @@ import { MediaSecurityModule } from './modules/media-security/media-security.mod
 import { HealthModule } from './common/health/health.module';
 import { AuthCoreModule } from './common/auth/auth-core.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { AuthH5Module } from './modules/auth-h5/auth-h5.module';
+import { SmsModule } from './modules/sms/sms.module';
 import { CloudModule } from './infra/cloud/cloud.module';
 import { ActivityContextMiddleware } from './common/middleware/activity-context.middleware';
 import { RequestActorMiddleware } from './common/middleware/request-actor.middleware';
@@ -59,11 +61,13 @@ import { ScheduleModule } from '@nestjs/schedule';
     }),
     CloudModule,
     RedisModule,
+    SmsModule,
     PublicApiRateLimitModule,
     PublicEventModule,
     CacheModule,
     ActivityModule,
     AuthModule,
+    AuthH5Module,
     AuthCoreModule,
     UserModule,
     ProfileModule,
@@ -92,6 +96,8 @@ export class AppModule implements NestModule {
       .apply(RequestActorMiddleware, ActivityContextMiddleware)
       .exclude(
         { path: 'auth/wechat', method: RequestMethod.POST },
+        { path: 'auth-h5/sms/send', method: RequestMethod.POST },
+        { path: 'auth-h5/sms/login', method: RequestMethod.POST },
         { path: 'health', method: RequestMethod.GET },
         { path: 'wechat/message', method: RequestMethod.GET },
         { path: 'wechat/message', method: RequestMethod.POST },

@@ -25,14 +25,9 @@ export class HunyuanImageClient {
       this.config.get<string>('cloudbase.apiKey')?.trim() ??
       this.config.get<string>('hunyuan.apiKey')?.trim() ??
       '';
-    this.secretId =
-      this.config.get<string>('cloudbase.secretId')?.trim() ??
-      process.env.TENCENTCLOUD_SECRETID?.trim() ??
-      '';
+    this.secretId = this.config.get<string>('cloudbase.secretId')?.trim() ?? '';
     this.secretKey =
-      this.config.get<string>('cloudbase.secretKey')?.trim() ??
-      process.env.TENCENTCLOUD_SECRETKEY?.trim() ??
-      '';
+      this.config.get<string>('cloudbase.secretKey')?.trim() ?? '';
 
     const featureEnabled =
       this.config.get<boolean>('posterBackground.enabled') !== false;

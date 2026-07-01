@@ -10,7 +10,6 @@ import {
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { UserGoalService } from './goal.service';
@@ -25,14 +24,11 @@ function requireActorUserId(actor: RequestActor): string {
   return userId;
 }
 
-@ApiTags('goals')
-@ApiBearerAuth('bearer')
 @Controller('goals')
 export class UserGoalController {
   constructor(private readonly service: UserGoalService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create or upsert a user goal' })
   async create(
     @Body() dto: CreateUserGoalDto,
     @CurrentActor() actor: RequestActor,
@@ -42,7 +38,6 @@ export class UserGoalController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List current user goals' })
   async list(
     @CurrentActor() actor: RequestActor,
     @Query('activityLegacyId') activityLegacyIdRaw?: string,
@@ -58,7 +53,6 @@ export class UserGoalController {
   }
 
   @Get('artifacts/:artifactId')
-  @ApiOperation({ summary: 'Fetch a goal artifact (e.g. recruit draft)' })
   async artifact(
     @Param('artifactId') artifactId: string,
     @CurrentActor() actor: RequestActor,
@@ -72,7 +66,6 @@ export class UserGoalController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get goal detail' })
   async detail(
     @Param('id') id: string,
     @CurrentActor() actor: RequestActor,
@@ -86,7 +79,6 @@ export class UserGoalController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update goal status or params' })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateUserGoalDto,
@@ -101,7 +93,6 @@ export class UserGoalController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Cancel a goal' })
   async remove(
     @Param('id') id: string,
     @CurrentActor() actor: RequestActor,

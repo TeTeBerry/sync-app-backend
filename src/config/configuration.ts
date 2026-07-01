@@ -110,6 +110,11 @@ export default () => ({
     jwtExpiresIn: cleanEnv(process.env.JWT_EXPIRES_IN, '30d'),
     /** `wechat` is the only supported production auth mode. */
     mode: cleanEnv(process.env.AUTH_MODE, 'wechat'),
+    sms: {
+      sdkAppId: cleanEnv(process.env.SMS_SDK_APP_ID, ''),
+      templateId: cleanEnv(process.env.SMS_TEMPLATE_ID, ''),
+      signName: cleanEnv(process.env.SMS_SIGN_NAME, ''),
+    },
     wechatMini: {
       appId: cleanEnv(
         process.env.WECHAT_MINI_APP_ID ?? process.env.WX_APP_ID,
@@ -310,6 +315,8 @@ export default () => ({
   },
 
   cloudbase: {
+    secretId: cleanEnv(process.env.TENCENTCLOUD_SECRETID, ''),
+    secretKey: cleanEnv(process.env.TENCENTCLOUD_SECRETKEY, ''),
     envId: cleanEnv(process.env.CLOUDBASE_ENV_ID),
     /** e.g. `7379-sync-prd-xxxx-1442514260` — required for server-side cloud file download. */
     storageBucket: cleanEnv(process.env.CLOUDBASE_STORAGE_BUCKET),
@@ -317,8 +324,6 @@ export default () => ({
     apiKey: cleanEnv(
       process.env.CLOUDBASE_APIKEY ?? process.env.HUNYUAN_API_KEY,
     ),
-    secretId: cleanEnv(process.env.TENCENTCLOUD_SECRETID),
-    secretKey: cleanEnv(process.env.TENCENTCLOUD_SECRETKEY),
   },
 
   posterBackground: {
