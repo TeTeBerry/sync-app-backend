@@ -4,7 +4,6 @@ import { SetVoteService } from '@src/modules/activity/set-vote/set-vote.service'
 import { SET_VOTE_REPOSITORY } from '@src/modules/activity/set-vote/interfaces/set-vote.repository.interface';
 import { ACTIVITY_LOOKUP_PORT } from '@src/modules/activity/ports/activity-lookup.port';
 import { ItineraryScheduleService } from '@src/modules/itinerary/itinerary-schedule.service';
-import { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import { RedisService } from '@src/redis/redis.service';
 import { UserGoalService } from '@src/modules/goal/goal.service';
 import type { RequestActor } from '@src/common/auth/request-actor.types';
@@ -33,7 +32,6 @@ describe('SetVoteService', () => {
   };
   let scheduleService: { getSchedule: jest.Mock };
   let redis: { incrementRateLimit: jest.Mock; getCacheValue: jest.Mock };
-  let applySetVoteHints: jest.Mock;
   let subscribeOnEngagement: jest.Mock;
 
   beforeEach(async () => {
@@ -60,7 +58,6 @@ describe('SetVoteService', () => {
       incrementRateLimit: jest.fn().mockResolvedValue(1),
       getCacheValue: jest.fn().mockResolvedValue(null),
     };
-    applySetVoteHints = jest.fn();
     subscribeOnEngagement = jest.fn().mockResolvedValue(undefined);
 
     const moduleRef = await Test.createTestingModule({
@@ -76,10 +73,6 @@ describe('SetVoteService', () => {
           },
         },
         { provide: ItineraryScheduleService, useValue: scheduleService },
-        {
-          provide: UserProfileSyncService,
-          useValue: { applySetVoteHints },
-        },
         { provide: RedisService, useValue: redis },
         {
           provide: UserGoalService,
@@ -107,7 +100,7 @@ describe('SetVoteService', () => {
       activityLegacyId: 4,
       picks: ['dj-snake', 'martin-garrix'],
     });
-    expect(applySetVoteHints).toHaveBeenCalled();
+    expect(subscribeOnEngagement).toHaveBeenCalled();
   });
 
   it('rejects more than 3 picks', async () => {
@@ -161,10 +154,6 @@ describe('SetVoteService', () => {
         { provide: SET_VOTE_REPOSITORY, useValue: repository },
         { provide: ACTIVITY_LOOKUP_PORT, useValue: lookup },
         { provide: ItineraryScheduleService, useValue: scheduleService },
-        {
-          provide: UserProfileSyncService,
-          useValue: { applySetVoteHints },
-        },
         { provide: RedisService, useValue: redis },
         {
           provide: UserGoalService,

@@ -7,7 +7,6 @@ import { AmapMapService } from '@src/modules/travel-guide/map/amap.service';
 import { TravelGuidePoiCollector } from '@src/modules/travel-guide/map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from '@src/modules/travel-guide/map/travel-guide-poi.ranker';
 import { TravelQuoteEnrichmentService } from '@src/modules/travel-guide/travel-quote-enrichment.service';
-import { UserProfileSyncService } from '@src/modules/user/user-profile-sync.service';
 import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 
 const testActor = {
@@ -64,7 +63,6 @@ const basePlan: TravelGuidePlan = {
 describe('TravelGuideBudgetTierService', () => {
   let service: TravelGuideBudgetTierService;
   let updateBudgetTier: jest.Mock;
-  let applyTravelGuideHints: jest.Mock;
   let collect: jest.Mock;
   let rank: jest.Mock;
 
@@ -81,7 +79,6 @@ describe('TravelGuideBudgetTierService', () => {
       plan: { ...basePlan, budgetLabel: '经济(¥150-300/晚)' },
       createdAt: new Date().toISOString(),
     });
-    applyTravelGuideHints = jest.fn();
     collect = jest.fn().mockResolvedValue(null);
     rank = jest.fn();
 
@@ -129,10 +126,6 @@ describe('TravelGuideBudgetTierService', () => {
             fetchHotelQuoteForTier: jest.fn().mockResolvedValue(null),
           },
         },
-        {
-          provide: UserProfileSyncService,
-          useValue: { applyTravelGuideHints },
-        },
       ],
     }).compile();
 
@@ -177,11 +170,6 @@ describe('TravelGuideBudgetTierService', () => {
         }),
       }),
     );
-    expect(applyTravelGuideHints).toHaveBeenCalledWith(testActor, {
-      departure: '上海',
-      departureCity: undefined,
-      budgetTier: 'economy',
-    });
     expect(result.form.budgetTier).toBe('economy');
   });
 
@@ -222,10 +210,6 @@ describe('TravelGuideBudgetTierService', () => {
             fetchHotelQuoteForTier: jest.fn(),
           },
         },
-        {
-          provide: UserProfileSyncService,
-          useValue: { applyTravelGuideHints },
-        },
       ],
     }).compile();
 
@@ -237,7 +221,6 @@ describe('TravelGuideBudgetTierService', () => {
     );
 
     expect(updateBudgetTier).not.toHaveBeenCalled();
-    expect(applyTravelGuideHints).not.toHaveBeenCalled();
     expect(result.form.budgetTier).toBe('economy');
   });
 
@@ -265,10 +248,6 @@ describe('TravelGuideBudgetTierService', () => {
             run: jest.fn(),
             fetchHotelQuoteForTier: jest.fn(),
           },
-        },
-        {
-          provide: UserProfileSyncService,
-          useValue: { applyTravelGuideHints },
         },
       ],
     }).compile();

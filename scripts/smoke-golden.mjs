@@ -23,7 +23,6 @@ import { resolveSmokeJwt } from './lib/smoke-jwt.mjs';
 const DEFAULT_BASE = 'http://localhost:3000/api';
 const DEFAULT_ACTIVITY_ID = 4;
 const DEFAULT_AUTHOR = 'Smoke';
-const OPS_SEED_PREFIX = 'ops-seed-';
 
 const baseUrl = (process.env.SMOKE_API_BASE || DEFAULT_BASE).replace(/\/$/, '');
 const activityId = Number(process.env.SMOKE_ACTIVITY_ID || DEFAULT_ACTIVITY_ID);
@@ -66,37 +65,20 @@ step('GET /activities + detail', async (ctx) => {
   );
 });
 
-step(`GET /posts?activityLegacyId=${activityId} (ops-seed)`, async (ctx) => {
-  const data = await http.request(
-    'GET',
-    `posts?activityLegacyId=${ctx.activityId}&limit=20&${ctx.q}`,
-  );
-  const items = data?.items ?? (Array.isArray(data) ? data : []);
-  assert(Array.isArray(items) && items.length > 0, 'posts list should be non-empty');
-  const hasOpsSeed = items.some(
-    (p) => typeof p?.userId === 'string' && p.userId.startsWith(OPS_SEED_PREFIX),
-  );
-  assert(
-    hasOpsSeed,
-    `expected at least one post with userId prefix "${OPS_SEED_PREFIX}" — run: npm run db:seed-ops-buddy-posts`,
-  );
-});
-
 step(`POST travel-guide/generate-async + poll`, async (ctx) => {
   const token = ctx.bearerToken ?? (await resolveSmokeJwt());
   ctx.bearerToken = token;
   await smokeTravelGuideGenerateAsync(http, ctx.activityId, token);
 });
 
-step(`POST /ai/scene-run recruit_search`, async (ctx) => {
+step(`POST /ai/scene-run events_knowledge_search`, async (ctx) => {
   const token = ctx.bearerToken ?? (await resolveSmokeJwt());
   ctx.bearerToken = token;
 
   const data = await http.request('POST', 'ai/scene-run', {
     body: {
-      scene: 'recruit_search',
-      activityLegacyId: ctx.activityId,
-      context: { query: '上海', trigger: 'search_submit' },
+      scene: 'events_knowledge_search',
+      input: '7月欧洲电音节',
     },
     headers: { Authorization: `Bearer ${token}` },
   });

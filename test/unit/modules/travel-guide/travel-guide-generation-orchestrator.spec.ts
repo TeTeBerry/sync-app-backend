@@ -115,7 +115,13 @@ describe('TravelGuideGenerationOrchestrator', () => {
           },
         },
         { provide: AmapMapService, useValue: { enabled: true } },
-        { provide: TravelGuidePoiPipeline, useValue: { run: poiRun } },
+        {
+          provide: TravelGuidePoiPipeline,
+          useValue: {
+            run: poiRun,
+            rankHotelsForAllTiers: jest.fn().mockReturnValue({}),
+          },
+        },
         {
           provide: TravelGuideLlmPolishService,
           useValue: { buildPayloadFromMap: llmBuild },

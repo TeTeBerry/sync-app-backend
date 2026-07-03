@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { getModelToken } from '@nestjs/mongoose';
 import { ProfileSummaryService } from '@src/modules/profile/profile-summary.service';
 import { ProfileActivityEligibilityService } from '@src/modules/profile/profile-activity-eligibility.service';
 import { UserService } from '@src/modules/user/user.service';
@@ -6,10 +7,8 @@ import {
   ACTIVITY_LOOKUP_PORT,
   type IActivityLookupPort,
 } from '@src/modules/activity/ports/activity-lookup.port';
-import {
-  POST_READ_PORT,
-  type IPostReadPort,
-} from '@src/modules/partner/ports/post-read.port';
+import { ArtistPerformance } from '@src/database/schemas/artist-performance.schema';
+import { UserArtistLike } from '@src/database/schemas/user-artist-like.schema';
 
 const actor = {
   source: 'jwt' as const,
@@ -39,8 +38,12 @@ describe('ProfileSummaryService.getSummary', () => {
           useValue: activityLookup,
         },
         {
-          provide: POST_READ_PORT,
-          useValue: { listByOwner: jest.fn().mockResolvedValue([]) },
+          provide: getModelToken(ArtistPerformance.name),
+          useValue: { find: jest.fn() },
+        },
+        {
+          provide: getModelToken(UserArtistLike.name),
+          useValue: { countDocuments: jest.fn().mockResolvedValue(0) },
         },
         {
           provide: UserService,

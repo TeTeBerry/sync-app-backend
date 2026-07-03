@@ -12,13 +12,8 @@ export enum UserGoalStatus {
   CANCELLED = 'cancelled',
 }
 
-export enum UserGoalArtifactKind {
-  RECRUIT_DRAFT = 'recruit_draft',
-}
-
 export interface UserGoalParams {
   notifyWechat?: boolean;
-  draftRecruitOnLineup?: boolean;
   departureCity?: string;
 }
 
@@ -52,7 +47,6 @@ export const UserGoalSchema = new MongooseSchema(
     },
     params: {
       notifyWechat: { type: Boolean, default: true },
-      draftRecruitOnLineup: { type: Boolean, default: false },
       departureCity: { type: String, default: '' },
     },
     lastRunAt: { type: String },
@@ -78,7 +72,7 @@ export type UserGoalArtifactDocument = Document & {
   goalId: string;
   userId: string;
   activityLegacyId: number;
-  kind: UserGoalArtifactKind;
+  kind: string;
   payload?: Record<string, unknown>;
   consumedAt?: string;
   expiresAt: string;
@@ -91,11 +85,7 @@ export const UserGoalArtifactSchema = new MongooseSchema(
     goalId: { type: String, required: true, index: true },
     userId: { type: String, required: true, index: true },
     activityLegacyId: { type: Number, required: true },
-    kind: {
-      type: String,
-      enum: Object.values(UserGoalArtifactKind),
-      required: true,
-    },
+    kind: { type: String, required: true },
     payload: { type: MongooseSchema.Types.Mixed },
     consumedAt: { type: String },
     expiresAt: { type: String, required: true },

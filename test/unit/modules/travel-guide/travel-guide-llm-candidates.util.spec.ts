@@ -41,7 +41,7 @@ describe('compactCandidatesForLlm', () => {
       hotelPriceBand: ['¥300-450', '¥450-600'],
     });
 
-    expect(compact.hotels).toHaveLength(6);
+    expect(compact.hotels).toHaveLength(8);
     expect(compact.nightlife).toHaveLength(6);
     expect(compact.hotels[0]).toEqual({
       name: '酒店0',

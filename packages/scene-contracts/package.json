@@ -4,9 +4,6 @@
   "private": true,
   "main": "./dist/index.js",
   "types": "./index.ts",
-  "dependencies": {
-    "@sync/partner-contracts": "*"
-  },
   "exports": {
     ".": {
       "types": "./index.ts",

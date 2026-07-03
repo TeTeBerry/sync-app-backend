@@ -24,7 +24,7 @@ describe('SceneRunDto', () => {
     expect(errors).toHaveLength(0);
   });
 
-  it('accepts lineup_dj and recruit_apply_compose scenes', async () => {
+  it('accepts lineup_dj scene', async () => {
     await expect(
       validateSceneRun({
         scene: 'lineup_dj',
@@ -33,18 +33,6 @@ describe('SceneRunDto', () => {
           activityLegacyId: 8,
           artistName: 'Charlotte de Witte',
           trigger: 'page_enter',
-        },
-      }),
-    ).resolves.toHaveLength(0);
-
-    await expect(
-      validateSceneRun({
-        scene: 'recruit_apply_compose',
-        activityLegacyId: 8,
-        context: {
-          trigger: 'sheet_submit',
-          postId: 'post-1',
-          postSummary: '找队友',
         },
       }),
     ).resolves.toHaveLength(0);

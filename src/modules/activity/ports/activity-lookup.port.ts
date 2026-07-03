@@ -4,8 +4,6 @@ export type ActivityLookupRecord = Activity & {
   _id?: unknown;
   /** Lineup announced (performances or seeded lineup DJs). */
   lineupPublished?: boolean;
-  /** Public recruit posts visible on activity feed. */
-  recruitPostCount?: number;
   /** Whether AI travel guide generation is supported for this activity. */
   travelGuideSupported?: boolean;
 };

@@ -45,7 +45,6 @@ export class UserGoalService {
 
     const params = {
       notifyWechat: dto.params?.notifyWechat ?? true,
-      draftRecruitOnLineup: dto.params?.draftRecruitOnLineup ?? false,
       departureCity: dto.params?.departureCity ?? '',
     };
 

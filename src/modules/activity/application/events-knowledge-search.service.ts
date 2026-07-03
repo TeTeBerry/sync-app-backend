@@ -238,28 +238,6 @@ export class EventsKnowledgeSearchService {
     const sections: KnowledgeCardSection[] = [];
     const sources = new Set<string>(isEn ? ['SYNC catalog'] : ['SYNC 活动库']);
 
-    if (parsed.intent === 'recruit') {
-      sections.push({
-        heading: isEn ? 'Looking for a crew?' : '想找同行？',
-        body: isEn
-          ? 'Public recruit posts live on each event detail page. Open an event below, then use AI recruit search on the feed.'
-          : '公开组队招募在活动详情页的招募墙。先选一场节进入详情，再用「AI 找队」检索公开帖。',
-      });
-      if (activities[0]) {
-        sources.add(activities[0].infoSource ?? activities[0].name);
-      }
-      return {
-        title: isEn ? 'Festival intel' : '电音节资讯',
-        sections,
-        links: activities.slice(0, 3).map((activity) => ({
-          label: activity.name,
-          activityLegacyId: activity.legacyId,
-        })),
-        sources: Array.from(sources),
-        aiGenerated: false,
-      };
-    }
-
     if (parsed.intent === 'ecosystem') {
       const ecosystemDocs = chromaDocs.filter(
         (doc) => doc.metadata?.topic === 'ecosystem',
@@ -434,7 +412,6 @@ export class EventsKnowledgeSearchService {
     locale: string;
   }): Promise<KnowledgeCardPayload | null> {
     if (!this.llmService?.enabled) return null;
-    if (params.parsed.intent === 'recruit') return null;
 
     const isEn = params.locale.toLowerCase().startsWith('en');
     const activityLines = params.activities

@@ -214,9 +214,6 @@ export class PublicEventController {
       parts.push(`🎵 ${a.activityType === 'festival' ? '电音节' : '室内电音'}`);
     }
     if (a.lineupPublished) parts.push('阵容已官宣');
-    if (a.recruitPostCount) {
-      parts.push(`${a.recruitPostCount} 条组队招募帖`);
-    }
     parts.push('平台仅提供资讯，不售票');
     return parts.join(' · ');
   }

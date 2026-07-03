@@ -14,9 +14,6 @@ export class UserActivityEngagement {
 
   @Prop()
   lineupViewedAt?: string;
-
-  @Prop()
-  recruitSearchedAt?: string;
 }
 
 export const UserActivityEngagementSchema = SchemaFactory.createForClass(

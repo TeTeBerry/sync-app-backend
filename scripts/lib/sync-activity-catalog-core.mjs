@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import {
   ACTIVITY_SEED,
   DEPRECATED_ACTIVITY_FILTER,
-  PUBLIC_RECRUIT_POST_MATCH,
 } from './activity-catalog-seed.mjs';
 
 async function syncAttendeeCounts(activities) {
@@ -26,20 +25,8 @@ async function syncAttendeeCounts(activities) {
   );
 }
 
-async function loadRecruitPostCounts() {
-  const posts = mongoose.connection.db.collection('posts');
-  const rows = await posts
-    .aggregate([
-      { $match: PUBLIC_RECRUIT_POST_MATCH },
-      { $group: { _id: '$activityLegacyId', count: { $sum: 1 } } },
-    ])
-    .toArray();
-  return new Map(rows.map((row) => [row._id, row.count]));
-}
-
 /**
  * Upsert festival catalog, remove deprecated rows, sync attendee totals.
- * Returns summary for logging (recruit counts are computed at API cache refresh).
  */
 export async function syncActivityCatalog(uri) {
   await mongoose.connect(uri);
@@ -57,7 +44,6 @@ export async function syncActivityCatalog(uri) {
 
     const removed = await activities.deleteMany(DEPRECATED_ACTIVITY_FILTER);
     await syncAttendeeCounts(activities);
-    const recruitPostCounts = await loadRecruitPostCounts();
 
     const catalog = await activities
       .find({})
@@ -72,7 +58,6 @@ export async function syncActivityCatalog(uri) {
         legacyId: activity.legacyId,
         name: activity.name,
         attendees: activity.attendees ?? 0,
-        recruitPostCount: recruitPostCounts.get(activity.legacyId) ?? 0,
       })),
     };
   } finally {

@@ -1,18 +1,8 @@
 import type { ClientActionSheet } from './client-action.types';
-import type {
-  BuddyPostComposeCandidate,
-  BuddyPostComposeHints,
-  BuddyPostSearchParsed,
-  EventDetailPost,
-} from '@sync/partner-contracts';
 
 export type SceneId =
-  | 'recruit_search'
-  | 'recruit_compose'
-  | 'recruit_apply_compose'
   | 'lineup_dj'
   | 'festival_story'
-  | 'prep_nudge'
   | 'events_knowledge_search';
 
 export type EventsActivitySearchParsed = {
@@ -22,7 +12,7 @@ export type EventsActivitySearchParsed = {
   area?: string;
   genre?: string;
   keywords?: string[];
-  intent?: 'discover' | 'recruit' | 'travel' | 'ecosystem' | 'compare';
+  intent?: 'discover' | 'travel' | 'ecosystem' | 'compare';
   compareActivityCodes?: [string, string];
 };
 
@@ -68,25 +58,6 @@ export interface SceneContext {
   [key: string]: unknown;
 }
 
-/** Context for `scene=recruit_compose` (AI buddy post note candidates). */
-export interface RecruitComposeSceneContext extends SceneContext {
-  dateStart: string;
-  dateEnd: string;
-  location: string;
-  headcount: string;
-  composeHints?: BuddyPostComposeHints;
-  regenerate?: boolean;
-}
-
-/** Context for `scene=recruit_apply_compose` (AI draft public comment when applying to join). */
-export interface RecruitApplyComposeSceneContext extends SceneContext {
-  postId: string;
-  postSummary?: string;
-  applicantName?: string;
-  applicantPrefs?: string;
-  regenerate?: boolean;
-}
-
 /** Context for `scene=lineup_dj` (AI DJ bio / intro card). */
 export interface LineupDjSceneContext extends SceneContext {
   artistName: string;
@@ -119,14 +90,6 @@ export type SceneEffect =
       aiGenerated?: boolean;
     }
   | {
-      type: 'reorder_posts';
-      postIds: string[];
-      items: EventDetailPost[];
-      totalMatched: number;
-      totalScanned: number;
-      parsed?: BuddyPostSearchParsed;
-    }
-  | {
       type: 'prefill_query';
       query: string;
       source?: string;
@@ -135,11 +98,6 @@ export type SceneEffect =
       type: 'prefill_form';
       fields: Record<string, unknown>;
       aiGenerated?: boolean;
-    }
-  | {
-      type: 'candidates';
-      items: BuddyPostComposeCandidate[];
-      aiGenerated: true;
     }
   | {
       type: 'open_sheet';

@@ -13,8 +13,6 @@ import { artistIdFromLineupName } from '../itinerary/utils/lineup-artist-id.util
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import type { ActivityLookupRecord } from '../activity/ports/activity-lookup.port';
 
-const ARTIFACT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
 export interface UiDirective {
   type: 'render-card';
   component: string;
@@ -28,118 +26,6 @@ const renderCard = (component: string, reason?: string): UiDirective => ({
   required: true,
   ...(reason ? { reason } : {}),
 });
-
-const FILTER_CITY_KEYWORDS = [
-  '上海',
-  '北京',
-  '广州',
-  '深圳',
-  '成都',
-  '杭州',
-  '南京',
-  '武汉',
-  '西安',
-  '重庆',
-  '苏州',
-  '天津',
-  '厦门',
-  '青岛',
-  '曼谷',
-  '东京',
-  '首尔',
-];
-
-function extractFilterLabels(query: string): string[] {
-  const labels: string[] = [];
-
-  const peopleMatch = query.match(/\d+\s*人/);
-  if (peopleMatch) {
-    labels.push(peopleMatch[0].replace(/\s/g, ''));
-  }
-
-  for (const city of FILTER_CITY_KEYWORDS) {
-    if (query.includes(city)) {
-      labels.push(city);
-    }
-  }
-
-  const genreMatch = query.match(
-    /techno|house|trance|bass|drum and bass|dnb|hardstyle|psytrance/i,
-  );
-  if (genreMatch) {
-    labels.push(genreMatch[0]);
-  }
-
-  if (!labels.length && query.length > 0 && query.length <= 16) {
-    labels.push(query);
-  }
-
-  return [...new Set(labels)].slice(0, 5);
-}
-
-function parseDraftComposeFields(draft: Record<string, unknown>): {
-  dateStart: string;
-  dateEnd: string;
-  location: string;
-  headcount: string;
-  composeHints?: Record<string, unknown>;
-  regenerate: boolean;
-} {
-  const dateStart =
-    typeof draft.dateStart === 'string' ? draft.dateStart.trim() : '';
-  const dateEnd = typeof draft.dateEnd === 'string' ? draft.dateEnd.trim() : '';
-  const location =
-    typeof draft.location === 'string' ? draft.location.trim() : '';
-  const headcount =
-    typeof draft.headcount === 'string' ? draft.headcount.trim() : '';
-
-  if (!dateStart || !dateEnd || !location || !headcount) {
-    throw new BadRequestException('请填写日期、出发地与人数');
-  }
-
-  const baseComposeHints =
-    draft.composeHints &&
-    typeof draft.composeHints === 'object' &&
-    !Array.isArray(draft.composeHints)
-      ? (draft.composeHints as Record<string, unknown>)
-      : undefined;
-
-  const note = typeof draft.note === 'string' ? draft.note.trim() : '';
-
-  const composeHints = note
-    ? {
-        ...(baseComposeHints ?? {}),
-        prefillSummary:
-          (typeof baseComposeHints?.prefillSummary === 'string'
-            ? baseComposeHints.prefillSummary.trim()
-            : undefined) || note,
-        favorGenres: [
-          ...new Set([
-            ...((baseComposeHints?.favorGenres as string[]) ?? []),
-            ...extractGenreHints(note),
-          ]),
-        ],
-      }
-    : baseComposeHints;
-
-  return {
-    dateStart,
-    dateEnd,
-    location,
-    headcount,
-    composeHints,
-    regenerate: draft.regenerate === true,
-  };
-}
-
-function extractGenreHints(text: string): string[] {
-  const matches = text.match(
-    /hardstyle|hard techno|techno|house|trance|bass|drum and bass|dnb|psytrance/gi,
-  );
-  return [
-    ...new Set((matches ?? []).map((item) => item.trim()).filter(Boolean)),
-  ];
-}
 
 function parseTravelGuideFormData(formData: Record<string, unknown>): {
   guideId?: string;

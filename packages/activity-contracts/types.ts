@@ -26,7 +26,6 @@ export interface BackendActivity {
   infoSource?: string;
   infoUpdatedAt?: string;
   lineupPublished?: boolean;
-  recruitPostCount?: number;
   /** false = overseas field without Hot Path; hide generate CTA */
   travelGuideSupported?: boolean;
 }

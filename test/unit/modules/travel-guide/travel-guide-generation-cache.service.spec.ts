@@ -72,6 +72,7 @@ describe('TravelGuideGenerationCacheService', () => {
       budgetTier: 'standard' as const,
       selfDrive: false,
       accommodationNights: 2,
+      note: '',
     };
     const plan = { activityName: 'Test' } as TravelGuidePlan;
 

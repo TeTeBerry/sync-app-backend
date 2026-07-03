@@ -17,14 +17,6 @@ export type {
 } from './types';
 
 export type {
-  SearchPublicRecruitsInput,
-  SearchPublicRecruitsResult,
-  SearchPublicRecruitsResultPost,
-} from './types';
-
-export type { DraftRecruitPostInput, DraftRecruitPostResult } from './types';
-
-export type {
   SubscribeLineupUpdatesInput,
   SubscribeLineupUpdatesResult,
 } from './types';

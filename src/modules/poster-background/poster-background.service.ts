@@ -126,7 +126,7 @@ export class PosterBackgroundService {
   private assertInput(input: GeneratePosterBackgroundDto): void {
     if (
       input.kind === 'set_vote' ||
-      input.kind === 'recruit_post' ||
+      input.kind === 'trip_plan' ||
       input.kind === 'countdown'
     ) {
       if (!input.activityLegacyId || input.activityLegacyId <= 0) {

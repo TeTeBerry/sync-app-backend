@@ -11,10 +11,3 @@ export const DEPRECATED_ACTIVITY_FILTER = {
     { code: 'vac-zhuhai' },
   ],
 };
-
-/** Public recruit posts visible on activity feeds (matches PostRepository). */
-export const PUBLIC_RECRUIT_POST_MATCH = {
-  activityLegacyId: { $exists: true, $type: 'number' },
-  status: { $ne: 'hidden' },
-  listedInFeed: { $ne: false },
-};

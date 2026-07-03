@@ -65,7 +65,6 @@ export function shouldUseLlmKnowledgeCard(input: {
 }): boolean {
   const { query, parsed, matchedActivities, chromaDocs } = input;
 
-  if (parsed.intent === 'recruit') return false;
   if (parsed.intent === 'compare') return false;
 
   if (isFestivalLineupLookup(query, matchedActivities)) {

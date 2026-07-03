@@ -82,9 +82,9 @@ describe('PosterBackgroundService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('requires activityLegacyId for recruit_post', async () => {
+  it('requires activityLegacyId for trip_plan', async () => {
     await expect(
-      service.generate({ kind: 'recruit_post' }, {
+      service.generate({ kind: 'trip_plan' }, {
         resolvedUserId: 'u1',
       } as never),
     ).rejects.toBeInstanceOf(BadRequestException);

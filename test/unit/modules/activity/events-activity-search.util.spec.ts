@@ -94,9 +94,9 @@ describe('events-activity-search.util', () => {
     );
   });
 
-  it('detects recruit intent', () => {
+  it('maps crew-search queries to travel intent', () => {
     expect(parseEventsActivitySearchQuery('上海出发差1人')).toMatchObject({
-      intent: 'recruit',
+      intent: 'travel',
     });
   });
 

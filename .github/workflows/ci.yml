@@ -93,9 +93,6 @@ jobs:
       - name: Wait for MongoDB
         run: npm run wait:mongo
 
-      - name: Seed ops buddy posts
-        run: npm run db:seed-ops-buddy-posts
-
       - name: Start API server
         run: node dist/src/main &
 

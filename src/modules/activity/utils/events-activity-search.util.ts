@@ -9,7 +9,7 @@ import type { ActivityLookupRecord } from '../ports/activity-lookup.port';
 
 export type { EventsActivitySearchParsed };
 
-const RECRUIT_INTENT_PATTERN =
+const CREW_TRAVEL_INTENT_PATTERN =
   /找队|组队|招募|拼房|差\s*\d+\s*人|出发|搭子|同行|buddy|recruit/i;
 const TRAVEL_INTENT_PATTERN = /签证|护照|换汇|出入境|海关|入境|出境|visa/i;
 const ECOSYSTEM_INTENT_PATTERN =
@@ -166,7 +166,7 @@ function activityHaystack(activity: ActivityLookupRecord): string {
 }
 
 function resolveIntent(query: string): EventsActivitySearchParsed['intent'] {
-  if (RECRUIT_INTENT_PATTERN.test(query)) return 'recruit';
+  if (CREW_TRAVEL_INTENT_PATTERN.test(query)) return 'travel';
   if (/对比|vs|VS|和.*(比|好)|哪个好|选哪| versus /i.test(query))
     return 'compare';
   if (ECOSYSTEM_INTENT_PATTERN.test(query)) return 'ecosystem';

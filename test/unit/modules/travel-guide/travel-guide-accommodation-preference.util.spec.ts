@@ -61,6 +61,7 @@ describe('isFuzzyTravelGuideParamsMatch accommodation', () => {
     budgetTier: 'standard' as const,
     selfDrive: false,
     accommodationNights: 2,
+    note: '',
   };
 
   it('does not fuzzy-match zero nights with positive nights', () => {

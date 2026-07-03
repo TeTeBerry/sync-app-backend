@@ -12,7 +12,6 @@ export type ActivityEngagementRecord = {
   userId: string;
   activityLegacyId: number;
   lineupViewedAt?: string;
-  recruitSearchedAt?: string;
 };
 
 @Injectable()
@@ -41,7 +40,6 @@ export class ActivityEngagementService {
       userId: doc.userId,
       activityLegacyId: doc.activityLegacyId,
       lineupViewedAt: doc.lineupViewedAt,
-      recruitSearchedAt: doc.recruitSearchedAt,
     };
   }
 
@@ -59,9 +57,11 @@ export class ActivityEngagementService {
       return { ok: true };
     }
 
+    if (action !== 'lineup_viewed') {
+      return { ok: true };
+    }
+
     const now = new Date().toISOString();
-    const field =
-      action === 'lineup_viewed' ? 'lineupViewedAt' : 'recruitSearchedAt';
 
     await this.model.updateOne(
       { userId, activityLegacyId },
@@ -69,7 +69,7 @@ export class ActivityEngagementService {
         $set: {
           userId,
           activityLegacyId,
-          [field]: now,
+          lineupViewedAt: now,
         },
       },
       { upsert: true },
@@ -83,12 +83,5 @@ export class ActivityEngagementService {
     activityLegacyId: number,
   ): Promise<void> {
     await this.record(actor, activityLegacyId, 'lineup_viewed');
-  }
-
-  async markRecruitSearched(
-    actor: RequestActor,
-    activityLegacyId: number,
-  ): Promise<void> {
-    await this.record(actor, activityLegacyId, 'recruit_searched');
   }
 }

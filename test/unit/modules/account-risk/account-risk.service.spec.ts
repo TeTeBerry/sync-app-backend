@@ -52,19 +52,10 @@ describe('AccountRiskService', () => {
       updateMany: jest.fn().mockResolvedValue({}),
     };
 
-    const postModel = {
-      findById: jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          lean: jest.fn().mockResolvedValue(null),
-        }),
-      }),
-    };
-
     return new AccountRiskService(
       eventModel as never,
       userModel as never,
       reportModel as never,
-      postModel as never,
     );
   }
 
@@ -102,13 +93,6 @@ describe('AccountRiskService', () => {
       {
         countDocuments: jest.fn().mockResolvedValue(0),
         updateMany: jest.fn().mockResolvedValue({}),
-      } as never,
-      {
-        findById: jest.fn().mockReturnValue({
-          select: jest.fn().mockReturnValue({
-            lean: jest.fn().mockResolvedValue(null),
-          }),
-        }),
       } as never,
     );
 

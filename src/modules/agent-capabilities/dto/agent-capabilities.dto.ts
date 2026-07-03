@@ -17,30 +17,6 @@ export class SearchFestivalsDto {
   homeCity?: string;
 }
 
-export class SearchPublicRecruitsDto {
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  activityLegacyId?: number;
-
-  @IsOptional()
-  @IsString()
-  query?: string;
-
-  @IsOptional()
-  @IsObject()
-  prefs?: Record<string, unknown>;
-}
-
-export class DraftRecruitPostDto {
-  @IsNumber()
-  @Min(1)
-  activityLegacyId!: number;
-
-  @IsObject()
-  draft!: Record<string, unknown>;
-}
-
 export class SubscribeLineupUpdatesDto {
   @IsNumber()
   @Min(1)

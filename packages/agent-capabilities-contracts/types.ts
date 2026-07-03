@@ -6,8 +6,6 @@ export type AgentCapabilityCardComponent =
   | 'search-results-card'
   | 'event-card'
   | 'artist-lineup-strip'
-  | 'recruit-list-card'
-  | 'draft-candidates-card'
   | 'prep-status-card';
 
 export interface AgentCapabilityUiDirective {
@@ -93,52 +91,6 @@ export interface GetLineupResult {
   activityLocation?: string;
   activity?: AgentCapabilityActivitySnapshot;
   artists: GetLineupResultArtist[];
-  uiDirectives?: AgentCapabilityUiDirective[];
-}
-
-// --- searchPublicRecruits ---
-export interface SearchPublicRecruitsInput {
-  activityLegacyId?: number;
-  query?: string;
-  prefs?: Record<string, unknown>;
-}
-
-export interface SearchPublicRecruitsResultPost {
-  id: string;
-  activityLegacyId: number;
-  nickname?: string;
-  avatarUrl?: string;
-  summary?: string;
-  createdAt: string;
-}
-
-export interface SearchPublicRecruitsResult {
-  activityLegacyId: number;
-  activityName?: string;
-  canonicalActivityName?: string;
-  activity?: AgentCapabilityActivitySnapshot;
-  totalMatched: number;
-  posts: SearchPublicRecruitsResultPost[];
-  filterLabels?: string[];
-  query?: string;
-  uiDirectives?: AgentCapabilityUiDirective[];
-}
-
-// --- draftRecruitPost ---
-export interface DraftRecruitPostInput {
-  activityLegacyId: number;
-  draft: Record<string, unknown>;
-}
-
-export interface DraftRecruitPostResult {
-  artifactId: string;
-  activityLegacyId: number;
-  activityName?: string;
-  canonicalActivityName?: string;
-  activity?: AgentCapabilityActivitySnapshot;
-  preview: Record<string, unknown>;
-  formData?: Record<string, unknown>;
-  note?: string;
   uiDirectives?: AgentCapabilityUiDirective[];
 }
 

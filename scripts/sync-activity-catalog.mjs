@@ -27,7 +27,7 @@ async function main() {
   console.log('   catalog snapshot:');
   for (const activity of result.activities) {
     console.log(
-      `     - [${activity.legacyId}] ${activity.name}: attendees=${activity.attendees}, recruitPosts=${activity.recruitPostCount}`,
+      `     - [${activity.legacyId}] ${activity.name}: attendees=${activity.attendees}`,
     );
   }
 }

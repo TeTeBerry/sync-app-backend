@@ -6,7 +6,6 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const contractPackages = [
   'travel-plan-contracts',
   'travel-guide-contracts',
-  'partner-contracts',
   'itinerary-contracts',
   'festival-plan-contracts',
   'activity-contracts',

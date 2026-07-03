@@ -65,7 +65,6 @@ export class ActivityLookupService implements OnApplicationBootstrap {
         activity.legacyId,
         publishedLegacyIds.has(activity.legacyId),
       ),
-      recruitPostCount: 0,
     }));
 
     this.applyRecords(records);

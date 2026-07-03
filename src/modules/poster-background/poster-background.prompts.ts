@@ -1,7 +1,7 @@
 export type PosterBackgroundKind =
   | 'set_vote'
   | 'personality_test'
-  | 'recruit_post'
+  | 'trip_plan'
   | 'countdown';
 
 const PERSONALITY_PROMPT_HINTS: Record<string, string> = {
@@ -31,8 +31,8 @@ export function buildPosterBackgroundPrompt(input: {
     );
   }
 
-  if (input.kind === 'recruit_post') {
-    return `${BASE_POSTER_STYLE}，公开组队招募氛围，霓虹舞台与人群剪影，紫粉色调，期待同行${eventHint}`.slice(
+  if (input.kind === 'trip_plan') {
+    return `${BASE_POSTER_STYLE}，出行行程规划氛围，霓虹舞台与旅途剪影，紫粉色调，期待同行${eventHint}`.slice(
       0,
       500,
     );
@@ -63,8 +63,8 @@ export function buildPosterBackgroundCacheKey(input: {
   if (input.kind === 'set_vote') {
     return `set_vote:${input.activityLegacyId ?? 0}`;
   }
-  if (input.kind === 'recruit_post') {
-    return `recruit_post:${input.activityLegacyId ?? 0}`;
+  if (input.kind === 'trip_plan') {
+    return `trip_plan:${input.activityLegacyId ?? 0}`;
   }
   if (input.kind === 'countdown') {
     return `countdown:${input.activityLegacyId ?? 0}`;

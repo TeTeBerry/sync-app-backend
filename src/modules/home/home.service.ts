@@ -76,8 +76,6 @@ export class HomeService {
     return {
       signupEvents,
       heat,
-      popularPosts: [],
-      myNextEventPostEngagement: null,
     };
   }
 }

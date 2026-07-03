@@ -22,10 +22,6 @@ export class UserGoalParamsDto implements UserGoalParams {
   notifyWechat?: boolean;
 
   @IsOptional()
-  @IsBoolean()
-  draftRecruitOnLineup?: boolean;
-
-  @IsOptional()
   @IsString()
   departureCity?: string;
 }

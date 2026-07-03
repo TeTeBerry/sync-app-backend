@@ -4,12 +4,12 @@ import {
 } from '../../../../src/modules/poster-background/poster-background.prompts';
 
 describe('poster-background.prompts', () => {
-  it('builds recruit_post prompt with activity name', () => {
+  it('builds trip_plan prompt with activity name', () => {
     const prompt = buildPosterBackgroundPrompt({
-      kind: 'recruit_post',
+      kind: 'trip_plan',
       activityName: 'EDC Korea',
     });
-    expect(prompt).toContain('公开组队招募');
+    expect(prompt).toContain('出行行程规划');
     expect(prompt).toContain('EDC Korea');
   });
 
@@ -25,10 +25,10 @@ describe('poster-background.prompts', () => {
   it('builds cache keys for new kinds', () => {
     expect(
       buildPosterBackgroundCacheKey({
-        kind: 'recruit_post',
+        kind: 'trip_plan',
         activityLegacyId: 8,
       }),
-    ).toBe('recruit_post:8');
+    ).toBe('trip_plan:8');
     expect(
       buildPosterBackgroundCacheKey({
         kind: 'countdown',

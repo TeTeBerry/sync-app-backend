@@ -77,7 +77,7 @@ async function main() {
     console.log(`✅ ${target.label}: upserted ${result.upserted}, removed ${result.removedDeprecated}`);
     for (const activity of result.activities) {
       console.log(
-        `   [${activity.legacyId}] attendees=${activity.attendees}, recruitPosts=${activity.recruitPostCount}`,
+        `   [${activity.legacyId}] attendees=${activity.attendees}`,
       );
     }
 
@@ -91,7 +91,7 @@ async function main() {
   if (!withItinerary) {
     console.log('Tip: add --with-itinerary to sync lineup sessions/performances too.');
   }
-  console.log('Restart backend (or wait for cache refresh) so API picks up recruitPostCount.');
+  console.log('Restart backend (or wait for cache refresh) so API picks up attendee counts.');
 }
 
 main().catch((error) => {
