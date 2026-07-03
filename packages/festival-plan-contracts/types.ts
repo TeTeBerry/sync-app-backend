@@ -6,8 +6,5 @@ export type FestivalPlanProgressDto = {
   hasItinerary: boolean;
   itineraryDayCount?: number;
   itinerarySelectedDjIds?: string[];
-  hasBuddyPost: boolean;
-  buddyPostId?: string;
-  /** Unread public replies on the user's recruit post for this activity. */
-  unreadReplyCount?: number;
+  hasTripPlan: boolean;
 };

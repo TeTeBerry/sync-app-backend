@@ -30,6 +30,7 @@ import {
 import type { SaveTravelPlanDto } from './dto/save-travel-plan.dto';
 import { UserGoalService } from '../goal/goal.service';
 import { hasMeaningfulTravelPlanData } from '../profile/utils/profile-activity-eligibility.util';
+import { TripPlanCollaborationService } from '../trip-plan/trip-plan-collaboration.service';
 
 @Injectable()
 export class TravelPlanService {
@@ -41,6 +42,7 @@ export class TravelPlanService {
     private readonly activityService: ActivityService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly goalService: UserGoalService,
+    private readonly tripPlanCollaboration: TripPlanCollaborationService,
   ) {}
 
   private normalizeActivityConfirmations(
@@ -161,20 +163,51 @@ export class TravelPlanService {
 
     const eventMeta = body.eventMeta?.trim().slice(0, 200);
 
-    const doc = await this.travelPlanModel.findOneAndUpdate(
-      { userId: actor.resolvedUserId, activityLegacyId },
-      {
-        userId: actor.resolvedUserId,
-        activityLegacyId,
-        ...(eventMeta ? { eventMeta } : {}),
-        nodes,
-        activityConfirmations,
-        activityPriceOverrides,
-        hiddenActivityNodeIds,
-        ...(splitCount != null ? { splitCount } : {}),
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+    const tripPlan = await this.tripPlanCollaboration.resolveForActivity(
+      actor,
+      activityLegacyId,
     );
+
+    let doc: UserTravelPlanDocument;
+    if (tripPlan) {
+      this.tripPlanCollaboration.assertMember(tripPlan, actor);
+      const tripPlanId = this.tripPlanCollaboration.tripPlanIdString(tripPlan);
+      doc = await this.travelPlanModel.findOneAndUpdate(
+        { tripPlanId },
+        {
+          tripPlanId,
+          userId: tripPlan.ownerId,
+          activityLegacyId,
+          lastEditedByUserId: actor.resolvedUserId,
+          ...(eventMeta ? { eventMeta } : {}),
+          nodes,
+          activityConfirmations,
+          activityPriceOverrides,
+          hiddenActivityNodeIds,
+          ...(splitCount != null ? { splitCount } : {}),
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
+      await this.tripPlanCollaboration.ensureTripPlanTravelPlanLink(
+        tripPlan,
+        doc,
+      );
+    } else {
+      doc = await this.travelPlanModel.findOneAndUpdate(
+        { userId: actor.resolvedUserId, activityLegacyId },
+        {
+          userId: actor.resolvedUserId,
+          activityLegacyId,
+          ...(eventMeta ? { eventMeta } : {}),
+          nodes,
+          activityConfirmations,
+          activityPriceOverrides,
+          hiddenActivityNodeIds,
+          ...(splitCount != null ? { splitCount } : {}),
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
+    }
 
     const savedAt =
       (doc as { updatedAt?: Date }).updatedAt?.toISOString() ??
@@ -200,10 +233,23 @@ export class TravelPlanService {
   }
 
   async getSaved(activityLegacyId: number, actor: RequestActor) {
-    const doc = await this.travelPlanModel
-      .findOne({ userId: actor.resolvedUserId, activityLegacyId })
-      .lean()
-      .exec();
+    const tripPlan = await this.tripPlanCollaboration.resolveForActivity(
+      actor,
+      activityLegacyId,
+    );
+
+    let doc: (UserTravelPlan & { updatedAt?: Date }) | null = null;
+    if (tripPlan) {
+      this.tripPlanCollaboration.assertMember(tripPlan, actor);
+      const shared =
+        await this.tripPlanCollaboration.resolveSharedTravelPlanDoc(tripPlan);
+      doc = shared ? (shared.toObject() as UserTravelPlan) : null;
+    } else {
+      doc = await this.travelPlanModel
+        .findOne({ userId: actor.resolvedUserId, activityLegacyId })
+        .lean()
+        .exec();
+    }
 
     const activityConfirmations = this.normalizeActivityConfirmations(
       doc?.activityConfirmations,

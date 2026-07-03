@@ -19,6 +19,7 @@ import {
 } from '../../database/schemas/travel-guide-venue-cache.schema';
 import { ActivityModule } from '../activity/activity.module';
 import { UserGoalModule } from '../goal/goal.module';
+import { TripPlanModule } from '../trip-plan/trip-plan.module';
 import { WechatMiniModule } from '../auth/wechat-mini.module';
 import { UserModule } from '../user/user.module';
 import { AmapMapService } from './map/amap.service';
@@ -48,6 +49,7 @@ import { TravelQuoteEnrichmentService } from './travel-quote-enrichment.service'
   imports: [
     ActivityModule,
     UserGoalModule,
+    TripPlanModule,
     WechatMiniModule,
     UserModule,
     InfraLlmModule,

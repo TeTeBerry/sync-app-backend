@@ -76,6 +76,35 @@ const INDEX_SPECS = [
     key: { status: 1 },
     options: { name: 'dj_discogs_map_status', background: true },
   },
+  {
+    collection: 'user_travel_plans',
+    key: { tripPlanId: 1 },
+    options: {
+      name: 'user_travel_plan_trip_plan',
+      unique: true,
+      sparse: true,
+      background: true,
+    },
+  },
+  {
+    collection: 'user_itineraries',
+    key: { tripPlanId: 1 },
+    options: {
+      name: 'user_itinerary_trip_plan',
+      unique: true,
+      sparse: true,
+      background: true,
+    },
+  },
+  {
+    collection: 'trip_member_overlays',
+    key: { tripPlanId: 1, userId: 1 },
+    options: {
+      name: 'trip_member_overlay_plan_user',
+      unique: true,
+      background: true,
+    },
+  },
 ];
 
 async function main() {

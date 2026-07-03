@@ -47,6 +47,10 @@ export class TravelGuideGenerationJob {
 
   @Prop({ required: true, index: true })
   expiresAt!: Date;
+
+  /** TripPlan this guide belongs to (collab mode). */
+  @Prop({ index: true, sparse: true })
+  tripPlanId?: string;
 }
 
 export type TravelGuideGenerationJobDocument =

@@ -168,6 +168,21 @@ export class TripPlanService {
     return toDto(doc);
   }
 
+  async leave(tripId: string, actor: RequestActor): Promise<TripPlanDto> {
+    const doc = await this.model.findById(tripId).exec();
+    if (!doc) throw new NotFoundException('行程不存在');
+    if (doc.ownerId === actor.resolvedUserId) {
+      throw new ForbiddenException('创建者不能退出协作，请删除行程或移除成员');
+    }
+    if (!doc.memberIds.includes(actor.resolvedUserId)) {
+      throw new ForbiddenException('无权限访问该行程');
+    }
+
+    doc.memberIds = doc.memberIds.filter((id) => id !== actor.resolvedUserId);
+    await doc.save();
+    return toDto(doc);
+  }
+
   async delete(tripId: string, actor: RequestActor): Promise<void> {
     const doc = await this.model.findById(tripId).exec();
     if (!doc) throw new NotFoundException('行程不存在');

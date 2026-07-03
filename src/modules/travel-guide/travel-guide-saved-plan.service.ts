@@ -17,6 +17,7 @@ import { resolveTravelGuideBudgetTier } from './domain/parse-activity-days.util'
 import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cache.service';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { UserGoalService } from '../goal/goal.service';
+import { TripPlanCollaborationService } from '../trip-plan/trip-plan-collaboration.service';
 
 export type TravelGuideSavedPlanView = TravelGuidePlanReadResult;
 
@@ -30,6 +31,7 @@ export class TravelGuideSavedPlanService {
     config: ConfigService,
     private readonly bffCacheInvalidation: BffReadCacheInvalidationService,
     private readonly goalService: UserGoalService,
+    private readonly tripPlanCollaboration: TripPlanCollaborationService,
   ) {
     this.ttlSec =
       config.get<number>('travelGuide.savedPlanTtlSec') ?? 2_592_000;
@@ -72,6 +74,11 @@ export class TravelGuideSavedPlanService {
 
     if (actor) {
       await this.goalService.subscribeOnEngagement(actor, activityLegacyId);
+      await this.tripPlanCollaboration.linkGuideForActivity(
+        actor,
+        activityLegacyId,
+        id,
+      );
     }
   }
 

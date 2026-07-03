@@ -9,6 +9,7 @@ import { TravelGuideBudgetTierService } from './travel-guide-budget-tier.service
 import { TravelGuideGenerationJobService } from './travel-guide-generation-job.service';
 import { TravelGuideQuoteRefreshService } from './travel-guide-quote-refresh.service';
 import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
+import { TripPlanCollaborationService } from '../trip-plan/trip-plan-collaboration.service';
 
 @Controller('travel-guide')
 export class TravelGuideGlobalController {
@@ -18,6 +19,7 @@ export class TravelGuideGlobalController {
     private readonly budgetTierService: TravelGuideBudgetTierService,
     private readonly quoteRefreshService: TravelGuideQuoteRefreshService,
     private readonly publicRateLimit: PublicApiRateLimitService,
+    private readonly tripPlanCollaboration: TripPlanCollaborationService,
   ) {}
 
   @Get('generation-jobs/:jobId')
@@ -31,8 +33,13 @@ export class TravelGuideGlobalController {
   /** 分享冷启动只读拉取；guideId 即访问凭证。不存在时返回 null 避免控制台 404。 */
   @Public()
   @Get('plans/:guideId')
-  async getSavedPlan(@Param('guideId') guideId: string, @Req() req: Request) {
+  async getSavedPlan(
+    @Param('guideId') guideId: string,
+    @Req() req: Request,
+    @CurrentActor() actor: RequestActor,
+  ) {
     await this.publicRateLimit.assertAllowedAsync('travel_guide_plan', req);
+    await this.tripPlanCollaboration.assertGuideAccess(guideId, actor);
 
     const saved = await this.savedPlanService.findByGuideId(guideId);
     if (!saved) {

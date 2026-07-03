@@ -34,6 +34,9 @@
     "db:reset": "node scripts/reset-test-data.mjs",
     "db:sync-catalog": "node scripts/sync-activity-catalog.mjs",
     "db:sync-indexes": "node scripts/sync-mongo-indexes.mjs",
+    "db:migrate-trip-plans": "node scripts/migrate-trip-plans.cjs",
+    "db:migrate-trip-plan-ownership": "node scripts/migrate-trip-plan-ownership.cjs",
+    "db:migrate-trip-plan-ownership:dry-run": "node scripts/migrate-trip-plan-ownership.cjs --dry-run",
     "db:sync-catalog:all": "node scripts/sync-activity-catalog-all.mjs",
     "db:clean-dirty": "node scripts/clean-dirty-data.mjs",
     "db:clean-dirty:dry-run": "node scripts/clean-dirty-data.mjs --dry-run",
@@ -139,7 +142,6 @@
     "@nestjs/mongoose": "^10.1.0",
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/schedule": "^4.1.2",
-
     "@sync/activity-contracts": "*",
     "@sync/festival-plan-contracts": "*",
     "@sync/itinerary-contracts": "*",

@@ -1,5 +1,6 @@
 import { TravelPlanService } from '@src/modules/travel-plan/travel-plan.service';
 import type { RequestActor } from '@src/common/auth/request-actor.types';
+import { TripPlanCollaborationService } from '@src/modules/trip-plan/trip-plan-collaboration.service';
 
 describe('TravelPlanService', () => {
   const actor = {
@@ -7,10 +8,31 @@ describe('TravelPlanService', () => {
     clientUserId: 'user-1',
   } as RequestActor;
 
+  function createCollaboration(overrides?: {
+    tripPlan?: Record<string, unknown> | null;
+    sharedDoc?: Record<string, unknown> | null;
+  }) {
+    const tripPlan = overrides?.tripPlan ?? null;
+    return {
+      resolveForActivity: jest.fn().mockResolvedValue(tripPlan),
+      assertMember: jest.fn(),
+      tripPlanIdString: jest.fn().mockReturnValue('trip-1'),
+      ensureTripPlanTravelPlanLink: jest.fn().mockResolvedValue(undefined),
+      resolveSharedTravelPlanDoc: jest
+        .fn()
+        .mockResolvedValue(
+          overrides?.sharedDoc
+            ? { toObject: () => overrides.sharedDoc, ...overrides.sharedDoc }
+            : null,
+        ),
+    } as unknown as TripPlanCollaborationService;
+  }
+
   function createService(overrides?: {
     travelDoc?: Record<string, unknown> | null;
     sessions?: unknown[];
     activity?: { name: string; date: string; location: string } | null;
+    collaboration?: TripPlanCollaborationService;
   }) {
     const travelPlanModel = {
       findOne: jest.fn().mockReturnValue({
@@ -47,6 +69,8 @@ describe('TravelPlanService', () => {
       sessionModel as never,
       activityService as never,
       wechatContentSecurity as never,
+      { subscribeOnEngagement: jest.fn() } as never,
+      overrides?.collaboration ?? createCollaboration(),
     );
 
     return { service, travelPlanModel, activityService };
@@ -131,5 +155,47 @@ describe('TravelPlanService', () => {
       }),
       expect.any(Object),
     );
+  });
+
+  it('save uses tripPlanId when collaboration context exists', async () => {
+    const collaboration = createCollaboration({
+      tripPlan: {
+        ownerId: 'owner-1',
+        memberIds: ['owner-1', 'user-1'],
+      },
+    });
+    const { service, travelPlanModel } = createService({ collaboration });
+    travelPlanModel.findOneAndUpdate.mockReturnValue({
+      updatedAt: new Date('2026-03-02'),
+    });
+
+    await service.save(
+      4,
+      {
+        nodes: [
+          {
+            id: 'user-flight-1',
+            category: 'flight',
+            startDate: '2026-03-14',
+            endDate: '2026-03-14',
+            title: 'Flight',
+            subtitle: 'BKK',
+            confirmed: true,
+          },
+        ],
+      },
+      actor,
+    );
+
+    expect(travelPlanModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { tripPlanId: 'trip-1' },
+      expect.objectContaining({
+        tripPlanId: 'trip-1',
+        userId: 'owner-1',
+        lastEditedByUserId: 'user-1',
+      }),
+      expect.any(Object),
+    );
+    expect(collaboration.ensureTripPlanTravelPlanLink).toHaveBeenCalled();
   });
 });

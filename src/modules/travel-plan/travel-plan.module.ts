@@ -16,6 +16,7 @@ import { InfraLlmModule } from '../../infra/llm/llm.module';
 import { ActivityModule } from '../activity/activity.module';
 import { UserGoalModule } from '../goal/goal.module';
 import { AuthModule } from '../auth/auth.module';
+import { TripPlanModule } from '../trip-plan/trip-plan.module';
 import { TravelPlanController } from './travel-plan.controller';
 import { TravelPlanReceiptRecognizeJobService } from './travel-plan-receipt-recognize-job.service';
 import { TravelPlanReceiptRecognizeService } from './travel-plan-receipt-recognize.service';
@@ -27,6 +28,7 @@ import { TravelPlanService } from './travel-plan.service';
     ActivityModule,
     UserGoalModule,
     AuthModule,
+    TripPlanModule,
     MongooseModule.forFeature([
       { name: UserTravelPlan.name, schema: UserTravelPlanSchema },
       { name: FestivalSession.name, schema: FestivalSessionSchema },

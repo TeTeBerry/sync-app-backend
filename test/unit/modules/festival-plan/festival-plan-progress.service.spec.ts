@@ -2,33 +2,21 @@ import { toRequestActor } from '@src/common/auth/actor-query.util';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { TravelGuideGenerationJob } from '@src/database/schemas/travel-guide-generation-job.schema';
+import { UserItinerary } from '@src/database/schemas/user-itinerary.schema';
 import { FestivalPlanProgressService } from '@src/modules/festival-plan/festival-plan-progress.service';
-import { ItineraryService } from '@src/modules/itinerary/itinerary.service';
-import { NotificationService } from '@src/modules/notification/notification.service';
-import { PostQueryService } from '@src/modules/partner/application/post-query.service';
-import { TravelGuideSavedPlanService } from '@src/modules/travel-guide/travel-guide-saved-plan.service';
-import { FestivalPlanProgressCacheService } from '@src/infra/cache/bff-read-cache.service';
+import { TripPlanCollaborationService } from '@src/modules/trip-plan/trip-plan-collaboration.service';
 
 describe('FestivalPlanProgressService', () => {
   const actor = toRequestActor('user-1', 'Berry');
   const travelGuideJobModel = {
     findOne: jest.fn(),
   };
-  const savedPlanService = {
-    findLatestByOwnerAndActivity: jest.fn(),
+  const itineraryModel = {
+    findOne: jest.fn(),
   };
-  const itineraryService = {
-    getSaved: jest.fn(),
-  };
-  const postQueryService = {
-    findOwnerActivePostForActivity: jest.fn(),
-  };
-  const notificationService = {
-    countUnreadPostEngagement: jest.fn(),
-  };
-  const festivalPlanCache = {
-    get: jest.fn().mockResolvedValue(null),
-    set: jest.fn().mockResolvedValue(undefined),
+  const tripPlanCollaboration = {
+    resolveForActivity: jest.fn(),
+    resolveSharedItineraryDoc: jest.fn(),
   };
 
   let service: FestivalPlanProgressService;
@@ -36,28 +24,26 @@ describe('FestivalPlanProgressService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    savedPlanService.findLatestByOwnerAndActivity.mockResolvedValue({
-      guideId: 'guide-saved-1',
-    });
     travelGuideJobModel.findOne.mockReturnValue({
-      sort: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({ jobId: 'guide-job-1' }),
+        }),
+      }),
+    });
+    itineraryModel.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
         lean: jest.fn().mockReturnValue({
           exec: jest.fn().mockResolvedValue({
-            jobId: 'guide-job-1',
-            requestParams: { guideId: 'guide-from-job' },
+            days: [{ id: 'd1', label: 'Day 1', items: [] }],
           }),
         }),
       }),
     });
-    itineraryService.getSaved.mockResolvedValue({
-      saved: true,
-      selectedDjIds: ['dj-1'],
-      days: [{ id: 'd1', label: 'Day 1', items: [] }],
+    tripPlanCollaboration.resolveForActivity.mockResolvedValue({
+      _id: 'trip-1',
     });
-    postQueryService.findOwnerActivePostForActivity.mockResolvedValue({
-      id: 'post-1',
-    });
-    notificationService.countUnreadPostEngagement.mockResolvedValue(2);
+    tripPlanCollaboration.resolveSharedItineraryDoc.mockResolvedValue(null);
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -66,13 +52,13 @@ describe('FestivalPlanProgressService', () => {
           provide: getModelToken(TravelGuideGenerationJob.name),
           useValue: travelGuideJobModel,
         },
-        { provide: TravelGuideSavedPlanService, useValue: savedPlanService },
-        { provide: ItineraryService, useValue: itineraryService },
-        { provide: PostQueryService, useValue: postQueryService },
-        { provide: NotificationService, useValue: notificationService },
         {
-          provide: FestivalPlanProgressCacheService,
-          useValue: festivalPlanCache,
+          provide: getModelToken(UserItinerary.name),
+          useValue: itineraryModel,
+        },
+        {
+          provide: TripPlanCollaborationService,
+          useValue: tripPlanCollaboration,
         },
       ],
     }).compile();
@@ -80,46 +66,36 @@ describe('FestivalPlanProgressService', () => {
     service = moduleRef.get(FestivalPlanProgressService);
   });
 
-  it('aggregates travel guide, itinerary, and buddy post', async () => {
+  it('aggregates travel guide, itinerary, and trip plan', async () => {
     const result = await service.getProgress(4, actor);
 
     expect(result).toEqual({
       activityLegacyId: 4,
       hasTravelGuide: true,
-      travelGuideId: 'guide-saved-1',
+      travelGuideId: 'guide-job-1',
       hasItinerary: true,
       itineraryDayCount: 1,
-      itinerarySelectedDjIds: ['dj-1'],
-      hasBuddyPost: true,
-      buddyPostId: 'post-1',
-      unreadReplyCount: 2,
+      itinerarySelectedDjIds: undefined,
+      hasTripPlan: true,
     });
-    expect(notificationService.countUnreadPostEngagement).toHaveBeenCalledWith(
-      'user-1',
-      ['post-1'],
-    );
-  });
-
-  it('falls back to guideId from completed job when saved plan is missing', async () => {
-    savedPlanService.findLatestByOwnerAndActivity.mockResolvedValue(null);
-
-    const result = await service.getProgress(4, actor);
-
-    expect(result.travelGuideId).toBe('guide-from-job');
-    expect(result.hasTravelGuide).toBe(true);
   });
 
   it('returns empty progress when user has no artifacts', async () => {
-    savedPlanService.findLatestByOwnerAndActivity.mockResolvedValue(null);
+    tripPlanCollaboration.resolveForActivity.mockResolvedValue(null);
     travelGuideJobModel.findOne.mockReturnValue({
-      sort: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
         lean: jest.fn().mockReturnValue({
           exec: jest.fn().mockResolvedValue(null),
         }),
       }),
     });
-    itineraryService.getSaved.mockResolvedValue({ saved: false });
-    postQueryService.findOwnerActivePostForActivity.mockResolvedValue(null);
+    itineraryModel.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue(null),
+        }),
+      }),
+    });
 
     const result = await service.getProgress(7, actor);
 
@@ -128,19 +104,9 @@ describe('FestivalPlanProgressService', () => {
       hasTravelGuide: false,
       travelGuideId: undefined,
       hasItinerary: false,
-      itineraryDayCount: undefined,
+      itineraryDayCount: 0,
       itinerarySelectedDjIds: undefined,
-      hasBuddyPost: false,
-      buddyPostId: undefined,
-      unreadReplyCount: undefined,
+      hasTripPlan: false,
     });
-  });
-
-  it('omits unreadReplyCount when there are no unread replies', async () => {
-    notificationService.countUnreadPostEngagement.mockResolvedValue(0);
-
-    const result = await service.getProgress(4, actor);
-
-    expect(result.unreadReplyCount).toBeUndefined();
   });
 });

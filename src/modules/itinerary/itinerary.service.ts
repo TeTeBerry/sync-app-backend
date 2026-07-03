@@ -9,16 +9,17 @@ import type { RequestActor } from '../../common/auth/request-actor.types';
 import {
   UserItinerary,
   UserItineraryDocument,
+  type ItineraryDay,
 } from '../../database/schemas/user-itinerary.schema';
 import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
 import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cache.service';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import { UserGoalService } from '../goal/goal.service';
-import type { ItineraryDay } from '../../database/schemas/user-itinerary.schema';
 import type { SaveItineraryDto } from './dto/save-itinerary.dto';
 import type { GenerateItineraryDto } from './dto/generate-itinerary.dto';
 import { normalizeItineraryDaysForSave } from '@sync/itinerary-contracts';
+import { TripPlanCollaborationService } from '../trip-plan/trip-plan-collaboration.service';
 
 @Injectable()
 export class ItineraryService {
@@ -30,6 +31,7 @@ export class ItineraryService {
     private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly bffCacheInvalidation: BffReadCacheInvalidationService,
     private readonly goalService: UserGoalService,
+    private readonly tripPlanCollaboration: TripPlanCollaborationService,
   ) {}
 
   getSchedule(
@@ -96,17 +98,45 @@ export class ItineraryService {
       })),
     }));
 
-    const doc = await this.itineraryModel.findOneAndUpdate(
-      { userId: actor.resolvedUserId, activityLegacyId },
-      {
-        userId: actor.resolvedUserId,
-        activityLegacyId,
-        selectedDjIds: body.selectedDjIds ?? [],
-        eventMeta: body.eventMeta,
-        days,
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+    const tripPlan = await this.tripPlanCollaboration.resolveForActivity(
+      actor,
+      activityLegacyId,
     );
+
+    let doc: UserItineraryDocument;
+    if (tripPlan) {
+      this.tripPlanCollaboration.assertMember(tripPlan, actor);
+      const tripPlanId = this.tripPlanCollaboration.tripPlanIdString(tripPlan);
+      doc = await this.itineraryModel.findOneAndUpdate(
+        { tripPlanId },
+        {
+          tripPlanId,
+          userId: tripPlan.ownerId,
+          activityLegacyId,
+          lastEditedByUserId: actor.resolvedUserId,
+          selectedDjIds: body.selectedDjIds ?? [],
+          eventMeta: body.eventMeta,
+          days,
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
+      await this.tripPlanCollaboration.ensureTripPlanItineraryLink(
+        tripPlan,
+        doc,
+      );
+    } else {
+      doc = await this.itineraryModel.findOneAndUpdate(
+        { userId: actor.resolvedUserId, activityLegacyId },
+        {
+          userId: actor.resolvedUserId,
+          activityLegacyId,
+          selectedDjIds: body.selectedDjIds ?? [],
+          eventMeta: body.eventMeta,
+          days,
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
+    }
 
     const savedAt =
       (doc as { updatedAt?: Date }).updatedAt?.toISOString() ??
@@ -129,10 +159,23 @@ export class ItineraryService {
   }
 
   async getSaved(activityLegacyId: number, actor: RequestActor) {
-    const doc = await this.itineraryModel
-      .findOne({ userId: actor.resolvedUserId, activityLegacyId })
-      .lean()
-      .exec();
+    const tripPlan = await this.tripPlanCollaboration.resolveForActivity(
+      actor,
+      activityLegacyId,
+    );
+
+    let doc: UserItinerary | null = null;
+    if (tripPlan) {
+      this.tripPlanCollaboration.assertMember(tripPlan, actor);
+      const shared =
+        await this.tripPlanCollaboration.resolveSharedItineraryDoc(tripPlan);
+      doc = shared ? (shared.toObject() as UserItinerary) : null;
+    } else {
+      doc = await this.itineraryModel
+        .findOne({ userId: actor.resolvedUserId, activityLegacyId })
+        .lean()
+        .exec();
+    }
 
     if (!doc) {
       return { saved: false as const };

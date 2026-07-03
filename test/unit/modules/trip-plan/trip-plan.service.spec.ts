@@ -73,4 +73,22 @@ describe('TripPlanService member management', () => {
       service.removeMember('trip-1', owner.resolvedUserId, owner as never),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
+
+  it('allows a non-owner member to leave', async () => {
+    const doc = createDoc();
+    const { service } = createService(doc);
+
+    const result = await service.leave('trip-1', member as never);
+
+    expect(doc.memberIds).toEqual([owner.resolvedUserId]);
+    expect(result.memberIds).toEqual([owner.resolvedUserId]);
+  });
+
+  it('blocks owner from leaving', async () => {
+    const { service } = createService();
+
+    await expect(
+      service.leave('trip-1', owner as never),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
 });

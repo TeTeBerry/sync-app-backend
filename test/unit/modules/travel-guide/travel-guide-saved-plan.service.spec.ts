@@ -5,6 +5,8 @@ import { TravelGuideSavedPlanService } from '@src/modules/travel-guide/travel-gu
 import { TravelGuideSavedPlan } from '@src/database/schemas/travel-guide-saved-plan.schema';
 import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 import { BffReadCacheInvalidationService } from '@src/infra/cache/bff-read-cache.service';
+import { UserGoalService } from '@src/modules/goal/goal.service';
+import { TripPlanCollaborationService } from '@src/modules/trip-plan/trip-plan-collaboration.service';
 
 const plan: TravelGuidePlan = {
   activityName: 'Storm',
@@ -53,6 +55,14 @@ describe('TravelGuideSavedPlanService', () => {
         {
           provide: BffReadCacheInvalidationService,
           useValue: { invalidateFestivalPlanForUser: jest.fn() },
+        },
+        {
+          provide: UserGoalService,
+          useValue: { subscribeOnEngagement: jest.fn() },
+        },
+        {
+          provide: TripPlanCollaborationService,
+          useValue: { linkGuideForActivity: jest.fn() },
         },
       ],
     }).compile();

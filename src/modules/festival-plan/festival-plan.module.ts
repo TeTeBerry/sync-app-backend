@@ -10,9 +10,11 @@ import {
 } from '../../database/schemas/user-itinerary.schema';
 import { FestivalPlanProgressController } from './festival-plan-progress.controller';
 import { FestivalPlanProgressService } from './festival-plan-progress.service';
+import { TripPlanModule } from '../trip-plan/trip-plan.module';
 
 @Module({
   imports: [
+    TripPlanModule,
     MongooseModule.forFeature([
       {
         name: TravelGuideGenerationJob.name,

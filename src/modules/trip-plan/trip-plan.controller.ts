@@ -71,6 +71,11 @@ export class TripPlanController {
     return this.service.removeMember(id, userId, actor);
   }
 
+  @Post(':id/leave')
+  leave(@Param('id') id: string, @CurrentActor() actor: RequestActor) {
+    return this.service.leave(id, actor);
+  }
+
   @Post('join')
   join(@Body() dto: JoinTripPlanDto, @CurrentActor() actor: RequestActor) {
     return this.service.joinByToken(dto.shareToken, actor);

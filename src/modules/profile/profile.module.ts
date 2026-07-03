@@ -24,9 +24,14 @@ import {
   TravelGuideGenerationJobSchema,
 } from '../../database/schemas/travel-guide-generation-job.schema';
 import {
+  TripPlan,
+  TripPlanSchema,
+} from '../../database/schemas/trip-plan.schema';
+import {
   ArtistPerformance,
   ArtistPerformanceSchema,
 } from '../../database/schemas/artist-performance.schema';
+import { TripPlanModule } from '../trip-plan/trip-plan.module';
 import {
   UserArtistLike,
   UserArtistLikeSchema,
@@ -39,6 +44,7 @@ import { ProfileActivityEligibilityService } from './profile-activity-eligibilit
   imports: [
     ActivityLookupModule,
     UserModule,
+    TripPlanModule,
     MongooseModule.forFeature([
       { name: 'UserGoal', schema: UserGoalSchema },
       { name: ActivitySetVote.name, schema: ActivitySetVoteSchema },
@@ -49,6 +55,7 @@ import { ProfileActivityEligibilityService } from './profile-activity-eligibilit
         name: TravelGuideGenerationJob.name,
         schema: TravelGuideGenerationJobSchema,
       },
+      { name: TripPlan.name, schema: TripPlanSchema },
       { name: ArtistPerformance.name, schema: ArtistPerformanceSchema },
       { name: UserArtistLike.name, schema: UserArtistLikeSchema },
     ]),

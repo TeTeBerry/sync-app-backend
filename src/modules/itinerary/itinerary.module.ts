@@ -36,6 +36,7 @@ import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryCacheService } from './itinerary-cache.service';
 import { LineupCatalogModule } from './lineup-catalog.module';
 import { UserGoalModule } from '../goal/goal.module';
+import { TripPlanModule } from '../trip-plan/trip-plan.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { UserGoalModule } from '../goal/goal.module';
     CloudModule,
     DjModule,
     UserGoalModule,
+    TripPlanModule,
     MongooseModule.forFeature([
       { name: UserArtistLike.name, schema: UserArtistLikeSchema },
       { name: ArtistPerformance.name, schema: ArtistPerformanceSchema },
