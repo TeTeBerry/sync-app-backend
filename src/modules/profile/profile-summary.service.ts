@@ -1,14 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { ownerFilterFromActor } from '../../common/auth/actor-query.util';
 import {
   ACTIVITY_LOOKUP_PORT,
   type IActivityLookupPort,
 } from '../activity/ports/activity-lookup.port';
-import {
-  POST_READ_PORT,
-  type IPostReadPort,
-} from '../partner/ports/post-read.port';
 import { canViewPersonalInfo } from '../../common/utils/privacy.util';
 import { UserService } from '../user/user.service';
 import {
@@ -21,8 +19,17 @@ import {
   shouldInjectDevProfileStorm,
 } from './utils/dev-profile-storm-activity.util';
 import { ProfileActivityEligibilityService } from './profile-activity-eligibility.service';
+import {
+  ArtistPerformance,
+  type ArtistPerformanceDocument,
+} from '../../database/schemas/artist-performance.schema';
+import {
+  UserArtistLike,
+  type UserArtistLikeDocument,
+} from '../../database/schemas/user-artist-like.schema';
 import type {
   ProfileActivityItem,
+  ProfileFootprintItem,
   ProfileSummary,
 } from '@sync/profile-contracts';
 
@@ -35,10 +42,12 @@ export class ProfileSummaryService {
   constructor(
     @Inject(ACTIVITY_LOOKUP_PORT)
     private readonly activityLookup: IActivityLookupPort,
-    @Inject(POST_READ_PORT)
-    private readonly postRead: IPostReadPort,
     private readonly userService: UserService,
     private readonly activityEligibility: ProfileActivityEligibilityService,
+    @InjectModel(ArtistPerformance.name)
+    private readonly performanceModel: Model<ArtistPerformanceDocument>,
+    @InjectModel(UserArtistLike.name)
+    private readonly artistLikeModel: Model<UserArtistLikeDocument>,
   ) {}
 
   async getSummary(
@@ -51,10 +60,9 @@ export class ProfileSummaryService {
     const isOwner =
       !viewerId || !ownerExternalId || viewerId === ownerExternalId;
 
-    const [profile, eligibleLegacyIds, ownerPosts] = await Promise.all([
+    const [profile, eligibleLegacyIds] = await Promise.all([
       this.userService.resolveProfile(actor),
       this.activityEligibility.listEligibleActivityLegacyIds(actor),
-      this.postRead.listByOwner(actor),
     ]);
 
     const activityStats = await this.countActivityStats(eligibleLegacyIds);
@@ -63,8 +71,6 @@ export class ProfileSummaryService {
       (profile as { privacyLevel?: 'public' | 'friends' | 'private' })
         ?.privacyLevel ?? 'public';
     const canView = canViewPersonalInfo(privacyLevel, isOwner, false);
-
-    const posts = ownerPosts.length;
 
     return {
       name: profile?.name ?? '用户',
@@ -75,7 +81,7 @@ export class ProfileSummaryService {
       stats: {
         events: activityStats.total,
         ongoingEvents: activityStats.ongoing,
-        posts,
+        posts: 0,
       },
     };
   }
@@ -150,14 +156,52 @@ export class ProfileSummaryService {
     );
   }
 
-  listPosts(actor: RequestActor) {
-    return this.postRead.listByOwner(actor);
-  }
+  async listFootprints(actor: RequestActor): Promise<ProfileFootprintItem[]> {
+    const activities = await this.listActivities(actor);
+    // Only show attended activities as footprints (same as "已参加" in 我的活动)
+    const attended = activities.filter((item) => item.status === 'attended');
 
-  async listPostsPage(
-    actor: RequestActor,
-    options?: { limit?: number; cursor?: string },
-  ) {
-    return this.postRead.listByOwnerPage(actor, options);
+    if (attended.length === 0) {
+      return [];
+    }
+
+    const legacyIds = attended.map((item) => Number(item.activityLegacyId));
+
+    // Get user's liked artist IDs
+    const userId = actor.resolvedUserId;
+    const likes = userId
+      ? await this.artistLikeModel.find({ userId }).lean()
+      : [];
+    const likedArtistIds = likes.map((doc) => doc.artistId);
+
+    // Count liked artists per attended activity
+    let artistCountMap = new Map<number, number>();
+
+    if (likedArtistIds.length > 0) {
+      const artistCounts = await this.performanceModel.aggregate<{
+        _id: number;
+        count: number;
+      }>([
+        {
+          $match: {
+            activityLegacyId: { $in: legacyIds },
+            artistId: { $in: likedArtistIds },
+          },
+        },
+        {
+          $group: {
+            _id: '$activityLegacyId',
+            artists: { $addToSet: '$artistId' },
+          },
+        },
+        { $project: { _id: 1, count: { $size: '$artists' } } },
+      ]);
+      artistCountMap = new Map(artistCounts.map((r) => [r._id, r.count]));
+    }
+
+    return attended.map(({ status: _, ...rest }) => ({
+      ...rest,
+      artistCount: artistCountMap.get(Number(rest.activityLegacyId)) ?? 0,
+    }));
   }
 }

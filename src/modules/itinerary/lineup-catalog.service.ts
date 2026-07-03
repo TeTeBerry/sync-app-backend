@@ -301,7 +301,7 @@ export class LineupCatalogService implements OnApplicationBootstrap {
     if (
       remoteVersion &&
       remoteVersion === this.localVersion &&
-      this.rankedCache
+      this.rankedCache?.length
     ) {
       return;
     }
@@ -309,7 +309,7 @@ export class LineupCatalogService implements OnApplicationBootstrap {
     const payload = await this.jsonCache.getJson<RankedLineupCatalogPayload>(
       this.dataKey,
     );
-    if (payload?.items) {
+    if (payload?.items?.length) {
       this.rankedCache = payload.items;
       this.localVersion = remoteVersion ?? this.localVersion;
       return;

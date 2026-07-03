@@ -1,42 +1,27 @@
 import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import type { RequestActor } from '../../common/auth/request-actor.types';
-import type { RiskAssessment } from '../../ai/agents/agent.types';
+import { AccountRiskEvent } from '../../database/schemas/account-risk-event.schema';
+import { User } from '../../database/schemas/user.schema';
+import { ContentReport } from '../../database/schemas/content-report.schema';
 import {
-  AccountRiskEvent,
-  AccountRiskEventDocument,
-  AccountRiskEventSource,
-} from '../../database/schemas/account-risk-event.schema';
-import { User, UserDocument } from '../../database/schemas/user.schema';
-import {
-  ContentReport,
-  ContentReportDocument,
-} from '../../database/schemas/content-report.schema';
-import { Post, PostDocument } from '../../database/schemas/post.schema';
-import {
-  ACCOUNT_RISK_BAN_DAYS,
-  ACCOUNT_RISK_HIGH_SEVERITY_RESTRICT_COUNT,
-  ACCOUNT_RISK_REPORT_WINDOW_DAYS,
-  ACCOUNT_RISK_RESTRICT_DAYS,
-  ACCOUNT_RISK_SCALPER_BAN_COUNT,
-  ACCOUNT_RISK_SCALPER_HEAVY_RESTRICT_DAYS,
-  ACCOUNT_RISK_SCALPER_REPORT_BAN_COUNT,
-  ACCOUNT_RISK_SCALPER_REPORT_RESTRICT_COUNT,
-  ACCOUNT_RISK_SCALPER_RESTRICT_COUNT,
   ACCOUNT_RISK_VIOLATION_WINDOW_DAYS,
-  type AccountRiskStatus,
+  ACCOUNT_RISK_REPORT_WINDOW_DAYS,
+  ACCOUNT_RISK_SCALPER_BAN_COUNT,
+  ACCOUNT_RISK_SCALPER_REPORT_BAN_COUNT,
+  ACCOUNT_RISK_SCALPER_RESTRICT_COUNT,
+  ACCOUNT_RISK_SCALPER_REPORT_RESTRICT_COUNT,
+  ACCOUNT_RISK_HIGH_SEVERITY_RESTRICT_COUNT,
+  ACCOUNT_RISK_BAN_DAYS,
+  ACCOUNT_RISK_RESTRICT_DAYS,
+  ACCOUNT_RISK_SCALPER_HEAVY_RESTRICT_DAYS,
   shouldEscalateAccountRisk,
 } from './account-risk.policy';
 import type {
-  AccountRiskPublicStatus,
+  AccountRiskStatus,
   AccountRiskReasonCode,
 } from '@sync/profile-contracts';
-
-export type {
-  AccountRiskPublicStatus,
-  AccountRiskReasonCode,
-} from '@sync/profile-contracts';
+import type { RequestActor } from '../../common/auth/request-actor.types';
 
 const APPEAL_HINT =
   '如认为误判，可在「设置 → 申诉说明」查看流程并提交反馈，我们将在 1–3 个工作日内复核。';
@@ -59,28 +44,42 @@ function formatBlockDate(date: Date): string {
   });
 }
 
+export interface AccountRiskPublicStatus {
+  status: AccountRiskStatus;
+  postBlockedUntil?: string;
+  reasonCode?: AccountRiskReasonCode;
+  appealHint?: string;
+  message?: string;
+}
+
+export interface AccountRiskViolationInput {
+  violationType: string;
+  severity: string;
+  source: string;
+  reason?: string;
+  refId?: string;
+}
+
 @Injectable()
 export class AccountRiskService {
   private readonly logger = new Logger(AccountRiskService.name);
 
   constructor(
     @InjectModel(AccountRiskEvent.name)
-    private readonly eventModel: Model<AccountRiskEventDocument>,
+    private readonly eventModel: Model<AccountRiskEvent>,
     @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>,
+    private readonly userModel: Model<User>,
     @InjectModel(ContentReport.name)
-    private readonly reportModel: Model<ContentReportDocument>,
-    @InjectModel(Post.name)
-    private readonly postModel: Model<PostDocument>,
+    private readonly reportModel: Model<ContentReport>,
   ) {}
 
-  resolveUserId(actor: RequestActor): string | undefined {
+  private resolveUserId(actor: RequestActor): string | undefined {
     return (
       actor.resolvedUserId?.trim() || actor.clientUserId?.trim() || undefined
     );
   }
 
-  isExempt(_actor: RequestActor): boolean {
+  private isExempt(_actor: RequestActor): boolean {
     return false;
   }
 
@@ -91,18 +90,22 @@ export class AccountRiskService {
     }
 
     await this.maybeClearExpiredRestriction(userId);
+
     const user = await this.userModel
       .findOne({ externalId: userId })
       .select('accountRiskStatus postRestrictedUntil')
       .lean();
 
-    const status = (user?.accountRiskStatus ?? 'normal') as AccountRiskStatus;
-    const until = user?.postRestrictedUntil;
+    const status: AccountRiskStatus | 'normal' =
+      user?.accountRiskStatus ?? 'normal';
+    const until = user?.postRestrictedUntil as Date | undefined;
+
     if (status === 'normal' || !until || until.getTime() <= Date.now()) {
       return { status: 'normal' };
     }
 
     const reasonCode = await this.resolveReasonCode(userId);
+
     return {
       status,
       postBlockedUntil: until.toISOString(),
@@ -115,7 +118,6 @@ export class AccountRiskService {
   async assertCanPublish(actor: RequestActor): Promise<void> {
     const status = await this.getPublicStatus(actor);
     if (status.status === 'normal') return;
-
     throw new ForbiddenException(
       status.message ?? '当前账号发帖/评论功能已受限，请稍后再试或联系客服。',
     );
@@ -123,11 +125,13 @@ export class AccountRiskService {
 
   async recordPublishRiskViolation(
     actor: RequestActor,
-    assessment: Pick<
-      RiskAssessment,
-      'publishable' | 'reason' | 'violationType' | 'severity'
-    >,
-    meta: { source: AccountRiskEventSource; refId?: string },
+    assessment: {
+      publishable: boolean;
+      violationType?: string;
+      severity?: string;
+      reason?: string;
+    },
+    meta: { source: string; refId?: string },
   ): Promise<void> {
     if (assessment.publishable) return;
     await this.recordViolation(actor, {
@@ -154,7 +158,6 @@ export class AccountRiskService {
   async recordScalperReportAgainstUser(targetUserId: string): Promise<void> {
     const userId = targetUserId.trim();
     if (!userId) return;
-
     await this.recordViolationForUserId(userId, {
       violationType: 'scalper',
       severity: 'medium',
@@ -163,73 +166,53 @@ export class AccountRiskService {
     });
   }
 
-  /** Whether the user currently cannot post/comment (used for report status). */
   async isUserPostRestricted(userId: string): Promise<boolean> {
     const id = userId?.trim();
     if (!id) return false;
 
     await this.maybeClearExpiredRestriction(id);
+
     const user = await this.userModel
       .findOne({ externalId: id })
       .select('accountRiskStatus postRestrictedUntil')
       .lean();
 
-    const status = (user?.accountRiskStatus ?? 'normal') as AccountRiskStatus;
-    const until = user?.postRestrictedUntil;
+    const status: AccountRiskStatus | 'normal' =
+      user?.accountRiskStatus ?? 'normal';
+    const until = user?.postRestrictedUntil as Date | undefined;
+
     if (status === 'normal' || !until) return false;
     return until.getTime() > Date.now();
   }
 
   async resolveReportTargetUserId(
-    targetType: 'post' | 'user' | 'comment',
+    targetType: string,
     targetId: string,
     targetUserId?: string,
   ): Promise<string | undefined> {
     const explicit = targetUserId?.trim();
     if (explicit) return explicit;
-
     if (targetType === 'user') {
       return targetId.trim() || undefined;
     }
-
-    if (targetType === 'post') {
-      const post = await this.postModel
-        .findById(targetId.trim())
-        .select('userId')
-        .lean();
-      return post?.userId?.trim() || undefined;
-    }
-
     return undefined;
   }
 
-  private async recordViolation(
+  async recordViolation(
     actor: RequestActor,
-    input: {
-      violationType: NonNullable<RiskAssessment['violationType']>;
-      severity: NonNullable<RiskAssessment['severity']>;
-      source: AccountRiskEventSource;
-      reason?: string;
-      refId?: string;
-    },
+    input: AccountRiskViolationInput,
   ): Promise<void> {
     const userId = this.resolveUserId(actor);
     if (!userId) return;
     await this.recordViolationForUserId(userId, input);
   }
 
-  private async recordViolationForUserId(
+  async recordViolationForUserId(
     userId: string,
-    input: {
-      violationType: NonNullable<RiskAssessment['violationType']>;
-      severity: NonNullable<RiskAssessment['severity']>;
-      source: AccountRiskEventSource;
-      reason?: string;
-      refId?: string;
-    },
+    input: AccountRiskViolationInput,
   ): Promise<void> {
     if (!userId) return;
-    if (!shouldEscalateAccountRisk(input.violationType)) return;
+    if (!shouldEscalateAccountRisk(input.violationType as any)) return;
 
     await this.eventModel.create({
       userId,
@@ -276,7 +259,7 @@ export class AccountRiskService {
         }),
       ]);
 
-    let nextStatus: AccountRiskStatus = 'normal';
+    let nextStatus: AccountRiskStatus | 'normal' = 'normal';
     let restrictDays = 0;
 
     if (
@@ -314,13 +297,13 @@ export class AccountRiskService {
       .lean();
 
     const proposedUntil = addDays(now, restrictDays);
-    const existingUntil = user?.postRestrictedUntil;
+    const existingUntil = user?.postRestrictedUntil as Date | undefined;
     const mergedUntil =
       existingUntil && existingUntil.getTime() > proposedUntil.getTime()
         ? existingUntil
         : proposedUntil;
 
-    const mergedStatus: AccountRiskStatus =
+    const mergedStatus =
       user?.accountRiskStatus === 'banned' || nextStatus === 'banned'
         ? 'banned'
         : nextStatus;
@@ -356,8 +339,9 @@ export class AccountRiskService {
       .findOne({ externalId: userId })
       .select('accountRiskStatus postRestrictedUntil')
       .lean();
+
     if (!user?.postRestrictedUntil) return;
-    if (user.postRestrictedUntil.getTime() > Date.now()) return;
+    if ((user.postRestrictedUntil as Date).getTime() > Date.now()) return;
 
     await this.userModel.updateOne(
       { externalId: userId },
@@ -415,9 +399,10 @@ export class AccountRiskService {
   private buildBlockMessage(
     status: AccountRiskStatus,
     until: Date,
-    reasonCode: AccountRiskReasonCode,
+    reasonCode?: AccountRiskReasonCode,
   ): string {
     const dateLabel = formatBlockDate(until);
+
     if (status === 'banned') {
       if (reasonCode === 'reports') {
         return `因收到多起黄牛/欺诈类举报，账号发帖与评论功能已暂停至 ${dateLabel}。`;

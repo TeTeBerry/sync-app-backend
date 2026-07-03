@@ -4,6 +4,7 @@ import {
   isLineupAvatarAssetKey,
   isLineupAvatarCloudFileId,
   isRemoteLineupAvatarUrl,
+  isStoredLineupAvatarRef,
   isUsableLineupAvatarUrl,
 } from '@src/modules/itinerary/utils/lineup-avatar-ref.util';
 
@@ -57,5 +58,21 @@ describe('lineup-avatar-ref.util', () => {
     expect(isLineupAvatarCloudFileId('cloud://other-env/avatar/x.jpg')).toBe(
       false,
     );
+  });
+
+  it('accepts stored CloudBase avatar refs but still rejects Discogs', () => {
+    const fileId = buildLineupAvatarCloudFileId(
+      envId,
+      'lineup-avatar/martin-garrix.jpg',
+      bucket,
+    );
+
+    expect(isStoredLineupAvatarRef('lineup-avatar/martin-garrix.jpg')).toBe(
+      true,
+    );
+    expect(isStoredLineupAvatarRef(fileId)).toBe(true);
+    expect(
+      isStoredLineupAvatarRef('https://i.discogs.com/example.jpg', 'discogs'),
+    ).toBe(false);
   });
 });

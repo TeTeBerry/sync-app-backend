@@ -16,9 +16,7 @@ import { HomeModule } from './modules/home/home.module';
 import { AgentCapabilitiesModule } from './modules/agent-capabilities/agent-capabilities.module';
 import { UserGoalModule } from './modules/goal/goal.module';
 import { AiModule } from './ai/ai.module';
-import { PostAgentAdaptersModule } from './ai/adapters/post-agent-adapters.module';
 import { NotificationModule } from './modules/notification/notification.module';
-import { PartnerModule } from './modules/partner/partner.module';
 import { ReportModule } from './modules/report/report.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
 import { ActivityExperienceModule } from './modules/activity-experience/activity-experience.module';
@@ -35,7 +33,7 @@ import { ActivityContextMiddleware } from './common/middleware/activity-context.
 import { RequestActorMiddleware } from './common/middleware/request-actor.middleware';
 import { PublicApiRateLimitModule } from './common/rate-limit/public-api-rate-limit.module';
 import { PublicEventModule } from './modules/public-event/public-event.module';
-import { ProactiveNudgeModule } from './modules/notification/proactive-nudge.module';
+import { TripPlanModule } from './modules/trip-plan/trip-plan.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -72,8 +70,6 @@ import { ScheduleModule } from '@nestjs/schedule';
     UserModule,
     ProfileModule,
     HomeModule,
-    PostAgentAdaptersModule,
-    PartnerModule,
     AgentCapabilitiesModule,
     AiModule,
     NotificationModule,
@@ -85,7 +81,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     MediaSecurityModule,
     HealthModule,
     UserGoalModule,
-    ProactiveNudgeModule,
+    TripPlanModule,
     ScheduleModule.forRoot(),
   ],
   providers: [RequestActorMiddleware, ActivityContextMiddleware],

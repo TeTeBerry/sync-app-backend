@@ -15,10 +15,8 @@ import type { RequestActor } from '../../common/auth/request-actor.types';
 import { PublicApiRateLimitService } from '../../common/rate-limit/public-api-rate-limit.service';
 import { AgentCapabilitiesService } from './agent-capabilities.service';
 import {
-  DraftRecruitPostDto,
   GenerateTravelGuideCapabilityDto,
   SearchFestivalsDto,
-  SearchPublicRecruitsDto,
   SubscribeLineupUpdatesDto,
 } from './dto/agent-capabilities.dto';
 
@@ -80,30 +78,6 @@ export class AgentCapabilitiesController {
       actor.resolvedUserId,
     );
     return this.service.getLineup({ activityLegacyId: legacyId });
-  }
-
-  @Public()
-  @Post('search-public-recruits')
-  async searchPublicRecruits(
-    @Body() body: SearchPublicRecruitsDto,
-    @CurrentActor() actor: RequestActor,
-    @Req() req: Request,
-  ) {
-    await this.publicRateLimit.assertAllowedAsync(
-      'post_ai_search',
-      req,
-      actor.resolvedUserId,
-    );
-    return this.service.searchPublicRecruits(body, actor);
-  }
-
-  @Post('draft-recruit-post')
-  async draftRecruitPost(
-    @Body() body: DraftRecruitPostDto,
-    @CurrentActor() actor: RequestActor,
-  ) {
-    requireActorUserId(actor);
-    return this.service.draftRecruitPost(body, actor);
   }
 
   @Post('subscribe-lineup-updates')

@@ -1,11 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type { RequestActor } from '../../common/auth/request-actor.types';
-import {
-  POST_READ_PORT,
-  type IPostReadPort,
-} from '../partner/ports/post-read.port';
 import {
   UserGoalKind,
   UserGoalStatus,
@@ -42,8 +38,6 @@ const HIDDEN_PROFILE_ACTIVITY_LEGACY_ID = 3;
 @Injectable()
 export class ProfileActivityEligibilityService {
   constructor(
-    @Inject(POST_READ_PORT)
-    private readonly postRead: IPostReadPort,
     @InjectModel('UserGoal')
     private readonly goalModel: Model<UserGoalDocument>,
     @InjectModel(ActivitySetVote.name)
@@ -68,14 +62,12 @@ export class ProfileActivityEligibilityService {
       subscribedIds,
       setVoteIds,
       itineraryIds,
-      postIds,
       travelGuideIds,
       travelPlanIds,
     ] = await Promise.all([
       this.listSubscribedActivityIds(userId),
       this.listSetVoteActivityIds(userId),
       this.listItineraryActivityIds(userId),
-      this.listPostActivityIds(actor),
       this.listTravelGuideActivityIds(userId),
       this.listTravelPlanActivityIds(userId),
     ]);
@@ -84,7 +76,7 @@ export class ProfileActivityEligibilityService {
       subscribedIds,
       setVoteIds,
       itineraryIds,
-      postIds,
+      [],
       travelGuideIds,
       travelPlanIds,
     ).filter((id) => id !== HIDDEN_PROFILE_ACTIVITY_LEGACY_ID);
@@ -124,22 +116,6 @@ export class ProfileActivityEligibilityService {
     return docs
       .filter((doc) => hasMeaningfulItineraryData(doc.days))
       .map((doc) => doc.activityLegacyId);
-  }
-
-  private async listPostActivityIds(actor: RequestActor): Promise<number[]> {
-    const posts = await this.postRead.listByOwner(actor);
-    const ids = new Set<number>();
-    for (const post of posts) {
-      const activityLegacyId = (post as { activityLegacyId?: number })
-        .activityLegacyId;
-      if (
-        typeof activityLegacyId === 'number' &&
-        Number.isFinite(activityLegacyId)
-      ) {
-        ids.add(activityLegacyId);
-      }
-    }
-    return [...ids];
   }
 
   private async listTravelGuideActivityIds(userId: string): Promise<number[]> {

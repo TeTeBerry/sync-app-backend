@@ -1,6 +1,7 @@
 export type {
   ActivityCatalogType,
   ActivityRegion,
+  ArtistFavoriteToggleResponse,
   BackendActivity,
   CatalogLineupArtist,
   CatalogLineupArtistDetail,
@@ -8,6 +9,7 @@ export type {
   CatalogLineupArtistNextActivity,
   SetVoteLeaderboardEntry,
   SetVotePick,
+  UserArtistFavoritesResponse,
 } from './types';
 
 export type {

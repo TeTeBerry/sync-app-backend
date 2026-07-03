@@ -29,3 +29,14 @@ export interface ProfileActivityItem {
   status: 'registered' | 'attended';
   activityLegacyId: string;
 }
+
+export interface ProfileFootprintItem {
+  id: string;
+  title: string;
+  date: string;
+  location: string;
+  image: string;
+  activityLegacyId: string;
+  /** Number of unique artists in this activity's lineup. */
+  artistCount?: number;
+}

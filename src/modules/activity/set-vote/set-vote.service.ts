@@ -6,26 +6,17 @@ import {
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
-import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { RedisService } from '../../../redis/redis.service';
-import type {
-  SetVoteLeaderboardEntry,
-  SetVoteLeaderboardResult,
-  SetVoteMeResult,
-  SetVotePick,
-  SetVoteSubmitResult,
-} from '@sync/activity-contracts';
-import {
-  ACTIVITY_LOOKUP_PORT,
-  type IActivityLookupPort,
-} from '../ports/activity-lookup.port';
+import { ACTIVITY_LOOKUP_PORT } from '../ports/activity-lookup.port';
+import type { IActivityLookupPort } from '../ports/activity-lookup.port';
 import { ItineraryScheduleService } from '../../itinerary/itinerary-schedule.service';
-import { UserProfileSyncService } from '../../user/user-profile-sync.service';
 import {
+  ISetVoteRepository,
   SET_VOTE_REPOSITORY,
-  type ISetVoteRepository,
 } from './interfaces/set-vote.repository.interface';
+import type { UpsertSetVoteInput } from './interfaces/set-vote.repository.interface';
 import { UserGoalService } from '../../goal/goal.service';
+import type { RequestActor } from '../../../common/auth/request-actor.types';
 
 const LEADERBOARD_LIMIT = 10;
 const REVOTE_WINDOW_SEC = 86_400;
@@ -49,8 +40,21 @@ function picksEqual(left: string[], right: string[]): boolean {
   return sortedLeft.every((value, index) => value === sortedRight[index]);
 }
 
-function utcDateKey(date = new Date()): string {
+function utcDateKey(date: Date = new Date()): string {
   return date.toISOString().slice(0, 10);
+}
+
+export interface ResolvedPick {
+  artistId: string;
+  artistName: string;
+  genre?: string;
+}
+
+export interface SetVoteLeaderboardEntry {
+  artistId: string;
+  artistName: string;
+  voteCount: number;
+  votePercent: number;
 }
 
 @Injectable()
@@ -61,7 +65,8 @@ export class SetVoteService {
     @Inject(ACTIVITY_LOOKUP_PORT)
     private readonly activityLookup: IActivityLookupPort,
     private readonly scheduleService: ItineraryScheduleService,
-    private readonly userProfileSync: UserProfileSyncService,
+    // Removed: userProfileSync (depends on deleted user-profile-sync module)
+    // private readonly userProfileSync: UserProfileSyncService,
     private readonly redis: RedisService,
     @Inject(forwardRef(() => UserGoalService))
     private readonly goalService: UserGoalService,
@@ -72,7 +77,13 @@ export class SetVoteService {
     artistIds: string[],
     actor: RequestActor,
     syncGenres?: boolean,
-  ): Promise<SetVoteSubmitResult> {
+  ): Promise<{
+    ok: boolean;
+    activityLegacyId: number;
+    picks: ResolvedPick[];
+    totalVoters: number;
+    revoteAllowedToday: boolean;
+  }> {
     const userId = actor.resolvedUserId?.trim();
     if (!userId) {
       throw new ForbiddenException('请先登录');
@@ -108,16 +119,13 @@ export class SetVoteService {
       userId,
       activityLegacyId,
       picks: normalizedIds,
-    });
+    } as UpsertSetVoteInput);
 
     await this.goalService.subscribeOnEngagement(actor, activityLegacyId);
 
-    if (syncGenres) {
-      const genres = resolvedPicks
-        .map((pick) => pick.genre?.trim())
-        .filter(Boolean) as string[];
-      this.userProfileSync.applySetVoteHints(actor, { genres });
-    }
+    // NOTE: applySetVoteHints removed — user-profile-sync module was deleted.
+    // To restore genre-sync, reintegrate UserProfileSyncService when available.
+    void syncGenres;
 
     const totalVoters = await this.repository.countVoters(activityLegacyId);
     const revoteAllowedToday = await this.isRevoteAllowedToday(
@@ -137,7 +145,12 @@ export class SetVoteService {
   async getLeaderboard(
     activityLegacyId: number,
     actor?: RequestActor,
-  ): Promise<SetVoteLeaderboardResult> {
+  ): Promise<{
+    activityLegacyId: number;
+    totalVoters: number;
+    entries: SetVoteLeaderboardEntry[];
+    myPicks?: ResolvedPick[];
+  }> {
     const activity = await this.activityLookup.findByLegacyId(activityLegacyId);
     if (!activity) {
       throw new NotFoundException(`Activity ${activityLegacyId} not found`);
@@ -166,7 +179,7 @@ export class SetVoteService {
     });
 
     const userId = actor?.resolvedUserId?.trim();
-    let myPicks: SetVotePick[] | undefined;
+    let myPicks: ResolvedPick[] | undefined;
     if (userId) {
       const ballot = await this.repository.findByUserAndActivity(
         userId,
@@ -188,7 +201,12 @@ export class SetVoteService {
   async getMe(
     activityLegacyId: number,
     actor: RequestActor,
-  ): Promise<SetVoteMeResult> {
+  ): Promise<{
+    activityLegacyId: number;
+    picks: ResolvedPick[];
+    updatedAt?: string;
+    revoteAllowedToday: boolean;
+  }> {
     const userId = actor.resolvedUserId?.trim();
     if (!userId) {
       throw new ForbiddenException('请先登录');
@@ -201,11 +219,11 @@ export class SetVoteService {
 
     const schedule = await this.scheduleService.getSchedule(activityLegacyId);
     const djById = new Map(schedule.djs.map((dj) => [dj.id, dj]));
+
     const ballot = await this.repository.findByUserAndActivity(
       userId,
       activityLegacyId,
     );
-
     const revoteAllowedToday = await this.isRevoteAllowedToday(
       userId,
       activityLegacyId,
@@ -225,9 +243,9 @@ export class SetVoteService {
 
   private resolvePicks(
     artistIds: string[],
-    djById: Map<string, { id: string; name: string; genre: string }>,
-  ): SetVotePick[] {
-    const picks: SetVotePick[] = [];
+    djById: Map<string, { id: string; name: string; genre?: string }>,
+  ): ResolvedPick[] {
+    const picks: ResolvedPick[] = [];
     for (const artistId of artistIds) {
       const dj = djById.get(artistId);
       if (!dj) {

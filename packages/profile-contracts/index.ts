@@ -10,5 +10,6 @@ export type {
 export type {
   AuthLoginResult,
   ProfileActivityItem,
+  ProfileFootprintItem,
   ProfileSummary,
 } from './responses';

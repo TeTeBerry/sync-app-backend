@@ -3,45 +3,26 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
-import type { RequestActor } from '../../common/auth/request-actor.types';
-import type {
-  AgentCapabilityActivitySnapshot,
-  AgentCapabilityUiDirective,
-  DraftRecruitPostInput,
-  DraftRecruitPostResult,
-  GenerateTravelGuideInput,
-  GenerateTravelGuideResult,
-  GetEventInput,
-  GetEventResult,
-  GetLineupInput,
-  GetLineupResult,
-  SearchFestivalsInput,
-  SearchFestivalsResult,
-  SearchPublicRecruitsInput,
-  SearchPublicRecruitsResult,
-  SubscribeLineupUpdatesInput,
-  SubscribeLineupUpdatesResult,
-} from '@sync/agent-capabilities-contracts';
 import { EventsKnowledgeSearchService } from '../activity/application/events-knowledge-search.service';
 import { ActivityLookupService } from '../activity/activity-lookup.service';
-import type { ActivityLookupRecord } from '../activity/ports/activity-lookup.port';
 import { LineupCatalogService } from '../itinerary/lineup-catalog.service';
-import { PostSearchService } from '../partner/application/post-search.service';
-import { PostService } from '../partner/post.service';
-import type { AiComposePostsDto } from '../partner/dto/ai-compose-posts.dto';
 import { UserGoalService } from '../goal/goal.service';
-import { UserGoalArtifactKind, UserGoalKind } from '../goal/goal.model';
+import { UserGoalKind } from '../goal/goal.model';
 import { TravelGuideGenerationJobService } from '../travel-guide/travel-guide-generation-job.service';
-import type { GenerateTravelGuideDto } from '../travel-guide/dto/generate-travel-guide.dto';
 import { artistIdFromLineupName } from '../itinerary/utils/lineup-artist-id.util';
+import type { RequestActor } from '../../common/auth/request-actor.types';
+import type { ActivityLookupRecord } from '../activity/ports/activity-lookup.port';
 
 const ARTIFACT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-const renderCard = (
-  component: AgentCapabilityUiDirective['component'],
-  reason?: string,
-): AgentCapabilityUiDirective => ({
+export interface UiDirective {
+  type: 'render-card';
+  component: string;
+  required: boolean;
+  reason?: string;
+}
+
+const renderCard = (component: string, reason?: string): UiDirective => ({
   type: 'render-card',
   component,
   required: true,
@@ -70,38 +51,40 @@ const FILTER_CITY_KEYWORDS = [
 
 function extractFilterLabels(query: string): string[] {
   const labels: string[] = [];
+
   const peopleMatch = query.match(/\d+\s*人/);
   if (peopleMatch) {
     labels.push(peopleMatch[0].replace(/\s/g, ''));
   }
+
   for (const city of FILTER_CITY_KEYWORDS) {
     if (query.includes(city)) {
       labels.push(city);
     }
   }
+
   const genreMatch = query.match(
     /techno|house|trance|bass|drum and bass|dnb|hardstyle|psytrance/i,
   );
   if (genreMatch) {
     labels.push(genreMatch[0]);
   }
+
   if (!labels.length && query.length > 0 && query.length <= 16) {
     labels.push(query);
   }
+
   return [...new Set(labels)].slice(0, 5);
 }
 
-function parseDraftComposeFields(
-  draft: Record<string, unknown>,
-): Pick<
-  AiComposePostsDto,
-  | 'dateStart'
-  | 'dateEnd'
-  | 'location'
-  | 'headcount'
-  | 'composeHints'
-  | 'regenerate'
-> {
+function parseDraftComposeFields(draft: Record<string, unknown>): {
+  dateStart: string;
+  dateEnd: string;
+  location: string;
+  headcount: string;
+  composeHints?: Record<string, unknown>;
+  regenerate: boolean;
+} {
   const dateStart =
     typeof draft.dateStart === 'string' ? draft.dateStart.trim() : '';
   const dateEnd = typeof draft.dateEnd === 'string' ? draft.dateEnd.trim() : '';
@@ -109,28 +92,36 @@ function parseDraftComposeFields(
     typeof draft.location === 'string' ? draft.location.trim() : '';
   const headcount =
     typeof draft.headcount === 'string' ? draft.headcount.trim() : '';
+
   if (!dateStart || !dateEnd || !location || !headcount) {
     throw new BadRequestException('请填写日期、出发地与人数');
   }
+
   const baseComposeHints =
     draft.composeHints &&
     typeof draft.composeHints === 'object' &&
     !Array.isArray(draft.composeHints)
-      ? (draft.composeHints as AiComposePostsDto['composeHints'])
+      ? (draft.composeHints as Record<string, unknown>)
       : undefined;
+
   const note = typeof draft.note === 'string' ? draft.note.trim() : '';
+
   const composeHints = note
     ? {
         ...(baseComposeHints ?? {}),
-        prefillSummary: baseComposeHints?.prefillSummary?.trim() || note,
+        prefillSummary:
+          (typeof baseComposeHints?.prefillSummary === 'string'
+            ? baseComposeHints.prefillSummary.trim()
+            : undefined) || note,
         favorGenres: [
           ...new Set([
-            ...(baseComposeHints?.favorGenres ?? []),
+            ...((baseComposeHints?.favorGenres as string[]) ?? []),
             ...extractGenreHints(note),
           ]),
         ],
       }
     : baseComposeHints;
+
   return {
     dateStart,
     dateEnd,
@@ -150,14 +141,23 @@ function extractGenreHints(text: string): string[] {
   ];
 }
 
-function parseTravelGuideFormData(
-  formData: Record<string, unknown>,
-): GenerateTravelGuideDto {
+function parseTravelGuideFormData(formData: Record<string, unknown>): {
+  guideId?: string;
+  departure: string;
+  departureCity?: string;
+  headcount: number;
+  budgetTier?: 'economy' | 'standard' | 'comfort';
+  selfDrive: boolean;
+  accommodationNights?: number;
+  note?: string;
+  forceRegenerate: boolean;
+} {
   const departure =
     typeof formData.departure === 'string' ? formData.departure.trim() : '';
   if (!departure) {
     throw new BadRequestException('请填写出发地');
   }
+
   const headcountRaw = formData.headcount;
   const headcount =
     typeof headcountRaw === 'number'
@@ -166,6 +166,7 @@ function parseTravelGuideFormData(
   if (!Number.isFinite(headcount) || headcount < 1) {
     throw new BadRequestException('请填写有效人数');
   }
+
   return {
     guideId:
       typeof formData.guideId === 'string' ? formData.guideId : undefined,
@@ -197,20 +198,21 @@ function parseTravelGuideFormData(
   };
 }
 
-type ActivitySnapshotSource = {
+export interface ActivitySnapshot {
   legacyId: number;
   name: string;
+  canonicalActivityName: string;
   date?: string;
   location?: string;
-  image?: string;
-  lineupPublished?: boolean;
+  heroImageUrl?: string;
   latitude?: number;
   longitude?: number;
-};
+  lineupPublished?: boolean;
+}
 
 function toActivitySnapshot(
-  activity?: ActivitySnapshotSource | null,
-): AgentCapabilityActivitySnapshot | undefined {
+  activity?: ActivityLookupRecord | null,
+): ActivitySnapshot | undefined {
   if (!activity) return undefined;
   return {
     legacyId: activity.legacyId,
@@ -225,14 +227,35 @@ function toActivitySnapshot(
   };
 }
 
+export interface SearchFestivalsInput {
+  query?: string;
+  homeCity?: string;
+}
+
+export interface SearchFestivalsEvent {
+  legacyId: number;
+  name: string;
+  date?: string;
+  location?: string;
+  heroImageUrl?: string;
+}
+
+export interface SearchFestivalsResult {
+  totalMatched: number;
+  events: SearchFestivalsEvent[];
+  canonicalActivityName?: string;
+  searchSnapshot: {
+    totalMatched: number;
+    events: SearchFestivalsEvent[];
+  };
+}
+
 @Injectable()
 export class AgentCapabilitiesService {
   constructor(
     private readonly eventsKnowledgeSearch: EventsKnowledgeSearchService,
     private readonly activityLookup: ActivityLookupService,
     private readonly lineupCatalog: LineupCatalogService,
-    private readonly postSearch: PostSearchService,
-    private readonly postService: PostService,
     private readonly goalService: UserGoalService,
     private readonly travelGuideJob: TravelGuideGenerationJobService,
   ) {}
@@ -242,20 +265,21 @@ export class AgentCapabilitiesService {
   ): Promise<SearchFestivalsResult> {
     const query = input.query?.trim() ?? '';
     const homeCity = input.homeCity?.trim();
+
     const searchInputParts = [
       query,
       homeCity ? `从${homeCity}出发` : '',
     ].filter(Boolean);
     const searchInput = searchInputParts.join(' ');
 
-    // When only homeCity is provided (query is empty), search by city or return all.
     if (!searchInput) {
       const all = await this.activityLookup.findAllBasics();
       const legacyIds = all
         .map((activity) => activity.legacyId)
         .filter((id): id is number => typeof id === 'number');
       const resolvedMap = await this.activityLookup.findByLegacyIds(legacyIds);
-      const events = all.map((activity) => {
+
+      const events: SearchFestivalsEvent[] = all.map((activity) => {
         const resolved = resolvedMap.get(activity.legacyId);
         return {
           legacyId: activity.legacyId,
@@ -265,6 +289,7 @@ export class AgentCapabilitiesService {
           heroImageUrl: resolved?.image ?? activity.image,
         };
       });
+
       return {
         totalMatched: events.length,
         events,
@@ -275,26 +300,28 @@ export class AgentCapabilitiesService {
       };
     }
 
-    // When query is empty but homeCity exists, pass city-only search.
-    // When query is non-empty, pass combined search.
     const result = await this.eventsKnowledgeSearch.search(searchInput);
     const legacyIds = result.matchedActivities
       .map((activity) => activity.legacyId)
       .filter((id): id is number => typeof id === 'number');
     const resolvedMap = await this.activityLookup.findByLegacyIds(legacyIds);
-    const events = result.matchedActivities.map((activity) => {
-      const resolved =
-        activity.legacyId != null
-          ? (resolvedMap.get(activity.legacyId) ?? activity)
-          : activity;
-      return {
-        legacyId: activity.legacyId,
-        name: resolved.name,
-        date: resolved.date,
-        location: resolved.location,
-        heroImageUrl: resolved.image,
-      };
-    });
+
+    const events: SearchFestivalsEvent[] = result.matchedActivities.map(
+      (activity) => {
+        const resolved =
+          activity.legacyId != null
+            ? (resolvedMap.get(activity.legacyId) ?? activity)
+            : activity;
+        return {
+          legacyId: activity.legacyId,
+          name: resolved.name,
+          date: resolved.date,
+          location: resolved.location,
+          heroImageUrl: resolved.image,
+        };
+      },
+    );
+
     return {
       totalMatched: events.length,
       events,
@@ -306,13 +333,27 @@ export class AgentCapabilitiesService {
     };
   }
 
-  async getEvent(input: GetEventInput): Promise<GetEventResult> {
+  async getEvent(input: { activityLegacyId: number }): Promise<{
+    legacyId: number;
+    name: string;
+    canonicalActivityName: string;
+    date?: string;
+    location?: string;
+    lineupPublished: boolean;
+    description?: string;
+    heroImageUrl?: string;
+    latitude?: number;
+    longitude?: number;
+    activity?: ActivitySnapshot;
+    uiDirectives: UiDirective[];
+  }> {
     const activity = await this.activityLookup.findByLegacyId(
       input.activityLegacyId,
     );
     if (!activity) {
       throw new NotFoundException('活动不存在');
     }
+
     return {
       legacyId: activity.legacyId,
       name: activity.name,
@@ -347,16 +388,31 @@ export class AgentCapabilitiesService {
     return map;
   }
 
-  async getLineup(input: GetLineupInput): Promise<GetLineupResult> {
+  async getLineup(input: { activityLegacyId: number }): Promise<{
+    activityLegacyId: number;
+    activityName?: string;
+    canonicalActivityName?: string;
+    activityDate?: string;
+    activityLocation?: string;
+    activity?: ActivitySnapshot;
+    artists: {
+      name: string;
+      imageUrl?: string;
+      artistId: string;
+    }[];
+    uiDirectives: UiDirective[];
+  }> {
     const [artists, thumbnailMap] = await Promise.all([
       this.lineupCatalog.listLineupArtistsForActivities([
         input.activityLegacyId,
       ]),
       this.resolveArtistThumbnailMap(),
     ]);
+
     const activity = await this.activityLookup.findByLegacyId(
       input.activityLegacyId,
     );
+
     return {
       activityLegacyId: input.activityLegacyId,
       activityName: activity?.name,
@@ -378,224 +434,18 @@ export class AgentCapabilitiesService {
     };
   }
 
-  async searchPublicRecruits(
-    input: SearchPublicRecruitsInput,
-    actor: RequestActor,
-  ): Promise<SearchPublicRecruitsResult> {
-    const query = input.query?.trim() ?? '';
-    if (!query) {
-      throw new BadRequestException('请输入检索需求');
-    }
-
-    let activityLegacyId = input.activityLegacyId;
-    let resolvedActivity: ActivityLookupRecord | null = null;
-
-    // When activityLegacyId is not provided, resolve it from the query
-    // by searching the festival catalog.  This lets the LLM call a single
-    // API instead of searchFestivals → extract ID → searchPublicRecruits.
-    if (
-      !activityLegacyId ||
-      !Number.isFinite(activityLegacyId) ||
-      activityLegacyId <= 0
-    ) {
-      const searchResult = await this.eventsKnowledgeSearch.search(query);
-      const best = searchResult.matchedActivities.find(
-        (a) => typeof a.legacyId === 'number' && a.legacyId > 0,
-      );
-      if (!best?.legacyId) {
-        throw new BadRequestException(
-          `未在 catalog 中找到与「${query}」匹配的活动，请先通过 searchFestivals 检索活动`,
-        );
-      }
-      activityLegacyId = best.legacyId;
-      resolvedActivity =
-        await this.activityLookup.findByLegacyId(activityLegacyId);
-      console.info(
-        `[agent-capabilities] searchPublicRecruits auto-resolved activity: ${resolvedActivity?.name} (legacyId=${activityLegacyId})`,
-      );
-    }
-
-    const activity =
-      resolvedActivity ??
-      (await this.activityLookup.findByLegacyId(activityLegacyId));
-    if (!activity) {
-      throw new NotFoundException('活动不存在');
-    }
-
-    // Soft check: detect when the resolved activity name doesn't match
-    // brand keywords in the query (e.g. user asked "EDC" but we're searching
-    // "Tomorrowland").  We warn via a response field instead of throwing so
-    // the LLM sees the mismatch inline and self-corrects without retry loops.
-    let activityMismatch: string | undefined;
-    if (query) {
-      const FESTIVAL_QUERY_NOISE =
-        /出发|找队|组队|招募|搭子|同行|拼房|差\s*\d+\s*人|\d+\s*人|\d+\s*个|\d+\s*名|喜欢|电音节|音乐节|festival/gi;
-      const AREA_TERMS = new Set([
-        '泰国',
-        'thailand',
-        '日本',
-        'japan',
-        '韩国',
-        'korea',
-        '比利时',
-        'belgium',
-        '克罗地亚',
-        'croatia',
-        '印尼',
-        'indonesia',
-        '美国',
-        'usa',
-        '上海',
-        '深圳',
-        '珠海',
-        '苏州',
-        '北京',
-        '广州',
-        '成都',
-        '杭州',
-        '南京',
-        '武汉',
-        '重庆',
-        '欧洲',
-        'europe',
-        '亚洲',
-        'asia',
-      ]);
-      const brandTokens = query
-        .replace(FESTIVAL_QUERY_NOISE, ' ')
-        .split(/[\s,，、/|]+/)
-        .map((t) => t.trim().toLowerCase())
-        .filter((t) => t.length >= 3 && !AREA_TERMS.has(t));
-      if (brandTokens.length > 0) {
-        const activityHaystack = [
-          activity.name,
-          activity.code,
-          ...(activity.alias ?? []),
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        const matched = brandTokens.some((token) =>
-          activityHaystack.includes(token),
-        );
-        if (!matched) {
-          activityMismatch = `「${activity.name}」与查询条件「${brandTokens.join(' ')}」不匹配`;
-          console.info(
-            `[agent-capabilities] searchPublicRecruits mismatch: ${activityMismatch}`,
-          );
-        }
-      }
-    }
-
-    const result = await this.postSearch.searchByNaturalLanguage(
-      query,
-      activityLegacyId,
-      actor,
-      { applyPreferenceRank: false },
-    );
-
-    const posts = result.items.map((item) => ({
-      id: item.id,
-      activityLegacyId,
-      nickname: item.name,
-      avatarUrl: item.avatar,
-      summary: item.bodyPreview ?? item.body,
-      createdAt: item.createdAt ?? new Date().toISOString(),
-    }));
-
-    return {
-      activityLegacyId,
-      activityName: activity.name,
-      canonicalActivityName: activity.name,
-      activity: toActivitySnapshot(activity),
-      totalMatched: result.totalMatched,
-      posts,
-      filterLabels: extractFilterLabels(query),
-      query,
-      ...(activityMismatch ? { activityMismatch } : {}),
-      uiDirectives: [
-        renderCard(
-          'recruit-list-card',
-          'searchPublicRecruits result must render recruit-list-card',
-        ),
-      ],
-    };
-  }
-
-  async draftRecruitPost(
-    input: DraftRecruitPostInput,
-    actor: RequestActor,
-  ): Promise<DraftRecruitPostResult> {
-    const userId = actor.resolvedUserId?.trim();
-    if (!userId) {
-      throw new BadRequestException('请先登录');
-    }
-
-    const [composeFields, activity] = await Promise.all([
-      Promise.resolve(parseDraftComposeFields(input.draft)),
-      this.activityLookup.findByLegacyId(input.activityLegacyId),
-    ]);
-    const result = await this.postService.composeBuddyPostCandidates(
-      {
-        activityLegacyId: input.activityLegacyId,
-        ...composeFields,
-      },
-      actor,
-    );
-    const note =
-      typeof input.draft.note === 'string' ? input.draft.note.trim() : '';
-
-    const artifactId = randomUUID();
-    const now = Date.now();
-    await this.goalService.saveArtifact({
-      artifactId,
-      goalId: 'agent-capability',
-      userId,
-      activityLegacyId: input.activityLegacyId,
-      kind: UserGoalArtifactKind.RECRUIT_DRAFT,
-      payload: {
-        candidates: result.candidates,
-        disclaimer: result.disclaimer,
-      },
-      expiresAt: new Date(now + ARTIFACT_TTL_MS).toISOString(),
-    });
-
-    return {
-      artifactId,
-      activityLegacyId: input.activityLegacyId,
-      activityName: activity?.name,
-      canonicalActivityName: activity?.name,
-      activity: toActivitySnapshot(activity),
-      preview: {
-        candidates: result.candidates,
-        disclaimer: result.disclaimer,
-        activityLegacyId: input.activityLegacyId,
-        activityName: activity?.name,
-      },
-      formData: {
-        dateStart: composeFields.dateStart,
-        dateEnd: composeFields.dateEnd,
-        location: composeFields.location,
-        headcount: composeFields.headcount,
-        ...(note ? { note } : {}),
-        ...(composeFields.composeHints
-          ? { composeHints: composeFields.composeHints }
-          : {}),
-      },
-      ...(note ? { note } : {}),
-      uiDirectives: [
-        renderCard(
-          'draft-candidates-card',
-          'draftRecruitPost result must render draft-candidates-card',
-        ),
-      ],
-    };
-  }
-
   async subscribeLineupUpdates(
-    input: SubscribeLineupUpdatesInput,
+    input: { activityLegacyId: number; notifyWechat?: boolean },
     actor: RequestActor,
-  ): Promise<SubscribeLineupUpdatesResult> {
+  ): Promise<{
+    activityLegacyId: number;
+    activityName?: string;
+    canonicalActivityName?: string;
+    activity?: ActivitySnapshot;
+    goalId: string;
+    subscribedAt: string;
+    uiDirectives: UiDirective[];
+  }> {
     const [activity, goal] = await Promise.all([
       this.activityLookup.findByLegacyId(input.activityLegacyId),
       this.goalService.create(actor, {
@@ -604,6 +454,7 @@ export class AgentCapabilitiesService {
         params: { notifyWechat: input.notifyWechat ?? true },
       }),
     ]);
+
     return {
       activityLegacyId: input.activityLegacyId,
       activityName: activity?.name,
@@ -621,15 +472,32 @@ export class AgentCapabilitiesService {
   }
 
   async generateTravelGuide(
-    input: GenerateTravelGuideInput,
+    input: {
+      activityLegacyId: number;
+      formData: Record<string, unknown>;
+    },
     actor: RequestActor,
-  ): Promise<GenerateTravelGuideResult> {
+  ): Promise<{
+    activityLegacyId: number;
+    activityName?: string;
+    canonicalActivityName?: string;
+    activity?: ActivitySnapshot;
+    jobId: string;
+    status: string;
+    departure: string;
+    headcount: number;
+    note?: string;
+    uiDirectives: UiDirective[];
+  }> {
     const dto = parseTravelGuideFormData(input.formData);
+
     const [activity, { jobId }] = await Promise.all([
       this.activityLookup.findByLegacyId(input.activityLegacyId),
-      this.travelGuideJob.createJob(input.activityLegacyId, dto, actor),
+      this.travelGuideJob.createJob(input.activityLegacyId, dto as any, actor),
     ]);
+
     const job = await this.travelGuideJob.getJob(jobId, actor);
+
     return {
       activityLegacyId: input.activityLegacyId,
       activityName: activity?.name,

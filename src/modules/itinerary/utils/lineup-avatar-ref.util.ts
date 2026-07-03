@@ -34,6 +34,20 @@ export function isUsableLineupAvatarUrl(
   return isRemoteLineupAvatarUrl(raw) && !isDiscogsAvatarUrl(raw);
 }
 
+export function isStoredLineupAvatarRef(
+  raw: string | undefined,
+  source?: string | null,
+): boolean {
+  if (source?.trim().toLowerCase() === 'discogs') {
+    return false;
+  }
+  return (
+    isUsableLineupAvatarUrl(raw, source) ||
+    isLineupAvatarCloudFileId(raw) ||
+    isLineupAvatarAssetKey(raw)
+  );
+}
+
 export function isLineupAvatarAssetKey(raw: string | undefined): boolean {
   const trimmed = raw?.trim();
   if (!trimmed || trimmed.includes('..')) {

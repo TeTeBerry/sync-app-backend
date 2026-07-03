@@ -6,7 +6,6 @@ import { UserRepositoryModule } from './user-repository.module';
 import { AccountRiskModule } from '../account-risk/account-risk.module';
 import { WechatMiniModule } from '../auth/wechat-mini.module';
 import { MediaSecurityModule } from '../media-security/media-security.module';
-import { UserProfileSyncService } from './user-profile-sync.service';
 import { UserService } from './user.service';
 
 @Module({
@@ -18,7 +17,7 @@ import { UserService } from './user.service';
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
   ],
   controllers: [UserController],
-  providers: [UserService, UserProfileSyncService],
-  exports: [UserService, UserProfileSyncService, UserRepositoryModule],
+  providers: [UserService],
+  exports: [UserService, UserRepositoryModule],
 })
 export class UserModule {}

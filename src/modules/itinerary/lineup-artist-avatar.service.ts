@@ -5,7 +5,13 @@ import {
   LineupArtistAvatar,
   LineupArtistAvatarDocument,
 } from '../../database/schemas/lineup-artist-avatar.schema';
-import { isUsableLineupAvatarUrl } from './utils/lineup-avatar-ref.util';
+import {
+  buildLineupAvatarCloudFileId,
+  isLineupAvatarAssetKey,
+  isLineupAvatarCloudFileId,
+  isStoredLineupAvatarRef,
+  isUsableLineupAvatarUrl,
+} from './utils/lineup-avatar-ref.util';
 
 @Injectable()
 export class LineupArtistAvatarService {
@@ -14,7 +20,7 @@ export class LineupArtistAvatarService {
     private readonly model: Model<LineupArtistAvatarDocument>,
   ) {}
 
-  /** Lineup name key → public HTTPS CDN avatar URL. */
+  /** Lineup name key → displayable avatar ref (HTTPS URL or CloudBase fileID). */
   async findAvatarUrlsByArtistNames(
     artistNames: string[],
   ): Promise<Map<string, string>> {
@@ -35,12 +41,36 @@ export class LineupArtistAvatarService {
 
     const result = new Map<string, string>();
     for (const row of rows) {
-      const url = row.avatarUrl?.trim();
-      if (isUsableLineupAvatarUrl(url, row.source)) {
-        result.set(row.artistNameKey, url);
+      const ref = this.normalizeAvatarRef(row.avatarUrl, row.source);
+      if (ref) {
+        result.set(row.artistNameKey, ref);
       }
     }
 
     return result;
+  }
+
+  private normalizeAvatarRef(
+    raw: string | undefined,
+    source?: string | null,
+  ): string {
+    const trimmed = raw?.trim() ?? '';
+    if (!isStoredLineupAvatarRef(trimmed, source)) {
+      return '';
+    }
+    if (isUsableLineupAvatarUrl(trimmed, source)) {
+      return trimmed;
+    }
+    if (isLineupAvatarCloudFileId(trimmed)) {
+      return trimmed;
+    }
+    if (isLineupAvatarAssetKey(trimmed)) {
+      return buildLineupAvatarCloudFileId(
+        process.env.CLOUDBASE_ENV_ID ?? '',
+        trimmed,
+        process.env.CLOUDBASE_STORAGE_BUCKET ?? '',
+      );
+    }
+    return '';
   }
 }

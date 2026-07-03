@@ -3,70 +3,50 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { RedisMemoryJsonCacheService } from '../../infra/cache/redis-memory-json-cache.service';
-import {
-  Activity,
-  ActivityDocument,
-} from '../../database/schemas/activity.schema';
-import { Post, PostDocument } from '../../database/schemas/post.schema';
-import {
-  ArtistPerformance,
-  ArtistPerformanceDocument,
-} from '../../database/schemas/artist-performance.schema';
+import { Activity } from '../../database/schemas/activity.schema';
+import { ArtistPerformance } from '../../database/schemas/artist-performance.schema';
 import { ActivityImageService } from './activity-image.service';
-import { buildActivityLookupCache } from './activity-lookup.cache';
+import {
+  buildActivityLookupCache,
+  type ActivityLookupCacheSnapshot,
+} from './activity-lookup.cache';
 import { isActivityLineupPublished } from './utils/activity-lineup-published.util';
 import { enrichActivityLookupRecord } from '../travel-guide/domain/travel-guide-support.util';
-import { enrichDevUnityAttendees } from './utils/dev-unity-attendees.util';
 import type {
+  ActivityLookupRecord,
   ActivityListPage,
   ActivityLookupPageOptions,
-  ActivityLookupRecord,
-  IActivityLookupPort,
 } from './ports/activity-lookup.port';
 
 const DEFAULT_PAGE_LIMIT = 50;
 const MAX_PAGE_LIMIT = 100;
 
-/** Same visibility rules as public activity post feeds. */
-const PUBLIC_RECRUIT_POST_MATCH = {
-  activityLegacyId: { $exists: true, $type: 'number' },
-  status: { $ne: 'hidden' },
-  listedInFeed: { $ne: false },
-} as const;
-
-type ActivityCatalogPayload = {
-  records: ActivityLookupRecord[];
-};
-
 @Injectable()
-export class ActivityLookupService
-  implements IActivityLookupPort, OnApplicationBootstrap
-{
+export class ActivityLookupService implements OnApplicationBootstrap {
   private readonly logger = new Logger(ActivityLookupService.name);
-  private cache = buildActivityLookupCache([]);
+  private cache: ActivityLookupCacheSnapshot = buildActivityLookupCache([]);
   private localVersion = '';
   private readonly dataKey: string;
   private readonly versionKey: string;
   private readonly ttlSec: number;
 
   constructor(
-    @InjectModel(Activity.name) private readonly model: Model<ActivityDocument>,
+    @InjectModel(Activity.name)
+    private readonly model: Model<Activity>,
     @InjectModel(ArtistPerformance.name)
-    private readonly performanceModel: Model<ArtistPerformanceDocument>,
-    @InjectModel(Post.name) private readonly postModel: Model<PostDocument>,
+    private readonly performanceModel: Model<ArtistPerformance>,
     private readonly jsonCache: RedisMemoryJsonCacheService,
     private readonly activityImages: ActivityImageService,
     config: ConfigService,
   ) {
     this.dataKey =
-      config.get<string>('catalog.activity.dataKey') ?? 'catalog:activity:v1';
+      config.get('catalog.activity.dataKey') ?? 'catalog:activity:v1';
     this.versionKey =
-      config.get<string>('catalog.activity.versionKey') ??
-      'catalog:activity:version';
-    this.ttlSec = config.get<number>('catalog.activity.ttlSec') ?? 86_400;
+      config.get('catalog.activity.versionKey') ?? 'catalog:activity:version';
+    this.ttlSec = config.get('catalog.activity.ttlSec') ?? 86_400;
   }
 
-  async onApplicationBootstrap() {
+  async onApplicationBootstrap(): Promise<void> {
     await this.refreshCache();
     this.logger.log(
       `Activity catalog cache warmed (${this.cache.all.length} records)`,
@@ -74,44 +54,37 @@ export class ActivityLookupService
   }
 
   async refreshCache(): Promise<void> {
-    const [activities, publishedLegacyIds, recruitPostCounts] =
-      await Promise.all([
-        this.model.find().sort({ legacyId: 1 }).lean(),
-        this.loadPublishedActivityLegacyIds(),
-        this.loadRecruitPostCountsByActivity(),
-      ]);
-    const records = activities.map((activity) => ({
+    const [activities, publishedLegacyIds] = await Promise.all([
+      this.model.find().sort({ legacyId: 1 }).lean(),
+      this.loadPublishedActivityLegacyIds(),
+    ]);
+
+    const records: ActivityLookupRecord[] = activities.map((activity) => ({
       ...activity,
       lineupPublished: isActivityLineupPublished(
         activity.legacyId,
         publishedLegacyIds.has(activity.legacyId),
       ),
-      recruitPostCount: recruitPostCounts.get(activity.legacyId) ?? 0,
-    })) as ActivityLookupRecord[];
+      recruitPostCount: 0,
+    }));
+
     this.applyRecords(records);
-    await this.jsonCache.setJson(
-      this.dataKey,
-      { records } satisfies ActivityCatalogPayload,
-      this.ttlSec,
-    );
+    await this.jsonCache.setJson(this.dataKey, { records }, this.ttlSec);
     this.localVersion = await this.jsonCache.bumpVersion(this.versionKey);
   }
 
   async findAll(): Promise<ActivityLookupRecord[]> {
     await this.syncIfStale();
-    const resolved = await this.activityImages.resolveRecords([
-      ...this.cache.all,
-    ]);
-    return resolved.map((record) =>
-      enrichDevUnityAttendees(enrichActivityLookupRecord(record)),
-    );
+    const resolved =
+      await this.activityImages.resolveRecords<ActivityLookupRecord>([
+        ...this.cache.all,
+      ]);
+    return resolved.map((record) => enrichActivityLookupRecord(record));
   }
 
   async findAllBasics(): Promise<ActivityLookupRecord[]> {
     await this.syncIfStale();
-    return this.cache.all.map((record) =>
-      enrichDevUnityAttendees(enrichActivityLookupRecord(record)),
-    );
+    return this.cache.all.map((record) => enrichActivityLookupRecord(record));
   }
 
   async findByLegacyId(legacyId: number): Promise<ActivityLookupRecord | null> {
@@ -120,10 +93,9 @@ export class ActivityLookupService
     if (!record) {
       return null;
     }
-    const [resolved] = await this.activityImages.resolveRecords([record]);
-    return resolved
-      ? enrichDevUnityAttendees(enrichActivityLookupRecord(resolved))
-      : null;
+    const [resolved] =
+      await this.activityImages.resolveRecords<ActivityLookupRecord>([record]);
+    return resolved ? enrichActivityLookupRecord(resolved) : null;
   }
 
   async findByLegacyIds(
@@ -133,14 +105,12 @@ export class ActivityLookupService
     const records = legacyIds
       .map((legacyId) => this.cache.byLegacyId.get(legacyId))
       .filter((record): record is ActivityLookupRecord => Boolean(record));
-    const resolved = await this.activityImages.resolveRecords(records);
+    const resolved =
+      await this.activityImages.resolveRecords<ActivityLookupRecord>(records);
     const map = new Map<number, ActivityLookupRecord>();
     for (const record of resolved) {
       if (record.legacyId != null) {
-        map.set(
-          record.legacyId,
-          enrichDevUnityAttendees(enrichActivityLookupRecord(record)),
-        );
+        map.set(record.legacyId, enrichActivityLookupRecord(record));
       }
     }
     return map;
@@ -156,10 +126,9 @@ export class ActivityLookupService
     if (!record) {
       return null;
     }
-    const [resolved] = await this.activityImages.resolveRecords([record]);
-    return resolved
-      ? enrichDevUnityAttendees(enrichActivityLookupRecord(resolved))
-      : null;
+    const [resolved] =
+      await this.activityImages.resolveRecords<ActivityLookupRecord>([record]);
+    return resolved ? enrichActivityLookupRecord(resolved) : null;
   }
 
   async findPage(
@@ -173,13 +142,10 @@ export class ActivityLookupService
       MAX_PAGE_LIMIT,
     );
     const items = (
-      await this.activityImages.resolveRecords(
+      await this.activityImages.resolveRecords<ActivityLookupRecord>(
         this.cache.all.slice(skip, skip + limit),
       )
-    ).map((record) =>
-      enrichDevUnityAttendees(enrichActivityLookupRecord(record)),
-    );
-
+    ).map((record) => enrichActivityLookupRecord(record));
     return { items, total, skip, limit };
   }
 
@@ -189,24 +155,9 @@ export class ActivityLookupService
 
   private async loadPublishedActivityLegacyIds(): Promise<Set<number>> {
     const rows = await this.performanceModel
-      .aggregate<{ _id: number }>([{ $group: { _id: '$activityLegacyId' } }])
+      .aggregate([{ $group: { _id: '$activityLegacyId' } }])
       .exec();
-    return new Set(rows.map((row) => row._id));
-  }
-
-  private async loadRecruitPostCountsByActivity(): Promise<
-    Map<number, number>
-  > {
-    const rows = await this.postModel
-      .aggregate<{
-        _id: number;
-        count: number;
-      }>([
-        { $match: PUBLIC_RECRUIT_POST_MATCH },
-        { $group: { _id: '$activityLegacyId', count: { $sum: 1 } } },
-      ])
-      .exec();
-    return new Map(rows.map((row) => [row._id, row.count]));
+    return new Set(rows.map((row) => row._id as number));
   }
 
   private async syncIfStale(): Promise<void> {
@@ -215,9 +166,9 @@ export class ActivityLookupService
       return;
     }
 
-    const payload = await this.jsonCache.getJson<ActivityCatalogPayload>(
-      this.dataKey,
-    );
+    const payload = await this.jsonCache.getJson<{
+      records: ActivityLookupRecord[];
+    }>(this.dataKey);
     if (payload?.records?.length) {
       this.applyRecords(payload.records);
       this.localVersion = remoteVersion ?? this.localVersion;

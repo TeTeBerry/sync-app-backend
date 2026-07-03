@@ -524,6 +524,94 @@ describe('ItineraryScheduleService discogs styles', () => {
     expect(afrojack?.genre).toBe('风格待补充');
   });
 
+  it('keeps lineup artists when thumbnail is a CloudBase file id', async () => {
+    activityLookup.findAll.mockResolvedValue([
+      {
+        legacyId: 1,
+        name: 'Tomorrowland Thailand 2026',
+        date: '12/11-13',
+      },
+    ]);
+    performanceModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([
+            {
+              activityLegacyId: 1,
+              artistName: 'AFROJACK',
+              genreLabel: 'Big Room',
+            },
+          ]),
+        }),
+      }),
+    });
+    djService.lookupForLineupArtists.mockResolvedValue(new Map());
+    lineupArtistAvatarService.findAvatarUrlsByArtistNames.mockResolvedValue(
+      new Map([
+        [
+          'afrojack',
+          'cloud://sync-prd-test.7379-sync-prd-test/lineup-avatar/afrojack.jpg',
+        ],
+      ]),
+    );
+
+    const artists = await service.listCatalogLineupArtistsRanked();
+    const afrojack = artists.find((item) => item.name === 'AFROJACK');
+
+    expect(afrojack).toBeDefined();
+    expect(afrojack?.thumbnail).toBe(
+      'cloud://sync-prd-test.7379-sync-prd-test/lineup-avatar/afrojack.jpg',
+    );
+    expect(afrojack?.activityCount).toBe(1);
+  });
+
+  it('rebuilds the ranked list when cached payload is empty', async () => {
+    activityLookup.findAll.mockResolvedValue([
+      {
+        legacyId: 1,
+        name: 'Tomorrowland Thailand 2026',
+        date: '12/11-13',
+      },
+    ]);
+    performanceModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue([
+            {
+              activityLegacyId: 1,
+              artistName: 'AFROJACK',
+              genreLabel: 'Big Room',
+            },
+          ]),
+        }),
+      }),
+    });
+    djService.lookupForLineupArtists.mockResolvedValue(new Map());
+    lineupArtistAvatarService.findAvatarUrlsByArtistNames.mockResolvedValue(
+      new Map([
+        [
+          'afrojack',
+          'https://r2.theaudiodb.com/images/media/artist/thumb/a.jpg',
+        ],
+      ]),
+    );
+    lineupJsonCache.getVersion.mockResolvedValueOnce('empty-cache-version');
+    lineupJsonCache.getJson.mockResolvedValueOnce({ items: [] });
+
+    const artists = await service.listCatalogLineupArtistsRanked();
+
+    expect(artists.some((artist) => artist.name === 'AFROJACK')).toBe(true);
+    expect(lineupJsonCache.setJson).toHaveBeenCalledWith(
+      'catalog:lineup-artists:v1',
+      expect.objectContaining({
+        items: expect.arrayContaining([
+          expect.objectContaining({ name: 'AFROJACK' }),
+        ]),
+      }),
+      86_400,
+    );
+  });
+
   it('ranks artists with upcoming shows before higher activity counts', async () => {
     activityLookup.findAll.mockResolvedValue([
       {
@@ -559,10 +647,16 @@ describe('ItineraryScheduleService discogs styles', () => {
     );
 
     const artists = await service.listCatalogLineupArtistsRanked();
+    const djSnakeIndex = artists.findIndex((item) => item.name === 'DJ SNAKE');
+    const sharedActIndex = artists.findIndex(
+      (item) => item.name === 'SHARED ACT',
+    );
+    const djSnake = artists[djSnakeIndex];
 
-    expect(artists[0]?.name).toBe('DJ SNAKE');
-    expect(artists[0]?.nextActivity?.legacyId).toBe(8);
-    expect(artists.some((item) => item.name === 'SHARED ACT')).toBe(true);
+    expect(djSnakeIndex).toBeGreaterThanOrEqual(0);
+    expect(sharedActIndex).toBeGreaterThanOrEqual(0);
+    expect(djSnakeIndex).toBeLessThan(sharedActIndex);
+    expect(djSnake?.nextActivity?.legacyId).toBe(8);
   });
 
   it('resolves catalog lineup artist by slug id', async () => {

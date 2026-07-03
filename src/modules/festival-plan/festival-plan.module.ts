@@ -4,30 +4,24 @@ import {
   TravelGuideGenerationJob,
   TravelGuideGenerationJobSchema,
 } from '../../database/schemas/travel-guide-generation-job.schema';
-import { ActivityModule } from '../activity/activity.module';
-import { ItineraryModule } from '../itinerary/itinerary.module';
-import { NotificationModule } from '../notification/notification.module';
-import { PartnerModule } from '../partner/partner.module';
-import { TravelGuideModule } from '../travel-guide/travel-guide.module';
-import { FestivalPlanController } from './festival-plan.controller';
+import {
+  UserItinerary,
+  UserItinerarySchema,
+} from '../../database/schemas/user-itinerary.schema';
+import { FestivalPlanProgressController } from './festival-plan-progress.controller';
 import { FestivalPlanProgressService } from './festival-plan-progress.service';
 
 @Module({
   imports: [
-    ActivityModule,
-    ItineraryModule,
-    PartnerModule,
-    NotificationModule,
-    TravelGuideModule,
     MongooseModule.forFeature([
       {
         name: TravelGuideGenerationJob.name,
         schema: TravelGuideGenerationJobSchema,
       },
+      { name: UserItinerary.name, schema: UserItinerarySchema },
     ]),
   ],
-  controllers: [FestivalPlanController],
+  controllers: [FestivalPlanProgressController],
   providers: [FestivalPlanProgressService],
-  exports: [FestivalPlanProgressService],
 })
 export class FestivalPlanModule {}

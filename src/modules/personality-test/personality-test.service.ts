@@ -9,7 +9,6 @@ import { CloudStorageService } from '@src/infra/cloud/cloud-storage.service';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { DjService } from '../dj/dj.service';
 import { ItineraryScheduleService } from '../itinerary/itinerary-schedule.service';
-import { UserProfileSyncService } from '../user/user-profile-sync.service';
 import {
   ACTIVITY_LOOKUP_PORT,
   type IActivityLookupPort,
@@ -59,7 +58,6 @@ export class PersonalityTestService {
     private readonly scheduleService: ItineraryScheduleService,
     private readonly catalog: PersonalityTestCatalogService,
     private readonly cloudStorage: CloudStorageService,
-    private readonly userProfileSync: UserProfileSyncService,
     @InjectModel(UserPersonalityTestResult.name)
     private readonly resultModel: Model<UserPersonalityTestResultDocument>,
   ) {}
@@ -164,13 +162,6 @@ export class PersonalityTestService {
 
     const saved = ensurePersonalityResultIdentity(result);
     await this.persistResult(trimmedUserId, saved);
-    if (actor.clientUserId?.trim() && saved.score?.primaryType) {
-      const runtimeCatalog = await this.catalog.getRuntimeCatalog();
-      this.userProfileSync.applyPersonalityTestHints(actor, {
-        primaryType: saved.score.primaryType,
-        typeMeta: runtimeCatalog.typeMeta,
-      });
-    }
     return saved;
   }
 
@@ -271,12 +262,7 @@ export class PersonalityTestService {
 
     await this.persistResult(actor.resolvedUserId ?? '', result);
 
-    if (actor.clientUserId?.trim()) {
-      this.userProfileSync.applyPersonalityTestHints(actor, {
-        primaryType: score.primaryType,
-        typeMeta: runtimeCatalog.typeMeta,
-      });
-    }
+    // Profile hints sync removed (post system removed)
 
     return result;
   }

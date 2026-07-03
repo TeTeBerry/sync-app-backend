@@ -2,6 +2,10 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CloudModule } from '../../infra/cloud/cloud.module';
 import {
+  UserArtistLike,
+  UserArtistLikeSchema,
+} from '../../database/schemas/user-artist-like.schema';
+import {
   ArtistPerformance,
   ArtistPerformanceSchema,
 } from '../../database/schemas/artist-performance.schema';
@@ -23,6 +27,7 @@ import { AuthModule } from '../auth/auth.module';
 import { DjModule } from '../dj/dj.module';
 import { ItineraryController } from './itinerary.controller';
 import { ArtistController } from './artist.controller';
+import { ArtistLikeService } from './artist-like.service';
 import { ItineraryService } from './itinerary.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
 import { ItineraryConflictService } from './itinerary-conflict.service';
@@ -42,6 +47,7 @@ import { UserGoalModule } from '../goal/goal.module';
     DjModule,
     UserGoalModule,
     MongooseModule.forFeature([
+      { name: UserArtistLike.name, schema: UserArtistLikeSchema },
       { name: ArtistPerformance.name, schema: ArtistPerformanceSchema },
       { name: FestivalSession.name, schema: FestivalSessionSchema },
       { name: UserItinerary.name, schema: UserItinerarySchema },
@@ -53,6 +59,7 @@ import { UserGoalModule } from '../goal/goal.module';
   ],
   controllers: [ItineraryController, ArtistController],
   providers: [
+    ArtistLikeService,
     ItineraryService,
     ItineraryScheduleService,
     ItineraryConflictService,

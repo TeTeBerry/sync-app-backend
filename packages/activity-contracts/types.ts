@@ -90,3 +90,13 @@ export interface SetVoteLeaderboardEntry {
   voteCount: number;
   votePercent: number;
 }
+
+/** Response for GET /artists/favorites — list of user-liked artist IDs. */
+export interface UserArtistFavoritesResponse {
+  artistIds: string[];
+}
+
+/** Response for POST/DELETE /artists/:id/favorite. */
+export interface ArtistFavoriteToggleResponse {
+  artistId: string;
+}

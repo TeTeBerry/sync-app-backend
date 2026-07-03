@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ActivityLookupModule } from '../activity/activity-lookup.module';
-import { PartnerReadModule } from '../partner/partner-read.module';
 import { UserModule } from '../user/user.module';
 import { UserGoalSchema } from '../goal/goal.model';
 import {
@@ -24,6 +23,14 @@ import {
   TravelGuideGenerationJob,
   TravelGuideGenerationJobSchema,
 } from '../../database/schemas/travel-guide-generation-job.schema';
+import {
+  ArtistPerformance,
+  ArtistPerformanceSchema,
+} from '../../database/schemas/artist-performance.schema';
+import {
+  UserArtistLike,
+  UserArtistLikeSchema,
+} from '../../database/schemas/user-artist-like.schema';
 import { ProfileController } from './profile.controller';
 import { ProfileSummaryService } from './profile-summary.service';
 import { ProfileActivityEligibilityService } from './profile-activity-eligibility.service';
@@ -31,7 +38,6 @@ import { ProfileActivityEligibilityService } from './profile-activity-eligibilit
 @Module({
   imports: [
     ActivityLookupModule,
-    PartnerReadModule,
     UserModule,
     MongooseModule.forFeature([
       { name: 'UserGoal', schema: UserGoalSchema },
@@ -43,6 +49,8 @@ import { ProfileActivityEligibilityService } from './profile-activity-eligibilit
         name: TravelGuideGenerationJob.name,
         schema: TravelGuideGenerationJobSchema,
       },
+      { name: ArtistPerformance.name, schema: ArtistPerformanceSchema },
+      { name: UserArtistLike.name, schema: UserArtistLikeSchema },
     ]),
   ],
   controllers: [ProfileController],

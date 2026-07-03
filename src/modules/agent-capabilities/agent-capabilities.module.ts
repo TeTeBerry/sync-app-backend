@@ -5,7 +5,6 @@ import { ActivityLookupModule } from '../activity/activity-lookup.module';
 import { ActivityModule } from '../activity/activity.module';
 import { UserGoalModule } from '../goal/goal.module';
 import { LineupCatalogModule } from '../itinerary/lineup-catalog.module';
-import { PartnerModule } from '../partner/partner.module';
 import { TravelGuideModule } from '../travel-guide/travel-guide.module';
 import { AgentCapabilitiesController } from './agent-capabilities.controller';
 import { AgentCapabilitiesService } from './agent-capabilities.service';
@@ -16,7 +15,6 @@ import { AgentCapabilitiesService } from './agent-capabilities.service';
     ActivityLookupModule,
     ActivityModule,
     LineupCatalogModule,
-    PartnerModule,
     TravelGuideModule,
     UserGoalModule,
     PublicApiRateLimitModule,

@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  NotFoundException,
-  Param,
-  Patch,
-  Req,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { Public } from '../../common/auth/public.decorator';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
@@ -36,7 +28,7 @@ export class TravelGuideGlobalController {
     return this.generationJobService.getJob(jobId, actor);
   }
 
-  /** 分享冷启动只读拉取；guideId 即访问凭证。 */
+  /** 分享冷启动只读拉取；guideId 即访问凭证。不存在时返回 null 避免控制台 404。 */
   @Public()
   @Get('plans/:guideId')
   async getSavedPlan(@Param('guideId') guideId: string, @Req() req: Request) {
@@ -44,7 +36,7 @@ export class TravelGuideGlobalController {
 
     const saved = await this.savedPlanService.findByGuideId(guideId);
     if (!saved) {
-      throw new NotFoundException('攻略不存在或已过期');
+      return null;
     }
 
     const refreshedPlan = await this.quoteRefreshService.refreshSavedPlanQuotes(

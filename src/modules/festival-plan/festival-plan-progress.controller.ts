@@ -4,16 +4,14 @@ import type { RequestActor } from '../../common/auth/request-actor.types';
 import { FestivalPlanProgressService } from './festival-plan-progress.service';
 
 @Controller('activities/:legacyId/festival-plan-progress')
-export class FestivalPlanController {
-  constructor(
-    private readonly festivalPlanProgressService: FestivalPlanProgressService,
-  ) {}
+export class FestivalPlanProgressController {
+  constructor(private readonly service: FestivalPlanProgressService) {}
 
   @Get()
   getProgress(
     @Param('legacyId', ParseIntPipe) legacyId: number,
     @CurrentActor() actor: RequestActor,
   ) {
-    return this.festivalPlanProgressService.getProgress(legacyId, actor);
+    return this.service.getProgress(legacyId, actor);
   }
 }
