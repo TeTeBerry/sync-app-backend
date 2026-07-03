@@ -88,7 +88,7 @@ describe('TravelGuideBudgetTierService', () => {
         {
           provide: TravelGuideSavedPlanService,
           useValue: {
-            findOwnedByGuideId: jest.fn().mockResolvedValue({
+            findAccessibleByGuideId: jest.fn().mockResolvedValue({
               guideId: 'guide-1',
               activityLegacyId: 4,
               ownerUserId: 'wx_owner',
@@ -175,7 +175,7 @@ describe('TravelGuideBudgetTierService', () => {
 
   it('returns existing plan when tier unchanged', async () => {
     const savedPlanService = {
-      findOwnedByGuideId: jest.fn().mockResolvedValue({
+      findAccessibleByGuideId: jest.fn().mockResolvedValue({
         guideId: 'guide-1',
         activityLegacyId: 4,
         ownerUserId: 'wx_owner',
@@ -231,7 +231,7 @@ describe('TravelGuideBudgetTierService', () => {
         {
           provide: TravelGuideSavedPlanService,
           useValue: {
-            findOwnedByGuideId: jest.fn().mockResolvedValue(null),
+            findAccessibleByGuideId: jest.fn().mockResolvedValue(null),
             findByGuideId: jest.fn().mockResolvedValue({ guideId: 'guide-1' }),
           },
         },

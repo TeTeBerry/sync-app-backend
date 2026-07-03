@@ -142,6 +142,91 @@ export class TravelGuideSavedPlanService {
     };
   }
 
+  async findAccessibleByGuideId(
+    guideId: string,
+    actor: RequestActor,
+  ): Promise<(TravelGuideSavedPlanView & { ownerUserId: string }) | null> {
+    const id = guideId.trim();
+    if (!id) return null;
+
+    const doc = await this.model.findOne({ guideId: id }).lean().exec();
+    if (!doc) return null;
+
+    const userId = actor.resolvedUserId?.trim();
+    if (doc.ownerUserId === userId) {
+      return {
+        guideId: doc.guideId,
+        activityLegacyId: doc.activityLegacyId,
+        ownerUserId: doc.ownerUserId,
+        form: doc.form,
+        plan: doc.plan,
+        createdAt:
+          doc.createdAt instanceof Date
+            ? doc.createdAt.toISOString()
+            : new Date().toISOString(),
+      };
+    }
+
+    await this.tripPlanCollaboration.assertGuideAccess(id, actor);
+    return {
+      guideId: doc.guideId,
+      activityLegacyId: doc.activityLegacyId,
+      ownerUserId: doc.ownerUserId,
+      form: doc.form,
+      plan: doc.plan,
+      createdAt:
+        doc.createdAt instanceof Date
+          ? doc.createdAt.toISOString()
+          : new Date().toISOString(),
+    };
+  }
+
+  async updateForm(
+    guideId: string,
+    actor: RequestActor,
+    patch: Partial<AiGuidePlanFormValues>,
+  ): Promise<TravelGuideSavedPlanView | null> {
+    const saved = await this.findAccessibleByGuideId(guideId, actor);
+    if (!saved) return null;
+
+    const form: AiGuidePlanFormValues = { ...saved.form };
+
+    if (patch.departure !== undefined) {
+      form.departure = patch.departure.trim();
+    }
+    if (patch.departureCity !== undefined) {
+      const city = patch.departureCity.trim();
+      if (city) form.departureCity = city;
+      else delete form.departureCity;
+    }
+    if (patch.headcount !== undefined) form.headcount = patch.headcount;
+    if (patch.budgetTier !== undefined) form.budgetTier = patch.budgetTier;
+    if (patch.selfDrive !== undefined) form.selfDrive = patch.selfDrive;
+    if (patch.accommodationNights !== undefined) {
+      form.accommodationNights = patch.accommodationNights;
+    }
+    if (patch.note !== undefined) {
+      const note = patch.note.trim();
+      if (note) form.note = note;
+      else delete form.note;
+    }
+
+    await this.model.updateOne({ guideId: guideId.trim() }, { $set: { form } });
+
+    await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
+      saved.ownerUserId,
+      saved.activityLegacyId,
+    );
+
+    return {
+      guideId: saved.guideId,
+      activityLegacyId: saved.activityLegacyId,
+      form,
+      plan: saved.plan,
+      createdAt: saved.createdAt,
+    };
+  }
+
   async updatePlan(guideId: string, plan: TravelGuidePlan): Promise<void> {
     const id = guideId.trim();
     if (!id) return;

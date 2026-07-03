@@ -73,9 +73,9 @@ export class TravelGuideBudgetTierService {
       );
     }
 
-    const saved = await this.savedPlanService.findOwnedByGuideId(
+    const saved = await this.savedPlanService.findAccessibleByGuideId(
       guideId,
-      actor.resolvedUserId,
+      actor,
     );
     if (!saved) {
       const exists = await this.savedPlanService.findByGuideId(guideId);
@@ -278,7 +278,7 @@ export class TravelGuideBudgetTierService {
 
     const result = await this.savedPlanService.updateBudgetTier(
       guideId,
-      actor.resolvedUserId,
+      saved.ownerUserId,
       body.budgetTier,
       updatedPlan,
     );

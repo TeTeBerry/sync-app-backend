@@ -5,7 +5,9 @@ import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { PublicApiRateLimitService } from '../../common/rate-limit/public-api-rate-limit.service';
 import { SelectTravelGuideBudgetTierDto } from './dto/select-travel-guide-budget-tier.dto';
+import { PatchTravelGuideFormDto } from './dto/patch-travel-guide-form.dto';
 import { TravelGuideBudgetTierService } from './travel-guide-budget-tier.service';
+import { TravelGuideFormService } from './travel-guide-form.service';
 import { TravelGuideGenerationJobService } from './travel-guide-generation-job.service';
 import { TravelGuideQuoteRefreshService } from './travel-guide-quote-refresh.service';
 import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
@@ -17,6 +19,7 @@ export class TravelGuideGlobalController {
     private readonly generationJobService: TravelGuideGenerationJobService,
     private readonly savedPlanService: TravelGuideSavedPlanService,
     private readonly budgetTierService: TravelGuideBudgetTierService,
+    private readonly formService: TravelGuideFormService,
     private readonly quoteRefreshService: TravelGuideQuoteRefreshService,
     private readonly publicRateLimit: PublicApiRateLimitService,
     private readonly tripPlanCollaboration: TripPlanCollaborationService,
@@ -71,5 +74,14 @@ export class TravelGuideGlobalController {
     @CurrentActor() actor: RequestActor,
   ) {
     return this.budgetTierService.selectBudgetTier(guideId, body, actor);
+  }
+
+  @Patch('plans/:guideId/form')
+  patchForm(
+    @Param('guideId') guideId: string,
+    @Body() body: PatchTravelGuideFormDto,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.formService.patchForm(guideId, body, actor);
   }
 }

@@ -37,6 +37,7 @@ import { TravelGuideGenerationService } from './travel-guide-generation.service'
 import { TravelGuideGenerationOrchestrator } from './travel-guide-generation-orchestrator.service';
 import { TravelGuideLlmPolishService } from './travel-guide-llm-polish.service';
 import { TravelGuideBudgetTierService } from './travel-guide-budget-tier.service';
+import { TravelGuideFormService } from './travel-guide-form.service';
 import { TravelGuideGuardService } from './travel-guide-guard.service';
 import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
 import { RollingGoMcpClient } from './infra/rollinggo/rollinggo-mcp.client';
@@ -87,6 +88,7 @@ import { TravelQuoteEnrichmentService } from './travel-quote-enrichment.service'
     TravelGuideGenerationJobService,
     TravelGuideGenerationService,
     TravelGuideBudgetTierService,
+    TravelGuideFormService,
     TravelGuideGuardService,
     TravelGuideSavedPlanService,
     RollingGoMcpClient,

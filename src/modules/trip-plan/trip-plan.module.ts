@@ -27,6 +27,8 @@ import {
 import { TripPlanController } from './trip-plan.controller';
 import { TripPlanService } from './trip-plan.service';
 import { TripPlanCollaborationService } from './trip-plan-collaboration.service';
+import { TripPlanOverlayService } from './trip-plan-overlay.service';
+import { TripPlanSummaryService } from './trip-plan-summary.service';
 
 @Module({
   imports: [
@@ -46,7 +48,17 @@ import { TripPlanCollaborationService } from './trip-plan-collaboration.service'
     ]),
   ],
   controllers: [TripPlanController],
-  providers: [TripPlanService, TripPlanCollaborationService],
-  exports: [TripPlanService, TripPlanCollaborationService],
+  providers: [
+    TripPlanService,
+    TripPlanCollaborationService,
+    TripPlanOverlayService,
+    TripPlanSummaryService,
+  ],
+  exports: [
+    TripPlanService,
+    TripPlanCollaborationService,
+    TripPlanOverlayService,
+    TripPlanSummaryService,
+  ],
 })
 export class TripPlanModule {}

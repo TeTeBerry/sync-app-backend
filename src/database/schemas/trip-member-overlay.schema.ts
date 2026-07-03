@@ -7,6 +7,8 @@ export type TripMemberGuideOverlay = {
   flights?: string;
   hotel?: string;
   arrivalAt?: string;
+  /** When true, teammates can see this member's overlay summary. */
+  visibleToMembers?: boolean;
 };
 
 export type TripMemberItineraryMark = 'must' | 'maybe' | 'skip';
