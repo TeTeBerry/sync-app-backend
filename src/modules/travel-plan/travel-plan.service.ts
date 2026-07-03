@@ -23,6 +23,7 @@ import {
   normalizeHiddenActivityNodeIds,
   sortTravelPlanNodes,
 } from '@sync/travel-plan-contracts';
+import type { TravelPlanNodeRecord } from '@sync/travel-plan-contracts';
 import {
   normalizeTravelPlanNodesForSave,
   normalizeTravelPlanSplitCount,
@@ -137,8 +138,61 @@ export class TravelPlanService {
     body: SaveTravelPlanDto,
     actor: RequestActor,
   ) {
+    const tripPlan = await this.tripPlanCollaboration.resolveForActivity(
+      actor,
+      activityLegacyId,
+    );
+
+    let existingNodes: TravelPlanNodeRecord[] = [];
+    if (tripPlan) {
+      this.tripPlanCollaboration.assertMember(tripPlan, actor);
+      const shared =
+        await this.tripPlanCollaboration.resolveSharedTravelPlanDoc(tripPlan);
+      existingNodes = filterUserTravelPlanNodes(shared?.nodes ?? []);
+    } else {
+      const solo = await this.travelPlanModel
+        .findOne({ userId: actor.resolvedUserId, activityLegacyId })
+        .lean()
+        .exec();
+      existingNodes = filterUserTravelPlanNodes(solo?.nodes ?? []);
+    }
+    const existingCreatedBy = new Map(
+      existingNodes.map((node) => [node.id, node.createdBy]),
+    );
+
+    const memberIds = tripPlan?.memberIds ?? [];
+    const normalizedRaw = normalizeTravelPlanNodesForSave(body.nodes, {
+      allowedMemberIds: tripPlan ? memberIds : undefined,
+    });
+    const actorId = actor.resolvedUserId?.trim() ?? '';
     const nodes = sortTravelPlanNodes(
-      filterUserTravelPlanNodes(normalizeTravelPlanNodesForSave(body.nodes)),
+      filterUserTravelPlanNodes(
+        normalizedRaw.map((node) => {
+          const createdBy =
+            node.createdBy ??
+            existingCreatedBy.get(node.id) ??
+            (actorId || undefined);
+          let splitAmong = node.splitAmong;
+          if (
+            tripPlan &&
+            node.splitEnabled &&
+            (!splitAmong || splitAmong.length < 2) &&
+            memberIds.length >= 2
+          ) {
+            splitAmong = memberIds;
+          }
+          const splitCount = splitAmong?.length ?? node.splitCount ?? undefined;
+          const paidBy =
+            node.paidBy ?? (node.splitEnabled ? createdBy : undefined);
+          return {
+            ...node,
+            ...(createdBy ? { createdBy } : {}),
+            ...(paidBy ? { paidBy } : {}),
+            ...(splitAmong?.length ? { splitAmong } : {}),
+            ...(splitCount != null ? { splitCount } : {}),
+          };
+        }),
+      ),
     );
     const activityConfirmations = this.normalizeActivityConfirmations(
       body.activityConfirmations,
@@ -162,11 +216,6 @@ export class TravelPlanService {
     ]);
 
     const eventMeta = body.eventMeta?.trim().slice(0, 200);
-
-    const tripPlan = await this.tripPlanCollaboration.resolveForActivity(
-      actor,
-      activityLegacyId,
-    );
 
     let doc: UserTravelPlanDocument;
     if (tripPlan) {

@@ -84,9 +84,47 @@ function normalizeBillLineItems(
   return normalized.length > 0 ? normalized : undefined;
 }
 
+function normalizeSplitAmong(
+  value: string[] | undefined,
+  allowedMemberIds?: Set<string>,
+): string[] | undefined {
+  if (!value?.length) {
+    return undefined;
+  }
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const id of value) {
+    const trimmed = id.trim();
+    if (!trimmed || seen.has(trimmed)) {
+      continue;
+    }
+    if (allowedMemberIds && !allowedMemberIds.has(trimmed)) {
+      continue;
+    }
+    seen.add(trimmed);
+    normalized.push(trimmed);
+  }
+  if (
+    normalized.length < MIN_SPLIT_COUNT ||
+    normalized.length > MAX_SPLIT_COUNT
+  ) {
+    return undefined;
+  }
+  return normalized;
+}
+
+function normalizeUserId(value?: string): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed.slice(0, 128) : undefined;
+}
+
 export function normalizeTravelPlanNodesForSave(
   nodes: TravelPlanNodeDto[],
+  options?: { allowedMemberIds?: string[] },
 ): TravelPlanNodeRecord[] {
+  const allowedMemberIds = options?.allowedMemberIds?.length
+    ? new Set(options.allowedMemberIds)
+    : undefined;
   const normalized: TravelPlanNodeRecord[] = [];
 
   for (const node of nodes.slice(0, MAX_NODES)) {
@@ -110,9 +148,14 @@ export function normalizeTravelPlanNodesForSave(
     const diningBills = normalizeBillLineItems(node.diningBills);
     const transportBills = normalizeBillLineItems(node.transportBills);
     const splitEnabled = node.splitEnabled === true ? true : undefined;
-    const splitCount = splitEnabled
-      ? normalizeSplitCount(node.splitCount)
+    const splitAmong = splitEnabled
+      ? normalizeSplitAmong(node.splitAmong, allowedMemberIds)
       : undefined;
+    const splitCount = splitEnabled
+      ? (splitAmong?.length ?? normalizeSplitCount(node.splitCount))
+      : undefined;
+    const createdBy = normalizeUserId(node.createdBy);
+    const paidBy = normalizeUserId(node.paidBy);
 
     normalized.push({
       id,
@@ -133,6 +176,9 @@ export function normalizeTravelPlanNodesForSave(
       ...(transportBills ? { transportBills } : {}),
       ...(splitEnabled ? { splitEnabled: true } : {}),
       ...(splitCount != null ? { splitCount } : {}),
+      ...(splitAmong?.length ? { splitAmong } : {}),
+      ...(createdBy ? { createdBy } : {}),
+      ...(paidBy ? { paidBy } : {}),
     });
   }
 

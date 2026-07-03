@@ -157,4 +157,34 @@ describe('normalizeTravelPlanNodesForSave', () => {
     expect(nodes[1]).not.toHaveProperty('splitEnabled');
     expect(nodes[1]).not.toHaveProperty('splitCount');
   });
+
+  it('deduplicates splitAmong and filters ids outside allowed members', () => {
+    const nodes = normalizeTravelPlanNodesForSave(
+      [
+        {
+          id: 'dining-collab',
+          category: 'dining',
+          startDate: '2025-06-14',
+          endDate: '2025-06-14',
+          title: '晚餐',
+          subtitle: '协作分摊',
+          price: 400,
+          confirmed: true,
+          splitEnabled: true,
+          splitAmong: ['user-a', 'user-b', 'user-a', 'outsider'],
+          paidBy: ' user-b ',
+          createdBy: ' user-a ',
+        },
+      ],
+      { allowedMemberIds: ['user-a', 'user-b'] },
+    );
+
+    expect(nodes[0]).toMatchObject({
+      splitEnabled: true,
+      splitAmong: ['user-a', 'user-b'],
+      splitCount: 2,
+      paidBy: 'user-b',
+      createdBy: 'user-a',
+    });
+  });
 });

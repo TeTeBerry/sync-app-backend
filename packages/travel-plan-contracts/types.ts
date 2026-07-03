@@ -39,6 +39,12 @@ export type TravelPlanNodeRecord = {
   splitEnabled?: boolean;
   /** Snapshot of companion count (2–8) when split was confirmed. */
   splitCount?: number;
+  /** User who created this node (collab mode). */
+  createdBy?: string;
+  /** User who paid upfront for this expense (collab mode). */
+  paidBy?: string;
+  /** Member userIds participating in this split (collab mode, 2–8). */
+  splitAmong?: string[];
 };
 
 /** UI node with optional source and display label from API. */

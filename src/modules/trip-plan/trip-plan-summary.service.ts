@@ -21,6 +21,19 @@ import { TripPlanCollaborationService } from './trip-plan-collaboration.service'
 import { ItineraryScheduleService } from '../itinerary/itinerary-schedule.service';
 import { UserGoalService } from '../goal/goal.service';
 import { UserGoalKind, UserGoalStatus } from '../goal/goal.model';
+import {
+  filterUserTravelPlanNodes,
+  sumSplitEnabledNodePrices,
+  sumTravelPlanNodePrices,
+} from '@sync/travel-plan-contracts';
+
+export type TripPlanTravelSummaryDto = {
+  hasTravelPlan: boolean;
+  totalSpent?: number;
+  splitTotal?: number;
+  perPerson?: number;
+  nodeCount?: number;
+};
 
 export type TripPlanGuideSummaryDto = {
   hasTravelGuide: boolean;
@@ -45,6 +58,7 @@ export type TripPlanSummaryDto = {
   memberCount: number;
   guide: TripPlanGuideSummaryDto;
   itinerary: TripPlanItinerarySummaryDto;
+  travel: TripPlanTravelSummaryDto;
 };
 
 @Injectable()
@@ -76,6 +90,10 @@ export class TripPlanSummaryService {
       actor,
       tripPlanDto.activityLegacyId,
     );
+    const travel = await this.resolveTravelSummary(
+      tripPlanDoc!,
+      tripPlanDto.memberIds.length,
+    );
 
     return {
       tripPlanId,
@@ -83,6 +101,7 @@ export class TripPlanSummaryService {
       memberCount: tripPlanDto.memberIds.length,
       guide,
       itinerary,
+      travel,
     };
   }
 
@@ -189,5 +208,38 @@ export class TripPlanSummaryService {
       }
     }
     return mustIds.size;
+  }
+
+  private async resolveTravelSummary(
+    tripPlanDoc: TripPlanDocument,
+    memberCount: number,
+  ): Promise<TripPlanTravelSummaryDto> {
+    const shared =
+      await this.tripPlanCollaboration.resolveSharedTravelPlanDoc(tripPlanDoc);
+    if (!shared) {
+      return { hasTravelPlan: false };
+    }
+
+    const doc = shared.toObject();
+    const userNodes = filterUserTravelPlanNodes(doc.nodes ?? []);
+    const nodeCount = userNodes.length;
+    if (nodeCount === 0) {
+      return { hasTravelPlan: false, nodeCount: 0 };
+    }
+
+    const totalSpent = sumTravelPlanNodePrices(userNodes);
+    const splitTotal = sumSplitEnabledNodePrices(userNodes);
+    const perPerson =
+      splitTotal > 0 && memberCount >= 2
+        ? Math.round(splitTotal / memberCount)
+        : undefined;
+
+    return {
+      hasTravelPlan: true,
+      totalSpent,
+      splitTotal: splitTotal > 0 ? splitTotal : undefined,
+      perPerson,
+      nodeCount,
+    };
   }
 }

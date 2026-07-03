@@ -30,3 +30,15 @@ export {
   normalizeHiddenActivityNodeIds,
   sortTravelPlanNodes,
 } from './merge.util';
+
+export {
+  computeTravelPlanSettlement,
+  sumSplitEnabledNodePrices,
+  sumTravelPlanNodePrices,
+} from './settlement.util';
+
+export type {
+  TravelPlanMemberBalance,
+  TravelPlanSettlementResult,
+  TravelPlanTransferSuggestion,
+} from './settlement.util';

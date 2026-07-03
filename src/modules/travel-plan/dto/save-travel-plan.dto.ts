@@ -116,6 +116,21 @@ export class TravelPlanNodeDto {
   @Min(2)
   @Max(8)
   splitCount?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  createdBy?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  paidBy?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  splitAmong?: string[];
 }
 
 export class SaveTravelPlanDto {

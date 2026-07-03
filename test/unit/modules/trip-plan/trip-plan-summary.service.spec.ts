@@ -16,7 +16,10 @@ describe('TripPlanSummaryService', () => {
   const tripPlanModel = { findById: jest.fn() };
   const overlayModel = { find: jest.fn() };
   const tripPlanService = { getById: jest.fn() };
-  const tripPlanCollaboration = { resolveSharedItineraryDoc: jest.fn() };
+  const tripPlanCollaboration = {
+    resolveSharedItineraryDoc: jest.fn(),
+    resolveSharedTravelPlanDoc: jest.fn(),
+  };
   const itineraryScheduleService = { getSchedule: jest.fn() };
   const userGoalService = { findByUser: jest.fn() };
 
@@ -59,6 +62,37 @@ describe('TripPlanSummaryService', () => {
         days: [
           {
             items: [{ id: 'perf-1' }, { id: 'perf-2' }],
+          },
+        ],
+      }),
+    });
+    tripPlanCollaboration.resolveSharedTravelPlanDoc.mockResolvedValue({
+      toObject: () => ({
+        nodes: [
+          {
+            id: 'user-dining-1',
+            category: 'dining',
+            startDate: '2026-03-14',
+            endDate: '2026-03-14',
+            title: '晚餐',
+            subtitle: '4 人',
+            confirmed: true,
+            price: 800,
+            splitEnabled: true,
+            splitAmong: ['user-1', 'user-2'],
+            paidBy: 'user-1',
+            createdBy: 'user-1',
+          },
+          {
+            id: 'user-hotel-1',
+            category: 'hotel',
+            startDate: '2026-03-14',
+            endDate: '2026-03-16',
+            title: '酒店',
+            subtitle: '个人',
+            confirmed: true,
+            price: 1200,
+            splitEnabled: false,
           },
         ],
       }),
@@ -127,6 +161,18 @@ describe('TripPlanSummaryService', () => {
       mustSeeCount: 1,
       schedulePublished: true,
       subscribed: false,
+    });
+  });
+
+  it('returns travel summary with total spent and per-person split average', async () => {
+    const result = await service.getSummary('trip-1', actor);
+
+    expect(result.travel).toMatchObject({
+      hasTravelPlan: true,
+      totalSpent: 2000,
+      splitTotal: 800,
+      perPerson: 400,
+      nodeCount: 2,
     });
   });
 });
