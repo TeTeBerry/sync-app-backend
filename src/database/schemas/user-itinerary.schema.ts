@@ -1,19 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
-import type {
-  ItineraryDay,
-  ItineraryTimelineDotColor,
-  ItineraryTimelineItem,
-  ItineraryTimelinePill,
-} from '@sync/itinerary-contracts';
+import type { ItineraryDay, ItineraryMeetup } from '@sync/itinerary-contracts';
 
 export type {
   ItineraryDay,
   ItineraryTimelineDotColor,
   ItineraryTimelineItem,
   ItineraryTimelinePill,
-};
+} from '@sync/itinerary-contracts';
 
 export type UserItineraryDocument = HydratedDocument<UserItinerary>;
 
@@ -33,6 +28,9 @@ export class UserItinerary {
 
   @Prop({ type: Array, default: [] })
   days!: ItineraryDay[];
+
+  @Prop({ type: Object })
+  meetup?: ItineraryMeetup;
 
   /** When set, this document is shared by all TripPlan members. */
   @Prop({ index: true, sparse: true })

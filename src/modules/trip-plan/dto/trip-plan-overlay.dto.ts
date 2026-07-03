@@ -1,4 +1,11 @@
-import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
+import type { TripMemberItineraryMark } from '@sync/itinerary-contracts';
 
 export class PatchTripPlanOverlayDto {
   @IsOptional()
@@ -19,4 +26,12 @@ export class PatchTripPlanOverlayDto {
   @IsOptional()
   @IsBoolean()
   visibleToMembers?: boolean;
+
+  @IsOptional()
+  @IsObject()
+  itineraryMarks?: Record<string, TripMemberItineraryMark>;
+
+  @IsOptional()
+  @IsObject()
+  itineraryNotes?: Record<string, string>;
 }

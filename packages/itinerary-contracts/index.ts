@@ -12,6 +12,8 @@ export type {
   SaveItineraryPayload,
   SaveItineraryResult,
   SavedItineraryResult,
+  ItineraryMeetup,
+  TripMemberItineraryMark,
 } from './types';
 
 export {

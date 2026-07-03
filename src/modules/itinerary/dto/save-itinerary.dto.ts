@@ -80,6 +80,27 @@ class ItineraryDayDto {
   items!: ItineraryTimelineItemDto[];
 }
 
+class ItineraryMeetupDto {
+  @IsString()
+  @MaxLength(120)
+  stageLabel!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  dateKey?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  timeRange?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  note?: string;
+}
+
 export class SaveItineraryDto {
   @IsString()
   @MaxLength(200)
@@ -94,4 +115,9 @@ export class SaveItineraryDto {
   @IsArray()
   @IsString({ each: true })
   selectedDjIds?: string[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ItineraryMeetupDto)
+  meetup?: ItineraryMeetupDto;
 }

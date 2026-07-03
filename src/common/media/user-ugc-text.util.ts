@@ -60,6 +60,10 @@ export function collectTravelGuideUgcTexts(dto: {
 
 export function collectItinerarySaveUgcTexts(body: {
   eventMeta?: string;
+  meetup?: {
+    stageLabel?: string;
+    note?: string;
+  };
   days?: Array<{
     label?: string;
     bannerDateLabel?: string;
@@ -71,7 +75,11 @@ export function collectItinerarySaveUgcTexts(body: {
     }>;
   }>;
 }): Array<string | undefined> {
-  const texts: Array<string | undefined> = [body.eventMeta];
+  const texts: Array<string | undefined> = [
+    body.eventMeta,
+    body.meetup?.stageLabel,
+    body.meetup?.note,
+  ];
   for (const day of body.days ?? []) {
     texts.push(day.label, day.bannerDateLabel);
     for (const item of day.items ?? []) {

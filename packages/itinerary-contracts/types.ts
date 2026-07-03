@@ -80,6 +80,15 @@ export type ItineraryDay = {
   items: ItineraryTimelineItem[];
 };
 
+export type ItineraryMeetup = {
+  stageLabel: string;
+  dateKey?: string;
+  timeRange?: string;
+  note?: string;
+};
+
+export type TripMemberItineraryMark = 'must' | 'maybe' | 'skip';
+
 export type GenerateItineraryPayload = {
   selectedDjIds: string[];
   dateKey?: string;
@@ -98,6 +107,7 @@ export type SaveItineraryPayload = {
   eventMeta: string;
   days: ItineraryDay[];
   selectedDjIds?: string[];
+  meetup?: ItineraryMeetup;
 };
 
 export type SaveItineraryResult = {
@@ -112,5 +122,6 @@ export type SavedItineraryResult = {
   selectedDjIds?: string[];
   eventMeta?: string;
   days?: ItineraryDay[];
+  meetup?: ItineraryMeetup;
   updatedAt?: string;
 };

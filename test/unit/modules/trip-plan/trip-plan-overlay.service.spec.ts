@@ -45,24 +45,13 @@ describe('TripPlanOverlayService', () => {
   });
 
   it('returns own overlay and visible peer overlays', async () => {
-    overlayModel.findOne
-      .mockReturnValueOnce({
-        lean: jest.fn().mockReturnValue({
-          exec: jest.fn().mockResolvedValue({
-            guideOverlay: { flights: 'MU5101' },
-          }),
+    overlayModel.findOne.mockReturnValue({
+      lean: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          guideOverlay: { flights: 'MU5101' },
         }),
-      })
-      .mockReturnValueOnce({
-        lean: jest.fn().mockReturnValue({
-          exec: jest.fn().mockResolvedValue([
-            {
-              userId: 'user-2',
-              guideOverlay: { flights: 'CA123', visibleToMembers: true },
-            },
-          ]),
-        }),
-      });
+      }),
+    });
     overlayModel.find.mockReturnValue({
       lean: jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue([
@@ -78,5 +67,67 @@ describe('TripPlanOverlayService', () => {
 
     expect(result.guideOverlay?.flights).toBe('MU5101');
     expect(result.visibleMemberOverlays).toHaveLength(1);
+    expect(result.mustSeeCounts).toEqual({});
+  });
+
+  it('aggregates mustSeeCounts from member itinerary marks', async () => {
+    overlayModel.findOne.mockReturnValue({
+      lean: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          itineraryMarks: { 'perf-1': 'must' },
+        }),
+      }),
+    });
+    overlayModel.find.mockReturnValue({
+      lean: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue([
+          { userId: 'user-1', itineraryMarks: { 'perf-1': 'must' } },
+          {
+            userId: 'user-2',
+            itineraryMarks: { 'perf-1': 'must', 'perf-2': 'maybe' },
+          },
+        ]),
+      }),
+    });
+
+    const result = await service.getOverlay('trip-1', actor);
+
+    expect(result.mustSeeCounts).toEqual({ 'perf-1': 2 });
+    expect(result.itineraryMarks).toEqual({ 'perf-1': 'must' });
+  });
+
+  it('merges itinerary marks on patch', async () => {
+    const existing = {
+      guideOverlay: {},
+      itineraryMarks: { 'perf-1': 'maybe' },
+      itineraryNotes: {},
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    overlayModel.findOne
+      .mockReturnValueOnce({ exec: jest.fn().mockResolvedValue(existing) })
+      .mockReturnValueOnce({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({
+            itineraryMarks: { 'perf-1': 'maybe', 'perf-2': 'must' },
+          }),
+        }),
+      });
+    overlayModel.find.mockReturnValue({
+      lean: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue([
+          {
+            userId: 'user-1',
+            itineraryMarks: { 'perf-1': 'maybe', 'perf-2': 'must' },
+          },
+        ]),
+      }),
+    });
+
+    const result = await service.patchOverlay('trip-1', actor, {
+      itineraryMarks: { 'perf-2': 'must' },
+    });
+
+    expect(existing.save).toHaveBeenCalled();
+    expect(result.itineraryMarks?.['perf-2']).toBe('must');
   });
 });

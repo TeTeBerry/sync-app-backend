@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
   TripPlan,
@@ -29,9 +29,13 @@ import { TripPlanService } from './trip-plan.service';
 import { TripPlanCollaborationService } from './trip-plan-collaboration.service';
 import { TripPlanOverlayService } from './trip-plan-overlay.service';
 import { TripPlanSummaryService } from './trip-plan-summary.service';
+import { ItineraryModule } from '../itinerary/itinerary.module';
+import { UserGoalModule } from '../goal/goal.module';
 
 @Module({
   imports: [
+    forwardRef(() => ItineraryModule),
+    UserGoalModule,
     MongooseModule.forFeature([
       { name: TripPlan.name, schema: TripPlanSchema },
       { name: TripMemberOverlay.name, schema: TripMemberOverlaySchema },

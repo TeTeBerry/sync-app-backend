@@ -98,6 +98,21 @@ export class ItineraryService {
       })),
     }));
 
+    const meetup = body.meetup
+      ? {
+          stageLabel: body.meetup.stageLabel.trim(),
+          ...(body.meetup.dateKey?.trim()
+            ? { dateKey: body.meetup.dateKey.trim() }
+            : {}),
+          ...(body.meetup.timeRange?.trim()
+            ? { timeRange: body.meetup.timeRange.trim() }
+            : {}),
+          ...(body.meetup.note?.trim()
+            ? { note: body.meetup.note.trim() }
+            : {}),
+        }
+      : undefined;
+
     const tripPlan = await this.tripPlanCollaboration.resolveForActivity(
       actor,
       activityLegacyId,
@@ -117,6 +132,7 @@ export class ItineraryService {
           selectedDjIds: body.selectedDjIds ?? [],
           eventMeta: body.eventMeta,
           days,
+          ...(meetup ? { meetup } : {}),
         },
         { upsert: true, new: true, setDefaultsOnInsert: true },
       );
@@ -133,6 +149,7 @@ export class ItineraryService {
           selectedDjIds: body.selectedDjIds ?? [],
           eventMeta: body.eventMeta,
           days,
+          ...(meetup ? { meetup } : {}),
         },
         { upsert: true, new: true, setDefaultsOnInsert: true },
       );
@@ -187,6 +204,7 @@ export class ItineraryService {
       selectedDjIds: doc.selectedDjIds ?? [],
       eventMeta: doc.eventMeta,
       days: doc.days,
+      meetup: doc.meetup,
       savedAt:
         (doc as { updatedAt?: Date }).updatedAt?.toISOString() ??
         new Date().toISOString(),

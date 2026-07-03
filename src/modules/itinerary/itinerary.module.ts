@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CloudModule } from '../../infra/cloud/cloud.module';
 import {
@@ -47,7 +47,7 @@ import { TripPlanModule } from '../trip-plan/trip-plan.module';
     CloudModule,
     DjModule,
     UserGoalModule,
-    TripPlanModule,
+    forwardRef(() => TripPlanModule),
     MongooseModule.forFeature([
       { name: UserArtistLike.name, schema: UserArtistLikeSchema },
       { name: ArtistPerformance.name, schema: ArtistPerformanceSchema },
