@@ -56,7 +56,7 @@ async function updateActivityImageInDatabases(targets, legacyId, cloudPath) {
     await mongoose.connect(uri);
     await mongoose.connection.db.collection('activities').updateOne(
       { legacyId },
-      { $set: { image: cloudPath } },
+      { $set: { image: cloudPath, updatedAt: new Date() } },
     );
     console.log(
       `   MongoDB legacyId=${legacyId} image=${cloudPath} (${maskUri(uri)})`,
