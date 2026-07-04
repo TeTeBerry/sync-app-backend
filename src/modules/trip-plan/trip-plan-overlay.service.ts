@@ -16,6 +16,11 @@ export type TripPlanOverlayMemberView = {
   guideOverlay?: TripMemberGuideOverlay;
 };
 
+export type TripPlanOverlayMemberMustMark = {
+  userId: string;
+  performanceId: string;
+};
+
 export type TripPlanOverlayDto = {
   tripPlanId: string;
   userId: string;
@@ -23,6 +28,7 @@ export type TripPlanOverlayDto = {
   itineraryMarks?: Record<string, TripMemberItineraryMark>;
   itineraryNotes?: Record<string, string>;
   mustSeeCounts: Record<string, number>;
+  memberMustMarks?: TripPlanOverlayMemberMustMark[];
   visibleMemberOverlays: TripPlanOverlayMemberView[];
 };
 
@@ -56,6 +62,7 @@ export class TripPlanOverlayService {
       .exec();
 
     const mustSeeCounts = await this.aggregateMustSeeCounts(tripPlanId);
+    const memberMustMarks = await this.aggregateMemberMustMarks(tripPlanId);
 
     return {
       tripPlanId,
@@ -64,6 +71,7 @@ export class TripPlanOverlayService {
       itineraryMarks: own?.itineraryMarks,
       itineraryNotes: own?.itineraryNotes,
       mustSeeCounts,
+      memberMustMarks,
       visibleMemberOverlays: visiblePeers.map((doc) => ({
         userId: doc.userId,
         guideOverlay: doc.guideOverlay,
@@ -141,5 +149,22 @@ export class TripPlanOverlayService {
       }
     }
     return counts;
+  }
+
+  private async aggregateMemberMustMarks(
+    tripPlanId: string,
+  ): Promise<TripPlanOverlayMemberMustMark[]> {
+    const docs = await this.overlayModel.find({ tripPlanId }).lean().exec();
+    const marks: TripPlanOverlayMemberMustMark[] = [];
+    for (const doc of docs) {
+      for (const [performanceId, mark] of Object.entries(
+        doc.itineraryMarks ?? {},
+      )) {
+        if (mark === 'must') {
+          marks.push({ userId: doc.userId, performanceId });
+        }
+      }
+    }
+    return marks;
   }
 }

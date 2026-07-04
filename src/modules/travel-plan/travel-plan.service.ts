@@ -277,6 +277,7 @@ export class TravelPlanService {
       ok: true as const,
       activityLegacyId,
       savedAt,
+      lastEditedByUserId: actor.resolvedUserId,
       nodeCount: nodes.length,
     };
   }
@@ -349,6 +350,9 @@ export class TravelPlanService {
       savedAt:
         (doc as { updatedAt?: Date }).updatedAt?.toISOString() ??
         new Date().toISOString(),
+      ...(doc.lastEditedByUserId
+        ? { lastEditedByUserId: doc.lastEditedByUserId }
+        : {}),
     };
   }
 }

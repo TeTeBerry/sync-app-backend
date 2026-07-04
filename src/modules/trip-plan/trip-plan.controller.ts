@@ -19,6 +19,7 @@ import { PatchTripPlanOverlayDto } from './dto/trip-plan-overlay.dto';
 import { TripPlanService } from './trip-plan.service';
 import { TripPlanOverlayService } from './trip-plan-overlay.service';
 import { TripPlanSummaryService } from './trip-plan-summary.service';
+import { TripPlanMembersService } from './trip-plan-members.service';
 
 @Controller('trip-plans')
 export class TripPlanController {
@@ -26,6 +27,7 @@ export class TripPlanController {
     private readonly service: TripPlanService,
     private readonly overlayService: TripPlanOverlayService,
     private readonly summaryService: TripPlanSummaryService,
+    private readonly membersService: TripPlanMembersService,
   ) {}
 
   @Get()
@@ -53,6 +55,11 @@ export class TripPlanController {
   @Get(':id/summary')
   getSummary(@Param('id') id: string, @CurrentActor() actor: RequestActor) {
     return this.summaryService.getSummary(id, actor);
+  }
+
+  @Get(':id/members')
+  getMembers(@Param('id') id: string, @CurrentActor() actor: RequestActor) {
+    return this.membersService.listMembers(id, actor);
   }
 
   @Get(':id/overlay')

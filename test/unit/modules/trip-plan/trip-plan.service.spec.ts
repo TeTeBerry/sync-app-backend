@@ -92,3 +92,71 @@ describe('TripPlanService member management', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
+
+describe('TripPlanService share token', () => {
+  const owner = { resolvedUserId: 'owner-1', source: 'jwt' as const };
+  const joiner = { resolvedUserId: 'joiner-1', source: 'jwt' as const };
+
+  function createJoinDoc() {
+    const token = 'share-token-1';
+    return {
+      _id: 'trip-1',
+      activityLegacyId: 1001,
+      ownerId: owner.resolvedUserId,
+      memberIds: [owner.resolvedUserId],
+      shareToken: token,
+      shareTokenExpiresAt: new Date(Date.now() + 60_000),
+      createdAt: new Date('2026-07-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-07-01T00:00:00.000Z'),
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+  }
+
+  function createServiceForToken(doc = createJoinDoc()) {
+    const model = {
+      findById: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue(doc),
+      }),
+      findOne: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue(doc),
+      }),
+    };
+    return { service: new TripPlanService(model as never), doc };
+  }
+
+  it('keeps share token after first join so owner can continue inviting', async () => {
+    const { service, doc } = createServiceForToken();
+    const tokenBefore = doc.shareToken;
+
+    await service.joinByToken(tokenBefore!, joiner as never);
+
+    expect(doc.memberIds).toEqual([
+      owner.resolvedUserId,
+      joiner.resolvedUserId,
+    ]);
+    expect(doc.shareToken).toBe(tokenBefore);
+    expect(doc.shareTokenExpiresAt).toBeTruthy();
+  });
+
+  it('overwrites share token when owner regenerates invite', async () => {
+    const doc = createJoinDoc();
+    const { service } = createServiceForToken(doc);
+    const previousToken = doc.shareToken;
+
+    await service.generateShareToken('trip-1', owner as never);
+
+    expect(doc.shareToken).toBeTruthy();
+    expect(doc.shareToken).not.toBe(previousToken);
+    expect(doc.shareTokenExpiresAt).toBeTruthy();
+  });
+
+  it('rejects join when share token is expired', async () => {
+    const doc = createJoinDoc();
+    doc.shareTokenExpiresAt = new Date(Date.now() - 60_000);
+    const { service } = createServiceForToken(doc);
+
+    await expect(
+      service.joinByToken(doc.shareToken!, joiner as never),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});

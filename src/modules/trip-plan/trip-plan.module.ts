@@ -31,11 +31,14 @@ import { TripPlanOverlayService } from './trip-plan-overlay.service';
 import { TripPlanSummaryService } from './trip-plan-summary.service';
 import { ItineraryModule } from '../itinerary/itinerary.module';
 import { UserGoalModule } from '../goal/goal.module';
+import { UserModule } from '../user/user.module';
+import { TripPlanMembersService } from './trip-plan-members.service';
 
 @Module({
   imports: [
     forwardRef(() => ItineraryModule),
     UserGoalModule,
+    UserModule,
     MongooseModule.forFeature([
       { name: TripPlan.name, schema: TripPlanSchema },
       { name: TripMemberOverlay.name, schema: TripMemberOverlaySchema },
@@ -57,12 +60,14 @@ import { UserGoalModule } from '../goal/goal.module';
     TripPlanCollaborationService,
     TripPlanOverlayService,
     TripPlanSummaryService,
+    TripPlanMembersService,
   ],
   exports: [
     TripPlanService,
     TripPlanCollaborationService,
     TripPlanOverlayService,
     TripPlanSummaryService,
+    TripPlanMembersService,
   ],
 })
 export class TripPlanModule {}

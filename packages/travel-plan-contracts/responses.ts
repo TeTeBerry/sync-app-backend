@@ -17,4 +17,5 @@ export type SavedTravelPlanResult = {
   hiddenActivityNodeIds?: string[];
   splitCount?: number;
   savedAt?: string;
+  lastEditedByUserId?: string;
 };

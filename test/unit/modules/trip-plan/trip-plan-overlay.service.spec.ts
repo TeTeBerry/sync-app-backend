@@ -93,6 +93,10 @@ describe('TripPlanOverlayService', () => {
     const result = await service.getOverlay('trip-1', actor);
 
     expect(result.mustSeeCounts).toEqual({ 'perf-1': 2 });
+    expect(result.memberMustMarks).toEqual([
+      { userId: 'user-1', performanceId: 'perf-1' },
+      { userId: 'user-2', performanceId: 'perf-1' },
+    ]);
     expect(result.itineraryMarks).toEqual({ 'perf-1': 'must' });
   });
 

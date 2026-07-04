@@ -141,9 +141,6 @@ export class TripPlanService {
     const userId = actor.resolvedUserId;
     if (!doc.memberIds.includes(userId)) {
       doc.memberIds.push(userId);
-      // Clear token after first use
-      doc.shareToken = undefined;
-      doc.shareTokenExpiresAt = undefined;
       await doc.save();
     }
     return toDto(doc);

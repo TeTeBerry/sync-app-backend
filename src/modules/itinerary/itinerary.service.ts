@@ -172,6 +172,7 @@ export class ItineraryService {
       ok: true as const,
       activityLegacyId,
       savedAt,
+      lastEditedByUserId: actor.resolvedUserId,
     };
   }
 
@@ -208,6 +209,9 @@ export class ItineraryService {
       savedAt:
         (doc as { updatedAt?: Date }).updatedAt?.toISOString() ??
         new Date().toISOString(),
+      ...(doc.lastEditedByUserId
+        ? { lastEditedByUserId: doc.lastEditedByUserId }
+        : {}),
     };
   }
 }

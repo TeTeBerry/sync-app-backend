@@ -114,6 +114,7 @@ export type SaveItineraryResult = {
   ok: true;
   activityLegacyId: number;
   savedAt: string;
+  lastEditedByUserId?: string;
 };
 
 export type SavedItineraryResult = {
@@ -123,5 +124,7 @@ export type SavedItineraryResult = {
   eventMeta?: string;
   days?: ItineraryDay[];
   meetup?: ItineraryMeetup;
+  savedAt?: string;
   updatedAt?: string;
+  lastEditedByUserId?: string;
 };
