@@ -3,8 +3,8 @@ export const ACTIVITY_IMAGE_SOURCES = [
   {
     legacyId: 1,
     code: 'tomorrowland',
-    sourceUrl:
-      'https://mma.prnewswire.com/media/2921955/Tomorrowland_Thailand_PR_Newswire.jpg',
+    /** Local asset — official TML Thailand marketing portrait (see assets/activity/tomorrowland.jpg) */
+    sourceUrl: '',
   },
   {
     legacyId: 2,
