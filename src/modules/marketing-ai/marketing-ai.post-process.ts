@@ -1,5 +1,6 @@
 import type { MarketingPlatform } from './dto/generate-platform-content.dto';
 import type {
+  InstagramCarouselSlide,
   LlmPlatformContentPayload,
   PlatformContentResult,
 } from './marketing-ai.types';
@@ -75,6 +76,103 @@ function resolvePlannerContentType(
 ): string | undefined {
   const plannerType = festival.plannerContentType;
   return typeof plannerType === 'string' ? plannerType : undefined;
+}
+
+const DEFAULT_INSTAGRAM_PUBLISH_TIME = '18:30 GMT+7';
+const INSTAGRAM_CAROUSEL_SLIDE_COUNT = 5;
+
+function festivalName(festival: Record<string, unknown>): string {
+  return typeof festival.name === 'string' ? festival.name : 'Festival';
+}
+
+function normalizeCarouselSlides(
+  value: LlmPlatformContentPayload['carousel'],
+): InstagramCarouselSlide[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((slide, index) => {
+      const slideNumber =
+        typeof slide?.slide === 'number' && slide.slide > 0
+          ? slide.slide
+          : index + 1;
+      const headline = slide?.headline?.trim() ?? '';
+      const body = slide?.body?.trim() ?? '';
+      if (!headline && !body) {
+        return null;
+      }
+      return { slide: slideNumber, headline, body };
+    })
+    .filter((slide): slide is InstagramCarouselSlide => slide !== null)
+    .slice(0, INSTAGRAM_CAROUSEL_SLIDE_COUNT);
+}
+
+function buildInstagramCarouselFromVisualBrief(
+  visualBrief: VisualBrief | undefined,
+  title: string,
+  content: string,
+  festival: Record<string, unknown>,
+): InstagramCarouselSlide[] {
+  const name = festivalName(festival);
+  const paragraphs = content
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const overlayLines = visualBrief?.overlayText ?? [];
+  const layoutLines =
+    visualBrief?.designLayout
+      ?.split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean) ?? [];
+
+  const slides: InstagramCarouselSlide[] = [];
+
+  for (let index = 0; index < INSTAGRAM_CAROUSEL_SLIDE_COUNT; index += 1) {
+    const slideNumber = index + 1;
+    const headline =
+      overlayLines[index] ||
+      layoutLines[index]?.replace(/^slide\s*\d+\s*[:：-]?\s*/i, '') ||
+      (index === 0
+        ? title || `${name} Guide`
+        : `${name} — Part ${slideNumber}`);
+    const body =
+      paragraphs[index] ||
+      paragraphs[paragraphs.length - 1] ||
+      content.slice(0, 220);
+
+    slides.push({
+      slide: slideNumber,
+      headline: headline.slice(0, 120),
+      body: body.slice(0, 500),
+    });
+  }
+
+  return slides;
+}
+
+export function buildInstagramPublishingFields(
+  payload: LlmPlatformContentPayload,
+  festival: Record<string, unknown>,
+  title: string,
+  content: string,
+  visualBrief: VisualBrief | undefined,
+): Pick<PlatformContentResult, 'publishTime' | 'carousel'> {
+  const carousel =
+    normalizeCarouselSlides(payload.carousel).length > 0
+      ? normalizeCarouselSlides(payload.carousel)
+      : buildInstagramCarouselFromVisualBrief(
+          visualBrief,
+          title,
+          content,
+          festival,
+        );
+
+  return {
+    publishTime: payload.publishTime?.trim() || DEFAULT_INSTAGRAM_PUBLISH_TIME,
+    carousel,
+  };
 }
 
 function parseVisualBriefFromPayload(
@@ -179,6 +277,8 @@ type ProcessedContent = Pick<
   | 'contentStyle'
   | 'notes'
   | 'visualBrief'
+  | 'publishTime'
+  | 'carousel'
 >;
 
 export function applyXPostProcess(
@@ -212,13 +312,29 @@ export function applyDefaultPostProcess(
   platform: MarketingPlatform,
   festival: Record<string, unknown>,
 ): ProcessedContent {
+  const title = payload.title?.trim() ?? '';
+  const content = payload.content?.trim() ?? '';
+  const visualBrief = normalizeVisualBrief(platform, payload, festival);
+
+  const instagramFields =
+    platform === 'instagram'
+      ? buildInstagramPublishingFields(
+          payload,
+          festival,
+          title,
+          content,
+          visualBrief,
+        )
+      : {};
+
   return {
-    title: payload.title?.trim() ?? '',
-    content: payload.content?.trim() ?? '',
+    title,
+    content,
     hashtags: normalizeHashtags(payload.hashtags),
     cta: payload.cta?.trim() ?? '',
     contentStyle,
     notes: payload.notes?.trim() ?? '',
-    visualBrief: normalizeVisualBrief(platform, payload, festival),
+    visualBrief,
+    ...instagramFields,
   };
 }

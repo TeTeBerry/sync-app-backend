@@ -1,5 +1,7 @@
 import {
+  applyDefaultPostProcess,
   applyXPostProcess,
+  buildInstagramPublishingFields,
   isPromotionalXContent,
   normalizeVisualBrief,
   truncateXContent,
@@ -81,6 +83,52 @@ describe('marketing-ai.post-process', () => {
           {},
         ),
       ).toEqual({ visualType: 'text-only' });
+    });
+  });
+
+  describe('buildInstagramPublishingFields', () => {
+    it('builds five carousel slides with default publish time', () => {
+      const fields = buildInstagramPublishingFields(
+        { publishTime: '', carousel: [] },
+        { name: 'Tomorrowland Thailand' },
+        'Travel Guide',
+        'Line one\nLine two\nLine three',
+        {
+          visualType: 'carousel',
+          overlayText: ['Slide hook', 'Tip two'],
+        },
+      );
+
+      expect(fields.publishTime).toBe('18:30 GMT+7');
+      expect(fields.carousel).toHaveLength(5);
+      expect(fields.carousel?.[0]).toMatchObject({
+        slide: 1,
+        headline: 'Slide hook',
+      });
+    });
+  });
+
+  describe('applyDefaultPostProcess', () => {
+    it('includes instagram carousel and publish time', () => {
+      const result = applyDefaultPostProcess(
+        {
+          title: 'Travel Guide',
+          content: 'Caption body',
+          hashtags: ['tomorrowland'],
+          carousel: [
+            { slide: 1, headline: 'Getting there', body: 'Fly early' },
+          ],
+        },
+        'visual-storytelling',
+        'instagram',
+        { name: 'Tomorrowland Thailand' },
+      );
+
+      expect(result.publishTime).toBe('18:30 GMT+7');
+      expect(result.carousel?.[0]).toMatchObject({
+        slide: 1,
+        headline: 'Getting there',
+      });
     });
   });
 });
