@@ -47,6 +47,7 @@ export type InstagramGeneratedAssetImage = {
   slide: number;
   title: string;
   imagePath: string;
+  imageUrl: string;
   promptUsed: string;
 };
 

@@ -157,6 +157,7 @@ describe('MarketingAiImageService', () => {
       imagePath: expect.stringMatching(
         /^generated\/images\/\d{4}-\d{2}-\d{2}\/tomorrowland-thailand-2026-slide-1\.png$/,
       ),
+      imageUrl: 'https://cdn.example.com/marketing-agent/slide1.png',
       promptUsed: expect.stringContaining('Getting there'),
     });
   });

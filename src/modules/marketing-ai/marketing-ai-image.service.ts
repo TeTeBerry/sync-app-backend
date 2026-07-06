@@ -129,6 +129,7 @@ export class MarketingAiImageService {
       slide: slideNumber,
       title: slide.headline.trim(),
       imagePath,
+      imageUrl: downloadUrl,
       promptUsed,
     };
   }

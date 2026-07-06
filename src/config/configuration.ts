@@ -343,18 +343,9 @@ export default () => ({
   },
 
   imageGeneration: {
-    enabled:
-      cleanEnv(
-        process.env.IMAGE_GENERATION_ENABLED ??
-          process.env.POSTER_BACKGROUND_ENABLED,
-        'true',
-      ) !== 'false',
+    enabled: cleanEnv(process.env.IMAGE_GENERATION_ENABLED, 'true') !== 'false',
     imageModel: resolveImageGenerationModel(),
-    imageVersion: cleanEnv(
-      process.env.IMAGE_GENERATION_VERSION ??
-        process.env.POSTER_BACKGROUND_IMAGE_VERSION,
-      'v1.9',
-    ),
+    imageVersion: cleanEnv(process.env.IMAGE_GENERATION_VERSION, 'v1.9'),
   },
 
   posterBackground: {

@@ -37,10 +37,7 @@ initOptions.accessKey = accessKey;
 const app = cloudbase.init(initOptions);
 const client = app.ai().createImageModel(imageModel);
 
-const imageVersion = (
-  process.env.IMAGE_GENERATION_VERSION ??
-  process.env.POSTER_BACKGROUND_IMAGE_VERSION
-)?.trim();
+const imageVersion = process.env.IMAGE_GENERATION_VERSION?.trim();
 
 console.log(`generating test image (${imageModel}, 720x1280)...`);
 const res = await client.generateImage({
