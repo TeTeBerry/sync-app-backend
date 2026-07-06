@@ -13,7 +13,10 @@ import {
   INSTAGRAM_CAROUSEL_IMAGE_SIZE,
   buildInstagramCarouselImagePrompt,
 } from './image-prompts/instagram-carousel.prompt';
-import type { InstagramAssetsResult } from './marketing-ai-instagram-asset.types';
+import type {
+  InstagramAssetsResult,
+  InstagramGeneratedAssetImage,
+} from './marketing-ai-instagram-asset.types';
 
 export const MARKETING_AGENT_CLOUD_PREFIX = 'marketing-agent/';
 
@@ -43,7 +46,12 @@ export class MarketingAiImageService {
       );
     }
 
-    const slides = dto.carousel.slice(0, 5);
+    const slides = dto.carousel
+      .slice(0, 5)
+      .filter(
+        (slide) =>
+          Number.isFinite(Number(slide.slide)) && Number(slide.slide) >= 1,
+      );
     if (slides.length === 0) {
       throw new ServiceUnavailableException(
         'Carousel must include at least one slide',
@@ -52,65 +60,77 @@ export class MarketingAiImageService {
 
     const dateStr = new Date().toISOString().slice(0, 10);
     const festivalSlug = sanitizeFestivalSlug(dto.festival.id);
-    const images: InstagramAssetsResult['images'] = [];
 
-    for (const slide of slides) {
-      const slideNumber = Number(slide.slide);
-      if (!Number.isFinite(slideNumber) || slideNumber < 1) {
-        continue;
-      }
+    this.logger.log(
+      `Generating ${slides.length} Instagram carousel image(s) in parallel for ${dto.festival.name}`,
+    );
 
-      const imagePath = buildInstagramAssetImagePath(
-        dateStr,
-        festivalSlug,
-        slideNumber,
+    const images = await Promise.all(
+      slides.map((slide) =>
+        this.generateSingleSlide(dto, slide, dateStr, festivalSlug),
+      ),
+    );
+
+    return {
+      images: images.sort((a, b) => a.slide - b.slide),
+    };
+  }
+
+  private async generateSingleSlide(
+    dto: GenerateInstagramAssetsDto,
+    slide: GenerateInstagramAssetsDto['carousel'][number],
+    dateStr: string,
+    festivalSlug: string,
+  ): Promise<InstagramGeneratedAssetImage> {
+    const slideNumber = Number(slide.slide);
+    const imagePath = buildInstagramAssetImagePath(
+      dateStr,
+      festivalSlug,
+      slideNumber,
+    );
+    const cloudPath = `${MARKETING_AGENT_CLOUD_PREFIX}${imagePath}`;
+    const promptUsed = buildInstagramCarouselImagePrompt(dto, slide);
+
+    const tempUrl = await this.imageClient.generateImage({
+      prompt: promptUsed,
+      size: INSTAGRAM_CAROUSEL_IMAGE_SIZE,
+    });
+
+    if (!tempUrl) {
+      this.logger.warn(
+        `Instagram slide ${slideNumber} image generation returned empty url`,
       );
-      const cloudPath = `${MARKETING_AGENT_CLOUD_PREFIX}${imagePath}`;
-      const promptUsed = buildInstagramCarouselImagePrompt(dto, slide);
-
-      const tempUrl = await this.imageClient.generateImage({
-        prompt: promptUsed,
-        size: INSTAGRAM_CAROUSEL_IMAGE_SIZE,
-      });
-
-      if (!tempUrl) {
-        this.logger.warn(
-          `Instagram slide ${slideNumber} image generation returned empty url`,
-        );
-        throw new ServiceUnavailableException(
-          `Failed to generate image for slide ${slideNumber}`,
-        );
-      }
-
-      const buffer = Buffer.from(await this.fetchImageBuffer(tempUrl));
-      if (!buffer.length) {
-        throw new ServiceUnavailableException(
-          `Failed to download generated image for slide ${slideNumber}`,
-        );
-      }
-
-      const fileId = await this.cloudUpload.uploadBuffer(cloudPath, buffer);
-      const [downloadUrl] = await this.cloudStorage.fetchCloudFileDownloadUrls(
-        [fileId],
-        (id) => this.assertMarketingAgentCloudFileId(id),
-        '无法读取营销图片',
+      throw new ServiceUnavailableException(
+        `Failed to generate image for slide ${slideNumber}`,
       );
-
-      if (!downloadUrl) {
-        throw new ServiceUnavailableException(
-          `Failed to resolve cloud URL for slide ${slideNumber}`,
-        );
-      }
-
-      images.push({
-        slide: slideNumber,
-        title: slide.headline.trim(),
-        imagePath,
-        promptUsed,
-      });
     }
 
-    return { images };
+    const buffer = Buffer.from(await this.fetchImageBuffer(tempUrl));
+    if (!buffer.length) {
+      throw new ServiceUnavailableException(
+        `Failed to download generated image for slide ${slideNumber}`,
+      );
+    }
+
+    const fileId = await this.cloudUpload.uploadBuffer(cloudPath, buffer);
+    const [downloadUrl] = await this.cloudStorage.fetchCloudFileDownloadUrls(
+      [fileId],
+      (id) => this.assertMarketingAgentCloudFileId(id),
+      '无法读取营销图片',
+    );
+
+    if (!downloadUrl) {
+      throw new ServiceUnavailableException(
+        `Failed to resolve cloud URL for slide ${slideNumber}`,
+      );
+    }
+
+    return {
+      slide: slideNumber,
+      title: slide.headline.trim(),
+      imagePath,
+      promptUsed,
+    };
   }
 
   private assertMarketingAgentCloudFileId(fileId: string): void {
