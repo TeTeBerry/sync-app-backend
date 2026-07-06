@@ -12,6 +12,7 @@ export class HunyuanImageClient {
   readonly enabled: boolean;
 
   private readonly envId: string;
+  private readonly imageModel: string;
   private readonly imageVersion: string;
   private readonly accessKey: string;
   private readonly secretId: string;
@@ -19,6 +20,8 @@ export class HunyuanImageClient {
 
   constructor(private readonly config: ConfigService) {
     this.envId = this.config.get<string>('cloudbase.envId')?.trim() ?? '';
+    this.imageModel =
+      this.config.get<string>('posterBackground.imageModel')?.trim() ?? '';
     this.imageVersion =
       this.config.get<string>('posterBackground.imageVersion') ?? 'v1.9';
     this.accessKey =
@@ -31,7 +34,8 @@ export class HunyuanImageClient {
 
     const featureEnabled =
       this.config.get<boolean>('posterBackground.enabled') !== false;
-    this.enabled = featureEnabled && Boolean(this.envId);
+    this.enabled =
+      featureEnabled && Boolean(this.envId) && Boolean(this.imageModel);
   }
 
   async generateImage(
@@ -58,24 +62,26 @@ export class HunyuanImageClient {
 
       const app = cloudbase.init(initOptions);
       const ai = app.ai();
-      const imageModel = ai.createImageModel('hunyuan-image');
-      const res = await imageModel.generateImage({
-        model: 'hunyuan-image',
+      const imageModel = ai.createImageModel(this.imageModel);
+      const res = (await imageModel.generateImage({
+        model: this.imageModel,
         prompt,
         size: input.size,
         version: this.imageVersion as 'v1.9',
         revise: false,
-      });
+      })) as { data?: Array<{ url?: string }> };
 
       const url = res?.data?.[0]?.url?.trim();
       if (!url) {
-        this.logger.warn('Hunyuan image generation returned empty url');
+        this.logger.warn(
+          `Image generation (${this.imageModel}) returned empty url`,
+        );
         return null;
       }
       return url;
     } catch (error) {
       this.logger.warn(
-        `Hunyuan image generation failed: ${
+        `Image generation (${this.imageModel}) failed: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );

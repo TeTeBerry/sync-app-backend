@@ -11,21 +11,11 @@ import { HunyuanImageClient } from '../../infra/llm/hunyuan-image.client';
 import type { GenerateInstagramAssetsDto } from './dto/generate-instagram-assets.dto';
 import {
   INSTAGRAM_CAROUSEL_IMAGE_SIZE,
-  buildInstagramSlideImagePrompt,
-} from './marketing-ai-image.prompts';
+  buildInstagramCarouselImagePrompt,
+} from './image-prompts/instagram-carousel.prompt';
+import type { InstagramAssetsResult } from './marketing-ai-instagram-asset.types';
 
 export const MARKETING_AGENT_CLOUD_PREFIX = 'marketing-agent/';
-
-export type InstagramGeneratedImage = {
-  slide: number;
-  title: string;
-  imageUrl: string;
-  cloudPath: string;
-};
-
-export type InstagramAssetsResult = {
-  images: InstagramGeneratedImage[];
-};
 
 @Injectable()
 export class MarketingAiImageService {
@@ -43,7 +33,7 @@ export class MarketingAiImageService {
   ): Promise<InstagramAssetsResult> {
     if (!this.imageClient.enabled) {
       throw new ServiceUnavailableException(
-        'Hunyuan image generation is not configured',
+        'POSTER_BACKGROUND_IMAGE_MODEL image generation is not configured',
       );
     }
 
@@ -61,7 +51,8 @@ export class MarketingAiImageService {
     }
 
     const dateStr = new Date().toISOString().slice(0, 10);
-    const images: InstagramGeneratedImage[] = [];
+    const festivalSlug = sanitizeFestivalSlug(dto.festival.id);
+    const images: InstagramAssetsResult['images'] = [];
 
     for (const slide of slides) {
       const slideNumber = Number(slide.slide);
@@ -69,10 +60,16 @@ export class MarketingAiImageService {
         continue;
       }
 
-      const cloudPath = buildMarketingAgentCloudPath(dateStr, slideNumber);
-      const prompt = buildInstagramSlideImagePrompt(dto, slide);
+      const imagePath = buildInstagramAssetImagePath(
+        dateStr,
+        festivalSlug,
+        slideNumber,
+      );
+      const cloudPath = `${MARKETING_AGENT_CLOUD_PREFIX}${imagePath}`;
+      const promptUsed = buildInstagramCarouselImagePrompt(dto, slide);
+
       const tempUrl = await this.imageClient.generateImage({
-        prompt,
+        prompt: promptUsed,
         size: INSTAGRAM_CAROUSEL_IMAGE_SIZE,
       });
 
@@ -93,13 +90,13 @@ export class MarketingAiImageService {
       }
 
       const fileId = await this.cloudUpload.uploadBuffer(cloudPath, buffer);
-      const [imageUrl] = await this.cloudStorage.fetchCloudFileDownloadUrls(
+      const [downloadUrl] = await this.cloudStorage.fetchCloudFileDownloadUrls(
         [fileId],
         (id) => this.assertMarketingAgentCloudFileId(id),
         '无法读取营销图片',
       );
 
-      if (!imageUrl) {
+      if (!downloadUrl) {
         throw new ServiceUnavailableException(
           `Failed to resolve cloud URL for slide ${slideNumber}`,
         );
@@ -108,8 +105,8 @@ export class MarketingAiImageService {
       images.push({
         slide: slideNumber,
         title: slide.headline.trim(),
-        imageUrl,
-        cloudPath,
+        imagePath,
+        promptUsed,
       });
     }
 
@@ -157,9 +154,19 @@ export class MarketingAiImageService {
   }
 }
 
-export function buildMarketingAgentCloudPath(
+export function sanitizeFestivalSlug(festivalId: string): string {
+  return festivalId
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+export function buildInstagramAssetImagePath(
   dateStr: string,
+  festivalSlug: string,
   slideNumber: number,
 ): string {
-  return `${MARKETING_AGENT_CLOUD_PREFIX}${dateStr}/slide${slideNumber}.png`;
+  return `generated/images/${dateStr}/${festivalSlug}-slide-${slideNumber}.png`;
 }

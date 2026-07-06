@@ -8,6 +8,7 @@ import {
   MARKETING_AGENT_CLOUD_PREFIX,
   MarketingAiImageService,
 } from '../../../../src/modules/marketing-ai/marketing-ai-image.service';
+import type { InstagramAssetRequest } from '../../../../src/modules/marketing-ai/marketing-ai-instagram-asset.types';
 
 describe('MarketingAiImageService', () => {
   const generateImage = jest.fn();
@@ -64,17 +65,43 @@ describe('MarketingAiImageService', () => {
     service = module.get(MarketingAiImageService);
   });
 
-  const baseDto = {
-    festival: { name: 'Tomorrowland Thailand', location: 'Pattaya' },
-    caption: 'Your travel guide caption',
-    brandStyle: 'premium dark festival travel aesthetic',
-    language: 'en',
+  const baseDto: InstagramAssetRequest = {
+    festival: {
+      id: 'tomorrowland-thailand-2026',
+      name: 'Tomorrowland Thailand',
+      location: 'Pattaya',
+      country: 'Thailand',
+    },
+    publishingPackage: {
+      topic: 'Travel guide',
+      caption: 'Your travel guide caption',
+      hashtags: ['Tomorrowland'],
+    },
+    brandStyle: {
+      brandName: 'Raven',
+      mood: 'premium',
+      background: 'dark',
+      colorPalette: ['deep purple', 'electric blue', 'black'],
+      typography: 'clean sans-serif',
+      visualTone: ['festival travel', 'minimal'],
+      avoid: ['crowded party photos'],
+    },
     carousel: [
-      { slide: 1, headline: 'Getting there', body: 'Fly into U-Tapao' },
+      {
+        slide: 1,
+        headline: 'Getting there',
+        body: 'Fly into U-Tapao',
+        imageDescription: 'Premium travel visual with airport and beach mood',
+        overlayText: ['Getting there', 'Fly into U-Tapao'],
+        aspectRatio: '4:5',
+      },
       {
         slide: 2,
         headline: 'Where to stay',
         body: 'Book early near the venue',
+        imageDescription: 'Minimal hotel and coastline visual',
+        overlayText: ['Where to stay'],
+        aspectRatio: '4:5',
       },
     ],
   };
@@ -96,7 +123,7 @@ describe('MarketingAiImageService', () => {
     );
   });
 
-  it('uploads carousel images to marketing-agent cloud folder', async () => {
+  it('uploads carousel images and returns structured paths with promptUsed', async () => {
     generateImage.mockResolvedValue('https://example.com/generated.png');
     fetchMock.mockResolvedValue({
       ok: true,
@@ -112,10 +139,13 @@ describe('MarketingAiImageService', () => {
     const result = await service.generateInstagramAssets(baseDto);
 
     expect(generateImage).toHaveBeenCalledTimes(2);
+    expect(generateImage.mock.calls[0][0].prompt).toContain(
+      'Instagram carousel slide',
+    );
     expect(uploadBuffer).toHaveBeenCalledWith(
       expect.stringMatching(
         new RegExp(
-          `^${MARKETING_AGENT_CLOUD_PREFIX}\\d{4}-\\d{2}-\\d{2}/slide1\\.png$`,
+          `^${MARKETING_AGENT_CLOUD_PREFIX}generated/images/\\d{4}-\\d{2}-\\d{2}/tomorrowland-thailand-2026-slide-1\\.png$`,
         ),
       ),
       expect.any(Buffer),
@@ -124,12 +154,10 @@ describe('MarketingAiImageService', () => {
     expect(result.images[0]).toMatchObject({
       slide: 1,
       title: 'Getting there',
-      imageUrl: 'https://cdn.example.com/marketing-agent/slide1.png',
-      cloudPath: expect.stringMatching(
-        new RegExp(
-          `^${MARKETING_AGENT_CLOUD_PREFIX}\\d{4}-\\d{2}-\\d{2}/slide1\\.png$`,
-        ),
+      imagePath: expect.stringMatching(
+        /^generated\/images\/\d{4}-\d{2}-\d{2}\/tomorrowland-thailand-2026-slide-1\.png$/,
       ),
+      promptUsed: expect.stringContaining('Getting there'),
     });
   });
 });

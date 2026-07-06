@@ -334,10 +334,7 @@ export default () => ({
   posterBackground: {
     enabled:
       cleanEnv(process.env.POSTER_BACKGROUND_ENABLED, 'true') !== 'false',
-    imageModel: cleanEnv(
-      process.env.POSTER_BACKGROUND_IMAGE_MODEL,
-      'hunyuan-image',
-    ),
+    imageModel: cleanEnv(process.env.POSTER_BACKGROUND_IMAGE_MODEL),
     imageVersion: cleanEnv(process.env.POSTER_BACKGROUND_IMAGE_VERSION, 'v1.9'),
     cacheTtlSec: parseInt(
       cleanEnv(
