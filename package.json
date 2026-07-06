@@ -149,7 +149,7 @@
     "@sync/scene-contracts": "*",
     "@sync/travel-guide-contracts": "*",
     "@sync/travel-plan-contracts": "*",
-    "chromadb": "^1.10.5",
+    "chromadb": "^3.5.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "dayjs": "^1.11.21",
