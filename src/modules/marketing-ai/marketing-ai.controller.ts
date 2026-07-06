@@ -1,10 +1,11 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { InternalApiKeyGuard } from '../../common/auth/internal-api-key.guard';
 import { Public } from '../../common/auth/public.decorator';
 import { GenerateInstagramAssetsDto } from './dto/generate-instagram-assets.dto';
 import { GeneratePlatformContentDto } from './dto/generate-platform-content.dto';
 import { MarketingAiImageService } from './marketing-ai-image.service';
 import { MarketingAiService } from './marketing-ai.service';
+import { MarketingFestivalsService } from './marketing-festivals.service';
 
 @Public()
 @UseGuards(InternalApiKeyGuard)
@@ -13,7 +14,13 @@ export class MarketingAiController {
   constructor(
     private readonly marketingAiService: MarketingAiService,
     private readonly marketingAiImageService: MarketingAiImageService,
+    private readonly marketingFestivalsService: MarketingFestivalsService,
   ) {}
+
+  @Get('upcoming-festivals')
+  listUpcomingFestivals() {
+    return this.marketingFestivalsService.listUpcomingFestivals();
+  }
 
   @Post('generate-platform-content')
   generatePlatformContent(@Body() body: GeneratePlatformContentDto) {
