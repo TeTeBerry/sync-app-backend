@@ -82,7 +82,7 @@ QWEN_API_KEY=
 - 配置命名空间：`imageGeneration.*`
 - 环境变量：
   - `IMAGE_GENERATION_ENABLED=true`
-  - `IMAGE_GENERATION_MODEL`（如 `hunyuan-image` 或成长计划模型名）
+  - `IMAGE_GENERATION_MODEL=HY-Image-3.0-Plus-4090-Tob-v1.0`（固定使用成长计划 Plus 模型；`hunyuan-image` 已废弃，配置层会自动回退）
   - `IMAGE_GENERATION_VERSION=v1.9`（可选）
 - 兼容旧名：`POSTER_BACKGROUND_ENABLED` / `POSTER_BACKGROUND_IMAGE_MODEL` / `POSTER_BACKGROUND_IMAGE_VERSION` 仍可作为回退读取
 - 鉴权：默认复用 `HUNYUAN_API_KEY`（或 `CLOUDBASE_APIKEY`）；本地备选 `TENCENTCLOUD_SECRETID` / `TENCENTCLOUD_SECRETKEY`

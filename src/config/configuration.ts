@@ -9,6 +9,17 @@ function cleanEnv(value?: string, fallback = ''): string {
   return trimmed || fallback;
 }
 
+const DEFAULT_IMAGE_GENERATION_MODEL = 'HY-Image-3.0-Plus-4090-Tob-v1.0';
+const DEPRECATED_IMAGE_GENERATION_MODELS = new Set(['hunyuan-image']);
+
+function resolveImageGenerationModel(): string {
+  const raw = cleanEnv(process.env.IMAGE_GENERATION_MODEL);
+  if (!raw || DEPRECATED_IMAGE_GENERATION_MODELS.has(raw)) {
+    return DEFAULT_IMAGE_GENERATION_MODEL;
+  }
+  return raw;
+}
+
 export default () => ({
   port: parseInt(cleanEnv(process.env.PORT, '3000'), 10),
 
@@ -338,10 +349,7 @@ export default () => ({
           process.env.POSTER_BACKGROUND_ENABLED,
         'true',
       ) !== 'false',
-    imageModel: cleanEnv(
-      process.env.IMAGE_GENERATION_MODEL ??
-        process.env.POSTER_BACKGROUND_IMAGE_MODEL,
-    ),
+    imageModel: resolveImageGenerationModel(),
     imageVersion: cleanEnv(
       process.env.IMAGE_GENERATION_VERSION ??
         process.env.POSTER_BACKGROUND_IMAGE_VERSION,

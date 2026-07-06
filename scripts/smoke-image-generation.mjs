@@ -8,10 +8,12 @@ import { resolve } from 'node:path';
 loadEnv({ path: resolve(process.cwd(), '.env') });
 
 const envId = process.env.CLOUDBASE_ENV_ID?.trim();
-const imageModel = (
-  process.env.IMAGE_GENERATION_MODEL ??
-  process.env.POSTER_BACKGROUND_IMAGE_MODEL
-)?.trim();
+const DEFAULT_IMAGE_MODEL = 'HY-Image-3.0-Plus-4090-Tob-v1.0';
+const rawImageModel = process.env.IMAGE_GENERATION_MODEL?.trim();
+const imageModel =
+  !rawImageModel || rawImageModel === 'hunyuan-image'
+    ? DEFAULT_IMAGE_MODEL
+    : rawImageModel;
 const accessKey =
   process.env.CLOUDBASE_APIKEY?.trim() || process.env.HUNYUAN_API_KEY?.trim();
 
