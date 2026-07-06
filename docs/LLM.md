@@ -77,13 +77,21 @@ QWEN_API_KEY=
 - 告警：用量达 80% / 90% / 100% 时微信官方号自动提醒
 - 礼包用尽后备：切资源点套餐，provider 改 `cloudbase`（见 [AI 资源包 FAQ](https://docs.cloudbase.net/ai/ai-inspire-plan)）
 
-### 海报 AI 背景（混元生图）
+### 服务端混元生图（海报背景 / 营销 Instagram 等共用）
+
+- 配置命名空间：`imageGeneration.*`
+- 环境变量：
+  - `IMAGE_GENERATION_ENABLED=true`
+  - `IMAGE_GENERATION_MODEL`（如 `hunyuan-image` 或成长计划模型名）
+  - `IMAGE_GENERATION_VERSION=v1.9`（可选）
+- 兼容旧名：`POSTER_BACKGROUND_ENABLED` / `POSTER_BACKGROUND_IMAGE_MODEL` / `POSTER_BACKGROUND_IMAGE_VERSION` 仍可作为回退读取
+- 鉴权：默认复用 `HUNYUAN_API_KEY`（或 `CLOUDBASE_APIKEY`）；本地备选 `TENCENTCLOUD_SECRETID` / `TENCENTCLOUD_SECRETKEY`
+- 云存储：`CLOUDBASE_ENV_ID`（必填）、`CLOUDBASE_STORAGE_BUCKET`
+
+### 海报 AI 背景
 
 - 接口：`POST /api/poster-backgrounds/generate`
 - 场景：`set_vote`（Set 票选海报）、`personality_test`（人格测试海报）
-- 实现：服务端 `@cloudbase/node-sdk` + `createImageModel('hunyuan-image')` 生图 → 上传云存储 → Redis 缓存 7 天
-- 模型：`model: hunyuan-image`（成长计划默认），可选 `POSTER_BACKGROUND_IMAGE_VERSION=v1.9`
-- 环境变量：`CLOUDBASE_ENV_ID`（必填）、`CLOUDBASE_STORAGE_BUCKET`（缓存上传）
-- 鉴权：默认复用 `HUNYUAN_API_KEY`（或 `CLOUDBASE_APIKEY`）；本地备选 `TENCENTCLOUD_SECRETID` / `TENCENTCLOUD_SECRETKEY`
-- `POSTER_BACKGROUND_ENABLED=true`、`POSTER_BACKGROUND_IMAGE_MODEL=hunyuan-image`
+- 实现：共用 `HunyuanImageClient` 生图 → 上传云存储 → Redis 缓存 7 天
+- 海报专属缓存：`POSTER_BACKGROUND_CACHE_TTL_SEC`（默认 7 天）
 - 未配置或失败时：前端自动回退渐变背景，不影响保存/分享

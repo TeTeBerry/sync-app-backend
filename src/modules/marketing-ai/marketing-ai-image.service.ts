@@ -36,7 +36,7 @@ export class MarketingAiImageService {
   ): Promise<InstagramAssetsResult> {
     if (!this.imageClient.enabled) {
       throw new ServiceUnavailableException(
-        'POSTER_BACKGROUND_IMAGE_MODEL image generation is not configured',
+        'IMAGE_GENERATION_MODEL image generation is not configured',
       );
     }
 

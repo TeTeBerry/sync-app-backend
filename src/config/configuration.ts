@@ -331,11 +331,25 @@ export default () => ({
     ),
   },
 
-  posterBackground: {
+  imageGeneration: {
     enabled:
-      cleanEnv(process.env.POSTER_BACKGROUND_ENABLED, 'true') !== 'false',
-    imageModel: cleanEnv(process.env.POSTER_BACKGROUND_IMAGE_MODEL),
-    imageVersion: cleanEnv(process.env.POSTER_BACKGROUND_IMAGE_VERSION, 'v1.9'),
+      cleanEnv(
+        process.env.IMAGE_GENERATION_ENABLED ??
+          process.env.POSTER_BACKGROUND_ENABLED,
+        'true',
+      ) !== 'false',
+    imageModel: cleanEnv(
+      process.env.IMAGE_GENERATION_MODEL ??
+        process.env.POSTER_BACKGROUND_IMAGE_MODEL,
+    ),
+    imageVersion: cleanEnv(
+      process.env.IMAGE_GENERATION_VERSION ??
+        process.env.POSTER_BACKGROUND_IMAGE_VERSION,
+      'v1.9',
+    ),
+  },
+
+  posterBackground: {
     cacheTtlSec: parseInt(
       cleanEnv(
         process.env.POSTER_BACKGROUND_CACHE_TTL_SEC,

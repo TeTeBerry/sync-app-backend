@@ -21,9 +21,9 @@ export class HunyuanImageClient {
   constructor(private readonly config: ConfigService) {
     this.envId = this.config.get<string>('cloudbase.envId')?.trim() ?? '';
     this.imageModel =
-      this.config.get<string>('posterBackground.imageModel')?.trim() ?? '';
+      this.config.get<string>('imageGeneration.imageModel')?.trim() ?? '';
     this.imageVersion =
-      this.config.get<string>('posterBackground.imageVersion') ?? 'v1.9';
+      this.config.get<string>('imageGeneration.imageVersion') ?? 'v1.9';
     this.accessKey =
       this.config.get<string>('cloudbase.apiKey')?.trim() ??
       this.config.get<string>('hunyuan.apiKey')?.trim() ??
@@ -33,7 +33,7 @@ export class HunyuanImageClient {
       this.config.get<string>('cloudbase.secretKey')?.trim() ?? '';
 
     const featureEnabled =
-      this.config.get<boolean>('posterBackground.enabled') !== false;
+      this.config.get<boolean>('imageGeneration.enabled') !== false;
     this.enabled =
       featureEnabled && Boolean(this.envId) && Boolean(this.imageModel);
   }

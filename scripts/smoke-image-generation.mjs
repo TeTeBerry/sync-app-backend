@@ -1,6 +1,6 @@
 /**
- * 冒烟：海报/营销生图（POSTER_BACKGROUND_IMAGE_MODEL）
- * 用法：node scripts/smoke-poster-background.mjs
+ * 冒烟：CloudBase 混元生图（IMAGE_GENERATION_MODEL）
+ * 用法：node scripts/smoke-image-generation.mjs
  */
 import { config as loadEnv } from 'dotenv';
 import { resolve } from 'node:path';
@@ -8,7 +8,10 @@ import { resolve } from 'node:path';
 loadEnv({ path: resolve(process.cwd(), '.env') });
 
 const envId = process.env.CLOUDBASE_ENV_ID?.trim();
-const imageModel = process.env.POSTER_BACKGROUND_IMAGE_MODEL?.trim();
+const imageModel = (
+  process.env.IMAGE_GENERATION_MODEL ??
+  process.env.POSTER_BACKGROUND_IMAGE_MODEL
+)?.trim();
 const accessKey =
   process.env.CLOUDBASE_APIKEY?.trim() || process.env.HUNYUAN_API_KEY?.trim();
 
@@ -17,7 +20,7 @@ if (!envId) {
   process.exit(1);
 }
 if (!imageModel) {
-  console.error('缺少 POSTER_BACKGROUND_IMAGE_MODEL');
+  console.error('缺少 IMAGE_GENERATION_MODEL');
   process.exit(1);
 }
 if (!accessKey) {
@@ -32,12 +35,17 @@ initOptions.accessKey = accessKey;
 const app = cloudbase.init(initOptions);
 const client = app.ai().createImageModel(imageModel);
 
+const imageVersion = (
+  process.env.IMAGE_GENERATION_VERSION ??
+  process.env.POSTER_BACKGROUND_IMAGE_VERSION
+)?.trim();
+
 console.log(`generating test image (${imageModel}, 720x1280)...`);
 const res = await client.generateImage({
   model: imageModel,
   prompt: '抽象电音节舞台霓虹灯光，紫粉蓝色调，无文字无人物，适合手机壁纸背景',
   size: '720x1280',
-  version: process.env.POSTER_BACKGROUND_IMAGE_VERSION?.trim() || 'v1.9',
+  version: imageVersion || 'v1.9',
   revise: false,
 });
 
