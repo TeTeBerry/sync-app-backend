@@ -95,5 +95,11 @@ QWEN_API_KEY=
 - 接口：`POST /api/poster-backgrounds/generate`
 - 场景：`set_vote`（Set 票选海报）、`personality_test`（人格测试海报）
 - 实现：共用 `HunyuanImageClient` 生图 → 上传云存储 → Redis 缓存 7 天
+
+### 营销 Instagram 轮播
+
+- 混元只生成**无底字底图**（prompt 禁止 text/letters）
+- Instagram 配图：**纯视觉轮播海报**（最多 5 张）。`HY-Image-3.0-Plus-4090-Tob-v1.0` 仅生成无字高清海报底图（`absolutely no text` 等约束见 `instagram-background.prompt.ts`），**不做任何叠字**。API 响应与 daily markdown 返回每页 `headline` / `body` / `overlayText` 供人工排版。输出 `generated/images/{date}/{festival}/slide{n}.png`。
+- 再上传 CloudBase 并返回 `imageUrl`
 - 海报专属缓存：`POSTER_BACKGROUND_CACHE_TTL_SEC`（默认 7 天）
 - 未配置或失败时：前端自动回退渐变背景，不影响保存/分享

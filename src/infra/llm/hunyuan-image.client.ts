@@ -13,6 +13,7 @@ const HY_IMAGE_PLUS_SUB_URL = 'images/ar/generations';
 export type HunyuanGenerateImageInput = {
   prompt: string;
   size: string;
+  revise?: boolean;
 };
 
 @Injectable()
@@ -79,7 +80,7 @@ export class HunyuanImageClient {
         model: this.imageModel,
         prompt,
         size: input.size,
-        revise: { value: false },
+        revise: { value: input.revise ?? false },
         enable_thinking: { value: false },
       } as never)) as { data?: Array<{ url?: string }> };
 

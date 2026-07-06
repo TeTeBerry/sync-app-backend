@@ -6,6 +6,10 @@ export type InstagramAssetFestival = {
   dates?: string;
   genres?: string[];
   artists?: string[];
+  /** CloudBase object key, e.g. static/activity/tomorrowland.jpg */
+  image?: string;
+  /** Pre-resolved HTTPS cover (local CLI / tests) */
+  coverImageUrl?: string;
 };
 
 export type InstagramAssetPublishingPackage = {
@@ -27,19 +31,31 @@ export type InstagramAssetBrandStyle = {
   avoid: string[];
 };
 
+export type PosterSizeId =
+  | '4:5'
+  | '1:1'
+  | '9:16'
+  | '4:3'
+  | '16:9'
+  | 'mobile'
+  | 'desktop';
+
 export type CarouselSlideAssetInput = {
   slide: number;
   headline: string;
   body: string;
   imageDescription: string;
   overlayText: string[];
-  aspectRatio: '4:5';
+  /** Per-slide output size; defaults to request outputSize or 4:5 */
+  aspectRatio: PosterSizeId;
 };
 
 export type InstagramAssetRequest = {
   festival: InstagramAssetFestival;
   publishingPackage: InstagramAssetPublishingPackage;
   brandStyle: InstagramAssetBrandStyle;
+  /** Default poster size when slides omit aspectRatio */
+  outputSize?: PosterSizeId;
   carousel: CarouselSlideAssetInput[];
 };
 
@@ -47,8 +63,11 @@ export type InstagramGeneratedAssetImage = {
   slide: number;
   title: string;
   imagePath: string;
-  imageUrl: string;
   promptUsed: string;
+  width: number;
+  height: number;
+  sizeId: PosterSizeId;
+  downloadUrl?: string;
 };
 
 export type InstagramAssetsResult = {

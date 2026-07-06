@@ -56,13 +56,13 @@ describe('marketing-ai.post-process', () => {
   });
 
   describe('normalizeVisualBrief', () => {
-    it('requires instagram carousel brief defaults', () => {
+    it('defaults instagram carousel brief', () => {
       const brief = normalizeVisualBrief(
         'instagram',
         {
           visualBrief: {
             visualType: 'carousel',
-            imagePrompt: 'Premium festival carousel',
+            imagePrompt: 'Premium festival travel carousel',
           },
         },
         {},
@@ -71,7 +71,7 @@ describe('marketing-ai.post-process', () => {
       expect(brief).toMatchObject({
         visualType: 'carousel',
         aspectRatio: '4:5',
-        imagePrompt: 'Premium festival carousel',
+        imagePrompt: 'Premium festival travel carousel',
       });
     });
 
@@ -129,6 +129,30 @@ describe('marketing-ai.post-process', () => {
         slide: 1,
         headline: 'Getting there',
       });
+    });
+
+    it('includes instagram visual brief without duplicating carousel logic for other platforms', () => {
+      const result = applyDefaultPostProcess(
+        {
+          title: 'Travel Guide',
+          content: 'Caption body',
+          hashtags: ['tomorrowland'],
+          visualBrief: {
+            visualType: 'carousel',
+            imagePrompt: 'Premium travel carousel',
+            designLayout: 'Slide 1 hook',
+          },
+        },
+        'visual-storytelling',
+        'instagram',
+        { name: 'Tomorrowland Thailand' },
+      );
+
+      expect(result.visualBrief).toMatchObject({
+        visualType: 'carousel',
+        aspectRatio: '4:5',
+      });
+      expect(result.carousel).toHaveLength(5);
     });
   });
 });

@@ -1,32 +1,30 @@
 import {
-  BadRequestException,
   Injectable,
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { CloudStorageService } from '../../infra/cloud/cloud-storage.service';
 import { CloudStorageUploadService } from '../../infra/cloud/cloud-storage-upload.service';
-import { HunyuanImageClient } from '../../infra/llm/hunyuan-image.client';
 import type { GenerateInstagramAssetsDto } from './dto/generate-instagram-assets.dto';
-import {
-  INSTAGRAM_CAROUSEL_IMAGE_SIZE,
-  buildInstagramCarouselImagePrompt,
-} from './image-prompts/instagram-carousel.prompt';
+import { PosterFestivalCoverService } from './image-renderer/poster-festival-cover.service';
+import { buildPosterSpec } from './image-renderer/build-poster-spec';
+import { PosterImageRendererService } from './image-renderer/poster-image-renderer.service';
 import type {
   InstagramAssetsResult,
   InstagramGeneratedAssetImage,
 } from './marketing-ai-instagram-asset.types';
-
-export const MARKETING_AGENT_CLOUD_PREFIX = 'marketing-agent/';
+import {
+  MARKETING_AGENT_CLOUD_PREFIX,
+  assertMarketingAgentCloudFileId,
+} from './utils/marketing-agent-cloud-ref.util';
 
 @Injectable()
 export class MarketingAiImageService {
   private readonly logger = new Logger(MarketingAiImageService.name);
 
   constructor(
-    private readonly config: ConfigService,
-    private readonly imageClient: HunyuanImageClient,
+    private readonly renderer: PosterImageRendererService,
+    private readonly coverService: PosterFestivalCoverService,
     private readonly cloudUpload: CloudStorageUploadService,
     private readonly cloudStorage: CloudStorageService,
   ) {}
@@ -34,24 +32,13 @@ export class MarketingAiImageService {
   async generateInstagramAssets(
     dto: GenerateInstagramAssetsDto,
   ): Promise<InstagramAssetsResult> {
-    if (!this.imageClient.enabled) {
-      throw new ServiceUnavailableException(
-        'IMAGE_GENERATION_MODEL image generation is not configured',
-      );
-    }
-
     if (!this.cloudUpload.isConfigured()) {
       throw new ServiceUnavailableException(
         'Cloud storage is not configured for marketing images',
       );
     }
 
-    const slides = dto.carousel
-      .slice(0, 5)
-      .filter(
-        (slide) =>
-          Number.isFinite(Number(slide.slide)) && Number(slide.slide) >= 1,
-      );
+    const slides = dto.carousel.filter((slide) => slide.slide >= 1);
     if (slides.length === 0) {
       throw new ServiceUnavailableException(
         'Carousel must include at least one slide',
@@ -62,132 +49,89 @@ export class MarketingAiImageService {
     const festivalSlug = sanitizeFestivalSlug(dto.festival.id);
 
     this.logger.log(
-      `Generating ${slides.length} Instagram carousel image(s) in parallel for ${dto.festival.name}`,
+      `Rendering consolidated Instagram poster for ${dto.festival.name} (${slides.length} content section(s))`,
     );
 
-    const images = await Promise.all(
-      slides.map((slide) =>
-        this.generateSingleSlide(dto, slide, dateStr, festivalSlug),
-      ),
+    const image = await this.generateConsolidatedPoster(
+      dto,
+      dateStr,
+      festivalSlug,
     );
 
     return {
-      images: images.sort((a, b) => a.slide - b.slide),
+      images: [image],
     };
   }
 
-  private async generateSingleSlide(
+  private async generateConsolidatedPoster(
     dto: GenerateInstagramAssetsDto,
-    slide: GenerateInstagramAssetsDto['carousel'][number],
     dateStr: string,
     festivalSlug: string,
   ): Promise<InstagramGeneratedAssetImage> {
-    const slideNumber = Number(slide.slide);
-    const imagePath = buildInstagramAssetImagePath(
-      dateStr,
-      festivalSlug,
-      slideNumber,
-    );
+    const imagePath = buildInstagramPosterImagePath(dateStr, festivalSlug);
     const cloudPath = `${MARKETING_AGENT_CLOUD_PREFIX}${imagePath}`;
-    const promptUsed = buildInstagramCarouselImagePrompt(dto, slide);
-
-    const tempUrl = await this.imageClient.generateImage({
-      prompt: promptUsed,
-      size: INSTAGRAM_CAROUSEL_IMAGE_SIZE,
-    });
-
-    if (!tempUrl) {
-      this.logger.warn(
-        `Instagram slide ${slideNumber} image generation returned empty url`,
-      );
-      throw new ServiceUnavailableException(
-        `Failed to generate image for slide ${slideNumber}`,
-      );
-    }
-
-    const buffer = Buffer.from(await this.fetchImageBuffer(tempUrl));
-    if (!buffer.length) {
-      throw new ServiceUnavailableException(
-        `Failed to download generated image for slide ${slideNumber}`,
-      );
-    }
-
-    const fileId = await this.cloudUpload.uploadBuffer(cloudPath, buffer);
-    const [downloadUrl] = await this.cloudStorage.fetchCloudFileDownloadUrls(
-      [fileId],
-      (id) => this.assertMarketingAgentCloudFileId(id),
-      '无法读取营销图片',
+    const spec = buildPosterSpec(dto);
+    spec.coverImageDataUrl = await this.coverService.resolveCoverDataUrl(
+      dto.festival,
     );
+    const promptUsed = this.renderer.buildRendererLabel(spec);
+    const outputBuffer = await this.renderer.renderPoster(spec);
 
-    if (!downloadUrl) {
+    if (!outputBuffer.length) {
       throw new ServiceUnavailableException(
-        `Failed to resolve cloud URL for slide ${slideNumber}`,
+        'Failed to render Instagram poster',
       );
     }
+
+    const fileId = await this.cloudUpload.uploadBuffer(cloudPath, outputBuffer);
+    const downloadUrl = await this.resolveDownloadUrl(fileId);
 
     return {
-      slide: slideNumber,
-      title: slide.headline.trim(),
+      slide: 1,
+      title: spec.festivalName,
       imagePath,
-      imageUrl: downloadUrl,
       promptUsed,
+      width: spec.size.width,
+      height: spec.size.height,
+      sizeId: spec.size.id,
+      downloadUrl,
     };
   }
 
-  private assertMarketingAgentCloudFileId(fileId: string): void {
-    const trimmed = fileId.trim();
-    if (!/^cloud:\/\/[^/]+\/.+/.test(trimmed)) {
-      throw new BadRequestException('营销图片文件无效');
-    }
+  private async resolveDownloadUrl(
+    fileId: string,
+  ): Promise<string | undefined> {
+    try {
+      const [downloadUrl] = await this.cloudStorage.fetchCloudFileDownloadUrls(
+        [fileId],
+        assertMarketingAgentCloudFileId,
+        '无法读取营销图片',
+      );
 
-    const withoutScheme = trimmed.slice('cloud://'.length);
-    const slash = withoutScheme.indexOf('/');
-    if (slash <= 0) {
-      throw new BadRequestException('营销图片文件无效');
+      return downloadUrl?.trim() || undefined;
+    } catch (error) {
+      this.logger.warn(
+        `Marketing poster download URL unavailable: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return undefined;
     }
-
-    const objectPath = withoutScheme.slice(slash + 1);
-    if (
-      !objectPath.startsWith(MARKETING_AGENT_CLOUD_PREFIX) ||
-      objectPath.includes('..')
-    ) {
-      throw new BadRequestException('营销图片文件无效');
-    }
-
-    const expectedEnv =
-      this.config.get<string>('cloudbase.envId')?.trim() ?? '';
-    if (!expectedEnv) {
-      return;
-    }
-
-    const envSegment = withoutScheme.slice(0, slash);
-    if (!envSegment.startsWith(expectedEnv)) {
-      throw new BadRequestException('营销图片文件无效');
-    }
-  }
-
-  private async fetchImageBuffer(url: string): Promise<ArrayBuffer> {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new ServiceUnavailableException('下载生成图片失败');
-    }
-    return response.arrayBuffer();
   }
 }
 
-export function sanitizeFestivalSlug(festivalId: string): string {
+function sanitizeFestivalSlug(festivalId: string): string {
   return festivalId
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+    .replace(/-\d{4}$/, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
-export function buildInstagramAssetImagePath(
+function buildInstagramPosterImagePath(
   dateStr: string,
   festivalSlug: string,
-  slideNumber: number,
 ): string {
-  return `generated/images/${dateStr}/${festivalSlug}-slide-${slideNumber}.png`;
+  return `generated/images/${dateStr}/${festivalSlug}-poster.png`;
 }

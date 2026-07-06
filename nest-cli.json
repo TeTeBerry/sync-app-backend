@@ -1,5 +1,12 @@
 {
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
-  "compilerOptions": {}
+  "compilerOptions": {
+    "assets": [
+      {
+        "include": "modules/marketing-ai/assets/**/*",
+        "watchAssets": true
+      }
+    ]
+  }
 }

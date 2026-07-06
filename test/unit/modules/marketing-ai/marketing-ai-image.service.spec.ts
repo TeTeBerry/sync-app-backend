@@ -1,30 +1,31 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { CloudStorageService } from '../../../../src/infra/cloud/cloud-storage.service';
 import { CloudStorageUploadService } from '../../../../src/infra/cloud/cloud-storage-upload.service';
-import { HunyuanImageClient } from '../../../../src/infra/llm/hunyuan-image.client';
-import {
-  MARKETING_AGENT_CLOUD_PREFIX,
-  MarketingAiImageService,
-} from '../../../../src/modules/marketing-ai/marketing-ai-image.service';
+import { PosterFestivalCoverService } from '../../../../src/modules/marketing-ai/image-renderer/poster-festival-cover.service';
+import { PosterImageRendererService } from '../../../../src/modules/marketing-ai/image-renderer/poster-image-renderer.service';
+import { MarketingAiImageService } from '../../../../src/modules/marketing-ai/marketing-ai-image.service';
 import type { InstagramAssetRequest } from '../../../../src/modules/marketing-ai/marketing-ai-instagram-asset.types';
 
 describe('MarketingAiImageService', () => {
-  const generateImage = jest.fn();
-  const fetchMock = jest.fn();
+  const renderPoster = jest.fn();
+  const buildRendererLabel = jest.fn();
+  const resolveCoverDataUrl = jest.fn();
   const uploadBuffer = jest.fn();
   const fetchCloudFileDownloadUrls = jest.fn();
-  let imageEnabled = true;
   let cloudConfigured = true;
 
-  const imageClient = {
-    get enabled() {
-      return imageEnabled;
-    },
-    generateImage,
+  const renderer = {
+    renderPoster,
+    buildRendererLabel,
   } as unknown as jest.Mocked<
-    Pick<HunyuanImageClient, 'enabled' | 'generateImage'>
+    Pick<PosterImageRendererService, 'renderPoster' | 'buildRendererLabel'>
+  >;
+
+  const coverService = {
+    resolveCoverDataUrl,
+  } as unknown as jest.Mocked<
+    Pick<PosterFestivalCoverService, 'resolveCoverDataUrl'>
   >;
 
   const cloudUpload = {
@@ -40,23 +41,15 @@ describe('MarketingAiImageService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    imageEnabled = true;
     cloudConfigured = true;
     (cloudUpload.isConfigured as jest.Mock).mockReturnValue(cloudConfigured);
-    global.fetch = fetchMock as unknown as typeof fetch;
+    resolveCoverDataUrl.mockResolvedValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MarketingAiImageService,
-        {
-          provide: ConfigService,
-          useValue: {
-            get: jest.fn((key: string) =>
-              key === 'cloudbase.envId' ? 'sync-env' : undefined,
-            ),
-          },
-        },
-        { provide: HunyuanImageClient, useValue: imageClient },
+        { provide: PosterImageRendererService, useValue: renderer },
+        { provide: PosterFestivalCoverService, useValue: coverService },
         { provide: CloudStorageUploadService, useValue: cloudUpload },
         { provide: CloudStorageService, useValue: cloudStorage },
       ],
@@ -68,20 +61,20 @@ describe('MarketingAiImageService', () => {
   const baseDto: InstagramAssetRequest = {
     festival: {
       id: 'tomorrowland-thailand-2026',
-      name: 'Tomorrowland Thailand',
+      name: 'Tomorrowland Thailand 2026',
       location: 'Pattaya',
       country: 'Thailand',
     },
     publishingPackage: {
       topic: 'Travel guide',
-      caption: 'Your travel guide caption',
+      caption: 'Save this before you fly.',
       hashtags: ['Tomorrowland'],
     },
     brandStyle: {
       brandName: 'Raven',
       mood: 'premium',
       background: 'dark',
-      colorPalette: ['deep purple', 'electric blue', 'black'],
+      colorPalette: ['#8b7cf8', '#6e66e8', '#08080c'],
       typography: 'clean sans-serif',
       visualTone: ['festival travel', 'minimal'],
       avoid: ['crowded party photos'],
@@ -89,30 +82,22 @@ describe('MarketingAiImageService', () => {
     carousel: [
       {
         slide: 1,
-        headline: 'Getting there',
-        body: 'Fly into U-Tapao',
-        imageDescription: 'Premium travel visual with airport and beach mood',
-        overlayText: ['Getting there', 'Fly into U-Tapao'],
+        headline: 'Tomorrowland Thailand 2026',
+        body: 'Your travel + vibe guide',
+        imageDescription: 'Cover',
+        overlayText: ['Tomorrowland Thailand 2026'],
         aspectRatio: '4:5',
       },
       {
         slide: 2,
-        headline: 'Where to stay',
-        body: 'Book early near the venue',
-        imageDescription: 'Minimal hotel and coastline visual',
-        overlayText: ['Where to stay'],
+        headline: 'Getting there',
+        body: 'Fly into U-Tapao',
+        imageDescription: 'Travel tip',
+        overlayText: ['Getting there'],
         aspectRatio: '4:5',
       },
     ],
   };
-
-  it('throws when image client is disabled', async () => {
-    imageEnabled = false;
-
-    await expect(service.generateInstagramAssets(baseDto)).rejects.toThrow(
-      ServiceUnavailableException,
-    );
-  });
 
   it('throws when cloud storage is not configured', async () => {
     cloudConfigured = false;
@@ -123,42 +108,35 @@ describe('MarketingAiImageService', () => {
     );
   });
 
-  it('uploads carousel images and returns structured paths with promptUsed', async () => {
-    generateImage.mockResolvedValue('https://example.com/generated.png');
-    fetchMock.mockResolvedValue({
-      ok: true,
-      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
-    });
-    uploadBuffer.mockImplementation(
-      async (cloudPath: string) => `cloud://sync-env/${cloudPath}`,
+  it('returns a single consolidated poster image', async () => {
+    renderPoster.mockResolvedValue(Buffer.from([137, 80, 78, 71]));
+    buildRendererLabel.mockReturnValue(
+      'poster-sync-web-4:5-1080x1350: Tomorrowland Thailand 2026',
+    );
+    uploadBuffer.mockResolvedValue(
+      'cloud://sync-env.bucket/marketing-agent/generated/images/poster.png',
     );
     fetchCloudFileDownloadUrls.mockResolvedValue([
-      'https://cdn.example.com/marketing-agent/slide1.png',
+      'https://cdn.example.com/marketing-agent/poster.png',
     ]);
 
     const result = await service.generateInstagramAssets(baseDto);
 
-    expect(generateImage).toHaveBeenCalledTimes(2);
-    expect(generateImage.mock.calls[0][0].prompt).toContain(
-      'Instagram carousel slide',
-    );
-    expect(uploadBuffer).toHaveBeenCalledWith(
-      expect.stringMatching(
-        new RegExp(
-          `^${MARKETING_AGENT_CLOUD_PREFIX}generated/images/\\d{4}-\\d{2}-\\d{2}/tomorrowland-thailand-2026-slide-1\\.png$`,
-        ),
-      ),
-      expect.any(Buffer),
-    );
-    expect(result.images).toHaveLength(2);
+    expect(resolveCoverDataUrl).toHaveBeenCalledWith(baseDto.festival);
+    expect(renderPoster).toHaveBeenCalledTimes(1);
+    expect(fetchCloudFileDownloadUrls).toHaveBeenCalledTimes(1);
+    expect(result.images).toHaveLength(1);
     expect(result.images[0]).toMatchObject({
       slide: 1,
-      title: 'Getting there',
+      title: 'Tomorrowland Thailand 2026',
       imagePath: expect.stringMatching(
-        /^generated\/images\/\d{4}-\d{2}-\d{2}\/tomorrowland-thailand-2026-slide-1\.png$/,
+        /^generated\/images\/\d{4}-\d{2}-\d{2}\/tomorrowland-thailand-poster\.png$/,
       ),
-      imageUrl: 'https://cdn.example.com/marketing-agent/slide1.png',
-      promptUsed: expect.stringContaining('Getting there'),
+      promptUsed: 'poster-sync-web-4:5-1080x1350: Tomorrowland Thailand 2026',
+      width: 1080,
+      height: 1350,
+      sizeId: '4:5',
+      downloadUrl: 'https://cdn.example.com/marketing-agent/poster.png',
     });
   });
 });

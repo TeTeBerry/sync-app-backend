@@ -123,6 +123,8 @@
     "smoke:golden": "node scripts/smoke-golden.mjs",
     "smoke:golden:wait": "node scripts/wait-for-port.mjs localhost 3000 90000 API && node scripts/smoke-golden.mjs",
     "smoke:image-generation": "node scripts/smoke-image-generation.mjs",
+    "smoke:poster-instagram-render": "pnpm run poster:render -- --sample",
+    "poster:render": "node -r ts-node/register -r tsconfig-paths/register scripts/render-poster.ts",
     "smoke:poster-background": "npm run smoke:image-generation",
     "smoke:suite": "node scripts/smoke-golden.mjs",
     "smoke:suite:wait": "node scripts/wait-for-port.mjs localhost 3000 90000 API && npm run smoke:suite"
@@ -138,6 +140,7 @@
     "@nestjs/mongoose": "^10.1.0",
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/schedule": "^4.1.2",
+    "@resvg/resvg-js": "^2.6.2",
     "@sync/activity-contracts": "*",
     "@sync/festival-plan-contracts": "*",
     "@sync/itinerary-contracts": "*",
@@ -156,6 +159,7 @@
     "reflect-metadata": "^0.2.2",
     "rimraf": "^5.0.10",
     "rxjs": "^7.8.1",
+    "satori": "^0.12.2",
     "uuid": "^11.0.5"
   },
   "devDependencies": {

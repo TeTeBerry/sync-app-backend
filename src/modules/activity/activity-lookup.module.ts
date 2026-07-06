@@ -24,6 +24,6 @@ import { ACTIVITY_LOOKUP_PORT } from './ports/activity-lookup.port';
     ActivityLookupService,
     { provide: ACTIVITY_LOOKUP_PORT, useExisting: ActivityLookupService },
   ],
-  exports: [ACTIVITY_LOOKUP_PORT, ActivityLookupService],
+  exports: [ACTIVITY_LOOKUP_PORT, ActivityLookupService, ActivityImageService],
 })
 export class ActivityLookupModule {}

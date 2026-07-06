@@ -159,9 +159,10 @@ export function buildInstagramPublishingFields(
   content: string,
   visualBrief: VisualBrief | undefined,
 ): Pick<PlatformContentResult, 'publishTime' | 'carousel'> {
+  const normalized = normalizeCarouselSlides(payload.carousel);
   const carousel =
-    normalizeCarouselSlides(payload.carousel).length > 0
-      ? normalizeCarouselSlides(payload.carousel)
+    normalized.length > 0
+      ? normalized
       : buildInstagramCarouselFromVisualBrief(
           visualBrief,
           title,
@@ -204,6 +205,12 @@ function threadsWantsVisual(festival: Record<string, unknown>): boolean {
   return plannerType === 'guide' || plannerType === 'tips';
 }
 
+function resolveInstagramVisualType(
+  parsed: VisualBrief | undefined,
+): 'carousel' | 'single-image' {
+  return parsed?.visualType === 'single-image' ? 'single-image' : 'carousel';
+}
+
 export function normalizeVisualBrief(
   platform: MarketingPlatform,
   payload: LlmPlatformContentPayload,
@@ -234,10 +241,8 @@ export function normalizeVisualBrief(
   }
 
   if (platform === 'instagram') {
-    const visualType =
-      parsed?.visualType === 'single-image' ? 'single-image' : 'carousel';
     return {
-      visualType,
+      visualType: resolveInstagramVisualType(parsed),
       aspectRatio: '4:5',
       imagePrompt: parsed?.imagePrompt,
       designLayout: parsed?.designLayout,

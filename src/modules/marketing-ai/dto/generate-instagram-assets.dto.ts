@@ -1,6 +1,5 @@
 import { Type } from 'class-transformer';
 import {
-  ArrayMinSize,
   IsArray,
   IsIn,
   IsInt,
@@ -11,9 +10,22 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import type { InstagramAssetRequest } from '../marketing-ai-instagram-asset.types';
+import type {
+  InstagramAssetRequest,
+  PosterSizeId,
+} from '../marketing-ai-instagram-asset.types';
 
-export class InstagramAssetFestivalDto {
+const POSTER_SIZE_IDS: PosterSizeId[] = [
+  '4:5',
+  '1:1',
+  '9:16',
+  '4:3',
+  '16:9',
+  'mobile',
+  'desktop',
+];
+
+class InstagramAssetFestivalDto {
   @IsString()
   @MinLength(1)
   id!: string;
@@ -43,9 +55,17 @@ export class InstagramAssetFestivalDto {
   @IsArray()
   @IsString({ each: true })
   artists?: string[];
+
+  @IsOptional()
+  @IsString()
+  image?: string;
+
+  @IsOptional()
+  @IsString()
+  coverImageUrl?: string;
 }
 
-export class InstagramAssetPublishingPackageDto {
+class InstagramAssetPublishingPackageDto {
   @IsString()
   @MinLength(1)
   topic!: string;
@@ -63,7 +83,7 @@ export class InstagramAssetPublishingPackageDto {
   publishTime?: string;
 }
 
-export class InstagramAssetBrandStyleDto {
+class InstagramAssetBrandStyleDto {
   @IsIn(['Raven'])
   brandName!: 'Raven';
 
@@ -74,7 +94,6 @@ export class InstagramAssetBrandStyleDto {
   background!: 'dark';
 
   @IsArray()
-  @ArrayMinSize(1)
   @IsString({ each: true })
   colorPalette!: string[];
 
@@ -82,17 +101,15 @@ export class InstagramAssetBrandStyleDto {
   typography!: 'clean sans-serif';
 
   @IsArray()
-  @ArrayMinSize(1)
   @IsString({ each: true })
   visualTone!: string[];
 
   @IsArray()
-  @ArrayMinSize(1)
   @IsString({ each: true })
   avoid!: string[];
 }
 
-export class CarouselSlideAssetInputDto {
+class CarouselSlideAssetInputDto {
   @IsInt()
   @Min(1)
   slide!: number;
@@ -116,11 +133,15 @@ export class CarouselSlideAssetInputDto {
   @IsString({ each: true })
   overlayText!: string[];
 
-  @IsIn(['4:5'])
-  aspectRatio!: '4:5';
+  @IsIn(POSTER_SIZE_IDS)
+  aspectRatio!: PosterSizeId;
 }
 
 export class GenerateInstagramAssetsDto implements InstagramAssetRequest {
+  @IsOptional()
+  @IsIn(POSTER_SIZE_IDS)
+  outputSize?: PosterSizeId;
+
   @ValidateNested()
   @Type(() => InstagramAssetFestivalDto)
   festival!: InstagramAssetFestivalDto;
@@ -134,7 +155,6 @@ export class GenerateInstagramAssetsDto implements InstagramAssetRequest {
   brandStyle!: InstagramAssetBrandStyleDto;
 
   @IsArray()
-  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => CarouselSlideAssetInputDto)
   carousel!: CarouselSlideAssetInputDto[];
