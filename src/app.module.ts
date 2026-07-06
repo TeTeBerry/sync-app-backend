@@ -34,6 +34,7 @@ import { RequestActorMiddleware } from './common/middleware/request-actor.middle
 import { PublicApiRateLimitModule } from './common/rate-limit/public-api-rate-limit.module';
 import { PublicEventModule } from './modules/public-event/public-event.module';
 import { TripPlanModule } from './modules/trip-plan/trip-plan.module';
+import { MarketingAiModule } from './modules/marketing-ai/marketing-ai.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -82,6 +83,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     HealthModule,
     UserGoalModule,
     TripPlanModule,
+    MarketingAiModule,
     ScheduleModule.forRoot(),
   ],
   providers: [RequestActorMiddleware, ActivityContextMiddleware],

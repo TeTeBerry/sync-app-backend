@@ -102,6 +102,11 @@ export default () => ({
     url: cleanEnv(process.env.REDIS_URL, ''),
   },
 
+  internal: {
+    /** Header `x-internal-api-key` for /internal/* routes (e.g. marketing-ai). */
+    apiKey: cleanEnv(process.env.INTERNAL_API_KEY),
+  },
+
   auth: {
     jwtSecret: cleanEnv(
       process.env.JWT_SECRET,

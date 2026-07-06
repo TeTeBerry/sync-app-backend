@@ -39,6 +39,13 @@ export function validateProductionConfig(
     errors.push('HUNYUAN_API_KEY is required for AI features in production');
   }
 
+  const internalApiKey = config.get<string>('internal.apiKey')?.trim() ?? '';
+  if (!internalApiKey) {
+    warnings.push(
+      'INTERNAL_API_KEY is unset — /api/internal/marketing-ai/* will reject all requests',
+    );
+  }
+
   const corsOrigins = config.get<string[]>('cors.origins');
   if (!corsOrigins?.length) {
     warnings.push(
