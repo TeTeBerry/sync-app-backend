@@ -1,14 +1,18 @@
 /**
  * 冒烟：CloudBase 混元生图（IMAGE_GENERATION_MODEL）
  * 用法：node scripts/smoke-image-generation.mjs
+ *
+ * @see https://docs.cloudbase.net/ai/image-model/wx-server-sdk
  */
 import { config as loadEnv } from 'dotenv';
 import { resolve } from 'node:path';
 
 loadEnv({ path: resolve(process.cwd(), '.env') });
 
-const envId = process.env.CLOUDBASE_ENV_ID?.trim();
+const CLOUDBASE_IMAGE_SDK_PROVIDER = 'hunyuan-image';
 const DEFAULT_IMAGE_MODEL = 'HY-Image-3.0-Plus-4090-Tob-v1.0';
+
+const envId = process.env.CLOUDBASE_ENV_ID?.trim();
 const rawImageModel = process.env.IMAGE_GENERATION_MODEL?.trim();
 const imageModel =
   !rawImageModel || rawImageModel === 'hunyuan-image'
@@ -31,21 +35,19 @@ if (!accessKey) {
 }
 
 const cloudbase = (await import('@cloudbase/node-sdk')).default;
-const initOptions = { env: envId, timeout: 90_000 };
-initOptions.accessKey = accessKey;
-
-const app = cloudbase.init(initOptions);
-const client = app.ai().createImageModel(imageModel);
-
-const imageVersion = process.env.IMAGE_GENERATION_VERSION?.trim();
+const app = cloudbase.init({ env: envId, timeout: 150_000, accessKey });
+const client = app.ai().createImageModel(CLOUDBASE_IMAGE_SDK_PROVIDER);
+client.generateImageSubUrlConfig[CLOUDBASE_IMAGE_SDK_PROVIDER] ??= {};
+client.generateImageSubUrlConfig[CLOUDBASE_IMAGE_SDK_PROVIDER][imageModel] =
+  'images/ar/generations';
 
 console.log(`generating test image (${imageModel}, 720x1280)...`);
 const res = await client.generateImage({
   model: imageModel,
   prompt: '抽象电音节舞台霓虹灯光，紫粉蓝色调，无文字无人物，适合手机壁纸背景',
   size: '720x1280',
-  version: imageVersion || 'v1.9',
-  revise: false,
+  revise: { value: false },
+  enable_thinking: { value: false },
 });
 
 const url = res?.data?.[0]?.url;

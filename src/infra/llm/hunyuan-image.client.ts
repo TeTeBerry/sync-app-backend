@@ -1,6 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+export const HY_IMAGE_PLUS_MODEL = 'HY-Image-3.0-Plus-4090-Tob-v1.0';
+
+/**
+ * CloudBase SDK image API provider (fixed route name, not the generation model).
+ * @see https://docs.cloudbase.net/ai/image-model/wx-server-sdk
+ */
+const CLOUDBASE_IMAGE_SDK_PROVIDER = 'hunyuan-image';
+const HY_IMAGE_PLUS_SUB_URL = 'images/ar/generations';
+
 export type HunyuanGenerateImageInput = {
   prompt: string;
   size: string;
@@ -13,7 +22,6 @@ export class HunyuanImageClient {
 
   private readonly envId: string;
   private readonly imageModel: string;
-  private readonly imageVersion: string;
   private readonly accessKey: string;
   private readonly secretId: string;
   private readonly secretKey: string;
@@ -22,8 +30,6 @@ export class HunyuanImageClient {
     this.envId = this.config.get<string>('cloudbase.envId')?.trim() ?? '';
     this.imageModel =
       this.config.get<string>('imageGeneration.imageModel')?.trim() ?? '';
-    this.imageVersion =
-      this.config.get<string>('imageGeneration.imageVersion') ?? 'v1.9';
     this.accessKey =
       this.config.get<string>('cloudbase.apiKey')?.trim() ??
       this.config.get<string>('hunyuan.apiKey')?.trim() ??
@@ -52,24 +58,30 @@ export class HunyuanImageClient {
 
     try {
       const cloudbase = await import('@cloudbase/node-sdk');
-      const initOptions: Record<string, unknown> = { env: this.envId };
-      if (this.secretId && this.secretKey) {
+      const initOptions: Record<string, unknown> = {
+        env: this.envId,
+        timeout: 150_000,
+      };
+      if (this.accessKey) {
+        initOptions.accessKey = this.accessKey;
+      } else if (this.secretId && this.secretKey) {
         initOptions.secretId = this.secretId;
         initOptions.secretKey = this.secretKey;
-      } else if (this.accessKey) {
-        initOptions.accessKey = this.accessKey;
       }
 
       const app = cloudbase.init(initOptions);
-      const ai = app.ai();
-      const imageModel = ai.createImageModel(this.imageModel);
+      const imageModel = app
+        .ai()
+        .createImageModel(CLOUDBASE_IMAGE_SDK_PROVIDER);
+      this.configurePlusModelSubUrl(imageModel);
+
       const res = (await imageModel.generateImage({
         model: this.imageModel,
         prompt,
         size: input.size,
-        version: this.imageVersion as 'v1.9',
-        revise: false,
-      })) as { data?: Array<{ url?: string }> };
+        revise: { value: false },
+        enable_thinking: { value: false },
+      } as never)) as { data?: Array<{ url?: string }> };
 
       const url = res?.data?.[0]?.url?.trim();
       if (!url) {
@@ -87,5 +99,19 @@ export class HunyuanImageClient {
       );
       return null;
     }
+  }
+
+  private configurePlusModelSubUrl(imageModel: {
+    generateImageSubUrlConfig: Record<string, Record<string, string>>;
+  }): void {
+    if (this.imageModel !== HY_IMAGE_PLUS_MODEL) {
+      return;
+    }
+
+    // @cloudbase/ai < 2.30 needs explicit sub-path; harmless on 2.30+.
+    imageModel.generateImageSubUrlConfig[CLOUDBASE_IMAGE_SDK_PROVIDER] ??= {};
+    imageModel.generateImageSubUrlConfig[CLOUDBASE_IMAGE_SDK_PROVIDER][
+      HY_IMAGE_PLUS_MODEL
+    ] = HY_IMAGE_PLUS_SUB_URL;
   }
 }

@@ -82,8 +82,11 @@ QWEN_API_KEY=
 - 配置命名空间：`imageGeneration.*`
 - 环境变量：
   - `IMAGE_GENERATION_ENABLED=true`
-  - `IMAGE_GENERATION_MODEL=HY-Image-3.0-Plus-4090-Tob-v1.0`（固定使用成长计划 Plus 模型；`hunyuan-image` 已废弃，配置层会自动回退）
-  - `IMAGE_GENERATION_VERSION=v1.9`（可选）
+  - `IMAGE_GENERATION_MODEL=HY-Image-3.0-Plus-4090-Tob-v1.0`（实际生图模型；旧值 `hunyuan-image` 会在配置层自动回退）
+- SDK 调用（[官方文档](https://docs.cloudbase.net/ai/image-model/wx-server-sdk)）：
+  - `createImageModel('hunyuan-image')` — CloudBase SDK 固定 API 路由，**不是**生图模型名
+  - `generateImage({ model: IMAGE_GENERATION_MODEL, ... })` — 指定 `HY-Image-3.0-Plus-4090-Tob-v1.0`
+  - `@cloudbase/ai` 建议 >= 2.30.0；更低版本需在代码里配置 `images/ar/generations` 子路径
 - 鉴权：默认复用 `HUNYUAN_API_KEY`（或 `CLOUDBASE_APIKEY`）；本地备选 `TENCENTCLOUD_SECRETID` / `TENCENTCLOUD_SECRETKEY`
 - 云存储：`CLOUDBASE_ENV_ID`（必填）、`CLOUDBASE_STORAGE_BUCKET`
 
