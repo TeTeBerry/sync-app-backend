@@ -8,6 +8,7 @@ const COLLAB_X_PATTERN = /\s+[X×]\s+/i;
 const DUO_LINEUP_ACTS = new Set([
   'ABOVE & BEYOND',
   'ALY & FILA',
+  'BLOCK & CROWN',
   'COSMIC GATE',
   'D-BLOCK & S-TE-FAN',
   'DIMITRI VEGAS & LIKE MIKE',
@@ -15,6 +16,7 @@ const DUO_LINEUP_ACTS = new Set([
   'JKYL & HYDE',
   'LUCAS & STEVE',
   'MATISSE & SADKO',
+  'MIKE & ME',
   'TAIKI & NULIGHT',
 ]);
 
@@ -480,8 +482,6 @@ export const LINEUP_COVERAGE_NAME_KEYS = {
   'SMILE B2B KZ BEATZ': ['smile', 'kzbeatz'],
   'JOHN MASAKI & KIM SANE': ['johnmasaki', 'kimsane'],
   'JIMMY CLASH & TRICKY GULLIVAN': ['jimmyclash', 'trickygullivan'],
-  'BLOCK & CROWN': ['block', 'crown'],
-  'MIKE & ME': ['mike', 'me'],
   'DJ HADOU B2B FØOMIE?': ['djhadou', 'foomie'],
   'LIKE MIKE (MAIN STAGE DJ SET)': ['likemike'],
   'ATMOZFEARS B2B SOUND RUSH': ['atmozfears', 'soundrush'],

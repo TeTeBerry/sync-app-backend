@@ -26,6 +26,10 @@ describe('lineup-name-match.util', () => {
     expect(expandFestivalArtistName('ABOVE & BEYOND')).toEqual([
       'ABOVE & BEYOND',
     ]);
+    expect(expandFestivalArtistName('BLOCK & CROWN')).toEqual([
+      'BLOCK & CROWN',
+    ]);
+    expect(expandFestivalArtistName('MIKE & ME')).toEqual(['MIKE & ME']);
   });
 
   it('matches B2B split lineup names', () => {

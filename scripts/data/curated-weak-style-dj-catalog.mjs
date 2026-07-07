@@ -192,4 +192,25 @@ export const CURATED_WEAK_STYLE_DJ_CATALOG = {
     genres: ['Electronic'],
     styles: ['Drum & Bass', 'Hip Hop', 'Bass'],
   },
+  blockcrown: {
+    lineupName: 'BLOCK & CROWN',
+    discogsName: 'Block & Crown',
+    realName: 'Adri Blok & Mitchel Kroon',
+    country: 'Netherlands',
+    profile:
+      'Block & Crown are a Dutch house music duo from Amsterdam, consisting of Adri Blok and Mitchel Kroon (also credited as Mitch Crown). They are one of the most prolific house acts with 1,000+ releases across labels including fabric Records, Milk & Sugar, Tribal Kitchen, Next-Gen-Records, and ZYX Music.\n\nTheir sound sits in the jackin\' house lane, drawing on the swing and sampling sensibilities of disco and funk-rooted dance records. They have collaborated with Roland Clark, CASSIMM, David Penn, Todd Terry, and Crazibiza.',
+    genres: ['Funky House', 'Nu Disco', 'Jackin House', 'Soulful House'],
+    styles: ['Funky House', 'Nu Disco', 'Jackin House', 'Soulful House'],
+    urls: ['https://www.beatport.com/artist/block-crown/'],
+  },
+  mikeme: {
+    lineupName: 'MIKE & ME',
+    discogsName: 'Mike & Me',
+    country: 'Netherlands',
+    profile:
+      'Mike & Me are a Dutch house duo active on the European festival circuit, including Ultra Europe. Their sets focus on tech house and groove-led house with a club-ready, festival-friendly energy.',
+    genres: ['House'],
+    styles: ['Tech House'],
+    urls: ['https://www.beatport.com/artist/mike-me/'],
+  },
 };
