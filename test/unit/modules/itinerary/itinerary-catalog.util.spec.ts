@@ -237,11 +237,11 @@ describe('itinerary-catalog.util', () => {
   it('returns Ultra Europe day 1 performances across four stages', () => {
     const seed = resolveItineraryCatalogSeed(
       ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID,
-      'jul11',
+      'jul10',
     );
 
     expect(seed.sessions).toHaveLength(1);
-    expect(seed.performances).toHaveLength(28);
+    expect(seed.performances).toHaveLength(29);
     expect(
       seed.performances.some((perf) => perf.stageLabel === 'Ultra Main Stage'),
     ).toBe(true);
@@ -249,10 +249,10 @@ describe('itinerary-catalog.util', () => {
       seed.performances.some((perf) => perf.stageLabel === 'Resistance'),
     ).toBe(true);
     expect(
-      seed.performances.some((perf) => perf.artistName === 'ARMIN VAN BUUREN'),
+      seed.performances.some((perf) => perf.artistName === 'JOHN SUMMIT'),
     ).toBe(true);
     expect(
-      seed.performances.some((perf) => perf.artistName === 'CARL COX'),
+      seed.performances.some((perf) => perf.artistName === 'CAMELPHAT'),
     ).toBe(true);
   });
 
@@ -262,14 +262,14 @@ describe('itinerary-catalog.util', () => {
     );
 
     expect(seed.sessions.map((session) => session.dateKey)).toEqual([
+      'jul10',
       'jul11',
       'jul12',
-      'jul13',
     ]);
-    expect(seed.performances).toHaveLength(81);
+    expect(seed.performances).toHaveLength(85);
     expect(
       resolveLineupDjs(ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID).length,
-    ).toBe(81);
+    ).toBe(85);
     expect(
       resolveLineupDjs(ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID).some(
         (dj) => dj.name === 'MARTIN GARRIX',

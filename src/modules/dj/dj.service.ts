@@ -15,7 +15,10 @@ import {
   matchLineupArtistToCatalog,
   normalizeArtistNameKey,
 } from './lineup-name-match.util';
-import { resolveLineupDisplayGenreFromCatalog } from '../itinerary/domain/lineup-artist-data-policy';
+import {
+  resolveCuratedLineupDisplayGenre,
+  resolveLineupDisplayGenreFromCatalog,
+} from '../itinerary/domain/lineup-artist-data-policy';
 import { isLineupCatalogNameTrusted } from './lineup-catalog-profile-trust.util';
 import {
   buildCatalogDiscogsIdIndex,
@@ -386,9 +389,10 @@ export class DjService implements OnApplicationBootstrap {
       if (match) {
         catalogByLineupName.set(name, match);
       }
+      const curatedGenre = resolveCuratedLineupDisplayGenre(name);
       genreDisplayByLineupName.set(
         name,
-        resolveLineupDisplayGenreFromCatalog(items),
+        curatedGenre ?? resolveLineupDisplayGenreFromCatalog(items),
       );
     }
 

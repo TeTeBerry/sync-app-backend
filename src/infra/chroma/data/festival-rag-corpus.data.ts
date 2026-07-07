@@ -99,11 +99,11 @@ export const FESTIVAL_RAG_CORPUS: FestivalRagCorpusEntry[] = [
     story:
       'Ultra Europe 在克罗地亚斯普利特举办，主舞台海滨夜景 + Resistance techno 氛围。',
     lineupAnnounceHint:
-      '往年 Ultra Europe 阵容与每日 timetable 多在春季至初夏公布。',
+      '2026 官方 Set Times 已公布（7/10–12，四舞台 20:00–05:00）。',
     survivalHint:
       '申根签证；斯普利特夏季炎热，备防晒、涉水鞋与岛屿间交通方案。',
     activityFaq:
-      'Ultra Europe 2026 7 月 11–13 日斯普利特 Poljud Stadium。别名：ultra europe、欧洲ultra。',
+      'Ultra Europe 2026 7 月 10–12 日斯普利特 Park Mladeži。别名：ultra europe、欧洲ultra。',
   },
   {
     code: 'ultra-japan',

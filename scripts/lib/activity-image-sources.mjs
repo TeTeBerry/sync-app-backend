@@ -85,7 +85,8 @@ export const ACTIVITY_IMAGE_SOURCES = [
   {
     legacyId: 15,
     code: 'ultra-europe',
-    sourceUrl: 'https://ultraeurope.com/wp-content/uploads/2015/07/ultra-europe.png',
+    /** Local asset — Phase 2 announcement poster (see assets/activity/ultra-europe.jpg) */
+    sourceUrl: '',
   },
   {
     legacyId: 16,

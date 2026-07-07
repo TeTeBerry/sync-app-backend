@@ -16,6 +16,22 @@ const PLACEHOLDER_GENRE = {
   genreLabel: LINEUP_SEED_GENRE_PLACEHOLDER,
 } as const;
 
+/** Editorial genre overrides when Discogs/Hermes maps the wrong person or sub-styles. */
+const CURATED_LINEUP_DISPLAY_GENRES = new Map<
+  string,
+  { genre: string; genreLabel: string }
+>([['DJ SNAKE', { genre: 'Trap', genreLabel: 'Trap · EDM' }]]);
+
+export function resolveCuratedLineupDisplayGenre(
+  lineupName: string,
+): { genre: string; genreLabel: string } | undefined {
+  const key = lineupName.trim().toUpperCase();
+  if (!key) {
+    return undefined;
+  }
+  return CURATED_LINEUP_DISPLAY_GENRES.get(key);
+}
+
 function resolvePrimaryGenreFromCatalogItems(
   items: CatalogGenreSource[],
   genreLabel: string,

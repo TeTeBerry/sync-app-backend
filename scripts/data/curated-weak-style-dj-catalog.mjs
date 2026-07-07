@@ -85,6 +85,16 @@ export const CURATED_WEAK_STYLE_DJ_CATALOG = {
     genres: ['Electronic'],
     styles: ['Progressive House', 'House'],
   },
+  'dj-snake': {
+    lineupName: 'DJ SNAKE',
+    discogsName: 'DJ Snake',
+    realName: 'William Grigahcine',
+    country: 'France',
+    profile:
+      'DJ Snake（William Grigahcine）是法国 DJ 与制作人，以 Trap、Hip Hop 与主流 EDM 见长；代表作包括《Turn Down for What》《Lean On》《Taki Taki》等，长期活跃于 Ultra、EDC 等主流音乐节。',
+    genres: ['Electronic'],
+    styles: ['Trap', 'Hip Hop', 'EDM'],
+  },
   natsumi: {
     lineupName: 'NATSUMI',
     useSyntheticDiscogsId: true,

@@ -1,11 +1,24 @@
 import {
   buildLineupArtistProfileFallback,
+  resolveCuratedLineupDisplayGenre,
   resolveLineupDisplayGenreFromCatalog,
   resolveLineupSeedGenre,
   resolveLineupSeedGenreLabel,
 } from '@src/modules/itinerary/domain/lineup-artist-data-policy';
 
 describe('lineup-artist-data-policy', () => {
+  it('returns curated display genre for mis-mapped headliners', () => {
+    expect(resolveCuratedLineupDisplayGenre('DJ SNAKE')).toEqual({
+      genre: 'Trap',
+      genreLabel: 'Trap · EDM',
+    });
+    expect(resolveCuratedLineupDisplayGenre('dj snake')).toEqual({
+      genre: 'Trap',
+      genreLabel: 'Trap · EDM',
+    });
+    expect(resolveCuratedLineupDisplayGenre('UNKNOWN')).toBeUndefined();
+  });
+
   it('returns placeholder for empty genreLabel', () => {
     expect(resolveLineupSeedGenreLabel('')).toBe('风格待补充');
     expect(resolveLineupSeedGenreLabel('风格待补充')).toBe('风格待补充');
