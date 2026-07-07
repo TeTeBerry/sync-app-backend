@@ -6,8 +6,8 @@ import {
 import { CloudStorageService } from '../../infra/cloud/cloud-storage.service';
 import { CloudStorageUploadService } from '../../infra/cloud/cloud-storage-upload.service';
 import type { GenerateInstagramAssetsDto } from './dto/generate-instagram-assets.dto';
-import { PosterFestivalCoverService } from './image-renderer/poster-festival-cover.service';
-import { buildPosterSpec } from './image-renderer/build-poster-spec';
+import { buildTravelGuidePosterSpec } from './image-renderer/build-travel-guide-poster-spec';
+import { MarketingPosterBackgroundService } from './image-renderer/marketing-poster-background.service';
 import { PosterImageRendererService } from './image-renderer/poster-image-renderer.service';
 import type {
   InstagramAssetsResult,
@@ -24,7 +24,7 @@ export class MarketingAiImageService {
 
   constructor(
     private readonly renderer: PosterImageRendererService,
-    private readonly coverService: PosterFestivalCoverService,
+    private readonly backgroundService: MarketingPosterBackgroundService,
     private readonly cloudUpload: CloudStorageUploadService,
     private readonly cloudStorage: CloudStorageService,
   ) {}
@@ -38,21 +38,14 @@ export class MarketingAiImageService {
       );
     }
 
-    const slides = dto.carousel.filter((slide) => slide.slide >= 1);
-    if (slides.length === 0) {
-      throw new ServiceUnavailableException(
-        'Carousel must include at least one slide',
-      );
-    }
-
     const dateStr = new Date().toISOString().slice(0, 10);
     const festivalSlug = sanitizeFestivalSlug(dto.festival.id);
 
     this.logger.log(
-      `Rendering consolidated Instagram poster for ${dto.festival.name} (${slides.length} content section(s))`,
+      `Rendering Instagram travel guide poster for ${dto.festival.name}`,
     );
 
-    const image = await this.generateConsolidatedPoster(
+    const image = await this.generateTravelGuidePoster(
       dto,
       dateStr,
       festivalSlug,
@@ -63,19 +56,21 @@ export class MarketingAiImageService {
     };
   }
 
-  private async generateConsolidatedPoster(
+  private async generateTravelGuidePoster(
     dto: GenerateInstagramAssetsDto,
     dateStr: string,
     festivalSlug: string,
   ): Promise<InstagramGeneratedAssetImage> {
     const imagePath = buildInstagramPosterImagePath(dateStr, festivalSlug);
     const cloudPath = `${MARKETING_AGENT_CLOUD_PREFIX}${imagePath}`;
-    const spec = buildPosterSpec(dto);
-    spec.coverImageDataUrl = await this.coverService.resolveCoverDataUrl(
-      dto.festival,
-    );
-    const promptUsed = this.renderer.buildRendererLabel(spec);
-    const outputBuffer = await this.renderer.renderPoster(spec);
+    const spec = buildTravelGuidePosterSpec(dto);
+    spec.backgroundImageDataUrl =
+      await this.backgroundService.resolveBackgroundDataUrl(
+        dto.festival.name,
+        spec.size,
+      );
+    const promptUsed = this.renderer.buildTravelGuideRendererLabel(spec);
+    const outputBuffer = await this.renderer.renderTravelGuidePoster(spec);
 
     if (!outputBuffer.length) {
       throw new ServiceUnavailableException(
@@ -88,7 +83,7 @@ export class MarketingAiImageService {
 
     return {
       slide: 1,
-      title: spec.festivalName,
+      title: spec.title,
       imagePath,
       promptUsed,
       width: spec.size.width,

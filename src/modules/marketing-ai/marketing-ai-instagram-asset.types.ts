@@ -1,11 +1,20 @@
+export type FestivalLineupArtist = {
+  name: string;
+  genreLabel?: string;
+};
+
 export type InstagramAssetFestival = {
   id: string;
   name: string;
+  venue?: string;
   location?: string;
   country?: string;
   dates?: string;
+  startDate?: string;
+  endDate?: string;
   genres?: string[];
   artists?: string[];
+  lineupArtists?: FestivalLineupArtist[];
   /** CloudBase object key, e.g. static/activity/tomorrowland.jpg */
   image?: string;
   /** Pre-resolved HTTPS cover (local CLI / tests) */

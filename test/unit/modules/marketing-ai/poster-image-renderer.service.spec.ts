@@ -19,20 +19,24 @@ jest.mock('@resvg/resvg-js', () => ({
 describe('PosterImageRendererService', () => {
   const service = new PosterImageRendererService();
 
-  it('loads fonts and returns a PNG buffer', async () => {
-    const png = await service.renderPoster({
-      festivalName: 'Tomorrowland Thailand 2026',
-      festivalMeta: 'Pattaya, Thailand · Dec 5–7',
-      topic: 'Travel guide',
-      genres: ['EDM'],
-      artists: ['Tiësto'],
-      sections: [
-        { headline: 'Getting there', body: 'Fly into U-Tapao' },
-        { headline: 'Where to stay', body: 'Book early' },
+  it('loads fonts and returns a PNG buffer for travel guide poster', async () => {
+    const png = await service.renderTravelGuidePoster({
+      title: 'Tomorrowland Belgium 2026',
+      titleFlag: '🇧🇪',
+      sectionTitle: 'Festival Travel Guide',
+      locationLine: 'De Schorre, Boom',
+      dateLine: 'July 17–19, 2026',
+      guideItems: [
+        {
+          icon: '🏨',
+          label: 'STAY',
+          subtitle: 'Hotels & best areas near the festival',
+        },
       ],
-      brandName: 'Raven',
-      tagline: 'Festival travel planner',
-      size: resolvePosterSize('4:5'),
+      follow: 'FOLLOW @RAVEN',
+      tagline: "Your guide to the world's best festivals",
+      taglineIcon: '🌎',
+      size: resolvePosterSize('1:1'),
     });
 
     expect(png.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');

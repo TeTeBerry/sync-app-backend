@@ -17,13 +17,15 @@ describe('poster-size.presets', () => {
     ]);
   });
 
-  it('defaults to Instagram carousel 4:5', () => {
+  it('defaults to Instagram square 1:1', () => {
     const preset = resolvePosterSize(DEFAULT_POSTER_SIZE_ID);
 
     expect(preset).toMatchObject({
       width: 1080,
-      height: 1350,
-      contentWidth: 1000,
+      height: 1080,
+      contentWidth: 1024,
+      outerPadding: 28,
+      cardPadding: 52,
     });
   });
 
@@ -33,7 +35,7 @@ describe('poster-size.presets', () => {
     expect(preset).toMatchObject({
       width: 512,
       height: 640,
-      outerPadding: 24,
+      outerPadding: 16,
     });
   });
 });

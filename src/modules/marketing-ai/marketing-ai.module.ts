@@ -8,8 +8,9 @@ import { MarketingAiController } from './marketing-ai.controller';
 import { MarketingAiImageService } from './marketing-ai-image.service';
 import { MarketingAiService } from './marketing-ai.service';
 import { MarketingFestivalsService } from './marketing-festivals.service';
-import { PosterFestivalCoverService } from './image-renderer/poster-festival-cover.service';
+import { MarketingPosterBackgroundService } from './image-renderer/marketing-poster-background.service';
 import { PosterImageRendererService } from './image-renderer/poster-image-renderer.service';
+import { HunyuanImageClient } from '../../infra/llm/hunyuan-image.client';
 
 @Module({
   imports: [
@@ -21,8 +22,9 @@ import { PosterImageRendererService } from './image-renderer/poster-image-render
   controllers: [MarketingAiController],
   providers: [
     InternalApiKeyGuard,
+    HunyuanImageClient,
     PosterImageRendererService,
-    PosterFestivalCoverService,
+    MarketingPosterBackgroundService,
     MarketingAiImageService,
     MarketingAiService,
     MarketingFestivalsService,

@@ -25,6 +25,16 @@ const POSTER_SIZE_IDS: PosterSizeId[] = [
   'desktop',
 ];
 
+class FestivalLineupArtistDto {
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  genreLabel?: string;
+}
+
 class InstagramAssetFestivalDto {
   @IsString()
   @MinLength(1)
@@ -33,6 +43,10 @@ class InstagramAssetFestivalDto {
   @IsString()
   @MinLength(1)
   name!: string;
+
+  @IsOptional()
+  @IsString()
+  venue?: string;
 
   @IsOptional()
   @IsString()
@@ -47,6 +61,14 @@ class InstagramAssetFestivalDto {
   dates?: string;
 
   @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   genres?: string[];
@@ -55,6 +77,12 @@ class InstagramAssetFestivalDto {
   @IsArray()
   @IsString({ each: true })
   artists?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FestivalLineupArtistDto)
+  lineupArtists?: FestivalLineupArtistDto[];
 
   @IsOptional()
   @IsString()
