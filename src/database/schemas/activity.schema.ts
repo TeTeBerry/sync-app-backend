@@ -21,6 +21,14 @@ export class Activity {
   @Prop()
   date?: string;
 
+  /** ISO calendar date (YYYY-MM-DD) for structured data and integrations. */
+  @Prop()
+  startDate?: string;
+
+  /** ISO calendar date (YYYY-MM-DD) for structured data and integrations. */
+  @Prop()
+  endDate?: string;
+
   @Prop()
   location?: string;
 

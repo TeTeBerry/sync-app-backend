@@ -9,6 +9,14 @@ export class UpdateActivityDto {
 
   @IsOptional()
   @IsString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @IsOptional()
+  @IsString()
   location?: string;
 
   @IsOptional()

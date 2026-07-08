@@ -17,6 +17,40 @@ export function extractYearFromText(text?: string): string | undefined {
   return match?.[1];
 }
 
+function toIsoYmd(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function resolveActivityStructuredDates(activity: {
+  date?: string;
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+}): { startDate?: string; endDate?: string } {
+  const storedStart = activity.startDate?.trim();
+  const storedEnd = activity.endDate?.trim();
+  if (storedStart && storedEnd) {
+    return { startDate: storedStart, endDate: storedEnd };
+  }
+
+  const yearHint =
+    extractYearFromText(activity.name) ?? extractYearFromText(activity.date);
+  const parsed = activity.date?.trim()
+    ? parseActivityDateRange(activity.date, yearHint)
+    : null;
+  if (!parsed) {
+    return {};
+  }
+
+  return {
+    startDate: toIsoYmd(parsed.start),
+    endDate: toIsoYmd(parsed.end),
+  };
+}
+
 /** Parse catalog-style activity date strings (e.g. 06/13-14, 12/11-13). */
 export function parseActivityDateRange(
   dateStr: string,
@@ -24,6 +58,21 @@ export function parseActivityDateRange(
 ): ParsedActivityDates | null {
   const trimmed = dateStr.trim();
   if (!trimmed) return null;
+
+  const multiWeek = trimmed.split(/\s*&\s*/).filter(Boolean);
+  if (multiWeek.length > 1) {
+    const firstRange = parseActivityDateRange(multiWeek[0], yearHint);
+    const lastRange = parseActivityDateRange(
+      multiWeek[multiWeek.length - 1],
+      yearHint,
+    );
+    if (firstRange && lastRange) {
+      return {
+        start: firstRange.start,
+        end: lastRange.end,
+      };
+    }
+  }
 
   const iso = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (iso) {

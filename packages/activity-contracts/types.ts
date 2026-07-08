@@ -10,6 +10,10 @@ export interface BackendActivity {
   code: string;
   alias?: string[];
   date?: string;
+  /** ISO calendar date (YYYY-MM-DD). Display `date` is kept for UI. */
+  startDate?: string;
+  /** ISO calendar date (YYYY-MM-DD). Display `date` is kept for UI. */
+  endDate?: string;
   location?: string;
   latitude?: number;
   longitude?: number;

@@ -11,6 +11,7 @@ import {
   type ActivityLookupCacheSnapshot,
 } from './activity-lookup.cache';
 import { isActivityLineupPublished } from './utils/activity-lineup-published.util';
+import { resolveActivityStructuredDates } from '../../common/utils/activity-date.util';
 import { enrichActivityLookupRecord } from '../travel-guide/domain/travel-guide-support.util';
 import type {
   ActivityLookupRecord,
@@ -59,13 +60,17 @@ export class ActivityLookupService implements OnApplicationBootstrap {
       this.loadPublishedActivityLegacyIds(),
     ]);
 
-    const records: ActivityLookupRecord[] = activities.map((activity) => ({
-      ...activity,
-      lineupPublished: isActivityLineupPublished(
-        activity.legacyId,
-        publishedLegacyIds.has(activity.legacyId),
-      ),
-    }));
+    const records: ActivityLookupRecord[] = activities.map((activity) => {
+      const structuredDates = resolveActivityStructuredDates(activity);
+      return {
+        ...activity,
+        ...structuredDates,
+        lineupPublished: isActivityLineupPublished(
+          activity.legacyId,
+          publishedLegacyIds.has(activity.legacyId),
+        ),
+      };
+    });
 
     this.applyRecords(records);
     await this.jsonCache.setJson(this.dataKey, { records }, this.ttlSec);
