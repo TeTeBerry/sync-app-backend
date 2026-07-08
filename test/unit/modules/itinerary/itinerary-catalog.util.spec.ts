@@ -12,6 +12,7 @@ import {
   ITINERARY_EDC_ORLANDO_ACTIVITY_LEGACY_ID,
   ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID,
   ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID,
+  ITINERARY_LOST_LANDS_ACTIVITY_LEGACY_ID,
   STORM_ACTIVITY_LEGACY_ID,
 } from '@src/data/itinerary/itinerary.seed';
 
@@ -35,6 +36,9 @@ describe('itinerary-catalog.util', () => {
     ).toBe(true);
     expect(
       hasItineraryCatalogSeed(ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID),
+    ).toBe(true);
+    expect(
+      hasItineraryCatalogSeed(ITINERARY_LOST_LANDS_ACTIVITY_LEGACY_ID),
     ).toBe(true);
     expect(hasItineraryCatalogSeed(999)).toBe(false);
   });
@@ -230,6 +234,32 @@ describe('itinerary-catalog.util', () => {
     expect(
       resolveLineupDjs(ITINERARY_EDC_ORLANDO_ACTIVITY_LEGACY_ID).some(
         (dj) => dj.name === 'MARTIN GARRIX',
+      ),
+    ).toBe(true);
+  });
+
+  it('returns lineup DJs without performances for Lost Lands', () => {
+    const seed = resolveItineraryCatalogSeed(
+      ITINERARY_LOST_LANDS_ACTIVITY_LEGACY_ID,
+    );
+
+    expect(seed.performances).toHaveLength(0);
+    expect(seed.sessions.map((session) => session.dateKey)).toEqual([
+      'sep18',
+      'sep19',
+      'sep20',
+    ]);
+    expect(
+      resolveLineupDjs(ITINERARY_LOST_LANDS_ACTIVITY_LEGACY_ID).length,
+    ).toBe(210);
+    expect(
+      resolveLineupDjs(ITINERARY_LOST_LANDS_ACTIVITY_LEGACY_ID).some(
+        (dj) => dj.name === 'EXCISION (2 HOUR SET)',
+      ),
+    ).toBe(true);
+    expect(
+      resolveLineupDjs(ITINERARY_LOST_LANDS_ACTIVITY_LEGACY_ID).some(
+        (dj) => dj.name === 'DIRTY SNATCHA',
       ),
     ).toBe(true);
   });
