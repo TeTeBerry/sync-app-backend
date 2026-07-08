@@ -254,6 +254,31 @@ describe('itinerary-catalog.util', () => {
     expect(
       seed.performances.some((perf) => perf.artistName === 'CAMELPHAT'),
     ).toBe(true);
+
+    const mainStage = seed.performances
+      .filter((perf) => perf.stageLabel === 'Ultra Main Stage')
+      .sort((left, right) => left.startMinutes - right.startMinutes);
+    expect(mainStage.map((perf) => perf.artistName)).toEqual([
+      'MYKRIS',
+      'HALO',
+      'SUBTRONICS',
+      'OLIVER HELDENS',
+      'AFROJACK',
+      'DJ SNAKE',
+      'JOHN SUMMIT',
+    ]);
+    expect(mainStage.map((perf) => perf.startTime)).toEqual([
+      '20:00',
+      '21:05',
+      '22:10',
+      '23:30',
+      '00:50',
+      '02:10',
+      '03:30',
+    ]);
+    expect(mainStage.every((perf) => perf.endTime === perf.startTime)).toBe(
+      true,
+    );
   });
 
   it('returns Ultra Europe full timetable and lineup DJs', () => {

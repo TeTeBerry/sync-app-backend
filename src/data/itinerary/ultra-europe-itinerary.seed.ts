@@ -158,644 +158,175 @@ function metaFor(name: string, stageKey: keyof typeof STAGES): ArtistMeta {
   return ULTRA_EUROPE_ARTIST_OVERRIDES.get(name) ?? defaultMeta(name, stageKey);
 }
 
+/** Official SET TIMES poster only publishes start times (8PM–5AM festival window). */
+const FESTIVAL_CLOSE_MINUTES = 29 * 60; // 05:00 next morning
+
 type Slot = {
   artistName: string;
   stage: StageDef;
   stageKey: keyof typeof STAGES;
+  /** Official start time from Ultra Europe SET TIMES (HH:mm). */
   startTime: string;
-  endTime: string;
 };
 
+function slot(
+  artistName: string,
+  stageKey: keyof typeof STAGES,
+  startTime: string,
+): Slot {
+  return {
+    artistName,
+    stage: STAGES[stageKey],
+    stageKey,
+    startTime,
+  };
+}
+
+/** Minutes from festival evening open; after-midnight sets roll into the next calendar morning. */
+function festivalStartMinutes(startTime: string): number {
+  const minutes = parseTimeToMinutes(startTime);
+  return minutes < 18 * 60 ? minutes + 24 * 60 : minutes;
+}
+
 const ULTRA_EUROPE_JUL10_SLOTS: Slot[] = [
-  {
-    artistName: 'MYKRIS',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '20:00',
-    endTime: '21:05',
-  },
-  {
-    artistName: 'HALO',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '21:05',
-    endTime: '22:10',
-  },
-  {
-    artistName: 'SUBTRONICS',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '22:10',
-    endTime: '23:30',
-  },
-  {
-    artistName: 'OLIVER HELDENS',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '23:30',
-    endTime: '00:50',
-  },
-  {
-    artistName: 'AFROJACK',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '00:50',
-    endTime: '02:10',
-  },
-  {
-    artistName: 'DJ SNAKE',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '02:10',
-    endTime: '03:30',
-  },
-  {
-    artistName: 'JOHN SUMMIT',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '03:30',
-    endTime: '05:00',
-  },
-  {
-    artistName: 'DJ JOCK',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '20:00',
-    endTime: '21:30',
-  },
-  {
-    artistName: 'DEER JADE',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '21:30',
-    endTime: '23:00',
-  },
-  {
-    artistName: 'MISS MONIQUE',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '23:00',
-    endTime: '01:00',
-  },
-  {
-    artistName: 'ADAM BEYER',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '01:00',
-    endTime: '03:00',
-  },
-  {
-    artistName: 'CAMELPHAT',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '03:00',
-    endTime: '05:00',
-  },
-  {
-    artistName: 'TWOFACE',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '20:00',
-    endTime: '21:00',
-  },
-  {
-    artistName: 'BLOCK & CROWN',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '21:00',
-    endTime: '22:00',
-  },
-  {
-    artistName: 'MIKE & ME',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '22:00',
-    endTime: '22:40',
-  },
-  {
-    artistName: 'LORENZO',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '22:40',
-    endTime: '23:20',
-  },
-  {
-    artistName: 'MERT AYDIN',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '23:20',
-    endTime: '00:00',
-  },
-  {
-    artistName: 'P.O.U.',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '00:00',
-    endTime: '01:00',
-  },
-  {
-    artistName: 'YAMATOMAYA',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '01:00',
-    endTime: '02:00',
-  },
-  {
-    artistName: 'VINJAZ B2B JIM',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '02:00',
-    endTime: '03:00',
-  },
-  {
-    artistName: 'LIA LISSE',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '03:00',
-    endTime: '04:00',
-  },
-  {
-    artistName: 'TANK',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '04:00',
-    endTime: '05:00',
-  },
-  {
-    artistName: 'SEMERENE',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '19:00',
-    endTime: '20:00',
-  },
-  {
-    artistName: 'LOOKA',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '20:00',
-    endTime: '21:00',
-  },
-  {
-    artistName: 'RYAN NOGAR',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '21:00',
-    endTime: '22:00',
-  },
-  {
-    artistName: 'MATT',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '22:00',
-    endTime: '23:00',
-  },
-  {
-    artistName: 'JAY P',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '23:00',
-    endTime: '00:00',
-  },
-  {
-    artistName: 'NAEMS B2B MASKI & BANGA',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '00:00',
-    endTime: '01:00',
-  },
-  {
-    artistName: 'SIMO & FRANZ',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '01:00',
-    endTime: '05:00',
-  },
+  slot('MYKRIS', 'main', '20:00'),
+  slot('HALO', 'main', '21:05'),
+  slot('SUBTRONICS', 'main', '22:10'),
+  slot('OLIVER HELDENS', 'main', '23:30'),
+  slot('AFROJACK', 'main', '00:50'),
+  slot('DJ SNAKE', 'main', '02:10'),
+  slot('JOHN SUMMIT', 'main', '03:30'),
+  slot('DJ JOCK', 'resistance', '20:00'),
+  slot('DEER JADE', 'resistance', '21:30'),
+  slot('MISS MONIQUE', 'resistance', '23:00'),
+  slot('ADAM BEYER', 'resistance', '01:00'),
+  slot('CAMELPHAT', 'resistance', '03:00'),
+  slot('TWOFACE', 'umfRadio', '20:00'),
+  slot('BLOCK & CROWN', 'umfRadio', '21:00'),
+  slot('MIKE & ME', 'umfRadio', '22:00'),
+  slot('LORENZO', 'umfRadio', '22:40'),
+  slot('MERT AYDIN', 'umfRadio', '23:20'),
+  slot('P.O.U.', 'umfRadio', '00:00'),
+  slot('YAMATOMAYA', 'umfRadio', '01:00'),
+  slot('VINJAZ B2B JIM', 'umfRadio', '02:00'),
+  slot('LIA LISSE', 'umfRadio', '03:00'),
+  slot('TANK', 'umfRadio', '04:00'),
+  slot('SEMERENE', 'oasis', '19:00'),
+  slot('LOOKA', 'oasis', '20:00'),
+  slot('RYAN NOGAR', 'oasis', '21:00'),
+  slot('MATT', 'oasis', '22:00'),
+  slot('JAY P', 'oasis', '23:00'),
+  slot('NAEMS B2B MASKI & BANGA', 'oasis', '00:00'),
+  slot('SIMO & FRANZ', 'oasis', '01:00'),
 ];
 
 const ULTRA_EUROPE_JUL11_SLOTS: Slot[] = [
-  {
-    artistName: 'VANILLAZ',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '20:00',
-    endTime: '20:50',
-  },
-  {
-    artistName: 'DASH BERLIN',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '20:50',
-    endTime: '21:55',
-  },
-  {
-    artistName: 'MADDIX',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '21:55',
-    endTime: '23:00',
-  },
-  {
-    artistName: 'WORSHIP',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '23:00',
-    endTime: '00:20',
-  },
-  {
-    artistName: 'DOM DOLLA',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '00:20',
-    endTime: '01:55',
-  },
-  {
-    artistName: 'CALVIN HARRIS',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '01:55',
-    endTime: '03:30',
-  },
-  {
-    artistName: 'HARDWELL',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '03:30',
-    endTime: '05:00',
-  },
-  {
-    artistName: 'SHIPE',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '20:00',
-    endTime: '21:30',
-  },
-  {
-    artistName: 'MALONE MOREZ',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '21:30',
-    endTime: '23:00',
-  },
-  {
-    artistName: 'BEN STERLING',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '23:00',
-    endTime: '01:00',
-  },
-  {
-    artistName: 'MAU P',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '01:00',
-    endTime: '03:00',
-  },
-  {
-    artistName: 'JAMIE JONES',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '03:00',
-    endTime: '05:00',
-  },
-  {
-    artistName: 'SEANXXX',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '20:00',
-    endTime: '21:00',
-  },
-  {
-    artistName: 'WREX',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '21:00',
-    endTime: '22:00',
-  },
-  {
-    artistName: 'RESTER',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '22:00',
-    endTime: '22:40',
-  },
-  {
-    artistName: 'MIKE BOND',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '22:40',
-    endTime: '23:20',
-  },
-  {
-    artistName: 'DJ TORA',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '23:20',
-    endTime: '00:00',
-  },
-  {
-    artistName: 'ALE BASCIANO B2B MARCO NINNI',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '00:00',
-    endTime: '01:00',
-  },
-  {
-    artistName: 'YAKSA',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '01:00',
-    endTime: '02:00',
-  },
-  {
-    artistName: 'CASPER YU B2B JETEGG',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '02:00',
-    endTime: '03:00',
-  },
-  {
-    artistName: 'D.LACRUX',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '03:00',
-    endTime: '04:00',
-  },
-  {
-    artistName: 'NILES VAN ZANDT',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '04:00',
-    endTime: '05:00',
-  },
-  {
-    artistName: 'SEB C',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '20:00',
-    endTime: '21:00',
-  },
-  {
-    artistName: 'AZOOLAND',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '21:00',
-    endTime: '22:00',
-  },
-  {
-    artistName: 'EVAN PIERINI B2B SEAN PARK',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '22:00',
-    endTime: '23:00',
-  },
-  {
-    artistName: 'FRANK JEZ',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '23:00',
-    endTime: '00:00',
-  },
-  {
-    artistName: 'SABERZ',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '00:00',
-    endTime: '01:00',
-  },
-  {
-    artistName: 'BADVICE',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '01:00',
-    endTime: '05:00',
-  },
+  slot('VANILLAZ', 'main', '20:00'),
+  slot('DASH BERLIN', 'main', '20:50'),
+  slot('MADDIX', 'main', '21:55'),
+  slot('WORSHIP', 'main', '23:00'),
+  slot('DOM DOLLA', 'main', '00:20'),
+  slot('CALVIN HARRIS', 'main', '01:55'),
+  slot('HARDWELL', 'main', '03:30'),
+  slot('SHIPE', 'resistance', '20:00'),
+  slot('MALONE MOREZ', 'resistance', '21:30'),
+  slot('BEN STERLING', 'resistance', '23:00'),
+  slot('MAU P', 'resistance', '01:00'),
+  slot('JAMIE JONES', 'resistance', '03:00'),
+  slot('SEANXXX', 'umfRadio', '20:00'),
+  slot('WREX', 'umfRadio', '21:00'),
+  slot('RESTER', 'umfRadio', '22:00'),
+  slot('MIKE BOND', 'umfRadio', '22:40'),
+  slot('DJ TORA', 'umfRadio', '23:20'),
+  slot('ALE BASCIANO B2B MARCO NINNI', 'umfRadio', '00:00'),
+  slot('YAKSA', 'umfRadio', '01:00'),
+  slot('CASPER YU B2B JETEGG', 'umfRadio', '02:00'),
+  slot('D.LACRUX', 'umfRadio', '03:00'),
+  slot('NILES VAN ZANDT', 'umfRadio', '04:00'),
+  slot('SEB C', 'oasis', '20:00'),
+  slot('AZOOLAND', 'oasis', '21:00'),
+  slot('EVAN PIERINI B2B SEAN PARK', 'oasis', '22:00'),
+  slot('FRANK JEZ', 'oasis', '23:00'),
+  slot('SABERZ', 'oasis', '00:00'),
+  slot('BADVICE', 'oasis', '01:00'),
 ];
 
 const ULTRA_EUROPE_JUL12_SLOTS: Slot[] = [
-  {
-    artistName: 'KRAUNDLER',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '20:00',
-    endTime: '20:50',
-  },
-  {
-    artistName: 'PLASTIK FUNK',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '20:50',
-    endTime: '21:55',
-  },
-  {
-    artistName: 'RAY VOLPE B2B SULLIVAN KING',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '21:55',
-    endTime: '23:15',
-  },
-  {
-    artistName: 'BUNT.',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '23:15',
-    endTime: '00:35',
-  },
-  {
-    artistName: 'ARMIN VAN BUUREN',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '00:35',
-    endTime: '01:55',
-  },
-  {
-    artistName: 'MARTIN GARRIX',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '01:55',
-    endTime: '03:30',
-  },
-  {
-    artistName: 'FISHER',
-    stage: STAGES.main,
-    stageKey: 'main',
-    startTime: '03:30',
-    endTime: '05:00',
-  },
-  {
-    artistName: 'TOMO IN DER MÜHLEN',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '20:00',
-    endTime: '21:30',
-  },
-  {
-    artistName: 'WILL ATKINSON',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '21:30',
-    endTime: '23:00',
-  },
-  {
-    artistName: 'I HATE MODELS',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '23:00',
-    endTime: '01:00',
-  },
-  {
-    artistName: 'NICO MORENO',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '01:00',
-    endTime: '03:00',
-  },
-  {
-    artistName: 'SARA LANDRY',
-    stage: STAGES.resistance,
-    stageKey: 'resistance',
-    startTime: '03:00',
-    endTime: '05:00',
-  },
-  {
-    artistName: 'CLIFF VAN DELORT',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '20:00',
-    endTime: '21:00',
-  },
-  {
-    artistName: 'JOE2SHINE',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '21:00',
-    endTime: '22:00',
-  },
-  {
-    artistName: 'WAGS',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '22:00',
-    endTime: '22:40',
-  },
-  {
-    artistName: 'JOWAVES',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '22:40',
-    endTime: '23:20',
-  },
-  {
-    artistName: 'MANUALS',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '23:20',
-    endTime: '00:00',
-  },
-  {
-    artistName: 'PETTE',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '00:00',
-    endTime: '01:00',
-  },
-  {
-    artistName: 'CARLOM B2B ARINNO',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '01:00',
-    endTime: '02:00',
-  },
-  {
-    artistName: 'HRT',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '02:00',
-    endTime: '03:00',
-  },
-  {
-    artistName: 'KEVU',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '03:00',
-    endTime: '04:00',
-  },
-  {
-    artistName: 'DJ MII',
-    stage: STAGES.umfRadio,
-    stageKey: 'umfRadio',
-    startTime: '04:00',
-    endTime: '05:00',
-  },
-  {
-    artistName: 'MANDAS',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '20:00',
-    endTime: '21:00',
-  },
-  {
-    artistName: 'CIRILLO JR.',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '21:00',
-    endTime: '22:00',
-  },
-  {
-    artistName: 'MEAGHAN',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '22:00',
-    endTime: '23:00',
-  },
-  {
-    artistName: 'CHARLES B',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '23:00',
-    endTime: '00:00',
-  },
-  {
-    artistName: 'MADISM',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '00:00',
-    endTime: '01:00',
-  },
-  {
-    artistName: 'ALEX PIZZUTI',
-    stage: STAGES.oasis,
-    stageKey: 'oasis',
-    startTime: '01:00',
-    endTime: '05:00',
-  },
+  slot('KRAUNDLER', 'main', '20:00'),
+  slot('PLASTIK FUNK', 'main', '20:50'),
+  slot('RAY VOLPE B2B SULLIVAN KING', 'main', '21:55'),
+  slot('BUNT.', 'main', '23:15'),
+  slot('ARMIN VAN BUUREN', 'main', '00:35'),
+  slot('MARTIN GARRIX', 'main', '01:55'),
+  slot('FISHER', 'main', '03:30'),
+  slot('TOMO IN DER MÜHLEN', 'resistance', '20:00'),
+  slot('WILL ATKINSON', 'resistance', '21:30'),
+  slot('I HATE MODELS', 'resistance', '23:00'),
+  slot('NICO MORENO', 'resistance', '01:00'),
+  slot('SARA LANDRY', 'resistance', '03:00'),
+  slot('CLIFF VAN DELORT', 'umfRadio', '20:00'),
+  slot('JOE2SHINE', 'umfRadio', '21:00'),
+  slot('WAGS', 'umfRadio', '22:00'),
+  slot('JOWAVES', 'umfRadio', '22:40'),
+  slot('MANUALS', 'umfRadio', '23:20'),
+  slot('PETTE', 'umfRadio', '00:00'),
+  slot('CARLOM B2B ARINNO', 'umfRadio', '01:00'),
+  slot('HRT', 'umfRadio', '02:00'),
+  slot('KEVU', 'umfRadio', '03:00'),
+  slot('DJ MII', 'umfRadio', '04:00'),
+  slot('MANDAS', 'oasis', '20:00'),
+  slot('CIRILLO JR.', 'oasis', '21:00'),
+  slot('MEAGHAN', 'oasis', '22:00'),
+  slot('CHARLES B', 'oasis', '23:00'),
+  slot('MADISM', 'oasis', '00:00'),
+  slot('ALEX PIZZUTI', 'oasis', '01:00'),
 ];
 
-type PerfInput = {
-  dateKey: string;
-  dateLabel: string;
-  artistName: string;
-  stage: StageDef;
-  stageKey: keyof typeof STAGES;
-  startTime: string;
-  endTime: string;
-};
+function resolveStageEndMinutes(slots: Slot[]): Map<string, number> {
+  const byStage = new Map<string, Slot[]>();
+  for (const entry of slots) {
+    const list = byStage.get(entry.stage.id) ?? [];
+    list.push(entry);
+    byStage.set(entry.stage.id, list);
+  }
 
-function perf({
-  dateKey,
-  dateLabel,
-  artistName,
-  stage,
-  stageKey,
-  startTime,
-  endTime,
-}: PerfInput) {
+  const endMinutesBySlot = new Map<string, number>();
+  for (const stageSlots of byStage.values()) {
+    const ordered = [...stageSlots].sort(
+      (left, right) =>
+        festivalStartMinutes(left.startTime) -
+        festivalStartMinutes(right.startTime),
+    );
+    for (let index = 0; index < ordered.length; index += 1) {
+      const current = ordered[index]!;
+      const next = ordered[index + 1];
+      const endMinutes = next
+        ? festivalStartMinutes(next.startTime)
+        : FESTIVAL_CLOSE_MINUTES;
+      endMinutesBySlot.set(
+        `${current.stage.id}|${current.artistName}|${current.startTime}`,
+        endMinutes,
+      );
+    }
+  }
+
+  return endMinutesBySlot;
+}
+
+function perf(
+  dateKey: string,
+  dateLabel: string,
+  slot: Slot,
+  endMinutesBySlot: Map<string, number>,
+) {
+  const { artistName, stage, stageKey, startTime } = slot;
   const meta = metaFor(artistName, stageKey);
   const id = artistId(artistName);
-  const startMinutes = parseTimeToMinutes(startTime);
-  let endMinutes = parseTimeToMinutes(endTime);
-  if (endMinutes <= startMinutes) {
-    endMinutes += 24 * 60;
-  }
+  const startMinutes = festivalStartMinutes(startTime);
+  const endMinutes =
+    endMinutesBySlot.get(`${stage.id}|${artistName}|${startTime}`) ??
+    FESTIVAL_CLOSE_MINUTES;
+
   return {
     activityLegacyId: ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID,
     dateKey,
@@ -807,7 +338,7 @@ function perf({
     stage: stage.id,
     stageLabel: stage.label,
     startTime,
-    endTime,
+    endTime: startTime,
     startMinutes,
     endMinutes,
     popularity: meta.popularity,
@@ -817,7 +348,10 @@ function perf({
 }
 
 function dayPerformances(dateKey: string, dateLabel: string, slots: Slot[]) {
-  return slots.map((slot) => perf({ dateKey, dateLabel, ...slot }));
+  const endMinutesBySlot = resolveStageEndMinutes(slots);
+  return slots.map((entry) =>
+    perf(dateKey, dateLabel, entry, endMinutesBySlot),
+  );
 }
 
 const ULTRA_EUROPE_JUL10_PERFORMANCES = dayPerformances(
