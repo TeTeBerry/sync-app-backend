@@ -158,6 +158,8 @@ describe('itinerary-catalog.util', () => {
     );
     expect(seed.every((perf) => perf.startTime === '')).toBe(true);
     expect(seed.every((perf) => perf.endMinutes === -1)).toBe(true);
+    expect(seed.every((perf) => perf.stage === '')).toBe(true);
+    expect(seed.every((perf) => perf.stageLabel === '')).toBe(true);
     expect(seed.every((perf) => perf.dateKey === 'dec18')).toBe(true);
     expect(seed.some((perf) => perf.artistName === 'MARTIN GARRIX')).toBe(true);
     expect(seed.every((perf) => !isPublishedSchedulePerformance(perf))).toBe(

@@ -71,10 +71,6 @@ export const LINEUP_ONLY_CATALOG_ACTIVITY_LEGACY_IDS = [
   ITINERARY_LOST_LANDS_ACTIVITY_LEGACY_ID,
 ] as const;
 
-const LINEUP_ONLY_STAGE_LABELS: Record<string, string> = {
-  main: '主舞台',
-};
-
 /** Minutes sentinel when official timetable is not published yet. */
 export const LINEUP_ONLY_UNPUBLISHED_MINUTES = -1;
 
@@ -133,8 +129,8 @@ export function buildLineupOnlyArtistPerformanceSeed(
     artistName: dj.name,
     genre: dj.genre,
     genreLabel: dj.genreLabel,
-    stage: dj.stage,
-    stageLabel: LINEUP_ONLY_STAGE_LABELS[dj.stage] ?? dj.stage,
+    stage: '',
+    stageLabel: '',
     startTime: '',
     endTime: '',
     startMinutes: LINEUP_ONLY_UNPUBLISHED_MINUTES,

@@ -415,10 +415,21 @@ export class ItineraryScheduleService implements OnModuleInit {
     const seedDjs = resolveLineupDjs(activityLegacyId);
     const lineupDjs =
       seedDjs.length > 0 ? seedDjs : this.aggregateDjs(performances);
-    return this.discogsGenre.applyDiscogsStylesToLineupDjs(
+    const styled = await this.discogsGenre.applyDiscogsStylesToLineupDjs(
       activityLegacyId,
       lineupDjs,
     );
+    return styled.map((dj) => ({
+      id: dj.id,
+      name: dj.name,
+      genre: dj.genre,
+      genreLabel: dj.genreLabel,
+      stage: '',
+      stageLabel: undefined,
+      popularity: dj.popularity,
+      avatarSeed: dj.avatarSeed,
+      genreColor: dj.genreColor,
+    }));
   }
 
   private aggregateDjs(performances: ArtistPerformance[]): ItineraryDjDto[] {

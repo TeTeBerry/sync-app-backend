@@ -282,6 +282,7 @@ describe('ItineraryScheduleService discogs styles', () => {
     expect(schedule.performances).toHaveLength(0);
     expect(schedule.djs.length).toBeGreaterThan(0);
     expect(schedule.djs.some((dj) => dj.name === 'MARTIN GARRIX')).toBe(true);
+    expect(schedule.djs.every((dj) => !dj.stage && !dj.stageLabel)).toBe(true);
   });
 
   it('keeps schedulePublished false when Mongo only has lineup-only placeholder rows', async () => {
@@ -298,6 +299,7 @@ describe('ItineraryScheduleService discogs styles', () => {
     expect(schedule.performances).toHaveLength(0);
     expect(schedule.djs.length).toBeGreaterThan(0);
     expect(schedule.djs.some((dj) => dj.name === 'MARTIN GARRIX')).toBe(true);
+    expect(schedule.djs.every((dj) => !dj.stage && !dj.stageLabel)).toBe(true);
   });
 
   it('lists lineup seed artists when performances are not published', async () => {
