@@ -103,6 +103,7 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   BRUNELLO: 'Brunello (2)',
   MPH: 'MPH (3)',
   // --- Ultra Europe ---
+  BADVICE: 'BadVice DJ',
   'ARMIN VAN BUUREN': 'Armin van Buuren',
   'JOHN SUMMIT': 'John Summit',
   AFROJACK: 'Afrojack',
@@ -222,6 +223,10 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   'T & SUGAH': 'T & Sugah',
   'WES S & $AVVY': 'Wes S',
   'CRO & STEENVOLK': 'Cro (3)',
+  // --- Creamfields ---
+  'AMELIE LENS PRESENTS AURA': 'Amelie Lens',
+  'ANDY C FT TONN PIPER': 'Andy C',
+  LAU: 'LAU.RA',
 };
 
 export const LINEUP_COVERAGE_NAME_KEYS: Record<string, string[]> = {
@@ -332,6 +337,25 @@ function stripLineupPresentsSuffix(lineupName: string): string {
   return trimmed.slice(0, idx).trim();
 }
 
+/** `Amelie Lens Presents AURA` → `Amelie Lens` (not `X Present: Y` showcase titles). */
+function stripLineupEventPresentsSuffix(lineupName: string): string {
+  const trimmed = lineupName.trim();
+  const eventBrand = trimmed.match(/^(.+?)\s+presents\s+[\w.]+\s*$/i);
+  if (eventBrand?.[1]) {
+    return eventBrand[1].trim();
+  }
+  return trimmed;
+}
+
+function stripFtFeaturedSuffix(lineupName: string): string {
+  const trimmed = lineupName.trim();
+  const ftPattern = /\s+FT\.?\s+|\s+FEAT(?:\.|URING)?\.?\s+/i;
+  if (!ftPattern.test(trimmed)) {
+    return trimmed;
+  }
+  return (trimmed.split(ftPattern)[0] ?? '').trim() || trimmed;
+}
+
 function expandCollaboratorXParts(lineupName: string): string[] {
   const trimmed = lineupName.trim();
   if (!trimmed || !COLLAB_X_PATTERN.test(trimmed)) {
@@ -352,9 +376,12 @@ export function expandFestivalArtistName(lineupName: string): string[] {
     return [];
   }
 
-  let parts = [trimmed];
+  const billingHead = stripLineupEventPresentsSuffix(
+    stripFtFeaturedSuffix(trimmed),
+  );
+  let parts = [billingHead];
 
-  const parenMatch = trimmed.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+  const parenMatch = billingHead.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
   if (parenMatch) {
     const main = parenMatch[1].trim();
     const inner = parenMatch[2].trim();

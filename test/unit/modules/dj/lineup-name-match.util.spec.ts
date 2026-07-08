@@ -82,4 +82,31 @@ describe('lineup-name-match.util', () => {
     const crowded = [{ name: 'Marsha Smith', discogsId: 1 }];
     expect(matchLineupArtistToCatalog('MARTIN GARRIX', crowded)).toBeNull();
   });
+
+  it('matches Creamfields billing aliases to catalog names', () => {
+    const catalog = [
+      { name: 'AMELIE LENS', discogsId: 5119514 },
+      { name: 'ANDY C', discogsId: 337 },
+      { name: 'LAU.RA', discogsId: 7383729 },
+      { name: 'Cloudy', discogsId: 997451616 },
+    ];
+
+    expect(
+      matchLineupArtistToCatalog('Amelie Lens Presents AURA', catalog)?.name,
+    ).toBe('AMELIE LENS');
+    expect(
+      matchLineupArtistToCatalog('Andy C ft Tonn Piper', catalog)?.name,
+    ).toBe('ANDY C');
+    expect(matchLineupArtistToCatalog('Lau', catalog)?.name).toBe('LAU.RA');
+    expect(matchLineupArtistToCatalog('Cloudy', catalog)?.name).toBe('Cloudy');
+  });
+
+  it('expands ft and presents billing into primary artist', () => {
+    expect(expandFestivalArtistName('Andy C ft Tonn Piper')).toEqual([
+      'Andy C',
+    ]);
+    expect(expandFestivalArtistName('Amelie Lens Presents AURA')).toEqual([
+      'Amelie Lens',
+    ]);
+  });
 });

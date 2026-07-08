@@ -1,9 +1,11 @@
-import { IsIn, IsObject, IsString } from 'class-validator';
+import { IsIn, IsObject, IsOptional, IsString } from 'class-validator';
+import { CONTENT_SERIES, type ContentSeries } from '../content-series.types';
 
 export const MARKETING_PLATFORMS = [
   'threads',
   'instagram',
   'tiktok',
+  'seo',
   'x',
   'reddit',
 ] as const;
@@ -34,4 +36,8 @@ export class GeneratePlatformContentDto {
 
   @IsString()
   language!: string;
+
+  @IsOptional()
+  @IsIn(CONTENT_SERIES)
+  seriesType?: ContentSeries;
 }

@@ -43,6 +43,24 @@ function stripLineupPresentsSuffix(lineupName) {
   return trimmed.slice(0, idx).trim();
 }
 
+function stripLineupEventPresentsSuffix(lineupName) {
+  const trimmed = lineupName.trim();
+  const eventBrand = trimmed.match(/^(.+?)\s+presents\s+[\w.]+\s*$/i);
+  if (eventBrand?.[1]) {
+    return eventBrand[1].trim();
+  }
+  return trimmed;
+}
+
+function stripFtFeaturedSuffix(lineupName) {
+  const trimmed = lineupName.trim();
+  const ftPattern = /\s+FT\.?\s+|\s+FEAT(?:\.|URING)?\.?\s+/i;
+  if (!ftPattern.test(trimmed)) {
+    return trimmed;
+  }
+  return (trimmed.split(ftPattern)[0] ?? '').trim() || trimmed;
+}
+
 function expandCollaboratorXParts(lineupName) {
   const trimmed = lineupName.trim();
   if (!trimmed || !COLLAB_X_PATTERN.test(trimmed)) {
@@ -71,9 +89,12 @@ export function expandFestivalArtistName(lineupName) {
     return [];
   }
 
-  let parts = [trimmed];
+  const billingHead = stripLineupEventPresentsSuffix(
+    stripFtFeaturedSuffix(trimmed),
+  );
+  let parts = [billingHead];
 
-  const parenMatch = trimmed.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+  const parenMatch = billingHead.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
   if (parenMatch) {
     const main = parenMatch[1].trim();
     const inner = parenMatch[2].trim();
@@ -216,6 +237,7 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   MPH: 'MPH (3)',
 
   // --- Ultra Europe ---
+  BADVICE: 'BadVice DJ',
   'ARMIN VAN BUUREN': 'Armin van Buuren',
   'JOHN SUMMIT': 'John Summit',
   AFROJACK: 'Afrojack',
@@ -404,6 +426,10 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES = {
   'AREA X': 'Area X',
   TRIPTICAL: 'Triptical',
   'TRIPTICAL NOTE': 'Triptical',
+  // --- Creamfields ---
+  'AMELIE LENS PRESENTS AURA': 'Amelie Lens',
+  'ANDY C FT TONN PIPER': 'Andy C',
+  LAU: 'LAU.RA',
 };
 
 /**

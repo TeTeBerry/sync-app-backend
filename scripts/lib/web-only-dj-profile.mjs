@@ -174,6 +174,24 @@ function resolveCountry(sourcedFacts = []) {
   return '';
 }
 
+function resolveWebOnlyDjCatalogName({ lineupName, discogsName }) {
+  const lineup = lineupName?.trim() ?? '';
+  const discogs = discogsName?.trim() ?? '';
+  if (!discogs || discogs.toLowerCase() === lineup.toLowerCase()) {
+    return lineup || discogs;
+  }
+
+  const withoutParen = discogs.replace(/\s*\([^)]+\)\s*$/, '').trim();
+  if (
+    withoutParen &&
+    normalizeArtistNameKey(withoutParen) === normalizeArtistNameKey(lineup)
+  ) {
+    return lineup;
+  }
+
+  return discogs || lineup;
+}
+
 /**
  * Build a djs row from Hermes v4 web-only evidence stored on dj_discogs_map.
  */
@@ -185,7 +203,10 @@ export function buildWebOnlyDjRecord({
 }) {
   const profile = buildProfileText(hermesEvidence);
   const { genres, styles } = collectGenreStyles(hermesEvidence);
-  const canonicalName = discogsName?.trim() || lineupName.trim();
+  const canonicalName = resolveWebOnlyDjCatalogName({
+    lineupName,
+    discogsName,
+  });
 
   return {
     discogsId:

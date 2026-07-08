@@ -6,6 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LlmService } from '../../../../src/infra/llm/llm.service';
 import { X_CONTENT_STYLE } from '../../../../src/modules/marketing-ai/marketing-ai.post-process';
 import { MarketingAiService } from '../../../../src/modules/marketing-ai/marketing-ai.service';
+import { MarketingContentContextService } from '../../../../src/modules/marketing-ai/marketing-content-context.service';
 
 describe('MarketingAiService', () => {
   const invokeJson = jest.fn();
@@ -18,15 +19,31 @@ describe('MarketingAiService', () => {
     invokeJson,
   } as unknown as jest.Mocked<Pick<LlmService, 'enabled' | 'invokeJson'>>;
 
+  const contentContext = {
+    enrichFestivalContext: jest.fn(
+      async (festival: Record<string, unknown>) => festival,
+    ),
+    buildArtistContext: jest.fn(),
+  } as unknown as jest.Mocked<
+    Pick<
+      MarketingContentContextService,
+      'enrichFestivalContext' | 'buildArtistContext'
+    >
+  >;
+
   let service: MarketingAiService;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     llmEnabled = true;
+    contentContext.enrichFestivalContext.mockImplementation(
+      async (festival: Record<string, unknown>) => festival,
+    );
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MarketingAiService,
         { provide: LlmService, useValue: llmService },
+        { provide: MarketingContentContextService, useValue: contentContext },
       ],
     }).compile();
 
@@ -103,7 +120,7 @@ describe('MarketingAiService', () => {
     });
 
     expect(result.platform).toBe('instagram');
-    expect(result.contentStyle).toBe('visual-storytelling');
+    expect(result.contentStyle).toBe('decision-visual-storytelling');
     expect(result.visualBrief).toMatchObject({
       visualType: 'carousel',
       aspectRatio: '4:5',
@@ -266,5 +283,35 @@ describe('MarketingAiService', () => {
     await expect(
       service.generatePlatformContent({ ...baseInput, platform: 'threads' }),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('generates content for multiple platforms via content engine', async () => {
+    invokeJson.mockResolvedValue({
+      title: 'Hidden gems at EDC',
+      content: '3 undercard artists worth your time.',
+      hashtags: ['edc', 'techno'],
+      cta: 'Save this',
+      carousel: [
+        { slide: 1, headline: 'Hidden gems', body: 'Do not miss these sets' },
+      ],
+      visualBrief: {
+        visualType: 'carousel',
+        aspectRatio: '4:5',
+        imagePrompt: 'Dark premium carousel',
+      },
+    });
+
+    const results = await service.generateContent({
+      brandVoice: baseInput.brandVoice,
+      festival: baseInput.festival,
+      seriesType: 'lineup_breakdown',
+      platforms: ['instagram', 'threads'],
+      language: 'en',
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results[0]?.seriesType).toBe('lineup_breakdown');
+    expect(invokeJson).toHaveBeenCalledTimes(2);
+    expect(contentContext.enrichFestivalContext).toHaveBeenCalled();
   });
 });

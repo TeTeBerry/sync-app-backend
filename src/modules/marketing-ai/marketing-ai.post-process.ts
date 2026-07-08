@@ -218,7 +218,7 @@ export function normalizeVisualBrief(
 ): VisualBrief | undefined {
   const parsed = parseVisualBriefFromPayload(payload.visualBrief);
 
-  if (platform === 'x' || platform === 'reddit') {
+  if (platform === 'x' || platform === 'reddit' || platform === 'seo') {
     return TEXT_ONLY_VISUAL_BRIEF;
   }
 
@@ -284,7 +284,39 @@ type ProcessedContent = Pick<
   | 'visualBrief'
   | 'publishTime'
   | 'carousel'
+  | 'decisionQuestion'
+  | 'targetAudience'
+  | 'recommendation'
+  | 'hook'
+  | 'contentStructure'
 >;
+
+function normalizeDecisionField(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
+function extractDecisionFields(
+  payload: LlmPlatformContentPayload,
+): Pick<
+  PlatformContentResult,
+  | 'decisionQuestion'
+  | 'targetAudience'
+  | 'recommendation'
+  | 'hook'
+  | 'contentStructure'
+> {
+  return {
+    decisionQuestion: normalizeDecisionField(payload.decisionQuestion),
+    targetAudience: normalizeDecisionField(payload.targetAudience),
+    recommendation: normalizeDecisionField(payload.recommendation),
+    hook: normalizeDecisionField(payload.hook),
+    contentStructure: normalizeDecisionField(payload.contentStructure),
+  };
+}
 
 export function applyXPostProcess(
   payload: LlmPlatformContentPayload,
@@ -340,6 +372,7 @@ export function applyDefaultPostProcess(
     contentStyle,
     notes: payload.notes?.trim() ?? '',
     visualBrief,
+    ...extractDecisionFields(payload),
     ...instagramFields,
   };
 }

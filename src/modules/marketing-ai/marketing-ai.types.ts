@@ -1,3 +1,4 @@
+import type { ContentSeries } from './content-series.types';
 import type {
   MarketingContentType,
   MarketingPlatform,
@@ -21,6 +22,11 @@ export type PlatformContentResult = {
   visualBrief?: VisualBrief;
   publishTime?: string;
   carousel?: InstagramCarouselSlide[];
+  decisionQuestion?: string;
+  targetAudience?: string;
+  recommendation?: string;
+  hook?: string;
+  contentStructure?: string;
 };
 
 export type LlmPlatformContentPayload = {
@@ -30,6 +36,11 @@ export type LlmPlatformContentPayload = {
   cta?: string;
   notes?: string;
   publishTime?: string;
+  decisionQuestion?: string;
+  targetAudience?: string;
+  recommendation?: string;
+  hook?: string;
+  contentStructure?: string;
   carousel?: Array<{
     slide?: number;
     headline?: string;
@@ -44,4 +55,7 @@ export type BuildMarketingPromptInput = {
   platform: MarketingPlatform;
   contentType: MarketingContentType;
   language: string;
+  seriesType?: ContentSeries;
+  artistContext?: Record<string, unknown>;
+  topicHint?: string;
 };
