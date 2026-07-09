@@ -119,9 +119,33 @@ async function main() {
   for (const [lineupNameKey, curated] of Object.entries(
     CURATED_LOST_LANDS_19_MISSING_STYLES,
   )) {
-    const mapRow = await mapCollection.findOne({ lineupNameKey });
+    let mapRow = await mapCollection.findOne({ lineupNameKey });
     if (!mapRow) {
-      console.warn(`⚠️  跳过 ${lineupNameKey}：map 不存在`);
+      const lineupName = curated.lineupName?.trim() || lineupNameKey;
+      console.warn(`⚠️  ${lineupNameKey}：map 不存在，将新建`);
+      if (!dryRun) {
+        await upsertDjDiscogsMapMapped(mapCollection, {
+          lineupName,
+          discogsId: null,
+          discogsName: lineupName,
+          matchScore: 0,
+          searchQuery: '#lost-lands-19-curated-bootstrap',
+          discoveryStrategyId: 'curated-weak-style',
+          source: CURATED_SOURCE,
+          candidateScores: [],
+        });
+        mapRow = await mapCollection.findOne({ lineupNameKey });
+      }
+    }
+
+    if (!mapRow && dryRun) {
+      console.log(`${dryRun ? '[dry-run] ' : ''}would bootstrap map for ${lineupNameKey}`);
+      updated += 1;
+      continue;
+    }
+
+    if (!mapRow) {
+      console.warn(`⚠️  跳过 ${lineupNameKey}：map 仍不存在`);
       skipped += 1;
       continue;
     }

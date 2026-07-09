@@ -227,4 +227,95 @@ export const CURATED_LOST_LANDS_19_MISSING_STYLES = {
     genres: ['Electronic'],
     styles: ['Dubstep', 'Drum n Bass', 'Trap'],
   },
+  // Lost Lands 2026 — remaining "Other" bucket artists (web-researched 2026-07-09).
+  canabliss: {
+    lineupName: 'CANABLISS',
+    useSyntheticDiscogsId: true,
+    ignoreMapDiscogsId: true,
+    discogsName: 'Canabliss',
+    genres: ['Electronic'],
+    styles: ['Dubstep', 'Experimental Bass', 'Future Bass'],
+    profile:
+      'Toronto bass producer (Samantha Infusini). Insomniac lists Dubstep; releases on WAKAAN with experimental/future bass.',
+  },
+  phaseone: {
+    lineupName: 'PHASEONE',
+    discogsId: 4106662,
+    ignoreMapDiscogsId: true,
+    discogsName: 'PhaseOne',
+    genres: ['Electronic'],
+    styles: ['Metalstep', 'Dubstep', 'Bass Music'],
+    profile:
+      'Australian producer Graeme Duffy — metalstep blending dubstep/bass with metal (Disciple, Lost Lands).',
+  },
+  '2dy4': {
+    lineupName: '2DY4',
+    useSyntheticDiscogsId: true,
+    ignoreMapDiscogsId: true,
+    discogsName: '2DY4',
+    genres: ['Electronic'],
+    styles: ['Dubstep', 'Bass Music'],
+    profile:
+      'San Francisco dubstep producer; Kannibalen Records (Anatomy of Sin EP).',
+  },
+  capochino: {
+    lineupName: 'CAPOCHINO',
+    useSyntheticDiscogsId: true,
+    ignoreMapDiscogsId: true,
+    discogsName: 'Capochino',
+    genres: ['Electronic'],
+    styles: ['Dubstep', 'Bass Music'],
+    profile:
+      'Austin bass/dubstep producer; Subsidia, WAKAAN, Circus Records (Insomniac: Bass).',
+  },
+  finnuh: {
+    lineupName: 'FINNUH',
+    useSyntheticDiscogsId: true,
+    ignoreMapDiscogsId: true,
+    discogsName: 'Finnuh',
+    genres: ['Electronic'],
+    styles: ['Dubstep', 'Riddim', 'Tearout'],
+    profile:
+      'Texas dubstep producer; Beat Intelligence Network / Bassrush (Beatport: Dubstep).',
+  },
+  hershe: {
+    lineupName: 'HERSHE',
+    useSyntheticDiscogsId: true,
+    ignoreMapDiscogsId: true,
+    discogsName: 'HerShe',
+    genres: ['Electronic', 'Hip Hop'],
+    styles: ['Dubstep', 'Trap', 'Bass Music'],
+    profile:
+      'Producer/DJ/beatboxer; dubstep-trap hybrid on Bassrush, Deadbeats, Wakaan.',
+  },
+  onara: {
+    lineupName: 'ONARA',
+    useSyntheticDiscogsId: true,
+    ignoreMapDiscogsId: true,
+    discogsName: 'ONARA',
+    genres: ['Electronic'],
+    styles: ['Riddim', 'Dubstep'],
+    profile:
+      'Masked riddim/dubstep producer; Cyclops Recordings, Create Music Group.',
+  },
+  richardfinger: {
+    lineupName: 'RICHARD FINGER',
+    useSyntheticDiscogsId: true,
+    ignoreMapDiscogsId: true,
+    discogsName: 'Richard Finger',
+    genres: ['Electronic'],
+    styles: ['Dubstep', 'Bass Music'],
+    profile:
+      'Anonymous dubstep duo; gritty bass music (Red Rocks debut, Lost Lands 2026).',
+  },
+  vktm: {
+    lineupName: 'VKTM',
+    useSyntheticDiscogsId: true,
+    ignoreMapDiscogsId: true,
+    discogsName: 'VKTM',
+    genres: ['Electronic'],
+    styles: ['Riddim', 'Dubstep'],
+    profile:
+      'Riddim producer; Create Music Group / Continua (Tape B, MAD DUBZ collabs).',
+  },
 };
