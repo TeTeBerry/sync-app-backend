@@ -95,6 +95,8 @@
     "db:patch-curated-pending-dj-catalog:dry-run": "node scripts/patch-curated-dj-catalog.mjs --pending-only --dry-run",
     "db:patch-curated-weak-style-dj-catalog": "node scripts/patch-curated-dj-catalog.mjs --weak-style-only",
     "db:patch-curated-weak-style-dj-catalog:dry-run": "node scripts/patch-curated-dj-catalog.mjs --weak-style-only --dry-run",
+    "db:patch-lost-lands-19-missing-styles": "node scripts/patch-lost-lands-19-missing-styles.mjs",
+    "db:patch-lost-lands-19-missing-styles:dry-run": "node scripts/patch-lost-lands-19-missing-styles.mjs --dry-run",
     "db:repair-duo-billing-split-maps": "node scripts/repair-duo-billing-split-maps.mjs",
     "db:repair-duo-billing-split-maps:dry-run": "node scripts/repair-duo-billing-split-maps.mjs --dry-run",
     "db:run-v4-missing-profiles": "node scripts/run-v4-missing-profiles.mjs",
