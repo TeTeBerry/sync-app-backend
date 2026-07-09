@@ -39,8 +39,8 @@ export const ACTIVITY_IMAGE_SOURCES = [
   {
     legacyId: 7,
     code: 'tomorrowland-belgium',
-    sourceUrl:
-      'https://og.prezly.com/api/og/6e6cb3c3-be3d-41e9-9133-8f27d64e75d3?locale=en',
+    /** Local asset — official TML26 Consciencia key visual (see assets/activity/tomorrowland-belgium.png) */
+    sourceUrl: '',
   },
   {
     legacyId: 8,
