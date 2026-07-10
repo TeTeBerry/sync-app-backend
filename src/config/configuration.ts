@@ -241,6 +241,10 @@ export default () => ({
         cleanEnv(process.env.PUBLIC_API_RAVEN_PLACE_SUGGESTIONS_MAX, '60'),
         10,
       ),
+      ravenPlanMax: parseInt(
+        cleanEnv(process.env.PUBLIC_API_RAVEN_PLAN_MAX, '20'),
+        10,
+      ),
       personalityNicknameUsageMax: parseInt(
         cleanEnv(process.env.PUBLIC_API_PERSONALITY_NICKNAME_USAGE_MAX, '30'),
         10,

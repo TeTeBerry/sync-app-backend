@@ -135,6 +135,26 @@ export class TravelGuideGenerationJobService {
       throw new ForbiddenException('无权查看该攻略生成任务');
     }
 
+    return this.toJobView(doc);
+  }
+
+  /** Raven public poll — jobId is the access credential. */
+  async getJobByCredential(
+    jobId: string,
+  ): Promise<TravelGuideGenerationJobView> {
+    const doc = await this.model.findOne({ jobId }).lean();
+    if (!doc) {
+      throw new NotFoundException('攻略生成任务不存在或已过期');
+    }
+    return this.toJobView(doc);
+  }
+
+  private toJobView(
+    doc: Pick<
+      TravelGuideGenerationJob,
+      'jobId' | 'status' | 'progress' | 'plan' | 'errorMessage'
+    >,
+  ): TravelGuideGenerationJobView {
     return {
       jobId: doc.jobId,
       status: doc.status,

@@ -11,6 +11,7 @@ export type PublicRateLimitScope =
   | 'travel_guide_map'
   | 'travel_guide_plan'
   | 'raven_place_suggestions'
+  | 'raven_plan'
   | 'post_ai_search'
   | 'post_ai_compose'
   | 'scene_run'
@@ -49,6 +50,11 @@ export class PublicApiRateLimitService {
         maxRequests:
           config.get<number>('publicApi.rateLimit.ravenPlaceSuggestionsMax') ??
           60,
+        windowMs,
+      },
+      raven_plan: {
+        maxRequests:
+          config.get<number>('publicApi.rateLimit.ravenPlanMax') ?? 20,
         windowMs,
       },
       post_ai_search: {

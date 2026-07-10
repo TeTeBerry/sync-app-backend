@@ -72,6 +72,10 @@
 | GET | `/api/travel-guide/place-suggestions?keyword=&region=` | 出发地输入提示（小程序，高德 + 本地城市库） |
 | GET | `/api/raven/place-suggestions?keyword=&limit=` | Raven 出发地：关键词搜城市（+ IATA 直达） |
 | GET | `/api/raven/place-suggestions?city=&country=` | Raven 出发地：返回该城市全部机场（选中城市后） |
+| POST | `/api/raven/activities/:legacyId/plan/generate` | Raven 生成攻略（无需登录） |
+| POST | `/api/raven/activities/:legacyId/plan/generate-async` | Raven 异步生成攻略（无需登录） |
+| GET | `/api/raven/plan/generation-jobs/:jobId` | Raven 轮询异步任务（jobId 即凭证） |
+| GET | `/api/raven/plans/:guideId` | Raven 只读拉取已保存攻略（guideId 即凭证，无需登录） |
 
 ## 配置
 

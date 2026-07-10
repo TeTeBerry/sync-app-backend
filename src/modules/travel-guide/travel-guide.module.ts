@@ -63,6 +63,7 @@ import { RollingGoHotelProvider } from './providers/rollinggo/rolling-go-hotel.p
 import { CatalogTicketProvider } from './providers/catalog-ticket.provider';
 import { OpenFlightsAirportCatalogService } from './raven/openflights-airport-catalog.service';
 import { RavenPlaceSuggestionsController } from './raven/raven-place-suggestions.controller';
+import { RavenPlanController } from './raven/raven-plan.controller';
 
 @Module({
   imports: [
@@ -93,6 +94,7 @@ import { RavenPlaceSuggestionsController } from './raven/raven-place-suggestions
     TravelGuideGlobalController,
     TravelGuideMapController,
     RavenPlaceSuggestionsController,
+    RavenPlanController,
   ],
   providers: [
     AmapMapService,
