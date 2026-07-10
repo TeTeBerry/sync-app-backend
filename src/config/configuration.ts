@@ -245,6 +245,14 @@ export default () => ({
         cleanEnv(process.env.PUBLIC_API_RAVEN_PLAN_MAX, '20'),
         10,
       ),
+      ravenPlanPollMax: parseInt(
+        cleanEnv(process.env.PUBLIC_API_RAVEN_PLAN_POLL_MAX, '180'),
+        10,
+      ),
+      ravenPlanReadMax: parseInt(
+        cleanEnv(process.env.PUBLIC_API_RAVEN_PLAN_READ_MAX, '30'),
+        10,
+      ),
       personalityNicknameUsageMax: parseInt(
         cleanEnv(process.env.PUBLIC_API_PERSONALITY_NICKNAME_USAGE_MAX, '30'),
         10,
@@ -291,7 +299,7 @@ export default () => ({
   raven: {
     openflightsAirportsUrl: cleanEnv(
       process.env.RAVEN_OPENFLIGHTS_AIRPORTS_URL,
-      'https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat',
+      'https://cdn.jsdelivr.net/gh/jpatokal/openflights@master/data/airports.dat',
     ),
     openflightsCacheTtlMs: parseInt(
       cleanEnv(process.env.RAVEN_OPENFLIGHTS_CACHE_TTL_MS, String(86_400_000)),

@@ -12,6 +12,8 @@ export type PublicRateLimitScope =
   | 'travel_guide_plan'
   | 'raven_place_suggestions'
   | 'raven_plan'
+  | 'raven_plan_poll'
+  | 'raven_plan_read'
   | 'post_ai_search'
   | 'post_ai_compose'
   | 'scene_run'
@@ -19,6 +21,9 @@ export type PublicRateLimitScope =
   | 'personality_nickname_usage'
   | 'poster_background'
   | 'public_events';
+
+const RAVEN_RATE_KEY_HEADER = 'x-raven-rate-key';
+const RAVEN_RATE_KEY_PATTERN = /^[a-zA-Z0-9_-]{8,64}$/;
 
 @Injectable()
 export class PublicApiRateLimitService {
@@ -55,6 +60,18 @@ export class PublicApiRateLimitService {
       raven_plan: {
         maxRequests:
           config.get<number>('publicApi.rateLimit.ravenPlanMax') ?? 20,
+        windowMs,
+      },
+      // Polling must not share the generate budget — ~1.5s interval would exhaust 20/min quickly.
+      raven_plan_poll: {
+        maxRequests:
+          config.get<number>('publicApi.rateLimit.ravenPlanPollMax') ?? 180,
+        windowMs,
+      },
+      // Saved-plan reads can trigger quote refresh — keep tighter than poll.
+      raven_plan_read: {
+        maxRequests:
+          config.get<number>('publicApi.rateLimit.ravenPlanReadMax') ?? 30,
         windowMs,
       },
       post_ai_search: {
@@ -148,8 +165,19 @@ export class PublicApiRateLimitService {
     req: Request,
     actorKey?: string,
   ): string {
+    // Only Raven scopes honor proxy-issued x-raven-rate-key (avoids key rotation
+    // bypass on other public endpoints that still key by IP).
+    const headerKey = req.headers[RAVEN_RATE_KEY_HEADER]?.toString().trim();
+    const ravenRateKey =
+      scope.startsWith('raven_') &&
+      headerKey &&
+      RAVEN_RATE_KEY_PATTERN.test(headerKey)
+        ? headerKey
+        : undefined;
+    // Prefer explicit actor / proxy-issued rate key over spoofable XFF.
     const client =
       actorKey?.trim() ||
+      ravenRateKey ||
       req.ip?.trim() ||
       req.headers['x-forwarded-for']?.toString().split(',')[0]?.trim() ||
       'anonymous';

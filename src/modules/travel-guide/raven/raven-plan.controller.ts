@@ -17,6 +17,7 @@ import { TravelGuideGenerationJobService } from '../travel-guide-generation-job.
 import { TravelGuideGenerationService } from '../travel-guide-generation.service';
 import { TravelGuideQuoteRefreshService } from '../travel-guide-quote-refresh.service';
 import { TravelGuideSavedPlanService } from '../travel-guide-saved-plan.service';
+import { presentRavenPlan } from './raven-plan-response.presenter';
 
 /**
  * Raven / sync-web plan APIs — public, no login required.
@@ -43,7 +44,11 @@ export class RavenPlanController {
     @CurrentActor() actor: RequestActor,
   ) {
     await this.publicRateLimit.assertAllowedAsync('raven_plan', req);
-    return this.generationService.generate(legacyId, body, actor);
+    const result = await this.generationService.generate(legacyId, body, actor);
+    return {
+      plan: presentRavenPlan(result.plan),
+      ...(result.guideId ? { guideId: result.guideId } : {}),
+    };
   }
 
   @Post('activities/:legacyId/plan/generate-async')
@@ -59,14 +64,21 @@ export class RavenPlanController {
 
   @Get('plan/generation-jobs/:jobId')
   async getGenerationJob(@Param('jobId') jobId: string, @Req() req: Request) {
-    await this.publicRateLimit.assertAllowedAsync('raven_plan', req);
-    return this.generationJobService.getJobByCredential(jobId);
+    await this.publicRateLimit.assertAllowedAsync('raven_plan_poll', req);
+    const job = await this.generationJobService.getJobByCredential(jobId);
+    return {
+      jobId: job.jobId,
+      status: job.status,
+      ...(job.progress ? { progress: job.progress } : {}),
+      ...(job.plan ? { plan: presentRavenPlan(job.plan) } : {}),
+      ...(job.errorMessage ? { errorMessage: job.errorMessage } : {}),
+    };
   }
 
   /** guideId 即访问凭证；不存在时返回 null 避免控制台 404。 */
   @Get('plans/:guideId')
   async getSavedPlan(@Param('guideId') guideId: string, @Req() req: Request) {
-    await this.publicRateLimit.assertAllowedAsync('raven_plan', req);
+    await this.publicRateLimit.assertAllowedAsync('raven_plan_read', req);
 
     const saved = await this.savedPlanService.findByGuideId(guideId);
     if (!saved) {
@@ -85,9 +97,19 @@ export class RavenPlanController {
 
     if (refreshedPlan !== saved.plan) {
       await this.savedPlanService.updatePlan(guideId, refreshedPlan);
-      return { ...saved, plan: refreshedPlan };
+      return {
+        guideId: saved.guideId,
+        activityLegacyId: saved.activityLegacyId,
+        plan: presentRavenPlan(refreshedPlan),
+        createdAt: saved.createdAt,
+      };
     }
 
-    return saved;
+    return {
+      guideId: saved.guideId,
+      activityLegacyId: saved.activityLegacyId,
+      plan: presentRavenPlan(saved.plan),
+      createdAt: saved.createdAt,
+    };
   }
 }
