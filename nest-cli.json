@@ -6,6 +6,11 @@
       {
         "include": "modules/marketing-ai/assets/**/*",
         "watchAssets": true
+      },
+      {
+        "include": "modules/travel-guide/raven/data/**/*",
+        "outDir": "dist/src",
+        "watchAssets": true
       }
     ]
   }

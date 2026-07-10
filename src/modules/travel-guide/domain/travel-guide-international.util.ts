@@ -377,21 +377,31 @@ export function isJapanOverseasCorpus(corpus: string): boolean {
 export function buildTravelGuideDocumentItems(input: {
   activity: Pick<Activity, 'name' | 'location' | 'region'>;
   destinationCity?: string;
+  locale?: 'zh' | 'en';
 }): string[] {
   const kind = travelGuideRegionKind(input.activity);
+  const en = input.locale === 'en';
   const dest =
     input.destinationCity?.trim() ||
     destinationCityFromActivityLocation(input.activity.location) ||
-    '目的地';
+    (en ? 'destination' : '目的地');
 
   if (kind === 'hmt') {
-    return [
-      '港澳通行证 / 台湾通行证（有效签注），大陆居民赴港澳台必备。',
-      '身份证原件，口岸与酒店登记可能抽查。',
-      '返程交通票据（高铁/航班），部分口岸可能核验行程。',
-      '境外漫游或当地 eSIM；港澳可开通漫游包，台湾建议提前购卡。',
-      '少量港币/澳门元/新台币现金 + 银联/Visa 卡，部分小店仅收现金。',
-    ];
+    return en
+      ? [
+          'Exit-entry permit for Hong Kong / Macau / Taiwan with a valid endorsement (required for mainland residents).',
+          'Bring your mainland ID — border and hotel checks may request it.',
+          'Return tickets (rail / flight); some checkpoints may verify your itinerary.',
+          'Roaming pack or local eSIM; Taiwan is easier with a prepaid SIM bought ahead.',
+          'Some HKD / MOP / TWD cash plus UnionPay / Visa — small shops may be cash-only.',
+        ]
+      : [
+          '港澳通行证 / 台湾通行证（有效签注），大陆居民赴港澳台必备。',
+          '身份证原件，口岸与酒店登记可能抽查。',
+          '返程交通票据（高铁/航班），部分口岸可能核验行程。',
+          '境外漫游或当地 eSIM；港澳可开通漫游包，台湾建议提前购卡。',
+          '少量港币/澳门元/新台币现金 + 银联/Visa 卡，部分小店仅收现金。',
+        ];
   }
 
   if (kind === 'overseas') {
@@ -399,6 +409,44 @@ export function buildTravelGuideDocumentItems(input: {
     const thailand = isThailandOverseasCorpus(lower);
     const korea = isKoreaOverseasCorpus(lower);
     const japan = isJapanOverseasCorpus(lower);
+
+    if (en) {
+      const base = [
+        'Passport (ideally 6+ months validity and 2+ blank pages).',
+        thailand
+          ? 'Thailand entry: visa exemption / VOA rules change — confirm official policy for your arrival date; print return flight + hotel booking.'
+          : korea
+            ? 'Korea entry: confirm visa / K-ETA eligibility against official rules for your arrival date; print return flight + hotel booking.'
+            : japan
+              ? 'Japan entry: complete Visit Japan Web (if applicable) and customs declaration; print return flight + hotel booking.'
+              : 'Visa / entry permit: arrange e-visa or VOA as required; print hotel and return itinerary.',
+        'Return flight itinerary + hotel confirmation (immigration may ask).',
+        'Travel insurance covering medical care and trip changes — useful for festival days.',
+        'Common meds plus photocopies of key IDs (store separately from originals).',
+      ];
+      if (thailand) {
+        base.push(
+          'THB cash (VOA fees, tips, night markets) + Visa/Mastercard backup.',
+          'Thai SIM / eSIM (Grab, Bolt, and maps need local data).',
+        );
+      } else if (korea) {
+        base.push(
+          'KRW cash + T-money card (metro / convenience stores); Visa/Mastercard for hotel holds.',
+          'Korea SIM / eSIM (Kakao T + Naver Map).',
+        );
+      } else if (japan) {
+        base.push(
+          'JPY cash + Suica/Pasmo (metro / convenience stores); Visa/Mastercard for hotel holds.',
+          'Japan SIM / eSIM (Google Maps / Navitime + Uber Japan).',
+        );
+      } else {
+        base.push(
+          'Local currency cash + international cards; learn tipping / card norms ahead.',
+          'Local SIM or eSIM for rideshare, maps, and emergencies.',
+        );
+      }
+      return base;
+    }
 
     const base = [
       '护照原件（建议有效期 6 个月以上，留 2 页以上空白页）。',
@@ -439,6 +487,7 @@ export function buildTravelGuideDocumentItems(input: {
     return base;
   }
 
+  void dest;
   return [];
 }
 
@@ -468,22 +517,78 @@ export function buildTravelGuideEssentials(input: {
   activity: Pick<Activity, 'name' | 'location' | 'region'>;
   destinationCity?: string;
   interCity: boolean;
+  locale?: 'zh' | 'en';
 }): {
   network: string[];
   payment: string[];
   apps: string[];
 } {
   const kind = travelGuideRegionKind(input.activity);
+  const en = input.locale === 'en';
   const dest =
     input.destinationCity?.trim() ||
     destinationCityFromActivityLocation(input.activity.location) ||
-    '目的地';
+    (en ? 'destination' : '目的地');
 
   if (kind === 'overseas') {
     const lower = overseasCorpus(input.activity, input.destinationCity);
     const thailand = isThailandOverseasCorpus(lower);
     const korea = isKoreaOverseasCorpus(lower);
     const japan = isJapanOverseasCorpus(lower);
+
+    if (en) {
+      return {
+        network: [
+          thailand
+            ? 'AIS/TrueMove SIM or eSIM — airport / 7-Eleven; or order an eSIM before you fly.'
+            : korea
+              ? 'LG U+ / SKT / KT SIM or eSIM at ICN; download Naver Map offline packs.'
+              : japan
+                ? 'docomo / SoftBank / au SIM or eSIM at HND/NRT; download Google Maps offline packs.'
+                : 'Local eSIM / SIM — venue and suburban signal can be weak; keep offline maps.',
+          'International roaming is a backup; rideshare and tickets need local data on site.',
+          'Venue Wi‑Fi is unreliable — screenshot tickets and itinerary.',
+        ],
+        payment: [
+          thailand
+            ? 'THB cash is essential (VOA, night markets); some 7‑Eleven / malls take Alipay/WeChat.'
+            : korea
+              ? 'KRW cash + T-money (metro / convenience); cards work in malls/hotels, stalls often cash.'
+              : japan
+                ? 'JPY cash + Suica/Pasmo (metro / convenience); cards work in malls/hotels, stalls often cash.'
+                : 'Local cash + Visa/Mastercard; do not rely only on WeChat/Alipay abroad.',
+          'Keep 1–2 international cards for hotel holds and emergencies.',
+          'Small USD notes help in a pinch but local currency usually wins on rate.',
+        ],
+        apps: thailand
+          ? [
+              'Grab / Bolt — primary rideshare after the show.',
+              'Google Maps — navigation + nearby POIs; download offline packs first.',
+              'Klook / official ticket app — tickets and shuttle add-ons.',
+              'Translate + FX apps for chatting and budgeting.',
+            ]
+          : korea
+            ? [
+                'Kakao T — primary rideshare after the show.',
+                'Naver Map / Google Maps — prefer Naver in Seoul / ICN.',
+                'Subway Korea / Kakao Metro — metro + AREX.',
+                'Papago + official ticket / email wallet — screenshot QR codes.',
+              ]
+            : japan
+              ? [
+                  'Uber Japan / Japan Taxi — book ahead at peak exit.',
+                  'Google Maps / Navitime — Navitime helps Tokyo transfers.',
+                  'Yamanote / Tokyo Metro / Rinkai — venue rail options.',
+                  'Google Translate + official ticket / email wallet — screenshot QR codes.',
+                ]
+              : [
+                  'Google Maps / Apple Maps — navigation and transit.',
+                  'Local rideshare (Grab, Uber, etc. by destination).',
+                  'Official ticket app / email wallet — screenshot entry QR.',
+                  'Translate + FX apps for arrival and spend.',
+                ],
+      };
+    }
 
     return {
       network: [
@@ -539,22 +644,67 @@ export function buildTravelGuideEssentials(input: {
   }
 
   if (kind === 'hmt') {
+    return en
+      ? {
+          network: [
+            'Enable HK/Macau/Taiwan roaming or buy a local SIM/eSIM; WeChat/Alipay work in some HK/Macau spots.',
+            'For Taiwan, buy Chunghwa / FarEasTone prepaid ahead or at the airport.',
+            'Venue and underground signal can drop — screenshot tickets and itinerary.',
+          ],
+          payment: [
+            'HKD / MOP / TWD cash + UnionPay / Visa; Octopus covers HK metro and small shops.',
+            'WeChat/Alipay are wider in HK/Macau; Taiwan still leans cash + cards.',
+            'Keep small change for buses, convenience stores, and snacks.',
+          ],
+          apps: [
+            'Amap / Baidu / Apple Maps in HK/Macau; Google Maps in Taiwan.',
+            'MTR Mobile / Macau bus / Taiwan HSR apps by destination.',
+            'Klook / Trip.com / official ticketing; Uber or local rideshare by city.',
+            'Alipay transit codes where supported in HK/Macau.',
+          ],
+        }
+      : {
+          network: [
+            '开通港澳台漫游包或购买当地 SIM/eSIM；微信/支付宝在港澳部分场景可用。',
+            '台湾建议提前购中华电信/远传等预付卡，机场柜位即买即用。',
+            '场馆与地下信号可能弱，行程与票夹信息请截图。',
+          ],
+          payment: [
+            '港币/澳门元/新台币现金 + 银联/Visa；八达通（香港）可覆盖地铁与小商户。',
+            '微信/支付宝在港澳覆盖较广，台湾仍以现金与信用卡为主。',
+            '备少量零钱乘公交、便利店与小吃摊。',
+          ],
+          apps: [
+            '高德/百度/Apple Maps：港澳导航；台湾可用 Google Maps。',
+            'MTR Mobile / 澳门巴士 App / 台湾高铁 App（按目的地）。',
+            'Klook/携程/官方购票渠道查票；Uber/本地网约车视城市而定。',
+            '支付宝境外乘车码（港澳部分线路支持）。',
+          ],
+        };
+  }
+
+  if (en) {
+    const network = [
+      `${dest} venue areas can congest on show days — download offline maps.`,
+      'Any major China carrier roaming / local data works; exit crowds can jam the network — screenshot key info.',
+    ];
+    if (input.interCity) {
+      network.push(
+        'Intercity: rail / airport Wi‑Fi helps for transfer updates — do not rely on venue signal to buy tickets.',
+      );
+    }
     return {
-      network: [
-        '开通港澳台漫游包或购买当地 SIM/eSIM；微信/支付宝在港澳部分场景可用。',
-        '台湾建议提前购中华电信/远传等预付卡，机场柜位即买即用。',
-        '场馆与地下信号可能弱，行程与票夹信息请截图。',
-      ],
+      network,
       payment: [
-        '港币/澳门元/新台币现金 + 银联/Visa；八达通（香港）可覆盖地铁与小商户。',
-        '微信/支付宝在港澳覆盖较广，台湾仍以现金与信用卡为主。',
-        '备少量零钱乘公交、便利店与小吃摊。',
+        'WeChat / Alipay cover most food and rideshare; keep a little cash (~$30–70) for stalls and surprises.',
+        'UnionPay works for many hotel deposits; some OTA bookings prefer international cards.',
+        'After-show food and rideshare peaks — confirm wallet balance / cards beforehand.',
       ],
       apps: [
-        '高德/百度/Apple Maps：港澳导航；台湾可用 Google Maps。',
-        'MTR Mobile / 澳门巴士 App / 台湾高铁 App（按目的地）。',
-        'Klook/携程/官方购票渠道查票；Uber/本地网约车视城市而定。',
-        '支付宝境外乘车码（港澳部分线路支持）。',
+        'Amap / Baidu Maps — driving, transit, nearby POIs.',
+        '12306 / Umetrip / Trip.com — intercity tickets and flight status.',
+        'DiDi / Amap ride-hail — book ahead at peak exit.',
+        'Damai / official mini program — tickets and entry QR; screenshot backups.',
       ],
     };
   }

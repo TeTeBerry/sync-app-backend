@@ -25,6 +25,7 @@ import {
   buildTravelGuideGenerationCacheKey,
   normalizeTravelGuideGenerationParams,
 } from './domain/travel-guide-generation-cache.util';
+import { resolveTravelGuideOwnerUserId } from './domain/travel-guide-owner.util';
 import { TravelGuideGenerationService } from './travel-guide-generation.service';
 import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cache.service';
 import {
@@ -61,14 +62,15 @@ export class TravelGuideGenerationJobService {
     actor: RequestActor,
   ): Promise<{ jobId: string }> {
     const dedupeKey = await this.buildDedupeKey(activityLegacyId, dto);
+    const ownerUserId = resolveTravelGuideOwnerUserId(actor, {
+      guideId: dto.guideId,
+      fallbackKey: dedupeKey,
+    });
 
     if (dto.forceRegenerate === true) {
-      await this.failActiveJobsForDedupeKey(actor.resolvedUserId, dedupeKey);
+      await this.failActiveJobsForDedupeKey(ownerUserId, dedupeKey);
     } else {
-      const existing = await this.findActiveJob(
-        actor.resolvedUserId,
-        dedupeKey,
-      );
+      const existing = await this.findActiveJob(ownerUserId, dedupeKey);
 
       if (existing) {
         if (isStaleActiveJob(existing)) {
@@ -105,7 +107,7 @@ export class TravelGuideGenerationJobService {
     await this.model.create({
       jobId,
       activityLegacyId,
-      ownerUserId: actor.resolvedUserId,
+      ownerUserId,
       dedupeKey,
       status: 'pending',
       requestParams: dto,

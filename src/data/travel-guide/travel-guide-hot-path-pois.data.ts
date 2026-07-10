@@ -2,7 +2,6 @@ import type {
   MapPoiKind,
   RawMapPoi,
 } from '@src/modules/travel-guide/map/travel-guide-map.types';
-import { findHotActivityProfile } from './travel-guide-hot-path.data';
 
 /**
  * Hot Path 兜底 POI：境内酒店优先高德；境外场馆使用本地精选酒店（高德周边搜索不可用）。
@@ -57,83 +56,6 @@ const STORM_FALLBACK_POIS: RawMapPoi[] = [
     '夜宵',
     4.3,
     55,
-    true,
-  ),
-];
-
-const EDC_CHINA_FALLBACK_POIS: RawMapPoi[] = [
-  poi(
-    'edc-h1',
-    '阳澄湖半岛凯宾斯基酒店',
-    '苏州市工业园区阳澄湖',
-    31.171,
-    120.748,
-    900,
-    'hotel',
-    '酒店',
-    4.6,
-    680,
-  ),
-  poi(
-    'edc-h2',
-    '苏州阳澄湖畔精品酒店',
-    '苏州市工业园区',
-    31.165,
-    120.735,
-    1100,
-    'hotel',
-    '宾馆',
-    4.2,
-    480,
-  ),
-  poi(
-    'edc-h3',
-    '全季酒店(苏州阳澄湖店)',
-    '苏州市工业园区',
-    31.168,
-    120.752,
-    800,
-    'hotel',
-    '酒店',
-    4.4,
-    420,
-  ),
-  poi(
-    'edc-p1',
-    '阳澄湖半岛旅游度假区停车场',
-    '苏州市工业园区',
-    31.169,
-    120.741,
-    200,
-    'parking',
-    '停车场',
-    undefined,
-    undefined,
-  ),
-  poi(
-    'edc-n1',
-    '很久以前羊肉串(阳澄湖店)',
-    '苏州市工业园区',
-    31.166,
-    120.746,
-    1300,
-    'nightlife_food',
-    '夜宵',
-    4.5,
-    95,
-    true,
-  ),
-  poi(
-    'edc-n2',
-    '海底捞火锅(阳澄湖店)',
-    '苏州市工业园区',
-    31.168,
-    120.752,
-    1400,
-    'nightlife_food',
-    '夜宵',
-    4.6,
-    110,
     true,
   ),
 ];
@@ -808,15 +730,126 @@ const TML_SHANGHAI_FALLBACK_POIS: RawMapPoi[] = [
   ),
 ];
 
+/**
+ * Tomorrowland Belgium / De Schorre local POIs.
+ * P1/P2 names and addresses are published by De Schorre. Coordinates are
+ * curated from the corresponding publicly listed parking locations.
+ */
+const TML_BELGIUM_FALLBACK_POIS: RawMapPoi[] = [
+  poi(
+    'tml-be-p1',
+    'Parking 1 De Schorre',
+    'Schommelei 1, 2850 Boom, Belgium',
+    51.08946,
+    4.37568,
+    120,
+    'parking',
+    'parking',
+    undefined,
+    undefined,
+  ),
+  poi(
+    'tml-be-p2',
+    'Parking 2 De Schorre',
+    'Kapelstraat, 2850 Boom, Belgium',
+    51.0865,
+    4.384,
+    410,
+    'parking',
+    'parking',
+    undefined,
+    undefined,
+  ),
+];
+
+/**
+ * Vehicle-access anchors for overseas venues without a verified, fixed car-park
+ * coordinate. These use the catalog's venue coordinate and deliberately tell
+ * travelers to follow the organizer's event-day parking directions.
+ *
+ * Verification ledger:
+ * - Walibi Holland parking: https://www.walibi.nl/en/plan-your-visit/route-parking
+ * - Cluj Arena: https://clujarena.ro/contact/
+ * - Creamfields parking: https://www.creamfields.com/info/is-there-a-pickup-and-drop-off-point/
+ * - UNTOLD Dubai parking: https://www.untold.ae/info/cf34bdd6-5bbe-4ed7-a5bb-a70316fe5c3d
+ * - EDC Orlando parking: https://orlando.edc.com/travel/parking/
+ * - Ultra Europe venue: https://help.ultraeurope.com/portal/en/kb/ultra-europe/general
+ * - Ultra Taiwan venue: https://ultrataiwan.com/tickets/vip/
+ */
+type VenueParkingAnchor = RawMapPoi & { activityLegacyId: number };
+
+const OVERSEAS_VENUE_PARKING_ANCHORS: VenueParkingAnchor[] = [
+  venueParkingAnchor(
+    2,
+    'Walibi Holland Main Car Park',
+    'Spijkweg 30, 8256 RJ Biddinghuizen, Netherlands',
+    52.4386,
+    5.7719,
+  ),
+  venueParkingAnchor(
+    9,
+    'Cluj Arena Parking Access',
+    'Aleea Stadionului 2, 400375 Cluj-Napoca, Romania',
+    46.7699,
+    23.57,
+  ),
+  venueParkingAnchor(
+    10,
+    'Creamfields On-site Car Park Access',
+    'Daresbury Estate, Daresbury, Cheshire, United Kingdom',
+    53.3342,
+    -2.6355,
+  ),
+  venueParkingAnchor(
+    12,
+    'UNTOLD Dubai Paid Parking Access',
+    'Dubai Parks and Resorts, Sheikh Zayed Road, Dubai, United Arab Emirates',
+    24.9783,
+    55.0052,
+  ),
+  venueParkingAnchor(
+    13,
+    'EDC Orlando Premier Parking Access',
+    'Tinker Field, 301 S Tampa Ave, Orlando, FL 32805, United States',
+    28.5392,
+    -81.4034,
+  ),
+  venueParkingAnchor(
+    14,
+    'Boulevard Riyadh City Vehicle Access',
+    'Boulevard Riyadh City, Riyadh, Saudi Arabia',
+    24.7697,
+    46.6435,
+  ),
+  venueParkingAnchor(
+    15,
+    'Ultra Europe Vehicle Access',
+    'Park Mladezi, Hrvatske Mornarice 10, 21000 Split, Croatia',
+    43.519,
+    16.444,
+  ),
+  venueParkingAnchor(
+    21,
+    'Dajia Riverside Park Parking Access',
+    'Dajia Riverside Park, Zhongshan District, Taipei, Taiwan',
+    25.076,
+    121.535,
+  ),
+];
+
 const FALLBACK_BY_ACTIVITY = new Map<number, RawMapPoi[]>([
   [1, TML_TH_FALLBACK_POIS],
   [4, STORM_FALLBACK_POIS],
-  [2, EDC_CHINA_FALLBACK_POIS],
   [5, EDC_TH_FALLBACK_POIS],
   [8, EDC_KOREA_FALLBACK_POIS],
   [3, S2O_KOREA_FALLBACK_POIS],
   [6, WDJF_JAPAN_FALLBACK_POIS],
   [11, ULTRA_JAPAN_FALLBACK_POIS],
+  [7, TML_BELGIUM_FALLBACK_POIS],
+  ...OVERSEAS_VENUE_PARKING_ANCHORS.map((poi): [number, RawMapPoi[]] => [
+    poi.activityLegacyId,
+    [poi],
+  ]),
   [16, TML_SHANGHAI_FALLBACK_POIS],
 ]);
 
@@ -846,6 +879,29 @@ function poi(
     rating,
     avgPrice,
     lateNightFriendly,
+  };
+}
+
+function venueParkingAnchor(
+  activityLegacyId: number,
+  name: string,
+  address: string,
+  lat: number,
+  lng: number,
+): VenueParkingAnchor {
+  return {
+    activityLegacyId,
+    id: `venue-parking-${activityLegacyId}`,
+    name,
+    address,
+    lat,
+    lng,
+    category: 'venue parking access',
+    distanceM: 0,
+    distanceLabel: '场地交通定位锚点；活动日请以主办方停车指引为准',
+    kind: 'parking',
+    keyword: 'parking',
+    lateNightFriendly: false,
   };
 }
 
@@ -880,7 +936,5 @@ export function getHotPathFallbackPois(
 export function getAllHotPathFallbackPois(
   activityLegacyId: number,
 ): RawMapPoi[] {
-  const profile = findHotActivityProfile(activityLegacyId);
-  if (!profile) return [];
   return [...(FALLBACK_BY_ACTIVITY.get(activityLegacyId) ?? [])];
 }

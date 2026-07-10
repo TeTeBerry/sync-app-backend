@@ -70,7 +70,7 @@
 |------|------|------|
 | POST | `/api/activities/:legacyId/travel-guide/generate` | 生成攻略（需登录） |
 | GET | `/api/travel-guide/place-suggestions?keyword=&region=` | 出发地输入提示（小程序，高德 + 本地城市库） |
-| GET | `/api/raven/place-suggestions?keyword=&limit=` | Raven 出发地：关键词搜城市（+ IATA 直达） |
+| GET | `/api/raven/place-suggestions?keyword=&limit=` | Raven 出发地：关键词搜城市（+ IATA 直达；OpenFlights，本地 bundled `airports.dat` 兜底） |
 | GET | `/api/raven/place-suggestions?city=&country=` | Raven 出发地：返回该城市全部机场（选中城市后） |
 | POST | `/api/raven/activities/:legacyId/plan/generate` | Raven 生成攻略（无需登录） |
 | POST | `/api/raven/activities/:legacyId/plan/generate-async` | Raven 异步生成攻略（无需登录） |
@@ -85,6 +85,10 @@ AMAP_KEY=你的Key
 # 可选限流
 # AMAP_QPS=5
 # AMAP_MAX_CONCURRENT=5
+
+# Raven OpenFlights（可选）。默认优先读 bundled `src/modules/travel-guide/raven/data/airports.dat`，
+# 再后台尝试远程刷新。raw.githubusercontent 在部分网络不可达时不会再导致 503。
+# RAVEN_OPENFLIGHTS_AIRPORTS_URL=https://cdn.jsdelivr.net/gh/jpatokal/openflights@master/data/airports.dat
 ```
 
 兼容：未配置 `AMAP_KEY` 时回退读取 `TENCENT_MAP_KEY`（仅过渡期，建议尽快迁移）。

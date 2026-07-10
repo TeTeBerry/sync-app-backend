@@ -6,6 +6,7 @@ import {
   formatFlightOfferSampleLine,
   isOutboundDirect,
 } from '../../domain/travel-guide-flight-itinerary.util';
+import { toDisplayAmount } from '../../domain/travel-guide-currency.util';
 import { resolveHotelVenueDistanceM } from '../../domain/travel-guide-venue-distance.util';
 import {
   isPlausibleFlightPrice,
@@ -559,6 +560,7 @@ export function summarizeFlightOffers(
   offers: RollingGoFlightOfferRecord[],
   limit = 2,
   cabinLabel?: string,
+  locale: 'zh' | 'en' = 'zh',
 ): {
   min: number;
   max: number;
@@ -594,15 +596,21 @@ export function summarizeFlightOffers(
 
   const flightOffers = rankedOffers
     .slice(0, limit)
-    .map(({ offer, price }) =>
-      buildTravelGuideFlightOffer({
+    .map(({ offer, price }) => {
+      const sourceCurrency =
+        offer.currency?.toUpperCase() === 'USD' ? 'USD' : 'CNY';
+      const displayCurrency = locale === 'en' ? 'USD' : sourceCurrency;
+      const displayPrice =
+        locale === 'en' ? toDisplayAmount(price, sourceCurrency, 'en') : price;
+      return buildTravelGuideFlightOffer({
         fromSegments: offer.fromSegments,
         retSegments: offer.retSegments,
-        pricePerAdult: price,
-        currency: offer.currency,
+        pricePerAdult: displayPrice,
+        currency: displayCurrency,
         cabinLabel,
-      }),
-    )
+        locale,
+      });
+    })
     .filter((item): item is NonNullable<typeof item> => item != null);
 
   const displayPrices = flightOffers
@@ -613,26 +621,41 @@ export function summarizeFlightOffers(
   const max =
     displayPrices[displayPrices.length - 1] ?? prices[prices.length - 1]!;
 
+  const en = locale === 'en';
   const sampleLines = rankedOffers
     .slice(0, limit)
     .flatMap(({ offer, price }) => {
-      const currency = offer.currency ?? 'CNY';
+      const sourceCurrency =
+        offer.currency?.toUpperCase() === 'USD' ? 'USD' : 'CNY';
+      const displayAmount = Math.round(
+        toDisplayAmount(price, sourceCurrency, locale),
+      );
       const priceLabel =
-        currency === 'USD' ? `$${Math.round(price)}` : `¥${Math.round(price)}`;
+        locale === 'en' || sourceCurrency === 'USD'
+          ? `$${displayAmount}`
+          : `¥${Math.round(price)}`;
 
       if (offer.fromSegments?.length || offer.retSegments?.length) {
         const line = formatFlightOfferSampleLine({
           fromSegments: offer.fromSegments,
           retSegments: offer.retSegments,
           priceLabel,
+          locale,
         });
         return line ? [line] : [];
       }
 
       const itinerary = offer.itineraries?.[0];
       if (!itinerary?.segments) return [];
+      const stops = itinerary.stops?.trim()
+        ? itinerary.stops
+        : en
+          ? 'Direct'
+          : '直飞';
       return [
-        `${itinerary.segments} · ${itinerary.stops ?? '直飞'} · 约 ${priceLabel}/人`,
+        en
+          ? `${itinerary.segments} · ${stops} · about ${priceLabel}/person`
+          : `${itinerary.segments} · ${stops} · 约 ${priceLabel}/人`,
       ];
     });
 

@@ -11,6 +11,7 @@ import {
   buildTravelGuideGenerationCacheKey,
   type TravelGuideGenerationCacheParams,
   isFuzzyTravelGuideParamsMatch,
+  TRAVEL_GUIDE_MAP_DATA_VERSION,
 } from './domain/travel-guide-generation-cache.util';
 
 @Injectable()
@@ -53,7 +54,10 @@ export class TravelGuideGenerationCacheService {
         $set: {
           cacheKey,
           activityLegacyId,
-          requestParams: params,
+          requestParams: {
+            ...params,
+            mapDataVersion: TRAVEL_GUIDE_MAP_DATA_VERSION,
+          },
           plan,
           expiresAt,
         },

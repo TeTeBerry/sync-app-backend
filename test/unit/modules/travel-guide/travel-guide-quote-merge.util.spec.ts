@@ -274,4 +274,56 @@ describe('travel-guide-quote-merge.util', () => {
     expect(enriched.accommodation.hotels[0]?.name).toBe('Best Near');
     expect(enriched.budget?.items[0]?.range).toBe('约 ¥5000');
   });
+
+  it('replaces English accommodation labels and recalculates Estimated total', () => {
+    const enPlan: TravelGuidePlan = {
+      ...basePlan,
+      budgetLabel: 'Comfort ($42–83 / night)',
+      budget: {
+        title: 'Budget reference (trip total)',
+        items: [
+          { label: 'Accommodation', range: 'About $139–278' },
+          { label: 'Estimated total (group)', range: 'About $139–278' },
+        ],
+      },
+    };
+
+    const enriched = applyTravelQuoteEnrichment(
+      enPlan,
+      {
+        hotel: {
+          minPricePerNight: 300,
+          maxPricePerNight: 400,
+          currency: 'CNY',
+          sampleCount: 2,
+          fetchedAt: '2026-06-29T00:00:00.000Z',
+          source: 'rollinggo',
+        },
+      },
+      {
+        headcount: 2,
+        accommodationNights: 2,
+        regionKind: 'domestic',
+        interCity: true,
+        budgetTier: 'standard',
+        locale: 'en',
+      },
+    );
+
+    const accommodation = enriched.budget?.items.find(
+      (item) => item.label === 'Accommodation',
+    );
+    const total = enriched.budget?.items.find((item) =>
+      /Estimated total/i.test(item.label),
+    );
+    expect(accommodation?.range).toMatch(/About \$/);
+    expect(accommodation?.range).not.toContain('¥');
+    expect(accommodation?.note).toMatch(/Based on 1 room/);
+    expect(total?.label).toBe('Estimated total (group)');
+    expect(total?.range).toMatch(/About \$/);
+    expect(total?.range).not.toContain('¥');
+    expect(
+      enriched.budget?.items.filter((item) => item.label === '住宿'),
+    ).toHaveLength(0);
+  });
 });

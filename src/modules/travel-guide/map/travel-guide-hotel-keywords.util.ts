@@ -12,13 +12,13 @@ export function hotelSearchKeywordsForBudgetTier(
   if (options?.abroad) {
     switch (tier) {
       case 'economy':
-        return ['guesthouse', 'hostel', '经济型酒店'];
+        return ['hostel', 'guesthouse'];
       case 'standard':
-        return ['商务酒店', '四星级酒店'];
+        return ['hotel', 'apartment hotel'];
       case 'comfort':
-        return ['豪华酒店', 'resort'];
+        return ['hotel', 'resort'];
       default:
-        return ['酒店'];
+        return ['hotel'];
     }
   }
 

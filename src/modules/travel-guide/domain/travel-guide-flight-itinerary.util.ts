@@ -25,11 +25,18 @@ export function formatFlightLegRoute(
 
 export function describeFlightLegStops(
   segments?: RollingGoFlightSegmentRecord[],
+  locale: 'zh' | 'en' = 'zh',
 ): string {
-  if (!segments?.length) return '直飞';
-  if (segments.some((seg) => Boolean(seg.stopCities?.trim()))) return '经停';
-  if (segments.length > 1) return `${segments.length - 1}次中转`;
-  return '直飞';
+  const en = locale === 'en';
+  if (!segments?.length) return en ? 'Direct' : '直飞';
+  if (segments.some((seg) => Boolean(seg.stopCities?.trim()))) {
+    return en ? 'Stopover' : '经停';
+  }
+  if (segments.length > 1) {
+    const stops = segments.length - 1;
+    return en ? `${stops} stop${stops === 1 ? '' : 's'}` : `${stops}次中转`;
+  }
+  return en ? 'Direct' : '直飞';
 }
 
 export function isOutboundDirect(
@@ -84,6 +91,7 @@ export function formatFlightLegSchedule(
 
 export function buildTravelGuideFlightLeg(
   segments?: RollingGoFlightSegmentRecord[],
+  locale: 'zh' | 'en' = 'zh',
 ): TravelGuideFlightLeg {
   const schedule = formatFlightLegSchedule(segments);
   const route = formatFlightLegRoute(segments);
@@ -96,7 +104,7 @@ export function buildTravelGuideFlightLeg(
     arrAirport,
     depTime: schedule.depTime,
     arrTime: schedule.arrTime,
-    stopsLabel: describeFlightLegStops(segments),
+    stopsLabel: describeFlightLegStops(segments, locale),
     ...(schedule.flightNumbers.length
       ? { flightNumbers: schedule.flightNumbers }
       : {}),
@@ -109,13 +117,15 @@ export function buildTravelGuideFlightOffer(input: {
   pricePerAdult: number;
   currency?: string;
   cabinLabel?: string;
+  locale?: 'zh' | 'en';
 }): TravelGuideFlightOffer | null {
-  const outbound = buildTravelGuideFlightLeg(input.fromSegments);
+  const locale = input.locale === 'en' ? 'en' : 'zh';
+  const outbound = buildTravelGuideFlightLeg(input.fromSegments, locale);
   if (!outbound.route) return null;
 
   const currency = input.currency?.toUpperCase() === 'USD' ? 'USD' : 'CNY';
   const returnLeg = input.retSegments?.length
-    ? buildTravelGuideFlightLeg(input.retSegments)
+    ? buildTravelGuideFlightLeg(input.retSegments, locale)
     : undefined;
 
   return {
@@ -138,16 +148,31 @@ export function formatFlightOfferSampleLine(input: {
   fromSegments?: RollingGoFlightSegmentRecord[];
   retSegments?: RollingGoFlightSegmentRecord[];
   priceLabel: string;
+  locale?: 'zh' | 'en';
 }): string {
+  const locale = input.locale === 'en' ? 'en' : 'zh';
   const offer = buildTravelGuideFlightOffer({
     fromSegments: input.fromSegments,
     retSegments: input.retSegments,
     pricePerAdult: 0,
     currency: 'CNY',
+    locale,
   });
   if (!offer) return '';
 
   const parts: string[] = [];
+  if (locale === 'en') {
+    parts.push(
+      `Outbound ${formatLegTimeRange(offer.outbound)} (${offer.outbound.stopsLabel})`,
+    );
+    if (offer.return?.route) {
+      parts.push(
+        `Return ${formatLegTimeRange(offer.return)} (${offer.return.stopsLabel})`,
+      );
+    }
+    return `${parts.join(' · ')} · about ${input.priceLabel}/person`;
+  }
+
   parts.push(
     `去程 ${formatLegTimeRange(offer.outbound)}（${offer.outbound.stopsLabel}）`,
   );
@@ -162,7 +187,10 @@ export function formatFlightOfferSampleLine(input: {
 
 export function isRollingGoFlightSampleLine(line: string): boolean {
   const trimmed = line.trim();
-  return /^去程 .+（.+）( · 返程 .+（.+）)? · 约 [¥$]/.test(trimmed);
+  return (
+    /^去程 .+（.+）( · 返程 .+（.+）)? · 约 [¥$]/.test(trimmed) ||
+    /^Outbound .+ \(.+\)( · Return .+ \(.+\))? · about [¥$]/i.test(trimmed)
+  );
 }
 
 export function buildFlightOfferItinerary(

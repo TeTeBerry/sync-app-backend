@@ -17,7 +17,7 @@ const edcKoreaActivity: Activity = {
 } as Activity;
 
 describe('TravelGuidePoiCollector', () => {
-  it('returns non-empty POIs for abroad EDC Korea via hot-path fallback', async () => {
+  it('requests overseas hotels and nightlife POIs from the local curated catalog', async () => {
     const searchPoisCached = jest.fn().mockImplementation(async (input) => {
       expect(input.abroad).toBe(true);
       expect(input.activityLegacyId).toBe(8);
@@ -77,6 +77,11 @@ describe('TravelGuidePoiCollector', () => {
       searchPoisCached.mock.calls.some(
         (call: [{ kind?: string }]) => call[0].kind === 'hotel',
       ),
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      searchPoisCached.mock.calls.some(
+        (call: [{ keyword?: string }]) => call[0].keyword === 'nightclub',
+      ),
+    ).toBe(true);
   });
 });

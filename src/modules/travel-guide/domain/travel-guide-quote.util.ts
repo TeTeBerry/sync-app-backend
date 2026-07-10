@@ -13,6 +13,7 @@ import type {
   TravelQuoteQuery,
 } from '../ports/travel-quote.types';
 import { resolveTravelGuideQuoteDates } from './travel-guide-quote-dates.util';
+import { resolveTravelGuideLocale } from './travel-guide-locale';
 
 export type TravelQuoteActivity = Partial<
   Pick<
@@ -79,6 +80,7 @@ export function buildTravelQuoteQuery(
     outboundDate,
     returnDate,
     selfDrive: Boolean(dto.selfDrive),
+    locale: resolveTravelGuideLocale(dto.locale),
   };
 }
 

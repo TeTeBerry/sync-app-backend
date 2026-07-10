@@ -52,6 +52,11 @@ export class GenerateTravelGuideDto {
   @MaxLength(300)
   note?: string;
 
+  /** Plan copy language for Raven / sync-web. Defaults to zh. */
+  @IsOptional()
+  @IsIn(['zh', 'en'])
+  locale?: 'zh' | 'en';
+
   /** 重新生成时跳过 generation cache，避免切换出发地仍返回旧攻略 */
   @IsOptional()
   @IsBoolean()

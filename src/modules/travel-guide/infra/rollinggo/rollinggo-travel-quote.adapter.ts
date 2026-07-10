@@ -338,8 +338,9 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
       }
     >,
   ): Promise<FlightQuoteSnapshot | null> {
+    const locale = query.locale === 'en' ? 'en' : 'zh';
     const cabinGrades = rollingGoCabinGradesForBudgetTier(tier);
-    const requestedCabinLabel = rollingGoCabinLabelForBudgetTier(tier);
+    const requestedCabinLabel = rollingGoCabinLabelForBudgetTier(tier, locale);
     const window =
       flightWindow ??
       (await this.resolveFlightWindow(query, fromCity, toCity, mcpOptions));
@@ -361,12 +362,13 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
       if (!flightSearch) continue;
 
       const { offers, returnDate } = flightSearch;
-      const cabinLabel = rollingGoCabinGradeLabel(cabinGrade);
+      const cabinLabel = rollingGoCabinGradeLabel(cabinGrade, locale);
       const cabinFallback = cabinGrade !== cabinGrades[0]!;
       const summary = summarizeFlightOffers(
         offers,
         query.regionKind === 'overseas' ? 3 : 2,
         cabinLabel,
+        locale,
       );
       if (!summary.min || !summary.max) continue;
 
@@ -376,14 +378,15 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
         );
       }
 
-      const currency = resolveFlightOfferCurrency(offers);
+      const sourceCurrency = resolveFlightOfferCurrency(offers);
 
       return {
         fromCityCode: fromCity,
         toCityCode: toCity,
         outboundDate: query.outboundDate,
         returnDate,
-        currency,
+        // EN plans convert CNY quotes to USD for display; keep currency aligned.
+        currency: locale === 'en' ? 'USD' : sourceCurrency,
         minPricePerAdult: summary.min,
         maxPricePerAdult: summary.max,
         sampleLines: summary.sampleLines,

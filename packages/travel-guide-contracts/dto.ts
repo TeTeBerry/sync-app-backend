@@ -1,5 +1,7 @@
 import type { TravelGuideBudgetTier } from './types';
 
+export type TravelGuideLocale = 'zh' | 'en';
+
 export type AiGuidePlanFormValues = {
   departure: string;
   departureCity?: string;
@@ -8,6 +10,8 @@ export type AiGuidePlanFormValues = {
   selfDrive?: boolean;
   accommodationNights?: number;
   note?: string;
+  /** Plan copy language. Defaults to zh when omitted. */
+  locale?: TravelGuideLocale;
 };
 
 export type GenerateTravelGuidePayload = AiGuidePlanFormValues & {

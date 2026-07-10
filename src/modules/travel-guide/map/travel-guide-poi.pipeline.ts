@@ -66,7 +66,9 @@ export class TravelGuidePoiPipeline {
         '场馆附近未检索到符合预算的酒店推荐，请调整预算档位或稍后重试',
       );
     }
-    if (!ranked.nightlife.length) {
+    // Overseas guides can be generated without nightlife recommendations when
+    // the curated catalog does not include a verified late-night venue.
+    if (!ranked.nightlife.length && !abroad) {
       throw new BadRequestException(
         '场馆附近未检索到散场/餐饮推荐，请稍后重试',
       );

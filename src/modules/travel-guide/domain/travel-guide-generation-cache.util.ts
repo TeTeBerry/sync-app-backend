@@ -5,6 +5,10 @@ import {
   findDepartureCityAnchor,
   normalizeDepartureCityLabel,
 } from '../map/travel-guide-departure-suggestions.util';
+import {
+  resolveTravelGuideLocale,
+  type TravelGuideLocale,
+} from './travel-guide-locale';
 
 export type TravelGuideGenerationCacheParams = {
   activityLegacyId: number;
@@ -15,6 +19,7 @@ export type TravelGuideGenerationCacheParams = {
   selfDrive: boolean;
   accommodationNights: number;
   note: string;
+  locale: TravelGuideLocale;
 };
 
 export function normalizeTravelGuideGenerationParams(
@@ -37,11 +42,12 @@ export function normalizeTravelGuideGenerationParams(
     selfDrive: Boolean(dto.selfDrive),
     accommodationNights,
     note: dto.note?.trim().replace(/\s+/g, ' ') ?? '',
+    locale: resolveTravelGuideLocale(dto.locale),
   };
 }
 
-/** Bump when map POI / venue resolution or overseas ticket channel logic changes. */
-const TRAVEL_GUIDE_MAP_DATA_VERSION = 3;
+/** Bump when map POI / venue resolution, overseas ticket channel, locale copy, or EN USD display changes. */
+export const TRAVEL_GUIDE_MAP_DATA_VERSION = 6;
 
 /**
  * Normalize params for fuzzy matching.
@@ -61,21 +67,28 @@ export function normalizeFuzzyTravelGuideParams(
 
 /**
  * Check if two cache param sets are "fuzzy" equivalent.
- * - exact: activityLegacyId, budgetTier, selfDrive
+ * - exact: activityLegacyId, budgetTier, selfDrive, locale
  * - departure: exact string match (already normalized via normalizeDepartureCityLabel)
  * - headcount: |a - b| <= 2
  * - accommodationNights: |a - b| <= 1
+ * - mapDataVersion: must match current builder version (stored on save)
  */
 export function isFuzzyTravelGuideParamsMatch(
   exact: TravelGuideGenerationCacheParams,
-  candidate: TravelGuideGenerationCacheParams,
+  candidate: TravelGuideGenerationCacheParams & {
+    mapDataVersion?: number;
+  },
 ): boolean {
   if (exact.activityLegacyId !== candidate.activityLegacyId) return false;
   if (exact.budgetTier !== candidate.budgetTier) return false;
   if (exact.selfDrive !== candidate.selfDrive) return false;
+  if (exact.locale !== candidate.locale) return false;
   if (exact.departure !== candidate.departure) return false;
   if (exact.departureCity !== candidate.departureCity) return false;
   if (exact.note !== candidate.note) return false;
+  if ((candidate.mapDataVersion ?? 0) !== TRAVEL_GUIDE_MAP_DATA_VERSION) {
+    return false;
+  }
   if (Math.abs(exact.headcount - candidate.headcount) > 2) return false;
   if (exact.accommodationNights === 0 || candidate.accommodationNights === 0) {
     return exact.accommodationNights === candidate.accommodationNights;

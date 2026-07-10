@@ -31,7 +31,22 @@ export function parseActivityDayCount(date?: string): number {
   return 2;
 }
 
-export function budgetTierLabel(tier: string): string {
+export function budgetTierLabel(
+  tier: string,
+  locale: 'zh' | 'en' = 'zh',
+): string {
+  if (locale === 'en') {
+    switch (tier) {
+      case 'economy':
+        return 'Economy ($21–42 / night)';
+      case 'standard':
+        return 'Comfort ($42–83 / night)';
+      case 'comfort':
+        return 'Premium ($83+ / night)';
+      default:
+        return tier;
+    }
+  }
   switch (tier) {
     case 'economy':
       return '经济(¥150-300/晚)';

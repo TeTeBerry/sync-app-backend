@@ -10,6 +10,7 @@ import type {
 } from '../map/travel-guide-map.types';
 import { TravelGuidePoiPipeline } from '../map/travel-guide-poi.pipeline';
 import type { TravelGuideRankedCandidates } from '../map/travel-guide-map.types';
+import { isTravelGuideAbroad } from '../domain/travel-guide-international.util';
 
 export interface LocationSearchResult {
   venue: ResolvedVenue | null;
@@ -38,7 +39,7 @@ export class LocationSearchService {
     dto: GenerateTravelGuideDto,
     accommodationNights: number,
   ): Promise<LocationSearchResult> {
-    if (!this.amap.enabled) {
+    if (!this.amap.enabled && !isTravelGuideAbroad(activity)) {
       return { venue: null, mapCtx: null, ranked: null };
     }
 

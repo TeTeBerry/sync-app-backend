@@ -42,15 +42,23 @@ describe('travel-guide-quote-freshness.util', () => {
     expect(resolveQuoteCacheTtlMs(120)).toBe(120_000);
   });
 
-  it('hasEmbeddedRollingGoQuote detects hotel disclaimer and snapshots', () => {
-    expect(hasEmbeddedRollingGoQuote(basePlan)).toBe(true);
+  it('hasEmbeddedRollingGoQuote detects English accommodation labels', () => {
     expect(
       hasEmbeddedRollingGoQuote({
         ...basePlan,
-        budget: { title: '预算', items: [] },
+        budget: {
+          title: 'Budget reference (trip total)',
+          items: [
+            {
+              label: 'Accommodation',
+              range: 'About ¥1000',
+              note: `${TRAVEL_QUOTE_DISCLAIMER} Based on 1 room(s) · 2 night(s) · comfort tier.`,
+            },
+          ],
+        },
         budgetTierSnapshots: undefined,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('isPlanQuoteFresh requires quoteFetchedAt within ttl and embedded quote', () => {

@@ -21,10 +21,22 @@ import type { NormalizedTicketOption } from '../types/normalized-ticket-option';
 import type { PlanSelectedOptions } from '../types/plan-generation-context';
 import type { GenerateTravelGuideDto } from '../dto/generate-travel-guide.dto';
 import {
+  formatTravelGuideMoneyRange,
+  type TravelGuideCurrency,
+} from '../domain/travel-guide-currency.util';
+import {
   roomCountFromTravelers,
   tierAliasFor,
   type TravelGuideBudgetConstraints,
 } from './budget-constraints.types';
+import {
+  getTravelGuideCopy,
+  isAccommodationBudgetLabel,
+} from '../domain/travel-guide-copy';
+import {
+  resolveTravelGuideLocale,
+  type TravelGuideLocale,
+} from '../domain/travel-guide-locale';
 
 /** Internal tier config — API still uses economy/standard/comfort. */
 export const BUDGET_TIER_CONFIG = {
@@ -144,6 +156,7 @@ export class TravelGuideBudgetService {
     regionKind: TravelGuideRegionKind;
     selfDrive: boolean;
     budgetTierSnapshots?: TravelGuideBudgetTierSnapshot[];
+    locale?: TravelGuideLocale;
   }): TravelGuideBudgetItem[] {
     return buildTravelGuideBudgetItems(input);
   }
@@ -164,7 +177,10 @@ export class TravelGuideBudgetService {
     hotels?: NormalizedHotelOption[];
     tickets?: NormalizedTicketOption[];
     budgetTierSnapshots?: TravelGuideBudgetTierSnapshot[];
+    locale?: TravelGuideLocale;
   }): TravelGuideBudgetBreakdown {
+    const locale = resolveTravelGuideLocale(input.locale);
+    const labels = getTravelGuideCopy(locale).budgetLabels;
     const baseItems = this.buildItems({
       budgetTier: input.budgetTier,
       headcount: input.headcount,
@@ -173,6 +189,7 @@ export class TravelGuideBudgetService {
       regionKind: input.regionKind,
       selfDrive: input.selfDrive,
       budgetTierSnapshots: input.budgetTierSnapshots,
+      locale,
     });
 
     const items = baseItems.map((item) => ({ ...item }));
@@ -181,14 +198,19 @@ export class TravelGuideBudgetService {
       input.flights,
       input.hotels,
     );
+    const en = locale === 'en';
 
     if (input.selected.flight && input.interCity) {
       const amount = input.selected.flight.price.amount * input.headcount;
       replaceOrInsert(items, isFlightLabel, {
         label:
-          input.regionKind === 'hmt' ? '机票/高铁（往返）' : '机票（往返）',
-        range: formatMoneyRange(amount, amount, currency),
-        note: '基于推荐航班参考价（全员合计）；购票时以航司/OTA 实时为准。',
+          input.regionKind === 'hmt'
+            ? labels.flightOrRailRoundtrip
+            : labels.flightRoundtrip,
+        range: formatMoneyRange(amount, amount, currency, locale),
+        note: en
+          ? 'Based on recommended flight reference price (group total); confirm live fares on airline / OTA.'
+          : '基于推荐航班参考价（全员合计）；购票时以航司/OTA 实时为准。',
       });
     }
 
@@ -202,24 +224,30 @@ export class TravelGuideBudgetService {
       const rooms = input.headcount <= 1 ? 1 : Math.ceil(input.headcount / 2);
       const total = Math.round(nightly * rooms * input.accommodationNights);
       if (total > 0) {
-        replaceOrInsert(items, (label) => label.startsWith('住宿'), {
-          label: '住宿',
-          range: formatMoneyRange(total, total, currency),
-          note: `基于推荐酒店参考价 · ${rooms} 间 · ${input.accommodationNights} 晚。`,
+        replaceOrInsert(items, isAccommodationBudgetLabel, {
+          label: labels.accommodation,
+          range: formatMoneyRange(total, total, currency, locale),
+          note: en
+            ? `Based on recommended hotel reference · ${rooms} room(s) · ${input.accommodationNights} nights.`
+            : `基于推荐酒店参考价 · ${rooms} 间 · ${input.accommodationNights} 晚。`,
         });
       }
     }
 
     if (input.selected.ticket?.price?.amount) {
       const amount = input.selected.ticket.price.amount * input.headcount;
-      replaceOrInsert(items, (label) => /门票|票务/.test(label), {
-        label: '门票',
-        range: formatMoneyRange(amount, amount, currency),
-        note: input.selected.ticket.note ?? '基于已核验票务渠道参考价。',
+      replaceOrInsert(items, isTicketLabel, {
+        label: labels.tickets,
+        range: formatMoneyRange(amount, amount, currency, locale),
+        note:
+          input.selected.ticket.note ??
+          (en
+            ? 'Based on verified ticket-channel reference price.'
+            : '基于已核验票务渠道参考价。'),
       });
     }
 
-    recalculateTotal(items, input.headcount, currency);
+    recalculateTotal(items, input.headcount, currency, locale);
 
     return this.summarizeFromItems(items, input.budgetTier, currency);
   }
@@ -227,12 +255,13 @@ export class TravelGuideBudgetService {
   resolveTierLabel(
     tier: TravelGuideBudgetTier,
     snapshots?: TravelGuideBudgetTierSnapshot[],
+    locale: TravelGuideLocale = 'zh',
   ): string {
     const normalized =
       snapshots?.length === 3
         ? normalizeBudgetTierSnapshotsMonotonic(snapshots)
         : snapshots;
-    return formatBudgetTierLabel(tier, normalized);
+    return formatBudgetTierLabel(tier, normalized, locale);
   }
 
   summarizeFromPlan(
@@ -253,19 +282,35 @@ export class TravelGuideBudgetService {
     tier: TravelGuideBudgetTier,
     currency: 'CNY' | 'USD' = 'CNY',
   ): TravelGuideBudgetBreakdown {
-    const flight = rangeFromItems(items, [/机票/, /城际交通/, /高铁/]);
-    const hotel = rangeFromItems(items, [/^住宿/]);
-    const ticket = rangeFromItems(items, [/门票/, /票务/]);
-    const food = rangeFromItems(items, [/餐饮/, /饮食/, /夜宵/]);
+    const flight = rangeFromItems(items, [
+      /机票/,
+      /城际交通/,
+      /高铁/,
+      /Flights/i,
+      /Intercity travel/i,
+      /rail/i,
+    ]);
+    const hotel = rangeFromItems(items, [/^住宿/, /^Accommodation\b/i]);
+    const ticket = rangeFromItems(items, [/门票/, /票务/, /^Tickets\b/i]);
+    const food = rangeFromItems(items, [
+      /餐饮/,
+      /饮食/,
+      /夜宵/,
+      /Food/i,
+      /drinks/i,
+    ]);
     const localTransport = rangeFromItems(items, [
       /市内交通/,
       /接驳/,
       /打车/,
       /停车/,
       /自驾/,
+      /Local transport/i,
+      /Self-drive/i,
+      /venue transfer/i,
     ]);
     const total =
-      rangeFromItems(items, [/^合计/]) ??
+      rangeFromItems(items, [/^合计/, /Estimated total/i]) ??
       sumRanges([flight, hotel, ticket, food, localTransport]);
 
     return {
@@ -323,7 +368,15 @@ function parseMoneyRange(raw: string): { min: number; max: number } {
 }
 
 function isFlightLabel(label: string): boolean {
-  return /机票|城际交通|高铁/.test(label);
+  return /机票|城际交通|高铁|Flights|Intercity travel|rail/i.test(label);
+}
+
+function isTicketLabel(label: string): boolean {
+  return /门票|票务|^Tickets\b/i.test(label);
+}
+
+function isTotalLabel(label: string): boolean {
+  return label.startsWith('合计') || /Estimated total/i.test(label);
 }
 
 function resolveCurrency(
@@ -344,12 +397,14 @@ function formatMoneyRange(
   min: number,
   max: number,
   currency: 'CNY' | 'USD',
+  locale: TravelGuideLocale = 'zh',
 ): string {
-  const a = Math.round(min);
-  const b = Math.round(max);
-  const symbol = currency === 'USD' ? '$' : '¥';
-  if (a === b) return `约 ${symbol}${a}`;
-  return `约 ${symbol}${a}–${b}`;
+  return formatTravelGuideMoneyRange(
+    min,
+    max,
+    currency as TravelGuideCurrency,
+    locale,
+  );
 }
 
 function replaceOrInsert(
@@ -362,7 +417,7 @@ function replaceOrInsert(
     items[idx] = patch;
     return;
   }
-  const totalIdx = items.findIndex((item) => item.label.startsWith('合计'));
+  const totalIdx = items.findIndex((item) => isTotalLabel(item.label));
   if (totalIdx >= 0) {
     items.splice(totalIdx, 0, patch);
     return;
@@ -374,26 +429,33 @@ function recalculateTotal(
   items: TravelGuideBudgetItem[],
   headcount: number,
   currency: 'CNY' | 'USD',
+  locale: TravelGuideLocale = 'zh',
 ): void {
   let min = 0;
   let max = 0;
   for (const item of items) {
-    if (item.label.startsWith('合计')) continue;
+    if (isTotalLabel(item.label)) continue;
     const range = parseRange(item.range);
     if (!range) continue;
     min += range.min;
     max += range.max;
   }
-  const totalLabel = headcount > 1 ? '合计参考（全员）' : '合计参考（单人）';
+  const labels = getTravelGuideCopy(locale).budgetLabels;
+  const totalLabel = headcount > 1 ? labels.totalGroup : labels.totalSolo;
   const totalItem: TravelGuideBudgetItem = {
     label: totalLabel,
-    range: formatMoneyRange(min, max, currency),
+    // Parsed item ranges are already in the locale display currency.
+    range: formatMoneyRange(min, max, locale === 'en' ? 'USD' : 'CNY', locale),
     note:
       headcount > 1
-        ? `以上各项为本次出行合计估算（${headcount} 人）。`
-        : '以上各项为单人合计估算。',
+        ? locale === 'en'
+          ? `Trip total estimate for ${headcount} people.`
+          : `以上各项为本次出行合计估算（${headcount} 人）。`
+        : locale === 'en'
+          ? 'Solo trip total estimate.'
+          : '以上各项为单人合计估算。',
   };
-  const totalIdx = items.findIndex((item) => item.label.startsWith('合计'));
+  const totalIdx = items.findIndex((item) => isTotalLabel(item.label));
   if (totalIdx >= 0) items[totalIdx] = totalItem;
   else items.push(totalItem);
 }

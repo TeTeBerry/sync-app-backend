@@ -13,6 +13,7 @@ import type { RequestActor } from '../../common/auth/request-actor.types';
 import { UserGoalService } from '../goal/goal.service';
 import { TripPlanCollaborationService } from '../trip-plan/trip-plan-collaboration.service';
 import { TravelGuidePlanRepository } from './persistence/travel-guide-plan.repository';
+import { hasAuthenticatedTravelGuideOwner } from './domain/travel-guide-owner.util';
 
 export type TravelGuideSavedPlanView = TravelGuidePlanReadResult;
 
@@ -55,12 +56,18 @@ export class TravelGuideSavedPlanService {
       expiresAt,
     });
 
-    await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
+    const isAuthenticatedOwner = hasAuthenticatedTravelGuideOwner(
+      actor,
       ownerUserId,
-      activityLegacyId,
     );
+    if (isAuthenticatedOwner) {
+      await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
+        ownerUserId,
+        activityLegacyId,
+      );
+    }
 
-    if (actor) {
+    if (isAuthenticatedOwner && actor) {
       await this.goalService.subscribeOnEngagement(actor, activityLegacyId);
       await this.tripPlanCollaboration.linkGuideForActivity(
         actor,
@@ -250,5 +257,6 @@ function buildSavedPlanForm(
     ...(dto.selfDrive != null ? { selfDrive: dto.selfDrive } : {}),
     accommodationNights,
     ...(dto.note?.trim() ? { note: dto.note.trim() } : {}),
+    ...(dto.locale ? { locale: dto.locale } : {}),
   };
 }

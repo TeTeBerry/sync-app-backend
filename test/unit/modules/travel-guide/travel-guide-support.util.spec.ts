@@ -1,10 +1,7 @@
-import {
-  resolveTravelGuideSupported,
-  TRAVEL_GUIDE_PREPARING_MESSAGE,
-} from '../../../../src/modules/travel-guide/domain/travel-guide-support.util';
+import { resolveTravelGuideSupported } from '../../../../src/modules/travel-guide/domain/travel-guide-support.util';
 
 describe('travel-guide-support.util', () => {
-  it('supports overseas activities with hot path and hotel fallback', () => {
+  it('supports overseas activities with or without curated map data', () => {
     expect(
       resolveTravelGuideSupported({
         legacyId: 8,
@@ -28,7 +25,7 @@ describe('travel-guide-support.util', () => {
     ).toBe(true);
   });
 
-  it('rejects unsupported overseas activities without curated map data', () => {
+  it('supports an overseas activity without curated map data', () => {
     expect(
       resolveTravelGuideSupported({
         legacyId: 7,
@@ -37,7 +34,7 @@ describe('travel-guide-support.util', () => {
         latitude: 51.0894,
         longitude: 4.3774,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('supports domestic activities with location or hot path', () => {
@@ -59,7 +56,12 @@ describe('travel-guide-support.util', () => {
     ).toBe(true);
   });
 
-  it('exposes preparing message constant', () => {
-    expect(TRAVEL_GUIDE_PREPARING_MESSAGE).toContain('筹备中');
+  it('supports activities even when location metadata is incomplete', () => {
+    expect(
+      resolveTravelGuideSupported({
+        legacyId: 999,
+        region: 'overseas',
+      }),
+    ).toBe(true);
   });
 });

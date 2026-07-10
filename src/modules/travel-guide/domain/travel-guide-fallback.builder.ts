@@ -27,6 +27,11 @@ import {
   venueTransportSectionTitle,
 } from './travel-guide-transport.util';
 import { buildAbroadAccommodationFromHotPath } from './travel-guide-abroad-accommodation.util';
+import { getTravelGuideCopy } from './travel-guide-copy';
+import {
+  resolveTravelGuideLocale,
+  type TravelGuideLocale,
+} from './travel-guide-locale';
 
 function venueCity(location?: string): string {
   const loc = location?.trim() ?? '';
@@ -41,6 +46,7 @@ function buildTransportLines(
   activity: Activity,
   selfDrive: boolean,
   interCity: boolean,
+  locale: 'zh' | 'en' = 'zh',
 ): string[] {
   return buildInterCityTransportLines({
     departure,
@@ -51,6 +57,7 @@ function buildTransportLines(
     transportHints: [],
     destinationCity: destinationCityFromActivityLocation(activity.location),
     activity,
+    locale,
   });
 }
 
@@ -248,6 +255,7 @@ function buildExtendedSections(
     interCity?: boolean;
     /** When true, do not invent budget via estimate util (BudgetService owns it). */
     skipIndependentBudget?: boolean;
+    locale?: TravelGuideLocale;
   },
 ): Pick<
   TravelGuidePlan,
@@ -256,6 +264,8 @@ function buildExtendedSections(
   const destCity = destinationCityFromActivityLocation(activity.location);
   const regionKind = travelGuideRegionKind(activity);
   const interCity = Boolean(input.interCity);
+  const locale = resolveTravelGuideLocale(input.locale);
+  const section = getTravelGuideCopy(locale).section;
 
   const documentItems = llm?.documentItems?.length
     ? normalizeGuideLines(llm.documentItems)
@@ -263,6 +273,7 @@ function buildExtendedSections(
       ? buildTravelGuideDocumentItems({
           activity,
           destinationCity: destCity,
+          locale,
         })
       : undefined;
 
@@ -277,6 +288,7 @@ function buildExtendedSections(
       activity,
       destinationCity: destCity,
       interCity,
+      locale,
     });
 
   const venueTransportOptions = llm?.venueTransportOptions?.length
@@ -294,15 +306,16 @@ function buildExtendedSections(
           interCity,
           regionKind,
           selfDrive: input.selfDrive,
+          locale,
         });
 
   return {
     ...(documentItems?.length
-      ? { documents: { title: '证件 · 入境必备', items: documentItems } }
+      ? { documents: { title: section.documents, items: documentItems } }
       : {}),
-    tickets: { title: '门票渠道', channels: ticketChannels },
+    tickets: { title: section.tickets, channels: ticketChannels },
     essentials: {
-      title: '出行必备',
+      title: section.essentials,
       network: essentialsRaw.network,
       payment: essentialsRaw.payment,
       apps: essentialsRaw.apps,
@@ -310,13 +323,13 @@ function buildExtendedSections(
     ...(venueTransportOptions?.length
       ? {
           venueTransport: {
-            title: venueTransportSectionTitle(),
+            title: venueTransportSectionTitle(locale),
             options: venueTransportOptions,
           },
         }
       : {}),
     ...(budgetItems.length
-      ? { budget: { title: '预算参考（全程 · 合计）', items: budgetItems } }
+      ? { budget: { title: section.budget, items: budgetItems } }
       : {}),
   };
 }
@@ -338,15 +351,18 @@ export function buildTravelGuidePlan(input: {
    * Authoritative budget must come from BudgetService via llm.budgetItems / assembler.
    */
   skipIndependentBudget?: boolean;
+  locale?: TravelGuideLocale;
 }): TravelGuidePlan {
   const { activity, departure, headcount, budgetTier } = input;
   const selfDrive = Boolean(input.selfDrive);
   const mapSourcedOnly = Boolean(input.mapSourcedOnly);
-  const venue = activity.location?.trim() || '活动场馆';
-  const eventDates = activity.date?.trim() || '详见官方日程';
+  const locale = resolveTravelGuideLocale(input.locale);
+  const copy = getTravelGuideCopy(locale);
+  const venue = activity.location?.trim() || copy.fallback.venue;
+  const eventDates = activity.date?.trim() || copy.fallback.eventDates;
   const accommodationNights =
     input.accommodationNights ?? parseActivityDayCount(activity.date);
-  const budgetLabel = budgetTierLabel(budgetTier);
+  const budgetLabel = budgetTierLabel(budgetTier, locale);
 
   if (mapSourcedOnly && !input.llm) {
     throw new Error(
@@ -365,7 +381,14 @@ export function buildTravelGuidePlan(input: {
     ? normalizeGuideLines(input.llm.transportLines)
     : mapSourcedOnly
       ? []
-      : buildTransportLines(departure, venue, activity, selfDrive, interCity);
+      : buildTransportLines(
+          departure,
+          venue,
+          activity,
+          selfDrive,
+          interCity,
+          locale,
+        );
 
   const schemes = input.llm?.accommodationSchemes?.length
     ? input.llm.accommodationSchemes
@@ -416,7 +439,9 @@ export function buildTravelGuidePlan(input: {
     : mapSourcedOnly
       ? []
       : buildTips(selfDrive);
-  const tipItems = note ? [...tipItemsBase, `同行偏好：${note}`] : tipItemsBase;
+  const tipItems = note
+    ? [...tipItemsBase, copy.fallback.companionNote(note)]
+    : tipItemsBase;
 
   const extended = buildExtendedSections(activity, input.llm, {
     budgetTier,
@@ -425,6 +450,7 @@ export function buildTravelGuidePlan(input: {
     selfDrive,
     interCity: input.interCity,
     skipIndependentBudget: input.skipIndependentBudget,
+    locale,
   });
 
   return {
@@ -437,19 +463,19 @@ export function buildTravelGuidePlan(input: {
     accommodationNights,
     selfDrive,
     transport: {
-      title: transportSectionTitle(interCity, transportProfile),
+      title: transportSectionTitle(interCity, transportProfile, locale),
       lines: transportLines,
     },
     accommodation: {
-      title: '住宿推荐',
+      title: copy.section.accommodation,
       hotels,
       ...(schemes?.length ? { schemes } : {}),
     },
     ...(parkingLines?.length
-      ? { parking: { title: '停车指引', lines: parkingLines } }
+      ? { parking: { title: copy.section.parking, lines: parkingLines } }
       : {}),
-    nightlife: { title: '散场 AP · 夜宵', spots: nightlifeSpots },
-    tips: { title: '小贴士', items: tipItems },
+    nightlife: { title: copy.section.nightlife, spots: nightlifeSpots },
+    tips: { title: copy.section.tips, items: tipItems },
     ...extended,
   };
 }

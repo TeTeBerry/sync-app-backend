@@ -203,6 +203,18 @@ export const TRAVEL_GUIDE_HOT_ACTIVITIES: HotActivityMapProfile[] = [
     ],
   },
   {
+    activityLegacyId: 7,
+    activityCode: 'tomorrowland-belgium',
+    venue: {
+      title: 'De Schorre',
+      address: 'Schommelei 1, 2850 Boom, Belgium',
+      lat: 51.0894,
+      lng: 4.3774,
+    },
+    readableAddress: '比利时 Boom·De Schorre（Tomorrowland Belgium 场地）',
+    hubRoutes: [],
+  },
+  {
     activityLegacyId: 5,
     activityCode: 'edc-thailand',
     venue: {

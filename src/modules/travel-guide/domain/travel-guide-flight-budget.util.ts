@@ -5,35 +5,46 @@ import {
   TRAVEL_QUOTE_DISCLAIMER,
 } from './travel-guide-quote.util';
 import type { TravelGuideRegionKind } from './travel-guide-international.util';
+import {
+  formatTravelGuideMoneyRange,
+  type TravelGuideCurrency,
+} from './travel-guide-currency.util';
+import type { TravelGuideLocale } from './travel-guide-locale';
 
 export function formatQuoteMoney(
   amount: number,
   currency: 'CNY' | 'USD',
+  locale: TravelGuideLocale = 'zh',
 ): string {
-  const rounded = Math.round(amount);
-  if (currency === 'USD') return `$${rounded}`;
-  return `¥${rounded}`;
+  return formatTravelGuideMoneyRange(amount, amount, currency, locale, {
+    approx: false,
+  });
 }
 
 export function formatQuoteMoneyRange(
   min: number,
   max: number,
   currency: 'CNY' | 'USD',
-  options?: { suffix?: string },
+  options?: { suffix?: string; locale?: TravelGuideLocale },
 ): string {
-  const suffix = options?.suffix ?? '';
-  const symbol = currency === 'USD' ? '$' : '¥';
-  const a = Math.round(min);
-  const b = Math.round(max);
-  if (min === max) return `约 ${symbol}${a}${suffix}`;
-  return `约 ${symbol}${a}–${b}${suffix}`;
+  const locale = options?.locale ?? 'zh';
+  return formatTravelGuideMoneyRange(min, max, currency, locale, {
+    suffix: options?.suffix,
+  });
 }
 
-function formatQuoteDates(flight: FlightQuoteSnapshot): string {
+function formatQuoteDates(
+  flight: FlightQuoteSnapshot,
+  locale: TravelGuideLocale,
+): string {
   const outbound = flight.outboundDate.replace(/^\d{4}-/, '');
-  if (!flight.returnDate) return `去程 ${outbound}`;
+  if (!flight.returnDate) {
+    return locale === 'en' ? `Outbound ${outbound}` : `去程 ${outbound}`;
+  }
   const ret = flight.returnDate.replace(/^\d{4}-/, '');
-  return `${outbound} 去 · ${ret} 返`;
+  return locale === 'en'
+    ? `${outbound} out · ${ret} back`
+    : `${outbound} 去 · ${ret} 返`;
 }
 
 function routeLabel(flight: FlightQuoteSnapshot): string {
@@ -46,37 +57,58 @@ export function buildRollingGoFlightBudgetItem(
   input: {
     headcount: number;
     regionKind: TravelGuideRegionKind;
+    locale?: TravelGuideLocale;
   },
 ): TravelGuideBudgetItem {
   const { headcount, regionKind } = input;
+  const locale = input.locale === 'en' ? 'en' : 'zh';
   const { minPricePerAdult, maxPricePerAdult, currency, sampleLines } = flight;
+  const quoteCurrency = (currency ?? 'CNY') as TravelGuideCurrency;
   const baseLabel = flightBudgetLabelForQuote(regionKind, flight);
   const route = routeLabel(flight);
 
   const perPersonRange = formatQuoteMoneyRange(
     minPricePerAdult,
     maxPricePerAdult,
-    currency,
-    { suffix: '/人' },
+    quoteCurrency,
+    {
+      suffix: locale === 'en' ? ' / person' : '/人',
+      locale,
+    },
   );
   const totalRange = formatQuoteMoneyRange(
     minPricePerAdult * headcount,
     maxPricePerAdult * headcount,
-    currency,
+    quoteCurrency,
+    { locale },
   );
 
-  const noteParts = [
-    flight.cabinLabel,
-    perPersonRange,
-    headcount > 1
-      ? `${headcount} 人合计 ${totalRange.replace(/^约 /, '')}`
-      : null,
-    formatQuoteDates(flight),
-    flight.cabinFallback && flight.requestedCabinLabel
-      ? `暂无${flight.requestedCabinLabel}，以下为${flight.cabinLabel ?? '经济舱'}参考价`
-      : null,
-    TRAVEL_QUOTE_DISCLAIMER,
-  ].filter(Boolean);
+  const noteParts =
+    locale === 'en'
+      ? [
+          flight.cabinLabel,
+          perPersonRange,
+          headcount > 1
+            ? `${headcount} travelers total ${totalRange.replace(/^About /, '')}`
+            : null,
+          formatQuoteDates(flight, locale),
+          flight.cabinFallback && flight.requestedCabinLabel
+            ? `${flight.requestedCabinLabel} unavailable — showing ${flight.cabinLabel ?? 'Economy'} reference fares`
+            : null,
+          TRAVEL_QUOTE_DISCLAIMER,
+        ]
+      : [
+          flight.cabinLabel,
+          perPersonRange,
+          headcount > 1
+            ? `${headcount} 人合计 ${totalRange.replace(/^约 /, '')}`
+            : null,
+          formatQuoteDates(flight, locale),
+          flight.cabinFallback && flight.requestedCabinLabel
+            ? `暂无${flight.requestedCabinLabel}，以下为${flight.cabinLabel ?? '经济舱'}参考价`
+            : null,
+          TRAVEL_QUOTE_DISCLAIMER,
+        ];
 
   const details = flight.flightOffers?.length
     ? undefined
@@ -88,7 +120,7 @@ export function buildRollingGoFlightBudgetItem(
   return {
     label: `${baseLabel} · ${route}`,
     range: headcount > 1 ? totalRange : perPersonRange,
-    note: noteParts.join(' · '),
+    note: noteParts.filter(Boolean).join(' · '),
     ...(details?.length ? { details } : {}),
   };
 }

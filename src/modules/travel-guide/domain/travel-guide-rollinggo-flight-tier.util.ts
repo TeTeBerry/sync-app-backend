@@ -41,7 +41,22 @@ export function rollingGoCabinGradesForBudgetTier(
   return CABIN_FALLBACK_CHAIN[tier];
 }
 
-export function rollingGoCabinGradeLabel(grade: RollingGoCabinGrade): string {
+export function rollingGoCabinGradeLabel(
+  grade: RollingGoCabinGrade,
+  locale: 'zh' | 'en' = 'zh',
+): string {
+  if (locale === 'en') {
+    switch (grade) {
+      case 'ECONOMY':
+        return 'Economy';
+      case 'PREMIUM_ECONOMY':
+        return 'Premium Economy';
+      case 'BUSINESS':
+        return 'Business';
+      default:
+        return 'First';
+    }
+  }
   switch (grade) {
     case 'ECONOMY':
       return '经济舱';
@@ -56,6 +71,10 @@ export function rollingGoCabinGradeLabel(grade: RollingGoCabinGrade): string {
 
 export function rollingGoCabinLabelForBudgetTier(
   tier: TravelGuideBudgetTier,
+  locale: 'zh' | 'en' = 'zh',
 ): string {
-  return rollingGoCabinGradeLabel(mapSyncBudgetTierToRollingGoCabinGrade(tier));
+  return rollingGoCabinGradeLabel(
+    mapSyncBudgetTierToRollingGoCabinGrade(tier),
+    locale,
+  );
 }

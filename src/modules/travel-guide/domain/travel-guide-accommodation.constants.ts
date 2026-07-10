@@ -21,10 +21,47 @@ const GENERIC_SCHEME_LABELS = [
   '同档备选',
 ];
 
+const SCHEME_LABELS_BY_TIER_EN: Record<TravelGuideBudgetTier, string[]> = {
+  economy: [
+    'Best value pick',
+    'Near venue',
+    'Budget chain',
+    'Along metro',
+    'Same-tier backup',
+  ],
+  standard: [
+    'Best overall',
+    'Near venue',
+    'Comfort business',
+    'City amenities',
+    'Same-tier backup',
+  ],
+  comfort: [
+    'Premium pick',
+    'Near venue',
+    'High-star resort',
+    'City luxury',
+    'Same-tier backup',
+  ],
+};
+
+const GENERIC_SCHEME_LABELS_EN = [
+  'Best overall',
+  'Near venue',
+  'Walkable',
+  'City amenities',
+  'Same-tier backup',
+];
+
 export function tierAccommodationSchemeLabel(
   index: number,
   tier: TravelGuideBudgetTier,
+  locale: 'zh' | 'en' = 'zh',
 ): string {
+  if (locale === 'en') {
+    const labels = SCHEME_LABELS_BY_TIER_EN[tier] ?? GENERIC_SCHEME_LABELS_EN;
+    return labels[index] ?? `Pick ${index + 1}`;
+  }
   const labels = SCHEME_LABELS_BY_TIER[tier] ?? GENERIC_SCHEME_LABELS;
   return labels[index] ?? `综合推荐${index + 1}`;
 }
@@ -33,7 +70,33 @@ export function tierAccommodationSchemeReason(
   poi: RankedMapPoi,
   tier: TravelGuideBudgetTier,
   index: number,
+  locale: 'zh' | 'en' = 'zh',
 ): string {
+  if (locale === 'en') {
+    if (index === 0) {
+      if (tier === 'economy') {
+        return 'Best balance of distance, rating, and price in this tier — budget-first pick.';
+      }
+      if (tier === 'comfort') {
+        return 'Best rating and stay quality in this tier — for comfort seekers.';
+      }
+      return 'Best balance of distance, rating, and price in this comfort tier.';
+    }
+    if (poi.distanceM <= 800) {
+      return 'Closest to the venue — short return after multi-day sets.';
+    }
+    if (poi.distanceM >= 2000) {
+      return 'Stronger city amenities for dining, shopping, and next-day plans.';
+    }
+    if (tier === 'economy') {
+      return 'Priced in the economy band — compare as a same-tier backup.';
+    }
+    if (tier === 'comfort') {
+      return 'Matches the premium band — compare as a same-tier backup.';
+    }
+    return 'Selected on distance, rating, and same-tier pricing — swap by availability.';
+  }
+
   if (index === 0) {
     if (tier === 'economy') {
       return '同档位内距离、评分与价位综合最优，控预算首选。';

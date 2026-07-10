@@ -61,4 +61,14 @@ describe('travel-guide-generation-cache.util', () => {
     );
     expect(shanghai).not.toBe(beijing);
   });
+
+  it('differs cache key when locale changes', () => {
+    const zh = buildTravelGuideGenerationCacheKey(
+      normalizeTravelGuideGenerationParams(4, { ...baseDto, locale: 'zh' }, 2),
+    );
+    const en = buildTravelGuideGenerationCacheKey(
+      normalizeTravelGuideGenerationParams(4, { ...baseDto, locale: 'en' }, 2),
+    );
+    expect(zh).not.toBe(en);
+  });
 });

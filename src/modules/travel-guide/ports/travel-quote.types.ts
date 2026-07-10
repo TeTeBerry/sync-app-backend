@@ -23,6 +23,7 @@ export interface TravelQuoteQuery {
   outboundDate: string;
   returnDate?: string;
   selfDrive: boolean;
+  locale?: 'zh' | 'en';
 }
 
 export interface FlightQuoteSnapshot {

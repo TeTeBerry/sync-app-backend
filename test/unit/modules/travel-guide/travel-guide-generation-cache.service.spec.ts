@@ -73,6 +73,7 @@ describe('TravelGuideGenerationCacheService', () => {
       selfDrive: false,
       accommodationNights: 2,
       note: '',
+      locale: 'zh' as const,
     };
     const plan = { activityName: 'Test' } as TravelGuidePlan;
 
@@ -84,6 +85,10 @@ describe('TravelGuideGenerationCacheService', () => {
         $set: expect.objectContaining({
           cacheKey: 'cache-key',
           activityLegacyId: 4,
+          requestParams: expect.objectContaining({
+            ...params,
+            mapDataVersion: 5,
+          }),
           plan,
           expiresAt: expect.any(Date),
         }),

@@ -71,7 +71,8 @@ export class TravelGuideGeoCacheService {
       };
     }
 
-    if (isTravelGuideAbroad(activity)) {
+    const abroad = isTravelGuideAbroad(activity);
+    if (abroad) {
       const lat = activity.latitude;
       const lng = activity.longitude;
       if (
@@ -97,6 +98,10 @@ export class TravelGuideGeoCacheService {
 
     const query = activity.location?.trim() || activity.name?.trim();
     if (!query) return null;
+
+    // Overseas venues must come from activity coordinates, the local venue
+    // cache, or the curated hot-path catalog. Do not silently call a map API.
+    if (abroad) return null;
 
     const city = query.split(/[·,，]/)[0]?.trim();
     const memKey = `geo:${query}`;
@@ -265,7 +270,7 @@ export class TravelGuideGeoCacheService {
     venue: GeocodedPlace;
     keyword: string;
     kind: MapPoiKind;
-    /** 境外场馆：跳过高德周边搜索，仅用精选兜底 POI */
+    /** 境外场馆只使用本地精选 POI；境内继续使用高德。 */
     abroad?: boolean;
   }): Promise<RawMapPoi[]> {
     const abroad =
@@ -276,7 +281,13 @@ export class TravelGuideGeoCacheService {
     if (cached) return cached;
 
     let pois: RawMapPoi[] = [];
-    if (!abroad) {
+    if (abroad) {
+      pois = getHotPathFallbackPois(
+        input.activityLegacyId,
+        input.kind,
+        input.keyword,
+      );
+    } else {
       pois = await this.map.searchNearbyPois({
         lat: input.venue.lat,
         lng: input.venue.lng,
@@ -286,7 +297,7 @@ export class TravelGuideGeoCacheService {
         pageSize: 15,
       });
     }
-    if (!pois.length) {
+    if (!pois.length && !abroad) {
       pois = getHotPathFallbackPois(
         input.activityLegacyId,
         input.kind,

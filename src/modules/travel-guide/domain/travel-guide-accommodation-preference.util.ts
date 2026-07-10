@@ -1,5 +1,6 @@
 import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 import type { LlmTravelGuidePayload } from './travel-guide-llm.types';
+import { isAccommodationBudgetLabel } from './travel-guide-copy';
 
 /** 按用户「是否住宿」偏好裁剪攻略中的住宿区块与酒店预算项。 */
 export function applyTravelGuideAccommodationPreference(
@@ -11,7 +12,7 @@ export function applyTravelGuideAccommodationPreference(
   }
 
   const budgetItems = plan.budget?.items.filter(
-    (item) => item.label !== '住宿',
+    (item) => !isAccommodationBudgetLabel(item.label),
   );
 
   return {
@@ -39,9 +40,15 @@ export function stripLlmAccommodationPayload(
     ...payload,
     hotels: [],
     accommodationSchemes: [],
-    budgetItems: payload.budgetItems?.filter((item) => item.label !== '住宿'),
+    budgetItems: payload.budgetItems?.filter(
+      (item) => !isAccommodationBudgetLabel(item.label),
+    ),
     tipItems: payload.tipItems?.map((tip) =>
-      tip.replace(/住宿与/g, '').replace(/酒店与/g, ''),
+      tip
+        .replace(/住宿与/g, '')
+        .replace(/酒店与/g, '')
+        .replace(/stay and /gi, '')
+        .replace(/hotel and /gi, ''),
     ),
   };
 }

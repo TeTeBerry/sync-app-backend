@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
@@ -19,14 +18,12 @@ import {
   parseActivityDayCount,
   resolveTravelGuideBudgetTier,
 } from './domain/parse-activity-days.util';
+import { resolveTravelGuideLocale } from './domain/travel-guide-locale';
 import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
-import {
-  resolveTravelGuideSupported,
-  TRAVEL_GUIDE_PREPARING_MESSAGE,
-} from './domain/travel-guide-support.util';
 import { applyTravelGuideAccommodationPreference } from './domain/travel-guide-accommodation-preference.util';
 import { TravelGuideGuardService } from './travel-guide-guard.service';
 import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
+import { resolveTravelGuideOwnerUserId } from './domain/travel-guide-owner.util';
 import {
   buildTravelGuideGenerationCacheKey,
   normalizeTravelGuideGenerationParams,
@@ -35,7 +32,10 @@ import {
 import { buildPlanHotelByTierFromMapRankings } from './domain/travel-guide-map-hotel-tier.util';
 import { buildPlanHotelByTierFromHotPath } from './domain/travel-guide-abroad-accommodation.util';
 import { buildMinimalMapContextForQuote } from './domain/travel-guide-quote-map-context.util';
-import { travelGuideRegionKind } from './domain/travel-guide-international.util';
+import {
+  isTravelGuideAbroad,
+  travelGuideRegionKind,
+} from './domain/travel-guide-international.util';
 import { shouldFetchTravelQuote } from './domain/travel-guide-quote.util';
 import {
   isPlanQuoteFresh,
@@ -64,6 +64,7 @@ import { selectOptionsFromRecommendations } from './domain/select-recommended-op
 import { assembleTravelGuidePlanFromContext } from './domain/assemble-travel-guide-plan.util';
 import { attachQuoteTierMetadataToPlan } from './domain/attach-quote-tier-metadata.util';
 import { dominantCurrency } from './budget/budget-constraints.types';
+import { mapCandidatesToLlmFallback } from './map/travel-guide-map-plan.builder';
 
 export type TravelGuideGenerateOptions = {
   onProgress?: TravelGuideProgressReporter;
@@ -106,20 +107,16 @@ export class TravelGuideGenerationOrchestrator {
     const onProgress = options?.onProgress;
     await reportTravelGuideProgress(onProgress, 'validating');
 
-    if (!this.amap.enabled) {
-      throw new ServiceUnavailableException(
-        'AI 出行攻略依赖高德地图，请配置 AMAP_KEY 后重试',
-      );
-    }
-
     const activity =
       await this.activityService.findByLegacyId(activityLegacyId);
     if (!activity) {
       throw new NotFoundException(`Activity ${activityLegacyId} not found`);
     }
 
-    if (!resolveTravelGuideSupported(activity)) {
-      throw new BadRequestException(TRAVEL_GUIDE_PREPARING_MESSAGE);
+    if (!this.amap.enabled && !isTravelGuideAbroad(activity)) {
+      throw new ServiceUnavailableException(
+        'AI 出行攻略依赖高德地图，请配置 AMAP_KEY 后重试',
+      );
     }
 
     await assertUserUgcTexts(
@@ -143,6 +140,7 @@ export class TravelGuideGenerationOrchestrator {
       ...(departureCity ? { departureCity } : {}),
       accommodationNights,
       budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
+      locale: resolveTravelGuideLocale(dto.locale),
     };
 
     const cacheParams = normalizeTravelGuideGenerationParams(
@@ -421,6 +419,7 @@ export class TravelGuideGenerationOrchestrator {
         flights: ctx.searchResults.flights,
         hotels: ctx.searchResults.hotels,
         tickets: ctx.searchResults.tickets,
+        locale: generationDto.locale,
       });
       ctx.sectionStatus.budget = ctx.budget.items.length
         ? 'ready'
@@ -442,34 +441,83 @@ export class TravelGuideGenerationOrchestrator {
         });
         ctx.sectionStatus.itinerary = 'ready';
       } catch (error) {
-        ctx.sectionStatus.itinerary = 'failed';
-        ctx.errors.push({
-          section: 'itinerary',
-          code: 'LLM_VALIDATION_FAILED',
-          message: error instanceof Error ? error.message : String(error),
-        });
-        // Keep selected options + budget; use deterministic empty prose shell.
-        ctx.generatedContent = {
-          transportLines: ctx.selectedOptions.flight
-            ? [
-                `${ctx.selectedOptions.flight.originAirportCode}→${ctx.selectedOptions.flight.destinationAirportCode}`,
-              ]
-            : [],
-          hotels: ctx.selectedOptions.hotel
-            ? [
-                {
-                  name: ctx.selectedOptions.hotel.name,
-                  note: '推荐住宿（AI 文案暂不可用）',
-                },
-              ]
-            : [],
-          nightlifeSpots: location.ranked.nightlife.slice(0, 4).map((p) => ({
-            name: p.name,
-            note: p.address ?? '',
-          })),
-          tipItems: ['行程文案生成失败，已保留推荐航班/酒店与预算汇总。'],
-          budgetItems: ctx.budget.items,
-        };
+        this.logger.warn(
+          `travel guide LLM payload failed activity=${activityLegacyId}: ${
+            error instanceof Error ? error.message : error
+          }`,
+        );
+        // Prefer map/locale baseline over a bare error tip when polish throws.
+        try {
+          ctx.generatedContent = mapCandidatesToLlmFallback(
+            location.mapCtx,
+            location.ranked,
+            {
+              departure: generationDto.departure.trim(),
+              departureCity: generationDto.departureCity?.trim(),
+              selfDrive: Boolean(generationDto.selfDrive),
+              accommodationNights,
+              headcount: generationDto.headcount,
+              activity,
+              locale: generationDto.locale,
+            },
+          );
+          if (ctx.budget.items.length) {
+            ctx.generatedContent = {
+              ...ctx.generatedContent,
+              budgetItems: ctx.budget.items,
+            };
+          }
+          // Map baseline is usable — keep cacheable. Record polish failure only.
+          ctx.sectionStatus.itinerary = 'ready';
+          ctx.errors.push({
+            section: 'itinerary',
+            code: 'LLM_POLISH_FAILED_MAP_FALLBACK',
+            message: error instanceof Error ? error.message : String(error),
+          });
+        } catch (fallbackError) {
+          const locale = resolveTravelGuideLocale(generationDto.locale);
+          ctx.sectionStatus.itinerary = 'failed';
+          ctx.errors.push({
+            section: 'itinerary',
+            code: 'LLM_VALIDATION_FAILED',
+            message: error instanceof Error ? error.message : String(error),
+          });
+          ctx.generatedContent = {
+            transportLines: ctx.selectedOptions.flight
+              ? [
+                  `${ctx.selectedOptions.flight.originAirportCode}→${ctx.selectedOptions.flight.destinationAirportCode}`,
+                ]
+              : [],
+            hotels: ctx.selectedOptions.hotel
+              ? [
+                  {
+                    name: ctx.selectedOptions.hotel.name,
+                    note:
+                      locale === 'en'
+                        ? 'Recommended stay (plan copy temporarily unavailable)'
+                        : '推荐住宿（AI 文案暂不可用）',
+                  },
+                ]
+              : [],
+            nightlifeSpots: location.ranked.nightlife.slice(0, 4).map((p) => ({
+              name: p.name,
+              note: p.address ?? '',
+            })),
+            tipItems: [
+              locale === 'en'
+                ? 'Plan copy failed — kept recommended flight/hotel and budget summary.'
+                : '行程文案生成失败，已保留推荐航班/酒店与预算汇总。',
+            ],
+            budgetItems: ctx.budget.items,
+          };
+          this.logger.warn(
+            `travel guide map fallback also failed activity=${activityLegacyId}: ${
+              fallbackError instanceof Error
+                ? fallbackError.message
+                : fallbackError
+            }`,
+          );
+        }
       }
 
       await reportTravelGuideProgress(onProgress, 'assembling');
@@ -519,12 +567,20 @@ export class TravelGuideGenerationOrchestrator {
       );
 
       await reportTravelGuideProgress(onProgress, 'finishing');
-      await this.planCache.saveGeneratedPlan(
-        cacheKey,
-        activityLegacyId,
-        cacheParams,
-        plan,
-      );
+      // Only skip cache for tip-shell degradation (itinerary=failed).
+      // Map-baseline fallback is marked ready and remains cacheable.
+      if (ctx.sectionStatus.itinerary !== 'failed') {
+        await this.planCache.saveGeneratedPlan(
+          cacheKey,
+          activityLegacyId,
+          cacheParams,
+          plan,
+        );
+      } else {
+        this.logger.warn(
+          `travel guide skip cache activity=${activityLegacyId} key=${cacheKey.slice(0, 8)} itinerary=failed`,
+        );
+      }
 
       await reportTravelGuideProgress(onProgress, 'completed');
       return this.finishWithPlan(
@@ -639,10 +695,13 @@ export class TravelGuideGenerationOrchestrator {
     activityLegacyId: number,
     plan: TravelGuidePlan,
   ): Promise<{ plan: TravelGuidePlan; guideId?: string }> {
+    const ownerUserId = resolveTravelGuideOwnerUserId(actor, {
+      guideId: dto.guideId,
+    });
     const guideId = await this.persistSavedPlanIfRequested(
       dto,
       accommodationNights,
-      actor.resolvedUserId,
+      ownerUserId,
       activityLegacyId,
       plan,
       actor,

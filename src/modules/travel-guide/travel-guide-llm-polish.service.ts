@@ -35,9 +35,9 @@ import type {
 } from './map/travel-guide-map.types';
 import {
   TRAVEL_GUIDE_LLM_TIMEOUT_MS_DEFAULT,
-  TRAVEL_GUIDE_MAP_JSON_SYSTEM,
-  TRAVEL_GUIDE_MAP_JSON_SYSTEM_NO_STAY,
+  getTravelGuideMapJsonSystem,
 } from './travel-guide-llm-prompts';
+import { resolveTravelGuideLocale } from './domain/travel-guide-locale';
 
 type ActivityRecord = NonNullable<
   Awaited<ReturnType<ActivityService['findByLegacyId']>>
@@ -78,6 +78,7 @@ export class TravelGuideLlmPolishService {
       accommodationNights,
       headcount: dto.headcount,
       activity,
+      locale: dto.locale,
     });
 
     if (
@@ -151,6 +152,7 @@ export class TravelGuideLlmPolishService {
           transportHints: mapCtx.transportHints,
           departureCity: dto.departureCity?.trim(),
           activity,
+          locale: resolveTravelGuideLocale(dto.locale),
         },
       ),
       budgetItems: polishedOrMap.budgetItems?.length
@@ -183,6 +185,7 @@ export class TravelGuideLlmPolishService {
   ): Promise<LlmTravelGuidePayload | null> {
     if (!this.llmService.enabled) return null;
 
+    const locale = resolveTravelGuideLocale(dto.locale);
     const budgetTier = resolveTravelGuideBudgetTier(dto.budgetTier);
     const hotelRanges = budgetTierHotelNightRanges(budgetTier);
     const routeSummary = dto.selfDrive
@@ -195,11 +198,13 @@ export class TravelGuideLlmPolishService {
       venueLabel: activity.location?.trim() || mapCtx.venue.title,
       venueReadableAddress: mapCtx.venueReadableAddress,
       venueSource: mapCtx.venueSource,
-      eventDates: activity.date?.trim() || '详见官方日程',
+      eventDates:
+        activity.date?.trim() ||
+        (locale === 'en' ? 'See official schedule' : '详见官方日程'),
       departure: dto.departure.trim(),
       headcount: dto.headcount,
       budgetTier,
-      budgetLabel: budgetTierLabel(budgetTier),
+      budgetLabel: budgetTierLabel(budgetTier, locale),
       accommodationNights,
       selfDrive: Boolean(dto.selfDrive),
       eventEndHour: mapCtx.eventEndHour,
@@ -247,10 +252,10 @@ export class TravelGuideLlmPolishService {
     });
 
     try {
-      const systemPrompt =
-        accommodationNights > 0
-          ? TRAVEL_GUIDE_MAP_JSON_SYSTEM
-          : TRAVEL_GUIDE_MAP_JSON_SYSTEM_NO_STAY;
+      const systemPrompt = getTravelGuideMapJsonSystem(
+        locale,
+        accommodationNights,
+      );
       const result = await this.llmService.invokeJson<LlmTravelGuidePayload>(
         systemPrompt,
         user,
@@ -290,7 +295,8 @@ export class TravelGuideLlmPolishService {
         (result.hotels?.length ?? 0) >= 2;
       if (!hasHotels) return false;
     }
-    if (!result.nightlifeSpots?.length) return false;
+    // Align with POI pipeline: overseas curated catalogs may omit nightlife.
+    if (!result.nightlifeSpots?.length && !abroad) return false;
     if (!result.ticketChannels?.length) return false;
     if (!result.budgetItems?.length) return false;
     if (!result.venueTransportOptions?.length) return false;

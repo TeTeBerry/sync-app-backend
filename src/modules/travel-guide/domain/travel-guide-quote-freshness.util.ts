@@ -1,6 +1,7 @@
 import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 import { TRAVEL_QUOTE_DISCLAIMER } from './travel-guide-quote.util';
 import { hasRollingGoFlightBudget } from './travel-guide-flight-budget-detect.util';
+import { isAccommodationBudgetLabel } from './travel-guide-copy';
 
 const DEFAULT_QUOTE_CACHE_TTL_SEC = 3600;
 
@@ -17,7 +18,7 @@ export function resolveQuoteCacheTtlMs(
 export function hasEmbeddedRollingGoHotelQuote(plan: TravelGuidePlan): boolean {
   if (plan.accommodationNights <= 0) return false;
   const accommodationItem = plan.budget?.items?.find((item) =>
-    item.label.startsWith('住宿'),
+    isAccommodationBudgetLabel(item.label),
   );
   if (accommodationItem?.note?.includes(TRAVEL_QUOTE_DISCLAIMER)) {
     return true;

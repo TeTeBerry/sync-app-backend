@@ -102,4 +102,37 @@ describe('TravelGuidePoiPipeline', () => {
       ranked: expect.objectContaining({ hotels: [] }),
     });
   });
+
+  it('allows empty nightlife candidates for abroad activities', async () => {
+    const abroadActivity = {
+      legacyId: 7,
+      name: 'Tomorrowland Belgium',
+      date: '07/17-19',
+      location: 'Boom, Belgium',
+      region: 'overseas',
+    } as never;
+    const mapCtx = { venue: { title: 'De Schorre' } };
+    const ranked = { hotels: [], nightlife: [], parking: [] };
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        TravelGuidePoiPipeline,
+        {
+          provide: TravelGuidePoiCollector,
+          useValue: { collect: jest.fn().mockResolvedValue(mapCtx) },
+        },
+        {
+          provide: TravelGuidePoiRanker,
+          useValue: { rank: jest.fn().mockReturnValue(ranked) },
+        },
+      ],
+    }).compile();
+
+    const pipeline = moduleRef.get(TravelGuidePoiPipeline);
+    await expect(
+      pipeline.run(abroadActivity, generationDto, 2),
+    ).resolves.toEqual({
+      mapCtx,
+      ranked,
+    });
+  });
 });

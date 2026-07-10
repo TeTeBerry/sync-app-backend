@@ -18,6 +18,12 @@ import {
   travelGuideRegionKind,
   type TravelGuideRegionKind,
 } from './domain/travel-guide-international.util';
+import {
+  getTravelGuideCopy,
+  isAccommodationBudgetLabel,
+  isTotalBudgetLabel,
+} from './domain/travel-guide-copy';
+import { resolveTravelGuideLocale } from './domain/travel-guide-locale';
 import { mapCandidatesToLlmFallback } from './map/travel-guide-map-plan.builder';
 import { TravelGuidePoiCollector } from './map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from './map/travel-guide-poi.ranker';
@@ -46,8 +52,10 @@ import type {
   TravelGuidePlan,
 } from '@sync/travel-guide-contracts';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
-import type { TravelGuideMapContext } from './map/travel-guide-map.types';
 import type { Activity } from '../../database/schemas/activity.schema';
+
+const INTERCITY_LINE_PATTERN =
+  /机票|高铁|航班|国际|城际|flight|rail|intercity|international|round-?trip/i;
 
 @Injectable()
 export class TravelGuideBudgetTierService {
@@ -103,6 +111,7 @@ export class TravelGuideBudgetTierService {
       saved.form,
       body.budgetTier,
     );
+    const locale = resolveTravelGuideLocale(dto.locale);
 
     const accommodationNights =
       dto.accommodationNights ?? parseActivityDayCount(activity.date);
@@ -113,6 +122,7 @@ export class TravelGuideBudgetTierService {
       dto.headcount,
       accommodationNights,
       activity,
+      locale,
     );
 
     updatedPlan = applyTravelGuideAccommodationPreference(
@@ -135,7 +145,7 @@ export class TravelGuideBudgetTierService {
 
     const interCity =
       updatedPlan.transport.lines.some((line) =>
-        /机票|高铁|航班|国际|城际/.test(line),
+        INTERCITY_LINE_PATTERN.test(line),
       ) || Boolean(updatedPlan.flightByTier);
 
     // Lazy-load missing flight tier quotes
@@ -178,7 +188,11 @@ export class TravelGuideBudgetTierService {
     });
 
     if (updatedPlan.budget?.items?.length) {
-      recalculateBudgetTotalItems(updatedPlan.budget.items, dto.headcount);
+      recalculateBudgetTotalItems(
+        updatedPlan.budget.items,
+        dto.headcount,
+        locale,
+      );
     }
 
     // Lazy-load hotel quote if needed for this tier
@@ -210,6 +224,7 @@ export class TravelGuideBudgetTierService {
               regionKind: travelGuideRegionKind(activity),
               interCity: Boolean(mapCtx.interCity),
               budgetTier: body.budgetTier,
+              locale,
             },
           );
 
@@ -241,6 +256,7 @@ export class TravelGuideBudgetTierService {
               accommodationNights,
               headcount: dto.headcount,
               activity,
+              locale,
             });
 
             updatedPlan = applyTravelGuideAccommodationPreference(
@@ -273,7 +289,11 @@ export class TravelGuideBudgetTierService {
     });
 
     if (updatedPlan.budget?.items?.length) {
-      recalculateBudgetTotalItems(updatedPlan.budget.items, dto.headcount);
+      recalculateBudgetTotalItems(
+        updatedPlan.budget.items,
+        dto.headcount,
+        locale,
+      );
     }
 
     const result = await this.savedPlanService.updateBudgetTier(
@@ -297,11 +317,13 @@ function applyBudgetTierFallback(
   headcount: number,
   accommodationNights: number,
   activity: Pick<Activity, 'region' | 'name' | 'location'>,
+  locale: 'zh' | 'en' = 'zh',
 ): TravelGuidePlan {
   const regionKind: TravelGuideRegionKind = travelGuideRegionKind(activity);
   const interCity = plan.transport.lines.some((line) =>
-    /机票|高铁|航班|国际|城际/.test(line),
+    INTERCITY_LINE_PATTERN.test(line),
   );
+  const copy = getTravelGuideCopy(locale);
 
   const snapshots =
     plan.budgetTierSnapshots?.length === 3
@@ -316,32 +338,35 @@ function applyBudgetTierFallback(
     regionKind,
     selfDrive: plan.selfDrive ?? false,
     budgetTierSnapshots: snapshots,
+    locale,
   });
 
   const existingItems = plan.budget?.items ?? [];
   const preservedItems = existingItems.filter(
     (item) =>
-      !item.label.startsWith('住宿') &&
-      !item.label.startsWith('合计') &&
+      !isAccommodationBudgetLabel(item.label) &&
+      !isTotalBudgetLabel(item.label) &&
       !(plan.flightByTier && isFlightBudgetItem(item)),
   );
 
-  const accommodationItem = freshItems.find((item) => item.label === '住宿');
+  const accommodationItem = freshItems.find((item) =>
+    isAccommodationBudgetLabel(item.label),
+  );
   const items: TravelGuideBudgetItem[] =
     preservedItems.length > 0
       ? [...preservedItems, ...(accommodationItem ? [accommodationItem] : [])]
-      : freshItems.filter((item) => !item.label.startsWith('合计'));
+      : freshItems.filter((item) => !isTotalBudgetLabel(item.label));
 
   if (items.length) {
-    recalculateBudgetTotalItems(items, headcount);
+    recalculateBudgetTotalItems(items, headcount, locale);
   }
 
   return {
     ...plan,
-    budgetLabel: formatBudgetTierLabel(budgetTier, snapshots),
+    budgetLabel: formatBudgetTierLabel(budgetTier, snapshots, locale),
     budgetTierSnapshots: snapshots,
     budget: {
-      title: plan.budget?.title ?? '预算参考（全程 · 合计）',
+      title: plan.budget?.title ?? copy.section.budget,
       items: items.length ? items : freshItems,
     },
   };
@@ -350,32 +375,43 @@ function applyBudgetTierFallback(
 function recalculateBudgetTotalItems(
   items: TravelGuideBudgetItem[],
   headcount: number,
+  locale: 'zh' | 'en' = 'zh',
 ): void {
+  const copy = getTravelGuideCopy(locale);
   const subtotalMin = items.reduce((sum, item) => {
-    if (item.label.startsWith('合计')) return sum;
+    if (isTotalBudgetLabel(item.label)) return sum;
     const nums = item.range.match(/\d+/g)?.map(Number) ?? [];
     return sum + (nums[0] ?? 0);
   }, 0);
 
   const subtotalMax = items.reduce((sum, item) => {
-    if (item.label.startsWith('合计')) return sum;
+    if (isTotalBudgetLabel(item.label)) return sum;
     const nums = item.range.match(/\d+/g)?.map(Number) ?? [];
     const max = nums.length > 1 ? nums[nums.length - 1]! : (nums[0] ?? 0);
     return sum + max;
   }, 0);
 
-  const totalLabel = headcount > 1 ? '合计参考（全员）' : '合计参考（单人）';
-  const totalIdx = items.findIndex((item) => item.label.startsWith('合计'));
+  const totalLabel =
+    headcount > 1 ? copy.budgetLabels.totalGroup : copy.budgetLabels.totalSolo;
+  const totalIdx = items.findIndex((item) => isTotalBudgetLabel(item.label));
   const totalItem: TravelGuideBudgetItem = {
     label: totalLabel,
     range:
-      subtotalMin === subtotalMax
-        ? `约 ¥${subtotalMin}`
-        : `约 ¥${subtotalMin}–${subtotalMax}`,
+      locale === 'en'
+        ? subtotalMin === subtotalMax
+          ? `About $${subtotalMin}`
+          : `About $${subtotalMin}–${subtotalMax}`
+        : subtotalMin === subtotalMax
+          ? `约 ¥${subtotalMin}`
+          : `约 ¥${subtotalMin}–${subtotalMax}`,
     note:
-      headcount > 1
-        ? `以上各项为本次出行合计估算（${headcount} 人）。`
-        : '以上各项为单人合计估算。',
+      locale === 'en'
+        ? headcount > 1
+          ? `Trip-total estimate for ${headcount} travelers.`
+          : 'Trip-total estimate for one traveler.'
+        : headcount > 1
+          ? `以上各项为本次出行合计估算（${headcount} 人）。`
+          : '以上各项为单人合计估算。',
   };
 
   if (totalIdx >= 0) {

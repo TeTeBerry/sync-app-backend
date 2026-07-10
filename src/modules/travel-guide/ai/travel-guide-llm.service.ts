@@ -14,6 +14,7 @@ import {
   formatFlightReasonCodes,
   formatHotelReasonCodes,
 } from '../domain/map-selected-options-to-plan.util';
+import { resolveTravelGuideLocale } from '../domain/travel-guide-locale';
 
 export type TravelGuideLlmGenerationInput = {
   activity: Activity;
@@ -66,20 +67,33 @@ function overlayRecommendationContext(
     input.recommendations?.flights.bestOverall?.reasonCodes ?? [];
   const hotelReasons =
     input.recommendations?.hotels.bestOverall?.reasonCodes ?? [];
+  const locale = resolveTravelGuideLocale(input.dto.locale);
+  const en = locale === 'en';
 
   if (selectedFlight) {
-    const line = buildFlightSampleLine(selectedFlight, flightReasons);
+    const line = buildFlightSampleLine(
+      selectedFlight,
+      flightReasons,
+      undefined,
+      locale,
+    );
     const transportLines = [
       line,
       ...payload.transportLines.filter((l) => l !== line),
     ];
     payload = { ...payload, transportLines };
     tips.unshift(
-      `推荐航班：${selectedFlight.originAirportCode}→${selectedFlight.destinationAirportCode}` +
-        (flightReasons.length
-          ? `（${formatFlightReasonCodes(flightReasons)}）`
-          : '') +
-        '。以下文案仅解释该推荐，不重新排序。',
+      en
+        ? `Recommended flight: ${selectedFlight.originAirportCode}→${selectedFlight.destinationAirportCode}` +
+            (flightReasons.length
+              ? ` (${formatFlightReasonCodes(flightReasons, locale)})`
+              : '') +
+            '. Explain this pick only — do not re-rank.'
+        : `推荐航班：${selectedFlight.originAirportCode}→${selectedFlight.destinationAirportCode}` +
+            (flightReasons.length
+              ? `（${formatFlightReasonCodes(flightReasons, locale)}）`
+              : '') +
+            '。以下文案仅解释该推荐，不重新排序。',
     );
   }
 
@@ -90,9 +104,8 @@ function overlayRecommendationContext(
       selectedHotelId: selectedHotel.id,
       nights: input.accommodationNights,
       headcount: input.dto.headcount,
+      locale,
     });
-    // Prefer full ranked hotel list when available via searchResults overlay in assembler.
-    // Here we only ensure primary hotel + reason codes are present for LLM prose merge.
     if (hotels.length) {
       const rest = (payload.hotels ?? []).filter(
         (h) => h.name !== selectedHotel.name,
@@ -103,7 +116,7 @@ function overlayRecommendationContext(
           {
             ...hotels[0]!,
             reason: hotelReasons.length
-              ? formatHotelReasonCodes(hotelReasons)
+              ? formatHotelReasonCodes(hotelReasons, locale)
               : hotels[0]!.reason,
           },
           ...rest,
@@ -111,11 +124,17 @@ function overlayRecommendationContext(
       };
     }
     tips.unshift(
-      `推荐住宿：${selectedHotel.name}` +
-        (hotelReasons.length
-          ? `（${formatHotelReasonCodes(hotelReasons)}）`
-          : '') +
-        '。请解释推荐理由，勿另行挑选酒店。',
+      en
+        ? `Recommended stay: ${selectedHotel.name}` +
+            (hotelReasons.length
+              ? ` (${formatHotelReasonCodes(hotelReasons, locale)})`
+              : '') +
+            '. Explain why — do not pick a different hotel.'
+        : `推荐住宿：${selectedHotel.name}` +
+            (hotelReasons.length
+              ? `（${formatHotelReasonCodes(hotelReasons, locale)}）`
+              : '') +
+            '。请解释推荐理由，勿另行挑选酒店。',
     );
   }
 
@@ -125,14 +144,19 @@ function overlayRecommendationContext(
       budgetItems: input.budget.items,
     };
     const total = input.budget.total;
+    const currency = input.budget.currency === 'USD' ? '$' : '¥';
     tips.push(
-      `预算已按推荐选项核算（合计约 ${input.budget.currency === 'USD' ? '$' : '¥'}${total.min}–${total.max}），请勿改写金额。`,
+      en
+        ? `Budget already calculated from selected options (about ${currency}${total.min}–${total.max} total). Do not rewrite amounts.`
+        : `预算已按推荐选项核算（合计约 ${currency}${total.min}–${total.max}），请勿改写金额。`,
     );
   }
 
   if (input.budgetConstraints) {
     tips.push(
-      `用户预算档：${input.budgetConstraints.tierAlias}（估算约束，非实时报价）。请解释推荐如何贴合该档，勿改选航班/酒店 ID。`,
+      en
+        ? `User budget tier: ${input.budgetConstraints.tierAlias} (estimate constraint, not a live quote). Explain fit — do not change flight/hotel IDs.`
+        : `用户预算档：${input.budgetConstraints.tierAlias}（估算约束，非实时报价）。请解释推荐如何贴合该档，勿改选航班/酒店 ID。`,
     );
   }
 
@@ -142,7 +166,9 @@ function overlayRecommendationContext(
       note:
         ticket.note ??
         (ticket.price
-          ? `参考价 ${ticket.price.currency === 'USD' ? '$' : '¥'}${ticket.price.amount}`
+          ? en
+            ? `Reference ${ticket.price.currency === 'USD' ? '$' : '¥'}${ticket.price.amount}`
+            : `参考价 ${ticket.price.currency === 'USD' ? '$' : '¥'}${ticket.price.amount}`
           : ticket.availability),
     }));
     payload = {
@@ -151,7 +177,6 @@ function overlayRecommendationContext(
     };
   }
 
-  // Alternatives (non-selected) as explanation hints only.
   const altFlights =
     input.recommendations?.flights.ranked
       .filter(
@@ -161,7 +186,9 @@ function overlayRecommendationContext(
       .slice(0, 2) ?? [];
   if (altFlights.length) {
     tips.push(
-      `备选航班维度：${altFlights.map((a) => a.category).join(' / ')}（仅供说明，勿改选）。`,
+      en
+        ? `Alternate flight angles: ${altFlights.map((a) => a.category).join(' / ')} (explanation only — do not reselect).`
+        : `备选航班维度：${altFlights.map((a) => a.category).join(' / ')}（仅供说明，勿改选）。`,
     );
   }
 

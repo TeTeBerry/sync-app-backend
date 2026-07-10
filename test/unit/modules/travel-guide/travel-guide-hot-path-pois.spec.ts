@@ -23,11 +23,6 @@ describe('travel-guide-hot-path-pois', () => {
     expect(all.some((p) => p.kind.startsWith('nightlife'))).toBe(true);
   });
 
-  it('still provides EDC china fallback hotels', () => {
-    const hotels = getHotPathFallbackPois(2, 'hotel', '酒店');
-    expect(hotels.length).toBeGreaterThanOrEqual(1);
-  });
-
   it('provides tier-diverse EDC thailand fallback hotels by keyword', () => {
     const economy = getHotPathFallbackPois(5, 'hotel', 'hostel');
     const comfort = getHotPathFallbackPois(5, 'hotel', '豪华酒店');
@@ -46,6 +41,37 @@ describe('travel-guide-hot-path-pois', () => {
       ),
     ).toBe(true);
     expect(hotels.some((h) => /北京|北清路|合生汇/.test(h.name))).toBe(false);
+  });
+
+  it('provides verified De Schorre parking for Tomorrowland Belgium', () => {
+    const parking = getHotPathFallbackPois(7, 'parking', 'parking');
+    expect(parking).toHaveLength(2);
+    expect(parking.map((poi) => poi.address)).toEqual(
+      expect.arrayContaining([
+        'Schommelei 1, 2850 Boom, Belgium',
+        'Kapelstraat, 2850 Boom, Belgium',
+      ]),
+    );
+  });
+
+  it('provides a local vehicle-access POI for every non-China activity without full venue POIs', () => {
+    for (const activityLegacyId of [2, 9, 10, 12, 13, 14, 15, 21]) {
+      const parking = getHotPathFallbackPois(
+        activityLegacyId,
+        'parking',
+        'parking',
+      );
+      expect(parking).toHaveLength(1);
+      expect(parking[0]?.distanceLabel).toContain('主办方停车指引');
+    }
+  });
+
+  it('covers every non-China activity with at least one local POI', () => {
+    for (const activityLegacyId of [
+      1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 21,
+    ]) {
+      expect(getAllHotPathFallbackPois(activityLegacyId)).not.toHaveLength(0);
+    }
   });
 
   it('provides EDC Korea fallback hotels and nightlife near Incheon', () => {

@@ -22,6 +22,7 @@ import type {
 } from './travel-guide-map.types';
 
 const PARKING_KEYWORDS = ['停车场', '停车'];
+const OVERSEAS_PARKING_KEYWORDS = ['parking'];
 const DEFAULT_EVENT_END_HOUR = 23.5;
 /** Align with default `AMAP_QPS` / `AMAP_MAX_CONCURRENT`. */
 const POI_SEARCH_BATCH_SIZE = 5;
@@ -142,9 +143,10 @@ function buildPoiSearchTasks(
   accommodationNights: number,
 ): PoiSearchTask[] {
   const tasks: PoiSearchTask[] = [];
-  if (accommodationNights > 0 && !abroad) {
+  if (accommodationNights > 0) {
     const hotelKeywords = hotelSearchKeywordsForBudgetTier(
       resolveTravelGuideBudgetTier(budgetTier),
+      { abroad },
     );
     tasks.push(
       ...hotelKeywords.map((keyword) => ({
@@ -154,17 +156,29 @@ function buildPoiSearchTasks(
     );
   }
   if (selfDrive) {
+    const parkingKeywords = abroad
+      ? OVERSEAS_PARKING_KEYWORDS
+      : PARKING_KEYWORDS;
     tasks.push(
-      ...PARKING_KEYWORDS.map((keyword) => ({
+      ...parkingKeywords.map((keyword) => ({
         keyword,
         kind: 'parking' as const,
       })),
     );
   }
-  tasks.push({
-    keyword: AFTERPARTY_SEARCH_KEYWORD,
-    kind: 'nightlife_food',
-  });
+  if (abroad) {
+    tasks.push(
+      ...['nightclub', 'bar'].map((keyword) => ({
+        keyword,
+        kind: 'nightlife_food' as const,
+      })),
+    );
+  } else {
+    tasks.push({
+      keyword: AFTERPARTY_SEARCH_KEYWORD,
+      kind: 'nightlife_food',
+    });
+  }
   return tasks;
 }
 

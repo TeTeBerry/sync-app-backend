@@ -12,6 +12,7 @@ import {
 import { formatVenueDistanceLabel } from './travel-guide-venue-distance.util';
 import { ABROAD_HOTEL_BOOKING_HINT } from './travel-guide-international.util';
 import { TRAVEL_QUOTE_DISCLAIMER } from './travel-guide-quote.util';
+import { formatTravelGuideMoney } from './travel-guide-currency.util';
 
 const ROLLINGGO_HOTEL_BOOKING_HINT = 'RollingGo 查询参考 · OTA 比价预订';
 
@@ -21,9 +22,14 @@ function roomHint(headcount: number): string {
   return `${headcount} 人 · 建议 ${rooms} 间`;
 }
 
-function formatNightlyPrice(price: number, currency: 'CNY' | 'USD'): string {
-  if (currency === 'USD') return `约 $${Math.round(price)}/晚`;
-  return `起步约 ¥${Math.round(price)}/晚`;
+function formatNightlyPrice(
+  price: number,
+  currency: 'CNY' | 'USD',
+  locale: 'zh' | 'en' = 'zh',
+): string {
+  return formatTravelGuideMoney(price, currency, locale, {
+    suffix: locale === 'en' ? ' / night' : '/晚',
+  });
 }
 
 export function rollingGoHotelToGuideItem(
@@ -37,7 +43,7 @@ export function rollingGoHotelToGuideItem(
 ): TravelGuideHotelItem {
   const price =
     rec.minPricePerNight != null
-      ? formatNightlyPrice(rec.minPricePerNight, input.currency)
+      ? formatNightlyPrice(rec.minPricePerNight, input.currency, 'zh')
       : '价格以实时查询为准';
   const star =
     rec.starRating != null && rec.starRating > 0

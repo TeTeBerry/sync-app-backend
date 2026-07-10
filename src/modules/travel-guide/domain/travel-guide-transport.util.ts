@@ -11,6 +11,7 @@ import {
 } from './travel-guide-departure-airport.util';
 import { destinationCityFromActivityLocation } from '../map/travel-guide-intercity.util';
 import type { DrivingRouteSummary } from '../map/travel-guide-map.types';
+import { getTravelGuideCopy } from './travel-guide-copy';
 
 export interface DestinationTransportProfile {
   regionKind: TravelGuideRegionKind;
@@ -411,6 +412,7 @@ export interface TravelGuideTransportBuildInput {
   destinationCity?: string;
   departureCity?: string;
   activity?: Pick<Activity, 'name' | 'location' | 'region'>;
+  locale?: 'zh' | 'en';
 }
 
 export function resolveDestinationTransportProfile(
@@ -469,20 +471,25 @@ export function resolveDestinationTransportProfile(
 export function transportSectionTitle(
   interCity: boolean,
   profile: DestinationTransportProfile,
+  locale: 'zh' | 'en' = 'zh',
 ): string {
-  if (!interCity) return '交通方案';
-  if (profile.regionKind === 'overseas') return '国际出行';
-  return '城际交通';
+  const copy = getTravelGuideCopy(locale).section;
+  if (!interCity) return copy.transport;
+  if (profile.regionKind === 'overseas') return copy.internationalTravel;
+  return copy.interCityTransport;
 }
 
-export function venueTransportSectionTitle(): string {
-  return '会场接驳';
+export function venueTransportSectionTitle(locale: 'zh' | 'en' = 'zh'): string {
+  return getTravelGuideCopy(locale).section.venueTransport;
 }
 
 /** 城际/国际段：从出发地到目的地城市，不含会场最后一段。 */
 export function buildInterCityTransportLines(
   input: TravelGuideTransportBuildInput,
 ): string[] {
+  if (input.locale === 'en') {
+    return buildInterCityTransportLinesEn(input);
+  }
   const profile = resolveDestinationTransportProfile(input);
   const { departure, venueTitle, venueReadableAddress, selfDrive, interCity } =
     input;
@@ -621,6 +628,9 @@ function buildSameCityTransportLines(
 export function buildVenueTransportOptions(
   input: TravelGuideTransportBuildInput,
 ): TravelGuideVenueTransportOption[] {
+  if (input.locale === 'en') {
+    return buildVenueTransportOptionsEn(input);
+  }
   const profile = resolveDestinationTransportProfile(input);
 
   if (profile.regionKind === 'overseas') {
@@ -906,6 +916,197 @@ function appendUniqueHints(
     if (options?.excludePattern?.test(hint)) continue;
     lines.push(hint);
   }
+}
+
+function buildInterCityTransportLinesEn(
+  input: TravelGuideTransportBuildInput,
+): string[] {
+  const profile = resolveDestinationTransportProfile(input);
+  const { departure, venueTitle, venueReadableAddress, selfDrive, interCity } =
+    input;
+  const dest = profile.destinationCity;
+  const venueLabel = venueReadableAddress || venueTitle;
+
+  if (!interCity) {
+    if (selfDrive) {
+      return [
+        `Drive to 「${venueTitle}」 and check live traffic before you leave.`,
+        ...(input.route
+          ? [
+              `Reference drive: ~${input.route.distanceKm} km / ${input.route.durationMin} min (traffic-dependent).`,
+            ]
+          : []),
+      ];
+    }
+    if (input.transitDetailLines?.length) {
+      return [
+        ...input.transitDetailLines,
+        ...(input.route
+          ? [
+              `Trip reference: ~${input.route.distanceKm} km / ${input.route.durationMin} min including walks.`,
+            ]
+          : []),
+      ];
+    }
+    return [
+      `Use metro / bus / rideshare to 「${venueTitle}」; see Venue transfer for the last mile.`,
+      ...(input.route
+        ? [
+            `Reference: ~${input.route.distanceKm} km / ${input.route.durationMin} min.`,
+          ]
+        : []),
+    ];
+  }
+
+  if (profile.regionKind === 'overseas') {
+    const depAirport = resolveDepartureAirportLabel(
+      departure,
+      input.departureCity,
+    );
+    const destAirport = resolveDestinationAirportLabel(
+      profile,
+      input.activity?.location,
+    );
+    const lines = [
+      `Travel from 「${departure}」 to ${dest} is international — arrive 1–2 days early for immigration, SIM pickup, and rest.`,
+      `Fly ${depAirport} → ${destAirport}; watch round-trip fares 2–8 weeks ahead (festival weeks spike).`,
+    ];
+    if (profile.thailand) {
+      lines.push(
+        'Bring passport, return flight, and hotel booking; VOA / visa-exemption rules follow official policy on arrival day.',
+        'Airport Grab / Shuttle details are under Venue transfer.',
+      );
+    } else if (profile.korea) {
+      lines.push(
+        'Bring passport, visa / K-ETA if needed, return flight, and hotel booking.',
+        'ICN AREX / Kakao T details are under Venue transfer.',
+      );
+    } else if (profile.japan) {
+      lines.push(
+        'Complete Visit Japan Web if applicable; bring passport, return flight, and hotel booking.',
+        'HND/NRT rail and metro details are under Venue transfer.',
+      );
+    } else {
+      lines.push(
+        'Confirm visa / entry rules ahead; local rideshare and venue transfer are below.',
+      );
+    }
+    if (selfDrive) {
+      lines.push(
+        `If renting locally, navigate to 「${venueLabel}」 and confirm international license rules.`,
+      );
+    }
+    lines.push(
+      'Book return flights with outbound — seats tighten around festival dates.',
+    );
+    return lines;
+  }
+
+  if (selfDrive) {
+    return [
+      `Self-drive from 「${departure}」 to ${dest} 「${venueLabel}」 — plan rest stops in your maps app.`,
+      ...(input.route && input.route.distanceKm >= 120
+        ? [
+            `Drive reference: ~${input.route.distanceKm} km / ${input.route.durationMin} min.`,
+          ]
+        : []),
+      `Parking is under Parking guide; daily venue access is under Venue transfer.`,
+    ];
+  }
+
+  return [
+    `Intercity trip from 「${departure}」 to ${dest} — prefer ${
+      profile.hasHighSpeedRail ? 'high-speed rail or ' : ''
+    }flights into the main hub / airport.`,
+    `Buy intercity tickets early; last-mile rideshare / metro is under Venue transfer.`,
+    'Return tickets sell out around festival weekends — book with outbound.',
+  ];
+}
+
+function buildVenueTransportOptionsEn(
+  input: TravelGuideTransportBuildInput,
+): TravelGuideVenueTransportOption[] {
+  const profile = resolveDestinationTransportProfile(input);
+  const dest = profile.destinationCity;
+  const venue = input.venueTitle;
+  const address = input.venueReadableAddress || 'official venue map';
+
+  if (profile.regionKind === 'overseas') {
+    const options: TravelGuideVenueTransportOption[] = [
+      {
+        label: profile.thailand
+          ? 'Airport + Grab / Shuttle'
+          : 'Airport → hotel / venue',
+        lines: [
+          `After landing in ${dest}, rideshare or official shuttle to your hotel or 「${venue}」.`,
+          `On show day, navigate to 「${venue}」 (${address}).`,
+        ],
+      },
+      {
+        label: profile.thailand
+          ? 'Grab / Bolt'
+          : profile.korea
+            ? 'Kakao T'
+            : profile.japan
+              ? 'Uber Japan / taxi'
+              : 'Local rideshare',
+        lines: [
+          `Rideshare from hotel to 「${venue}」; pre-book at peak exit and confirm the pickup point.`,
+          'Local SIM / eSIM is usually required for rideshare apps.',
+        ],
+      },
+    ];
+    if (input.selfDrive) {
+      options.push({
+        label: 'Local rental car',
+        lines: [
+          `Navigate to 「${venue}」; confirm parking and international license rules.`,
+        ],
+      });
+    }
+    return dedupeVenueOptions(options);
+  }
+
+  if (profile.regionKind === 'hmt') {
+    return [
+      {
+        label: 'Rail / ferry + last mile',
+        lines: [
+          `Arrive via rail / ferry into ${dest}, then metro or rideshare to 「${venue}」.`,
+          `Address: ${address}.`,
+        ],
+      },
+      {
+        label: 'Rideshare / taxi',
+        lines: [
+          `Hotel → 「${venue}」 by rideshare or taxi; allow extra time after the show.`,
+        ],
+      },
+    ];
+  }
+
+  const options: TravelGuideVenueTransportOption[] = [
+    {
+      label: profile.hasUrbanRail ? 'Metro / bus' : 'Bus / rideshare',
+      lines: [
+        `Use local transit or rideshare to 「${venue}」 (${address}).`,
+        ...(input.transitDetailLines?.slice(0, 2) ?? []),
+      ],
+    },
+    {
+      label: 'Rideshare',
+      lines: [`DiDi / Amap ride-hail to 「${venue}」; pre-book at peak exit.`],
+    },
+  ];
+  if (input.selfDrive) {
+    options.push({
+      label: 'Self-drive',
+      lines: [
+        `Navigate to 「${venue}」 and arrive early — parking fills on show days.`,
+      ],
+    });
+  }
+  return dedupeVenueOptions(options);
 }
 
 function dedupeVenueOptions(

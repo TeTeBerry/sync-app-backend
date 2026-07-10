@@ -26,11 +26,14 @@ describe('travel-guide-flight-itinerary.util', () => {
       describeFlightLegStops([{ depAirport: 'PVG', arrAirport: 'HND' }]),
     ).toBe('直飞');
     expect(
-      describeFlightLegStops([
-        { depAirport: 'PVG', arrAirport: 'KIX' },
-        { depAirport: 'KIX', arrAirport: 'HND' },
-      ]),
-    ).toBe('1次中转');
+      describeFlightLegStops(
+        [
+          { depAirport: 'PVG', arrAirport: 'KIX' },
+          { depAirport: 'KIX', arrAirport: 'HND' },
+        ],
+        'en',
+      ),
+    ).toBe('1 stop');
   });
 
   it('formatFlightOfferSampleLine includes segment times when available', () => {

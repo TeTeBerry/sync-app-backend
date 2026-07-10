@@ -24,12 +24,42 @@ import {
   buildPlanHotelByTierFromQuotes,
 } from './travel-guide-hotel-tier.util';
 import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
+import {
+  getTravelGuideCopy,
+  isAccommodationBudgetLabel,
+  isTotalBudgetLabel,
+} from './travel-guide-copy';
+import type { TravelGuideLocale } from './travel-guide-locale';
+import {
+  formatTravelGuideMoneyRange,
+  type TravelGuideCurrency,
+} from './travel-guide-currency.util';
 
-function formatRange(min: number, max: number): string {
-  const a = Math.round(min);
-  const b = Math.round(max);
-  if (a === b) return `约 ¥${a}`;
-  return `约 ¥${a}–${b}`;
+function resolveBudgetLocaleFromPlan(plan: TravelGuidePlan): TravelGuideLocale {
+  const sample = [
+    plan.budget?.title,
+    plan.budgetLabel,
+    ...(plan.budget?.items?.map((item) => item.label) ?? []),
+  ]
+    .filter(Boolean)
+    .join(' ');
+  if (
+    /Estimated total|Accommodation\b|Budget reference|Flights\b|Stay recommendations/i.test(
+      sample,
+    )
+  ) {
+    return 'en';
+  }
+  return 'zh';
+}
+
+function formatRange(
+  min: number,
+  max: number,
+  locale: TravelGuideLocale = 'zh',
+  currency: TravelGuideCurrency = 'CNY',
+): string {
+  return formatTravelGuideMoneyRange(min, max, currency, locale);
 }
 
 function roomCount(headcount: number): number {
@@ -57,12 +87,11 @@ function shouldApplyFlightQuote(
   return enrichment.minPricePerAdult > 0 && enrichment.maxPricePerAdult > 0;
 }
 
-function replaceBudgetItem(
+function replaceAccommodationBudgetItem(
   items: TravelGuideBudgetItem[],
-  labelPrefix: string,
   patch: TravelGuideBudgetItem,
 ): void {
-  const idx = items.findIndex((item) => item.label.startsWith(labelPrefix));
+  const idx = items.findIndex((item) => isAccommodationBudgetLabel(item.label));
   if (idx >= 0) {
     items[idx] = patch;
     return;
@@ -73,28 +102,41 @@ function replaceBudgetItem(
 function recalculateBudgetTotal(
   items: TravelGuideBudgetItem[],
   headcount: number,
+  locale: TravelGuideLocale = 'zh',
 ): void {
+  const copy = getTravelGuideCopy(locale);
   const subtotalMin = items.reduce((sum, item) => {
-    if (item.label.startsWith('合计')) return sum;
+    if (isTotalBudgetLabel(item.label)) return sum;
     const nums = item.range.match(/\d+/g)?.map(Number) ?? [];
     return sum + (nums[0] ?? 0);
   }, 0);
   const subtotalMax = items.reduce((sum, item) => {
-    if (item.label.startsWith('合计')) return sum;
+    if (isTotalBudgetLabel(item.label)) return sum;
     const nums = item.range.match(/\d+/g)?.map(Number) ?? [];
     const max = nums.length > 1 ? nums[nums.length - 1]! : (nums[0] ?? 0);
     return sum + max;
   }, 0);
 
-  const totalLabel = headcount > 1 ? '合计参考（全员）' : '合计参考（单人）';
-  const totalIdx = items.findIndex((item) => item.label.startsWith('合计'));
+  const totalLabel =
+    headcount > 1 ? copy.budgetLabels.totalGroup : copy.budgetLabels.totalSolo;
+  const totalIdx = items.findIndex((item) => isTotalBudgetLabel(item.label));
   const totalItem: TravelGuideBudgetItem = {
     label: totalLabel,
-    range: formatRange(subtotalMin, subtotalMax),
+    // Item ranges are already in the locale display currency.
+    range: formatRange(
+      subtotalMin,
+      subtotalMax,
+      locale,
+      locale === 'en' ? 'USD' : 'CNY',
+    ),
     note:
-      headcount > 1
-        ? `以上各项为本次出行合计估算（${headcount} 人）。`
-        : '以上各项为单人合计估算。',
+      locale === 'en'
+        ? headcount > 1
+          ? `Trip-total estimate for ${headcount} travelers.`
+          : 'Trip-total estimate for one traveler.'
+        : headcount > 1
+          ? `以上各项为本次出行合计估算（${headcount} 人）。`
+          : '以上各项为单人合计估算。',
   };
   if (totalIdx >= 0) {
     items[totalIdx] = totalItem;
@@ -128,6 +170,7 @@ export function applyTravelQuoteEnrichment(
     regionKind: TravelGuideRegionKind;
     interCity: boolean;
     budgetTier?: TravelGuideBudgetTier;
+    locale?: TravelGuideLocale;
   },
   protect: TravelQuoteEnrichmentProtect = {},
 ): TravelGuidePlan {
@@ -141,6 +184,9 @@ export function applyTravelQuoteEnrichment(
       selectedBudgetTier: input.budgetTier,
     });
   }
+
+  const locale = input.locale ?? resolveBudgetLocaleFromPlan(plan);
+  const copy = getTravelGuideCopy(locale);
 
   const items =
     protect.budget && plan.budget?.items?.length
@@ -162,6 +208,7 @@ export function applyTravelQuoteEnrichment(
     const flightItem = buildRollingGoFlightBudgetItem(enrichment.flight, {
       headcount: input.headcount,
       regionKind: input.regionKind,
+      locale,
     });
     replaceFlightBudgetItem(items, flightItem);
 
@@ -217,20 +264,35 @@ export function applyTravelQuoteEnrichment(
       tierSnap?.nightlyMin ?? enrichment.hotel.minPricePerNight;
     const nightlyMax =
       tierSnap?.nightlyMax ?? enrichment.hotel.maxPricePerNight;
-    replaceBudgetItem(items, '住宿', {
-      label: '住宿',
+    const tierWord =
+      locale === 'en'
+        ? tier === 'economy'
+          ? 'economy'
+          : tier === 'comfort'
+            ? 'premium'
+            : 'comfort'
+        : tier === 'economy'
+          ? '经济'
+          : tier === 'comfort'
+            ? '豪华'
+            : '舒适';
+    replaceAccommodationBudgetItem(items, {
+      label: copy.budgetLabels.accommodation,
       range: formatRange(
         nightlyMin * rooms * nights,
         nightlyMax * rooms * nights,
+        locale,
+        enrichment.hotel.currency ?? 'CNY',
       ),
-      note: `${TRAVEL_QUOTE_DISCLAIMER} 按 ${rooms} 间房 · ${nights} 晚 · ${
-        tier === 'economy' ? '经济' : tier === 'comfort' ? '豪华' : '舒适'
-      }档估算。`,
+      note:
+        locale === 'en'
+          ? `${TRAVEL_QUOTE_DISCLAIMER} Based on ${rooms} room(s) · ${nights} night(s) · ${tierWord} tier.`
+          : `${TRAVEL_QUOTE_DISCLAIMER} 按 ${rooms} 间房 · ${nights} 晚 · ${tierWord}档估算。`,
     });
   }
 
   if (!protect.budget && items.length) {
-    recalculateBudgetTotal(items, input.headcount);
+    recalculateBudgetTotal(items, input.headcount, locale);
   }
 
   if (input.regionKind === 'overseas' && !protect.selectedHotel) {
@@ -292,7 +354,7 @@ export function applyTravelQuoteEnrichment(
       },
       accommodation,
       budget: {
-        title: plan.budget?.title ?? '预算参考（全程 · 合计）',
+        title: plan.budget?.title ?? copy.section.budget,
         items:
           protect.budget && plan.budget?.items?.length
             ? plan.budget.items

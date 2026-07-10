@@ -10,6 +10,7 @@ import { isFlightBudgetItem } from './travel-guide-flight-budget-detect.util';
 import type { TravelGuideRegionKind } from './travel-guide-international.util';
 import { isRollingGoFlightSampleLine } from './travel-guide-flight-itinerary.util';
 import { SYNC_BUDGET_TIER_ORDER } from './travel-guide-rollinggo-flight-tier.util';
+import { resolveTravelGuideLocale } from './travel-guide-locale';
 
 function roundPrice(value: number): number {
   return value >= 1000 ? Math.round(value / 10) * 10 : Math.round(value);
@@ -32,7 +33,7 @@ export function flightQuoteToTierQuote(
   flight: FlightQuoteSnapshot,
 ): TravelGuideFlightTierQuote {
   return {
-    cabinLabel: flight.cabinLabel ?? '经济舱',
+    cabinLabel: flight.cabinLabel ?? 'Economy',
     minPricePerAdult: flight.minPricePerAdult,
     maxPricePerAdult: flight.maxPricePerAdult,
     currency: flight.currency,
@@ -173,9 +174,23 @@ export function applyFlightTierQuoteToPlan(
   const items = plan.budget?.items?.length
     ? plan.budget.items.map((item) => ({ ...item }))
     : [];
+  const locale = resolveTravelGuideLocale(
+    /Estimated total|Accommodation\b|Flights\b/i.test(
+      [
+        plan.budget?.title,
+        plan.budgetLabel,
+        ...(plan.budget?.items?.map((i) => i.label) ?? []),
+      ]
+        .filter(Boolean)
+        .join(' '),
+    )
+      ? 'en'
+      : 'zh',
+  );
   const flightItem = buildRollingGoFlightBudgetItem(flightSnapshot, {
     headcount: input.headcount,
     regionKind: input.regionKind,
+    locale,
   });
 
   const flightIdx = items.findIndex(isFlightBudgetItem);

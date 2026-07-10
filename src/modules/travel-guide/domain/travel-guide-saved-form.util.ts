@@ -36,5 +36,9 @@ export function buildDtoFromSavedForm(
     ...(resolvedBudgetTier ? { budgetTier: resolvedBudgetTier } : {}),
     selfDrive: Boolean(form.selfDrive),
     accommodationNights,
+    ...(typeof form.locale === 'string' &&
+    (form.locale === 'zh' || form.locale === 'en')
+      ? { locale: form.locale }
+      : {}),
   };
 }

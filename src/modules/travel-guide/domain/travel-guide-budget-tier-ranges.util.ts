@@ -51,14 +51,24 @@ export function formatBudgetTierNightlyHint(
 export function formatBudgetTierLabel(
   tier: TravelGuideBudgetTier,
   snapshots?: TravelGuideBudgetTierSnapshot[],
+  locale: 'zh' | 'en' = 'zh',
 ): string {
   const snapshot = findBudgetTierSnapshot(tier, snapshots);
   if (snapshot) {
+    if (locale === 'en') {
+      const tierName =
+        tier === 'economy'
+          ? 'Economy'
+          : tier === 'comfort'
+            ? 'Premium'
+            : 'Comfort';
+      return `${tierName} (${formatBudgetTierNightlyHint(snapshot)} / night)`;
+    }
     const tierName =
       tier === 'economy' ? '经济' : tier === 'comfort' ? '豪华' : '舒适';
     return `${tierName}(${formatBudgetTierNightlyHint(snapshot)}/晚)`;
   }
-  return legacyBudgetTierLabel(tier);
+  return legacyBudgetTierLabel(tier, locale);
 }
 
 export function budgetTierHotelNightRangesFromSnapshots(
@@ -72,7 +82,20 @@ export function budgetTierHotelNightRangesFromSnapshots(
   return { primary: hint, secondary: hint };
 }
 
-function legacyBudgetTierLabel(tier: TravelGuideBudgetTier): string {
+function legacyBudgetTierLabel(
+  tier: TravelGuideBudgetTier,
+  locale: 'zh' | 'en' = 'zh',
+): string {
+  if (locale === 'en') {
+    switch (tier) {
+      case 'economy':
+        return 'Economy ($21–42 / night)';
+      case 'comfort':
+        return 'Premium ($83+ / night)';
+      default:
+        return 'Comfort ($42–83 / night)';
+    }
+  }
   switch (tier) {
     case 'economy':
       return '经济(¥150-300/晚)';

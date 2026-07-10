@@ -12,6 +12,8 @@ import {
 } from './map-selected-options-to-plan.util';
 import type { PlanGenerationContext } from '../types/plan-generation-context';
 import type { LlmTravelGuidePayload } from './travel-guide-llm.types';
+import { getTravelGuideCopy } from './travel-guide-copy';
+import { resolveTravelGuideLocale } from './travel-guide-locale';
 
 /**
  * Deterministic plan assembler from PlanGenerationContext.
@@ -25,6 +27,8 @@ export function assembleTravelGuidePlanFromContext(
   const activity = ctx.festival;
   const accommodationNights = ctx.request.accommodationNights;
   const budgetTier = resolveTravelGuideBudgetTier(dto.budgetTier);
+  const locale = resolveTravelGuideLocale(dto.locale);
+  const section = getTravelGuideCopy(locale).section;
   const interCity = Boolean(
     ctx.locations?.mapCtx.interCity ||
     shouldTreatAsInterCity(ctx.quoteEnrichment),
@@ -43,11 +47,12 @@ export function assembleTravelGuidePlanFromContext(
     mapSourcedOnly: true,
     interCity,
     skipIndependentBudget: true,
+    locale,
   });
 
   if (ctx.budget?.items?.length) {
     plan.budget = {
-      title: '预算参考（全程 · 合计）',
+      title: section.budget,
       items: ctx.budget.items,
     };
   }
@@ -59,12 +64,14 @@ export function assembleTravelGuidePlanFromContext(
       ctx.selectedOptions.flight,
       reasonCodes,
       'bestOverall',
+      locale,
     );
     const lines = plan.transport.lines.filter((line) => line !== sample);
     const flightOffers = buildFlightOffersFromRecommendations({
       flights: ctx.searchResults.flights,
       flightRecommendations: ctx.recommendations.flights,
       selectedFlightId: ctx.selectedOptions.flight.id,
+      locale,
     });
     plan.transport = {
       ...plan.transport,
@@ -76,6 +83,7 @@ export function assembleTravelGuidePlanFromContext(
               normalizedFlightToOffer(
                 ctx.selectedOptions.flight,
                 'bestOverall',
+                locale,
               ),
             ],
     };
@@ -88,10 +96,11 @@ export function assembleTravelGuidePlanFromContext(
       selectedHotelId: ctx.selectedOptions.hotel.id,
       nights: accommodationNights,
       headcount: dto.headcount,
+      locale,
     });
     if (hotels.length) {
       plan.accommodation = {
-        title: plan.accommodation.title || '住宿推荐',
+        title: plan.accommodation.title || section.accommodation,
         hotels,
         schemes: buildHotelSchemesFromRecommendations({
           hotels: ctx.searchResults.hotels,
@@ -99,6 +108,7 @@ export function assembleTravelGuidePlanFromContext(
           selectedHotelId: ctx.selectedOptions.hotel.id,
           nights: accommodationNights,
           headcount: dto.headcount,
+          locale,
         }),
       };
     }
@@ -154,6 +164,7 @@ function applyAuthoritativeOverlaysToLlm(
           selectedHotelId: ctx.selectedOptions.hotel.id,
           nights,
           headcount: dto.headcount,
+          locale: resolveTravelGuideLocale(dto.locale),
         })
       : generated.hotels;
 

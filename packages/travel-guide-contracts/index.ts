@@ -17,6 +17,7 @@ export type {
 export type {
   AiGuidePlanFormValues,
   GenerateTravelGuidePayload,
+  TravelGuideLocale,
   TravelGuidePlaceSuggestion,
   TravelGuideGenerationJobStatus,
   TravelGuideGenerationProgressStep,

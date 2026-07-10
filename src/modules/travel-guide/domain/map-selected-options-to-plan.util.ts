@@ -2,6 +2,7 @@ import type {
   TravelGuideFlightOffer,
   TravelGuideHotelItem,
 } from '@sync/travel-guide-contracts';
+import { formatTravelGuideMoney } from './travel-guide-currency.util';
 import type { NormalizedFlightOption } from '../types/normalized-flight-option';
 import type { NormalizedHotelOption } from '../types/normalized-hotel-option';
 import type {
@@ -13,7 +14,7 @@ import type {
   FlightRecommendationCategory,
 } from '../recommendation/recommendation.types';
 
-const FLIGHT_REASON_LABEL: Record<FlightReasonCode, string> = {
+const FLIGHT_REASON_LABEL_ZH: Record<FlightReasonCode, string> = {
   DIRECT_FLIGHT: '直飞',
   FEW_STOPS: '经停少',
   MULTIPLE_STOPS: '多次经停',
@@ -30,7 +31,24 @@ const FLIGHT_REASON_LABEL: Record<FlightReasonCode, string> = {
   CURRENCY_MISMATCH: '币种不一致',
 };
 
-const HOTEL_REASON_LABEL: Record<HotelReasonCode, string> = {
+const FLIGHT_REASON_LABEL_EN: Record<FlightReasonCode, string> = {
+  DIRECT_FLIGHT: 'Direct',
+  FEW_STOPS: 'Few stops',
+  MULTIPLE_STOPS: 'Multiple stops',
+  GOOD_ARRIVAL_TIME: 'Good arrival window',
+  GOOD_DEPARTURE_TIME: 'Good departure window',
+  PRICE_WITHIN_BALANCED_RANGE: 'Balanced price',
+  LOWEST_PRICE: 'Lowest price',
+  SHORTEST_DURATION: 'Shortest duration',
+  LONG_DURATION: 'Longer journey',
+  RELIABLE_SUPPLIER: 'Reliable supplier',
+  WITHIN_FLIGHT_BUDGET: 'Within flight budget',
+  SLIGHTLY_OVER_FLIGHT_BUDGET: 'Slightly over flight budget',
+  OVER_FLIGHT_BUDGET: 'Over flight budget',
+  CURRENCY_MISMATCH: 'Currency mismatch',
+};
+
+const HOTEL_REASON_LABEL_ZH: Record<HotelReasonCode, string> = {
   CLOSEST_TO_VENUE: '距会场最近',
   BEST_REVIEW_SCORE: '评分优秀',
   PRICE_WITHIN_BALANCED_RANGE: '价格适中',
@@ -46,6 +64,24 @@ const HOTEL_REASON_LABEL: Record<HotelReasonCode, string> = {
   OVER_HOTEL_BUDGET: '超出住宿预算',
   PREMIUM_OPTION: '品质之选',
   CURRENCY_MISMATCH: '币种不一致',
+};
+
+const HOTEL_REASON_LABEL_EN: Record<HotelReasonCode, string> = {
+  CLOSEST_TO_VENUE: 'Closest to venue',
+  BEST_REVIEW_SCORE: 'Strong reviews',
+  PRICE_WITHIN_BALANCED_RANGE: 'Balanced price',
+  LOWEST_NIGHTLY_PRICE: 'Lowest nightly rate',
+  HIGH_STAR_RATING: 'Higher star rating',
+  GOOD_VALUE_SCORE: 'Good value',
+  CONVENIENT_TRANSPORT: 'Easy transfer',
+  LONG_TRAVEL_TIME: 'Longer transfer',
+  FLEXIBLE_CANCELLATION: 'Flexible cancellation',
+  TRUSTED_SUPPLIER: 'Trusted supplier',
+  WITHIN_HOTEL_BUDGET: 'Within stay budget',
+  SLIGHTLY_OVER_HOTEL_BUDGET: 'Slightly over stay budget',
+  OVER_HOTEL_BUDGET: 'Over stay budget',
+  PREMIUM_OPTION: 'Premium pick',
+  CURRENCY_MISMATCH: 'Currency mismatch',
 };
 
 export const HOTEL_CATEGORY_LABEL: Record<HotelRecommendationCategory, string> =
@@ -65,33 +101,51 @@ export const FLIGHT_CATEGORY_LABEL: Record<
   fastest: 'Fastest route',
 };
 
-export function formatFlightReasonCodes(codes: FlightReasonCode[]): string {
-  return codes.map((c) => FLIGHT_REASON_LABEL[c] ?? c).join(' · ');
+export function formatFlightReasonCodes(
+  codes: FlightReasonCode[],
+  locale: 'zh' | 'en' = 'zh',
+): string {
+  const labels =
+    locale === 'en' ? FLIGHT_REASON_LABEL_EN : FLIGHT_REASON_LABEL_ZH;
+  return codes.map((c) => labels[c] ?? c).join(' · ');
 }
 
-export function formatHotelReasonCodes(codes: HotelReasonCode[]): string {
-  return codes.map((c) => HOTEL_REASON_LABEL[c] ?? c).join(' · ');
+export function formatHotelReasonCodes(
+  codes: HotelReasonCode[],
+  locale: 'zh' | 'en' = 'zh',
+): string {
+  const labels =
+    locale === 'en' ? HOTEL_REASON_LABEL_EN : HOTEL_REASON_LABEL_ZH;
+  return codes.map((c) => labels[c] ?? c).join(' · ');
 }
 
 export function normalizedFlightToOffer(
   flight: NormalizedFlightOption,
   category?: FlightRecommendationCategory,
+  locale: 'zh' | 'en' = 'zh',
 ): TravelGuideFlightOffer {
+  const en = locale === 'en';
   const stopsLabel =
     flight.stops <= 0
-      ? '直飞'
+      ? en
+        ? 'Direct'
+        : '直飞'
       : flight.stops === 1
-        ? '1 次经停'
-        : `${flight.stops} 次经停`;
+        ? en
+          ? '1 stop'
+          : '1 次经停'
+        : en
+          ? `${flight.stops} stops`
+          : `${flight.stops} 次经停`;
   const categoryLabel = category ? FLIGHT_CATEGORY_LABEL[category] : undefined;
   return {
     pricePerAdult: flight.price.amount,
     currency: flight.price.currency,
     cabinLabel: categoryLabel
       ? flight.cabinLabel
-        ? `${categoryLabel} · ${flight.cabinLabel}`
+        ? `${categoryLabel} · ${localizeCabinLabel(flight.cabinLabel, locale)}`
         : categoryLabel
-      : flight.cabinLabel,
+      : localizeCabinLabel(flight.cabinLabel, locale),
     outbound: {
       route: `${flight.originAirportCode}-${flight.destinationAirportCode}`,
       depAirport: flight.originAirportCode,
@@ -116,6 +170,19 @@ export function normalizedFlightToOffer(
   };
 }
 
+function localizeCabinLabel(
+  label: string | undefined,
+  locale: 'zh' | 'en',
+): string | undefined {
+  if (!label?.trim()) return label;
+  if (locale !== 'en') return label;
+  return label
+    .replace(/超级经济舱/g, 'Premium Economy')
+    .replace(/经济舱/g, 'Economy')
+    .replace(/公务舱|商务舱/g, 'Business')
+    .replace(/头等舱/g, 'First');
+}
+
 export function normalizedHotelToGuideItem(
   hotel: NormalizedHotelOption,
   input: {
@@ -124,37 +191,54 @@ export function normalizedHotelToGuideItem(
     reasonCodes?: HotelReasonCode[];
     category?: HotelRecommendationCategory;
     isPrimary?: boolean;
+    locale?: 'zh' | 'en';
   },
 ): TravelGuideHotelItem {
+  const locale = input.locale === 'en' ? 'en' : 'zh';
+  const en = locale === 'en';
   const nightly = hotel.price?.nightlyAmount ?? hotel.price?.totalAmount;
   const currency = hotel.price?.currency ?? 'CNY';
   const priceLabel =
     nightly != null && nightly > 0
-      ? currency === 'USD'
-        ? `约 $${Math.round(nightly)}/晚`
-        : `起步约 ¥${Math.round(nightly)}/晚`
-      : '价格以实时查询为准';
+      ? formatTravelGuideMoney(nightly, currency, locale, {
+          suffix: en ? ' / night' : '/晚',
+        })
+      : en
+        ? 'Price subject to live OTA rates'
+        : '价格以实时查询为准';
   const dist =
     hotel.distanceToFestivalKm != null
-      ? ` · 距会场约 ${hotel.distanceToFestivalKm} km`
+      ? en
+        ? ` · ~${hotel.distanceToFestivalKm} km to venue`
+        : ` · 距会场约 ${hotel.distanceToFestivalKm} km`
       : '';
   const star =
     hotel.starRating != null && hotel.starRating > 0
-      ? ` · ${hotel.starRating} 星`
+      ? en
+        ? ` · ${hotel.starRating}-star`
+        : ` · ${hotel.starRating} 星`
       : '';
   const rooms = input.headcount <= 1 ? 1 : Math.ceil(input.headcount / 2);
   const reason = input.reasonCodes?.length
-    ? formatHotelReasonCodes(input.reasonCodes)
+    ? formatHotelReasonCodes(input.reasonCodes, locale)
     : input.isPrimary
-      ? '综合推荐'
-      : '备选酒店';
+      ? en
+        ? 'Best overall'
+        : '综合推荐'
+      : en
+        ? 'Backup stay'
+        : '备选酒店';
 
   return {
     name: hotel.name,
-    note: `${priceLabel}${star}${dist} · ${input.nights} 晚 · ${input.headcount} 人 · 建议 ${rooms} 间`,
+    note: en
+      ? `${priceLabel}${star}${dist} · ${input.nights} night(s) · ${input.headcount} guest(s) · ${rooms} room(s)`
+      : `${priceLabel}${star}${dist} · ${input.nights} 晚 · ${input.headcount} 人 · 建议 ${rooms} 间`,
     reason,
     bookingHint: hotel.bookingUrl
-      ? '参考预订链接 · 以 OTA 实时为准'
+      ? en
+        ? 'Reference booking link · confirm live OTA rates'
+        : '参考预订链接 · 以 OTA 实时为准'
       : undefined,
   };
 }
@@ -169,6 +253,7 @@ export function buildHotelItemsFromRecommendations(input: {
   selectedHotelId?: string;
   nights: number;
   headcount: number;
+  locale?: 'zh' | 'en';
 }): TravelGuideHotelItem[] {
   const byId = new Map(input.hotels.map((h) => [h.id, h]));
   const items: TravelGuideHotelItem[] = [];
@@ -200,6 +285,7 @@ export function buildHotelItemsFromRecommendations(input: {
         reasonCodes: rec?.reasonCodes,
         category,
         isPrimary,
+        locale: input.locale,
       }),
     );
   };
@@ -220,6 +306,7 @@ export function buildHotelSchemesFromRecommendations(input: {
   selectedHotelId?: string;
   nights: number;
   headcount: number;
+  locale?: 'zh' | 'en';
 }): Array<{
   label: string;
   name: string;
@@ -260,6 +347,7 @@ export function buildHotelSchemesFromRecommendations(input: {
       reasonCodes: rec?.reasonCodes,
       category,
       isPrimary: category === 'bestOverall',
+      locale: input.locale,
     });
     schemes.push({
       label: HOTEL_CATEGORY_LABEL[category],
@@ -277,10 +365,12 @@ export function buildFlightOffersFromRecommendations(input: {
   flights: NormalizedFlightOption[];
   flightRecommendations: FlightRecommendationSet;
   selectedFlightId?: string;
+  locale?: 'zh' | 'en';
 }): TravelGuideFlightOffer[] {
   const byId = new Map(input.flights.map((f) => [f.id, f]));
   const offers: TravelGuideFlightOffer[] = [];
   const seen = new Set<string>();
+  const locale = input.locale === 'en' ? 'en' : 'zh';
 
   const push = (
     id: string | undefined,
@@ -290,7 +380,7 @@ export function buildFlightOffersFromRecommendations(input: {
     const flight = byId.get(id);
     if (!flight) return;
     seen.add(id);
-    offers.push(normalizedFlightToOffer(flight, category));
+    offers.push(normalizedFlightToOffer(flight, category, locale));
   };
 
   push(
@@ -306,9 +396,12 @@ export function buildFlightSampleLine(
   flight: NormalizedFlightOption,
   reasonCodes?: FlightReasonCode[],
   category?: FlightRecommendationCategory,
+  locale: 'zh' | 'en' = 'zh',
 ): string {
   const reason = reasonCodes?.length
-    ? `（${formatFlightReasonCodes(reasonCodes)}）`
+    ? locale === 'en'
+      ? ` (${formatFlightReasonCodes(reasonCodes, locale)})`
+      : `（${formatFlightReasonCodes(reasonCodes, locale)}）`
     : '';
   const prefix = category ? `${FLIGHT_CATEGORY_LABEL[category]} · ` : '';
   if (flight.sampleLine?.trim()) {
@@ -318,5 +411,6 @@ export function buildFlightSampleLine(
     flight.price.currency === 'USD'
       ? `$${Math.round(flight.price.amount)}`
       : `¥${Math.round(flight.price.amount)}`;
-  return `${prefix}${flight.originAirportCode}→${flight.destinationAirportCode} · ${price}/人起${reason}`;
+  const perPerson = locale === 'en' ? `${price} / person` : `${price}/人起`;
+  return `${prefix}${flight.originAirportCode}→${flight.destinationAirportCode} · ${perPerson}${reason}`;
 }

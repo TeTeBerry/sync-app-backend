@@ -25,5 +25,11 @@ export interface RavenPlaceSuggestion {
   lng?: number;
 }
 
+/** Primary remote mirror (jsDelivr is more reachable than raw.githubusercontent in many regions). */
 export const OPENFLIGHTS_AIRPORTS_URL =
-  'https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat';
+  'https://cdn.jsdelivr.net/gh/jpatokal/openflights@master/data/airports.dat';
+
+/** Extra remotes tried after the configured/primary URL fails. */
+export const OPENFLIGHTS_AIRPORTS_FALLBACK_URLS = [
+  'https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat',
+] as const;
