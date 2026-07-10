@@ -45,6 +45,24 @@ import { RollingGoTravelQuoteAdapter } from './infra/rollinggo/rollinggo-travel-
 import { TRAVEL_QUOTE_PORT } from './ports/travel-quote.port';
 import { TravelGuideQuoteRefreshService } from './travel-guide-quote-refresh.service';
 import { TravelQuoteEnrichmentService } from './travel-quote-enrichment.service';
+import { LocationSearchService } from './search/location-search.service';
+import { FlightSearchService } from './search/flight-search.service';
+import { HotelSearchService } from './search/hotel-search.service';
+import { TicketSearchService } from './search/ticket-search.service';
+import { FlightRecommendationService } from './recommendation/flight-recommendation.service';
+import { HotelRecommendationService } from './recommendation/hotel-recommendation.service';
+import { TravelGuideLlmService } from './ai/travel-guide-llm.service';
+import { TravelGuideBudgetService } from './budget/travel-guide-budget.service';
+import { TravelGuideCacheService } from './cache/travel-guide-cache.service';
+import { TravelGuidePlanRepository } from './persistence/travel-guide-plan.repository';
+import { FLIGHT_PROVIDER } from './providers/flight-provider.interface';
+import { HOTEL_PROVIDER } from './providers/hotel-provider.interface';
+import { TICKET_PROVIDER } from './providers/ticket-provider.interface';
+import { RollingGoFlightProvider } from './providers/rollinggo/rolling-go-flight.provider';
+import { RollingGoHotelProvider } from './providers/rollinggo/rolling-go-hotel.provider';
+import { CatalogTicketProvider } from './providers/catalog-ticket.provider';
+import { OpenFlightsAirportCatalogService } from './raven/openflights-airport-catalog.service';
+import { RavenPlaceSuggestionsController } from './raven/raven-place-suggestions.controller';
 
 @Module({
   imports: [
@@ -74,6 +92,7 @@ import { TravelQuoteEnrichmentService } from './travel-quote-enrichment.service'
     TravelGuideController,
     TravelGuideGlobalController,
     TravelGuideMapController,
+    RavenPlaceSuggestionsController,
   ],
   providers: [
     AmapMapService,
@@ -83,13 +102,17 @@ import { TravelQuoteEnrichmentService } from './travel-quote-enrichment.service'
     TravelGuidePoiRanker,
     TravelGuidePoiPipeline,
     TravelGuideLlmPolishService,
+    TravelGuideLlmService,
     TravelGuideGenerationOrchestrator,
     TravelGuideGenerationCacheService,
+    TravelGuideCacheService,
     TravelGuideGenerationJobService,
     TravelGuideGenerationService,
     TravelGuideBudgetTierService,
+    TravelGuideBudgetService,
     TravelGuideFormService,
     TravelGuideGuardService,
+    TravelGuidePlanRepository,
     TravelGuideSavedPlanService,
     RollingGoMcpClient,
     RollingGoTravelQuoteAdapter,
@@ -97,8 +120,30 @@ import { TravelQuoteEnrichmentService } from './travel-quote-enrichment.service'
       provide: TRAVEL_QUOTE_PORT,
       useExisting: RollingGoTravelQuoteAdapter,
     },
+    RollingGoFlightProvider,
+    RollingGoHotelProvider,
+    CatalogTicketProvider,
+    {
+      provide: FLIGHT_PROVIDER,
+      useExisting: RollingGoFlightProvider,
+    },
+    {
+      provide: HOTEL_PROVIDER,
+      useExisting: RollingGoHotelProvider,
+    },
+    {
+      provide: TICKET_PROVIDER,
+      useExisting: CatalogTicketProvider,
+    },
+    LocationSearchService,
+    FlightSearchService,
+    HotelSearchService,
+    TicketSearchService,
+    FlightRecommendationService,
+    HotelRecommendationService,
     TravelQuoteEnrichmentService,
     TravelGuideQuoteRefreshService,
+    OpenFlightsAirportCatalogService,
   ],
   exports: [
     TravelGuideGenerationService,

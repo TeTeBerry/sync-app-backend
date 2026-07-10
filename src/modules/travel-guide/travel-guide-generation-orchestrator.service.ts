@@ -15,7 +15,6 @@ import { ActivityService } from '../activity/activity.service';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import { AmapMapService } from './map/amap.service';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
-import { buildTravelGuidePlan } from './domain/travel-guide-fallback.builder';
 import {
   parseActivityDayCount,
   resolveTravelGuideBudgetTier,
@@ -26,9 +25,6 @@ import {
   TRAVEL_GUIDE_PREPARING_MESSAGE,
 } from './domain/travel-guide-support.util';
 import { applyTravelGuideAccommodationPreference } from './domain/travel-guide-accommodation-preference.util';
-import { TravelGuidePoiPipeline } from './map/travel-guide-poi.pipeline';
-import { TravelGuideLlmPolishService } from './travel-guide-llm-polish.service';
-import { TravelGuideGenerationCacheService } from './travel-guide-generation-cache.service';
 import { TravelGuideGuardService } from './travel-guide-guard.service';
 import { TravelGuideSavedPlanService } from './travel-guide-saved-plan.service';
 import {
@@ -36,7 +32,6 @@ import {
   normalizeTravelGuideGenerationParams,
   reconcileDepartureCityForCache,
 } from './domain/travel-guide-generation-cache.util';
-import { applyTravelQuoteEnrichment } from './domain/travel-guide-quote-merge.util';
 import { buildPlanHotelByTierFromMapRankings } from './domain/travel-guide-map-hotel-tier.util';
 import { buildPlanHotelByTierFromHotPath } from './domain/travel-guide-abroad-accommodation.util';
 import { buildMinimalMapContextForQuote } from './domain/travel-guide-quote-map-context.util';
@@ -51,11 +46,34 @@ import {
   reportTravelGuideProgress,
   type TravelGuideProgressReporter,
 } from './domain/travel-guide-generation-progress.util';
+import { LocationSearchService } from './search/location-search.service';
+import { FlightSearchService } from './search/flight-search.service';
+import { HotelSearchService } from './search/hotel-search.service';
+import { TicketSearchService } from './search/ticket-search.service';
+import { FlightRecommendationService } from './recommendation/flight-recommendation.service';
+import { HotelRecommendationService } from './recommendation/hotel-recommendation.service';
+import { TravelGuideLlmService } from './ai/travel-guide-llm.service';
+import { TravelGuideCacheService } from './cache/travel-guide-cache.service';
+import { TravelGuideBudgetService } from './budget/travel-guide-budget.service';
+import {
+  createInitialPlanGenerationContext,
+  resolveGenerationStatus,
+} from './types/plan-generation-context';
+import { destinationCityFromActivityLocation } from './map/travel-guide-intercity.util';
+import { selectOptionsFromRecommendations } from './domain/select-recommended-options.util';
+import { assembleTravelGuidePlanFromContext } from './domain/assemble-travel-guide-plan.util';
+import { attachQuoteTierMetadataToPlan } from './domain/attach-quote-tier-metadata.util';
+import { dominantCurrency } from './budget/budget-constraints.types';
 
 export type TravelGuideGenerateOptions = {
   onProgress?: TravelGuideProgressReporter;
 };
 
+/**
+ * Coordinates travel-guide generation only.
+ * Provider parsing, scoring formulas, LLM prompts, and Mongo queries live in
+ * dedicated search / recommendation / AI / persistence / cache services.
+ */
 @Injectable()
 export class TravelGuideGenerationOrchestrator {
   private readonly logger = new Logger(TravelGuideGenerationOrchestrator.name);
@@ -64,9 +82,15 @@ export class TravelGuideGenerationOrchestrator {
     private readonly activityService: ActivityService,
     private readonly amap: AmapMapService,
     private readonly config: ConfigService,
-    private readonly poiPipeline: TravelGuidePoiPipeline,
-    private readonly llmPolish: TravelGuideLlmPolishService,
-    private readonly generationCache: TravelGuideGenerationCacheService,
+    private readonly locationSearch: LocationSearchService,
+    private readonly flightSearch: FlightSearchService,
+    private readonly hotelSearch: HotelSearchService,
+    private readonly ticketSearch: TicketSearchService,
+    private readonly flightRecommendation: FlightRecommendationService,
+    private readonly hotelRecommendation: HotelRecommendationService,
+    private readonly llmService: TravelGuideLlmService,
+    private readonly planCache: TravelGuideCacheService,
+    private readonly budgetService: TravelGuideBudgetService,
     private readonly travelGuideGuard: TravelGuideGuardService,
     private readonly savedPlanService: TravelGuideSavedPlanService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
@@ -130,7 +154,7 @@ export class TravelGuideGenerationOrchestrator {
     const skipGenerationCache = generationDto.forceRegenerate === true;
 
     if (!skipGenerationCache) {
-      const cachedPlan = await this.generationCache.findPlan(cacheKey);
+      const cachedPlan = await this.planCache.findGeneratedPlan(cacheKey);
       if (cachedPlan) {
         this.logger.log(
           `travel guide cache hit activity=${activityLegacyId} key=${cacheKey.slice(0, 8)}`,
@@ -144,7 +168,7 @@ export class TravelGuideGenerationOrchestrator {
             onProgress,
           );
         if (quoteRefreshed) {
-          await this.generationCache.savePlan(
+          await this.planCache.saveGeneratedPlan(
             cacheKey,
             activityLegacyId,
             cacheParams,
@@ -161,7 +185,8 @@ export class TravelGuideGenerationOrchestrator {
         );
       }
 
-      const fuzzyPlan = await this.generationCache.findSimilarPlan(cacheParams);
+      const fuzzyPlan =
+        await this.planCache.findSimilarGeneratedPlan(cacheParams);
       if (fuzzyPlan) {
         this.logger.log(
           `travel guide fuzzy cache hit activity=${activityLegacyId}`,
@@ -201,8 +226,8 @@ export class TravelGuideGenerationOrchestrator {
     );
     if (!lockAcquired) {
       const racingPlan =
-        (await this.generationCache.findPlan(cacheKey)) ??
-        (await this.generationCache.findSimilarPlan(cacheParams));
+        (await this.planCache.findGeneratedPlan(cacheKey)) ??
+        (await this.planCache.findSimilarGeneratedPlan(cacheParams));
       if (racingPlan) {
         const { plan: enriched } = await this.enrichCachedPlanWithQuotes(
           racingPlan,
@@ -225,91 +250,276 @@ export class TravelGuideGenerationOrchestrator {
       );
     }
 
+    const ctx = createInitialPlanGenerationContext({
+      activity,
+      dto: generationDto,
+      actor,
+      accommodationNights,
+      cacheKey,
+    });
+
     try {
       await reportTravelGuideProgress(onProgress, 'map_poi');
-      const { mapCtx, ranked } = await this.poiPipeline.run(
+      const location = await this.locationSearch.resolveAndCollect(
         activity,
         generationDto,
         accommodationNights,
       );
+      if (!location.mapCtx || !location.ranked) {
+        throw new ServiceUnavailableException(
+          '无法获取场馆周边推荐（酒店/散场/停车），请确认活动地址或明日再试；若使用高德 Key，请检查配额是否用尽',
+        );
+      }
+      ctx.locations = {
+        mapCtx: location.mapCtx,
+        ranked: location.ranked,
+      };
+      ctx.sectionStatus.pois = 'ready';
 
       const quoteEligible = shouldFetchTravelQuote(
         activity,
         generationDto,
-        mapCtx,
+        location.mapCtx,
       );
 
-      const quoteSnapshot = quoteEligible
-        ? await this.quoteEnrichment.run(
+      let quoteSnapshot = null;
+      if (quoteEligible) {
+        try {
+          quoteSnapshot = await this.quoteEnrichment.run(
             activity,
             generationDto,
-            mapCtx,
+            location.mapCtx,
             accommodationNights,
             { onProgress },
-          )
-        : null;
+          );
+          ctx.quoteEnrichment = quoteSnapshot;
+        } catch (error) {
+          ctx.sectionStatus.flights = 'failed';
+          ctx.sectionStatus.hotels = 'failed';
+          ctx.errors.push({
+            section: 'flights',
+            code: 'QUOTE_PROVIDER_FAILED',
+            message: error instanceof Error ? error.message : String(error),
+          });
+          this.logger.warn(
+            `travel guide quote enrichment failed activity=${activityLegacyId}: ${
+              error instanceof Error ? error.message : error
+            }`,
+          );
+        }
+      } else {
+        ctx.sectionStatus.flights = 'skipped';
+      }
 
-      await reportTravelGuideProgress(onProgress, 'ai_writing');
-      const llmPayload = await this.llmPolish.buildPayloadFromMap(
-        activity,
-        generationDto,
+      const flights = this.flightSearch.fromEnrichment(quoteSnapshot);
+      ctx.searchResults.flights = flights;
+      ctx.sectionStatus.flights =
+        ctx.sectionStatus.flights === 'failed'
+          ? 'failed'
+          : flights.length
+            ? 'ready'
+            : quoteEligible
+              ? 'unavailable'
+              : 'skipped';
+
+      const mapHotels = this.hotelSearch.fromMapRanked(
+        location.ranked.hotels,
         accommodationNights,
-        mapCtx,
-        ranked,
+      );
+      const quoteHotels = this.hotelSearch.fromEnrichment(
+        quoteSnapshot,
+        accommodationNights,
+      );
+      const hotels = [...quoteHotels, ...mapHotels];
+      ctx.searchResults.hotels = hotels;
+      ctx.sectionStatus.hotels =
+        accommodationNights <= 0
+          ? 'skipped'
+          : hotels.length
+            ? 'ready'
+            : ctx.sectionStatus.hotels === 'failed'
+              ? 'failed'
+              : 'unavailable';
+
+      const selectedBudgetTier = resolveTravelGuideBudgetTier(
+        generationDto.budgetTier,
+      );
+      const regionKind = travelGuideRegionKind(activity);
+      const interCity = quoteEligible || Boolean(location.mapCtx.interCity);
+      const scoringCurrency =
+        dominantCurrency([
+          ...ctx.searchResults.flights.map((f) => f.price.currency),
+          ...ctx.searchResults.hotels.map((h) => h.price?.currency),
+        ]) ?? 'CNY';
+
+      // A) Budget policy / constraints BEFORE recommendation scoring.
+      ctx.budgetConstraints = this.budgetService.resolveBudgetConstraints({
+        dto: generationDto,
+        accommodationNights,
+        regionKind,
+        interCity,
+        currency: scoringCurrency,
+      });
+
+      ctx.recommendations.flights = this.flightRecommendation.recommend(
+        ctx.searchResults.flights,
+        ctx.budgetConstraints,
+      );
+      ctx.recommendations.hotels = this.hotelRecommendation.recommend(
+        ctx.searchResults.hotels,
+        ctx.budgetConstraints,
       );
 
+      // Authoritative selection — do not re-select in builder/LLM/enrich.
+      // Precedence: bestOverall → first normalized → (arrays already include quote-normalized).
+      ctx.selectedOptions = selectOptionsFromRecommendations({
+        flights: ctx.searchResults.flights,
+        hotels: ctx.searchResults.hotels,
+        tickets: [],
+        flightRecommendations: ctx.recommendations.flights,
+        hotelRecommendations: ctx.recommendations.hotels,
+      });
+
+      try {
+        ctx.searchResults.tickets = await this.ticketSearch.search({
+          activityLegacyId: activity.legacyId,
+          activityName: activity.name,
+          activityCode: activity.code,
+          activityLocation: activity.location,
+          region: activity.region,
+          externalUrl: activity.externalUrl,
+        });
+        ctx.sectionStatus.tickets = ctx.searchResults.tickets.length
+          ? 'ready'
+          : 'unavailable';
+      } catch (error) {
+        ctx.sectionStatus.tickets = 'failed';
+        ctx.errors.push({
+          section: 'tickets',
+          code: 'TICKET_SEARCH_FAILED',
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      // Attach ticket after search without re-picking flight/hotel.
+      const ticket =
+        ctx.searchResults.tickets.find((t) => t.availability === 'available') ??
+        ctx.searchResults.tickets[0];
+      if (ticket) {
+        ctx.selectedOptions = { ...ctx.selectedOptions, ticket };
+      }
+
+      // B) Final budget summary AFTER selectedOptions (+ tickets).
+      ctx.budget = this.budgetService.buildFromSelected({
+        budgetTier: selectedBudgetTier,
+        headcount: generationDto.headcount,
+        accommodationNights,
+        interCity,
+        regionKind,
+        selfDrive: Boolean(generationDto.selfDrive),
+        selected: ctx.selectedOptions,
+        flights: ctx.searchResults.flights,
+        hotels: ctx.searchResults.hotels,
+        tickets: ctx.searchResults.tickets,
+      });
+      ctx.sectionStatus.budget = ctx.budget.items.length
+        ? 'ready'
+        : 'unavailable';
+
+      await reportTravelGuideProgress(onProgress, 'ai_writing');
+      try {
+        ctx.generatedContent = await this.llmService.generatePlanContent({
+          activity,
+          dto: generationDto,
+          accommodationNights,
+          mapCtx: location.mapCtx,
+          ranked: location.ranked,
+          recommendations: ctx.recommendations,
+          selectedOptions: ctx.selectedOptions,
+          budget: ctx.budget,
+          budgetConstraints: ctx.budgetConstraints,
+          tickets: ctx.searchResults.tickets,
+        });
+        ctx.sectionStatus.itinerary = 'ready';
+      } catch (error) {
+        ctx.sectionStatus.itinerary = 'failed';
+        ctx.errors.push({
+          section: 'itinerary',
+          code: 'LLM_VALIDATION_FAILED',
+          message: error instanceof Error ? error.message : String(error),
+        });
+        // Keep selected options + budget; use deterministic empty prose shell.
+        ctx.generatedContent = {
+          transportLines: ctx.selectedOptions.flight
+            ? [
+                `${ctx.selectedOptions.flight.originAirportCode}→${ctx.selectedOptions.flight.destinationAirportCode}`,
+              ]
+            : [],
+          hotels: ctx.selectedOptions.hotel
+            ? [
+                {
+                  name: ctx.selectedOptions.hotel.name,
+                  note: '推荐住宿（AI 文案暂不可用）',
+                },
+              ]
+            : [],
+          nightlifeSpots: location.ranked.nightlife.slice(0, 4).map((p) => ({
+            name: p.name,
+            note: p.address ?? '',
+          })),
+          tipItems: ['行程文案生成失败，已保留推荐航班/酒店与预算汇总。'],
+          budgetItems: ctx.budget.items,
+        };
+      }
+
       await reportTravelGuideProgress(onProgress, 'assembling');
-      const regionKind = travelGuideRegionKind(activity);
       const mapHotelByTier =
         accommodationNights > 0 && regionKind === 'domestic'
           ? buildPlanHotelByTierFromMapRankings(
-              this.poiPipeline.rankHotelsForAllTiers(mapCtx, generationDto),
+              { [selectedBudgetTier]: location.ranked.hotels },
               {
                 accommodationNights,
                 headcount: generationDto.headcount,
                 activity,
-                selectedBudgetTier: generationDto.budgetTier,
+                selectedBudgetTier,
               },
             )
           : accommodationNights > 0
             ? buildPlanHotelByTierFromHotPath(activity, {
                 accommodationNights,
                 headcount: generationDto.headcount,
+                budgetTier: selectedBudgetTier,
               })
             : undefined;
 
-      const basePlan = buildTravelGuidePlan({
-        activity,
-        departure: generationDto.departure.trim(),
-        headcount: generationDto.headcount,
-        budgetTier: generationDto.budgetTier!,
-        accommodationNights,
-        selfDrive: generationDto.selfDrive,
-        note: generationDto.note,
-        llm: llmPayload,
-        mapSourcedOnly: true,
-        interCity: quoteEligible || Boolean(mapCtx.interCity),
-      });
-
-      const plan = applyTravelGuideAccommodationPreference(
-        applyTravelQuoteEnrichment(
-          mapHotelByTier
-            ? { ...basePlan, hotelByTier: mapHotelByTier }
-            : basePlan,
-          quoteSnapshot,
-          {
-            headcount: generationDto.headcount,
-            accommodationNights,
-            regionKind: travelGuideRegionKind(activity),
-            interCity: quoteEligible || Boolean(mapCtx.interCity),
-            budgetTier: generationDto.budgetTier!,
+      let plan = assembleTravelGuidePlanFromContext(ctx);
+      if (mapHotelByTier) {
+        plan = {
+          ...plan,
+          hotelByTier: {
+            ...(plan.hotelByTier ?? {}),
+            ...mapHotelByTier,
           },
-        ),
-        accommodationNights,
+        };
+      }
+
+      ctx.sectionStatus.budget = plan.budget?.items?.length
+        ? 'ready'
+        : ctx.sectionStatus.budget;
+      ctx.generationStatus = resolveGenerationStatus(ctx.sectionStatus);
+      ctx.plan = plan;
+
+      this.logger.log(
+        `travel guide assembled activity=${activityLegacyId} status=${ctx.generationStatus} ` +
+          `selectedFlight=${ctx.selectedOptions.flight?.id ?? 'none'} ` +
+          `selectedHotel=${ctx.selectedOptions.hotel?.id ?? 'none'} ` +
+          `budget=${ctx.budget?.total.min ?? 0}-${ctx.budget?.total.max ?? 0} ` +
+          `flights=${ctx.sectionStatus.flights} hotels=${ctx.sectionStatus.hotels} ` +
+          `tickets=${ctx.sectionStatus.tickets} destination=${destinationCityFromActivityLocation(activity.location) || ''}`,
       );
 
       await reportTravelGuideProgress(onProgress, 'finishing');
-      await this.generationCache.savePlan(
+      await this.planCache.saveGeneratedPlan(
         cacheKey,
         activityLegacyId,
         cacheParams,
@@ -402,11 +612,9 @@ export class TravelGuideGenerationOrchestrator {
       };
     }
 
-    const enriched = applyTravelQuoteEnrichment(plan, quoteSnapshot, {
+    const enriched = attachQuoteTierMetadataToPlan(plan, quoteSnapshot, {
       headcount: dto.headcount,
       accommodationNights,
-      regionKind: travelGuideRegionKind(activity),
-      interCity: quoteEligible || Boolean(mapCtx.interCity),
       budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
     });
 
@@ -418,7 +626,8 @@ export class TravelGuideGenerationOrchestrator {
       quoteRefreshed: Boolean(
         quoteSnapshot?.flight ||
         quoteSnapshot?.hotel ||
-        quoteSnapshot?.flightByTier,
+        quoteSnapshot?.flightByTier ||
+        quoteSnapshot?.hotelByTier,
       ),
     };
   }

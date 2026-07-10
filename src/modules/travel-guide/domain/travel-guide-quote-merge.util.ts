@@ -103,6 +103,22 @@ function recalculateBudgetTotal(
   }
 }
 
+export type TravelQuoteEnrichmentProtect = {
+  /** Keep selected flight offers / transport lead lines from being overwritten. */
+  selectedFlight?: boolean;
+  /** Keep selected hotel accommodation from being overwritten. */
+  selectedHotel?: boolean;
+  /** Keep BudgetService items from being overwritten. */
+  budget?: boolean;
+  /** Keep LLM itinerary/tips/nightlife from being overwritten. */
+  itinerary?: boolean;
+};
+
+/**
+ * @deprecated Prefer attachQuoteTierMetadataToPlan for generation/cache/refresh.
+ * Still used by budget-tier lazy hotel quote path which intentionally rewrites
+ * accommodation for the newly selected tier.
+ */
 export function applyTravelQuoteEnrichment(
   plan: TravelGuidePlan,
   enrichment: TravelQuoteEnrichment | null | undefined,
@@ -113,6 +129,7 @@ export function applyTravelQuoteEnrichment(
     interCity: boolean;
     budgetTier?: TravelGuideBudgetTier;
   },
+  protect: TravelQuoteEnrichmentProtect = {},
 ): TravelGuidePlan {
   if (
     !enrichment?.flight &&
@@ -125,21 +142,30 @@ export function applyTravelQuoteEnrichment(
     });
   }
 
-  const items = plan.budget?.items?.length
-    ? plan.budget.items.map((item) => ({ ...item }))
-    : [];
+  const items =
+    protect.budget && plan.budget?.items?.length
+      ? plan.budget.items.map((item) => ({ ...item }))
+      : plan.budget?.items?.length
+        ? plan.budget.items.map((item) => ({ ...item }))
+        : [];
   let transportLines = [...plan.transport.lines];
   let accommodation = plan.accommodation;
-  const flightOffers = enrichment.flight?.flightOffers;
+  const flightOffers = protect.selectedFlight
+    ? plan.transport.flightOffers
+    : enrichment.flight?.flightOffers;
 
-  if (enrichment.flight && shouldApplyFlightQuote(enrichment.flight)) {
+  if (
+    !protect.budget &&
+    enrichment.flight &&
+    shouldApplyFlightQuote(enrichment.flight)
+  ) {
     const flightItem = buildRollingGoFlightBudgetItem(enrichment.flight, {
       headcount: input.headcount,
       regionKind: input.regionKind,
     });
     replaceFlightBudgetItem(items, flightItem);
 
-    if (!flightOffers?.length) {
+    if (!protect.selectedFlight && !flightOffers?.length) {
       const sampleLines = enrichment.flight.sampleLines ?? [];
       const existing = new Set(transportLines);
       const newFlightLines = sampleLines.filter((line) => !existing.has(line));
@@ -147,9 +173,25 @@ export function applyTravelQuoteEnrichment(
         transportLines = [...newFlightLines, ...transportLines];
       }
     }
+  } else if (
+    protect.selectedFlight &&
+    enrichment.flight &&
+    !flightOffers?.length &&
+    enrichment.flight.sampleLines?.length &&
+    input.regionKind !== 'overseas'
+  ) {
+    // Fill-only: append missing sample lines without replacing lead selection line.
+    const existing = new Set(transportLines);
+    const extras = enrichment.flight.sampleLines.filter(
+      (line) => !existing.has(line),
+    );
+    if (extras.length) {
+      transportLines = [...transportLines, ...extras];
+    }
   }
 
   if (
+    !protect.budget &&
     items.length &&
     enrichment.hotel &&
     input.accommodationNights > 0 &&
@@ -187,17 +229,18 @@ export function applyTravelQuoteEnrichment(
     });
   }
 
-  if (items.length) {
+  if (!protect.budget && items.length) {
     recalculateBudgetTotal(items, input.headcount);
   }
 
-  if (input.regionKind === 'overseas') {
+  if (input.regionKind === 'overseas' && !protect.selectedHotel) {
     const overseasPatch = applyOverseasRollingGoRecommendations(plan, {
       headcount: input.headcount,
       accommodationNights: input.accommodationNights,
       currency:
         enrichment.hotel?.currency ?? enrichment.flight?.currency ?? 'CNY',
       flightSampleLines:
+        !protect.selectedFlight &&
         !flightOffers?.length &&
         enrichment.flight?.sampleLines?.length &&
         enrichment.flight.sampleLines.length > 0
@@ -206,12 +249,14 @@ export function applyTravelQuoteEnrichment(
       hotelRecommendations: enrichment.hotel?.recommendations,
     });
     if (overseasPatch) {
-      transportLines = overseasPatch.transport.lines;
+      if (!protect.selectedFlight) {
+        transportLines = overseasPatch.transport.lines;
+      }
       accommodation = overseasPatch.accommodation;
     }
   }
 
-  if (flightOffers?.length) {
+  if (flightOffers?.length && !protect.selectedFlight) {
     transportLines = transportLines.filter(
       (line) => !isRollingGoFlightSampleLine(line),
     );
@@ -239,12 +284,19 @@ export function applyTravelQuoteEnrichment(
       transport: {
         ...plan.transport,
         lines: transportLines,
-        ...(flightOffers?.length ? { flightOffers } : {}),
+        ...(flightOffers?.length
+          ? { flightOffers }
+          : plan.transport.flightOffers
+            ? { flightOffers: plan.transport.flightOffers }
+            : {}),
       },
       accommodation,
       budget: {
         title: plan.budget?.title ?? '预算参考（全程 · 合计）',
-        items,
+        items:
+          protect.budget && plan.budget?.items?.length
+            ? plan.budget.items
+            : items,
       },
       quoteFetchedAt: new Date().toISOString(),
       ...(flightByTier ? { flightByTier } : {}),
@@ -254,7 +306,7 @@ export function applyTravelQuoteEnrichment(
     { selectedBudgetTier: input.budgetTier },
   );
 
-  if (hotelByTier?.[selectedTier]?.hotels.length) {
+  if (!protect.selectedHotel && hotelByTier?.[selectedTier]?.hotels.length) {
     return applyHotelTierAccommodationToPlan(planWithTierData, selectedTier);
   }
 

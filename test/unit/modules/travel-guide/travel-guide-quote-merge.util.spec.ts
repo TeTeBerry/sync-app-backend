@@ -178,4 +178,100 @@ describe('travel-guide-quote-merge.util', () => {
     expect(enriched.quoteTierSources?.standard).toBe('rollinggo');
     expect(enriched.budgetTierSnapshots).toHaveLength(3);
   });
+
+  it('protect flags prevent overwriting authoritative flight/hotel/budget', () => {
+    const authoritative: TravelGuidePlan = {
+      ...basePlan,
+      transport: {
+        title: '交通',
+        lines: ['SELECTED_FLIGHT_LINE'],
+        flightOffers: [
+          {
+            pricePerAdult: 1100,
+            currency: 'CNY',
+            outbound: {
+              route: 'PVG→SZX',
+              stopsLabel: '直飞',
+              depTime: '08:00',
+              arrTime: '10:00',
+            },
+          },
+        ],
+      },
+      accommodation: {
+        title: '住宿',
+        hotels: [{ name: 'Best Near', note: 'selected', reason: '综合推荐' }],
+      },
+      budget: {
+        title: '预算',
+        items: [{ label: '合计参考（全员）', range: '约 ¥5000' }],
+      },
+    };
+
+    const enriched = applyTravelQuoteEnrichment(
+      authoritative,
+      {
+        flight: {
+          fromCityCode: 'PVG',
+          toCityCode: 'SZX',
+          outboundDate: '2026-06-12',
+          currency: 'CNY',
+          minPricePerAdult: 500,
+          maxPricePerAdult: 600,
+          sampleLines: ['LEGACY_OVERWRITE'],
+          flightOffers: [
+            {
+              pricePerAdult: 500,
+              currency: 'CNY',
+              outbound: {
+                route: 'PVG→SZX',
+                stopsLabel: '直飞',
+                depTime: '06:00',
+                arrTime: '08:00',
+              },
+            },
+          ],
+          fetchedAt: '2026-06-29T00:00:00.000Z',
+          source: 'rollinggo',
+        },
+        hotel: {
+          minPricePerNight: 200,
+          maxPricePerNight: 250,
+          currency: 'CNY',
+          sampleCount: 3,
+          fetchedAt: '2026-06-29T00:00:00.000Z',
+          source: 'rollinggo',
+          recommendations: [{ name: 'Legacy Hotel', minPricePerNight: 200 }],
+        },
+        hotelByTier: {
+          standard: {
+            minPricePerNight: 200,
+            maxPricePerNight: 250,
+            currency: 'CNY',
+            sampleCount: 3,
+            fetchedAt: '2026-06-29T00:00:00.000Z',
+            source: 'rollinggo',
+            recommendations: [{ name: 'Legacy Hotel', minPricePerNight: 200 }],
+          },
+        },
+      },
+      {
+        headcount: 2,
+        accommodationNights: 2,
+        regionKind: 'domestic',
+        interCity: true,
+        budgetTier: 'standard',
+      },
+      {
+        selectedFlight: true,
+        selectedHotel: true,
+        budget: true,
+      },
+    );
+
+    expect(enriched.transport.flightOffers?.[0]?.pricePerAdult).toBe(1100);
+    expect(enriched.transport.lines[0]).toBe('SELECTED_FLIGHT_LINE');
+    expect(enriched.accommodation.hotels[0]?.name).toBe('Best Near');
+    expect(enriched.budget?.items[0]?.range).toBe('约 ¥5000');
+  });
 });

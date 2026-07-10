@@ -1,0 +1,171 @@
+import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
+import { resolveTravelGuideBudgetTier } from './parse-activity-days.util';
+import { buildTravelGuidePlan } from './travel-guide-fallback.builder';
+import { attachQuoteTierMetadataToPlan } from './attach-quote-tier-metadata.util';
+import { applyTravelGuideAccommodationPreference } from './travel-guide-accommodation-preference.util';
+import {
+  buildFlightOffersFromRecommendations,
+  buildFlightSampleLine,
+  buildHotelItemsFromRecommendations,
+  buildHotelSchemesFromRecommendations,
+  normalizedFlightToOffer,
+} from './map-selected-options-to-plan.util';
+import type { PlanGenerationContext } from '../types/plan-generation-context';
+import type { LlmTravelGuidePayload } from './travel-guide-llm.types';
+
+/**
+ * Deterministic plan assembler from PlanGenerationContext.
+ * Source of truth: selectedOptions + recommendations + budget + generatedContent.
+ * Does not call providers, rank, calculate budget, invoke LLM, or persist.
+ */
+export function assembleTravelGuidePlanFromContext(
+  ctx: PlanGenerationContext,
+): TravelGuidePlan {
+  const dto = ctx.request.dto;
+  const activity = ctx.festival;
+  const accommodationNights = ctx.request.accommodationNights;
+  const budgetTier = resolveTravelGuideBudgetTier(dto.budgetTier);
+  const interCity = Boolean(
+    ctx.locations?.mapCtx.interCity ||
+    shouldTreatAsInterCity(ctx.quoteEnrichment),
+  );
+
+  const generated = applyAuthoritativeOverlaysToLlm(ctx);
+  let plan = buildTravelGuidePlan({
+    activity,
+    departure: dto.departure.trim(),
+    headcount: dto.headcount,
+    budgetTier,
+    accommodationNights,
+    selfDrive: dto.selfDrive,
+    note: dto.note,
+    llm: generated,
+    mapSourcedOnly: true,
+    interCity,
+    skipIndependentBudget: true,
+  });
+
+  if (ctx.budget?.items?.length) {
+    plan.budget = {
+      title: '预算参考（全程 · 合计）',
+      items: ctx.budget.items,
+    };
+  }
+
+  if (ctx.selectedOptions.flight) {
+    const reasonCodes =
+      ctx.recommendations.flights.bestOverall?.reasonCodes ?? [];
+    const sample = buildFlightSampleLine(
+      ctx.selectedOptions.flight,
+      reasonCodes,
+      'bestOverall',
+    );
+    const lines = plan.transport.lines.filter((line) => line !== sample);
+    const flightOffers = buildFlightOffersFromRecommendations({
+      flights: ctx.searchResults.flights,
+      flightRecommendations: ctx.recommendations.flights,
+      selectedFlightId: ctx.selectedOptions.flight.id,
+    });
+    plan.transport = {
+      ...plan.transport,
+      lines: [sample, ...lines],
+      flightOffers:
+        flightOffers.length > 0
+          ? flightOffers
+          : [
+              normalizedFlightToOffer(
+                ctx.selectedOptions.flight,
+                'bestOverall',
+              ),
+            ],
+    };
+  }
+
+  if (ctx.selectedOptions.hotel && accommodationNights > 0) {
+    const hotels = buildHotelItemsFromRecommendations({
+      hotels: ctx.searchResults.hotels,
+      hotelRecommendations: ctx.recommendations.hotels,
+      selectedHotelId: ctx.selectedOptions.hotel.id,
+      nights: accommodationNights,
+      headcount: dto.headcount,
+    });
+    if (hotels.length) {
+      plan.accommodation = {
+        title: plan.accommodation.title || '住宿推荐',
+        hotels,
+        schemes: buildHotelSchemesFromRecommendations({
+          hotels: ctx.searchResults.hotels,
+          hotelRecommendations: ctx.recommendations.hotels,
+          selectedHotelId: ctx.selectedOptions.hotel.id,
+          nights: accommodationNights,
+          headcount: dto.headcount,
+        }),
+      };
+    }
+  }
+
+  if (ctx.selectedOptions.ticket) {
+    const ticket = ctx.selectedOptions.ticket;
+    plan.tickets = {
+      title: plan.tickets?.title ?? '门票渠道',
+      channels: [
+        {
+          name: ticket.ticketName,
+          note:
+            ticket.note ??
+            (ticket.price
+              ? `参考价 ${ticket.price.currency === 'USD' ? '$' : '¥'}${ticket.price.amount}`
+              : ticket.availability),
+        },
+        ...(plan.tickets?.channels ?? []).filter(
+          (c) => c.name !== ticket.ticketName,
+        ),
+      ].slice(0, 4),
+    };
+  }
+
+  // RollingGo quote: tier metadata only — never overrides selections/budget.
+  plan = attachQuoteTierMetadataToPlan(plan, ctx.quoteEnrichment, {
+    headcount: dto.headcount,
+    accommodationNights,
+    budgetTier,
+  });
+
+  return applyTravelGuideAccommodationPreference(plan, accommodationNights);
+}
+
+function applyAuthoritativeOverlaysToLlm(
+  ctx: PlanGenerationContext,
+): LlmTravelGuidePayload {
+  const generated = ctx.generatedContent;
+  if (!generated) {
+    throw new Error(
+      'assembleTravelGuidePlanFromContext requires generatedContent',
+    );
+  }
+
+  const dto = ctx.request.dto;
+  const nights = ctx.request.accommodationNights;
+  const hotels =
+    nights > 0 && ctx.selectedOptions.hotel
+      ? buildHotelItemsFromRecommendations({
+          hotels: ctx.searchResults.hotels,
+          hotelRecommendations: ctx.recommendations.hotels,
+          selectedHotelId: ctx.selectedOptions.hotel.id,
+          nights,
+          headcount: dto.headcount,
+        })
+      : generated.hotels;
+
+  return {
+    ...generated,
+    hotels,
+    budgetItems: ctx.budget?.items ?? generated.budgetItems,
+  };
+}
+
+function shouldTreatAsInterCity(
+  enrichment: PlanGenerationContext['quoteEnrichment'],
+): boolean {
+  return Boolean(enrichment?.flight || enrichment?.flightByTier);
+}

@@ -246,6 +246,8 @@ function buildExtendedSections(
     accommodationNights: number;
     selfDrive: boolean;
     interCity?: boolean;
+    /** When true, do not invent budget via estimate util (BudgetService owns it). */
+    skipIndependentBudget?: boolean;
   },
 ): Pick<
   TravelGuidePlan,
@@ -283,14 +285,16 @@ function buildExtendedSections(
 
   const budgetItems = llm?.budgetItems?.length
     ? llm.budgetItems
-    : buildTravelGuideBudgetItems({
-        budgetTier: input.budgetTier,
-        headcount: input.headcount,
-        accommodationNights: input.accommodationNights,
-        interCity,
-        regionKind,
-        selfDrive: input.selfDrive,
-      });
+    : input.skipIndependentBudget
+      ? []
+      : buildTravelGuideBudgetItems({
+          budgetTier: input.budgetTier,
+          headcount: input.headcount,
+          accommodationNights: input.accommodationNights,
+          interCity,
+          regionKind,
+          selfDrive: input.selfDrive,
+        });
 
   return {
     ...(documentItems?.length
@@ -311,7 +315,9 @@ function buildExtendedSections(
           },
         }
       : {}),
-    budget: { title: '预算参考（全程 · 合计）', items: budgetItems },
+    ...(budgetItems.length
+      ? { budget: { title: '预算参考（全程 · 合计）', items: budgetItems } }
+      : {}),
   };
 }
 
@@ -327,6 +333,11 @@ export function buildTravelGuidePlan(input: {
   /** 为 true 时禁止回退到静态模板（仅接受地图/地图+AI 链路产出） */
   mapSourcedOnly?: boolean;
   interCity?: boolean;
+  /**
+   * When true, skip estimate-based budget inside this builder.
+   * Authoritative budget must come from BudgetService via llm.budgetItems / assembler.
+   */
+  skipIndependentBudget?: boolean;
 }): TravelGuidePlan {
   const { activity, departure, headcount, budgetTier } = input;
   const selfDrive = Boolean(input.selfDrive);
@@ -413,6 +424,7 @@ export function buildTravelGuidePlan(input: {
     accommodationNights,
     selfDrive,
     interCity: input.interCity,
+    skipIndependentBudget: input.skipIndependentBudget,
   });
 
   return {

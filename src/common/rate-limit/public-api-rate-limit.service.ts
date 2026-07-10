@@ -10,6 +10,7 @@ type MemoryBucket = { count: number; resetAt: number };
 export type PublicRateLimitScope =
   | 'travel_guide_map'
   | 'travel_guide_plan'
+  | 'raven_place_suggestions'
   | 'post_ai_search'
   | 'post_ai_compose'
   | 'scene_run'
@@ -42,6 +43,12 @@ export class PublicApiRateLimitService {
       travel_guide_plan: {
         maxRequests:
           config.get<number>('publicApi.rateLimit.travelGuidePlanMax') ?? 40,
+        windowMs,
+      },
+      raven_place_suggestions: {
+        maxRequests:
+          config.get<number>('publicApi.rateLimit.ravenPlaceSuggestionsMax') ??
+          60,
         windowMs,
       },
       post_ai_search: {

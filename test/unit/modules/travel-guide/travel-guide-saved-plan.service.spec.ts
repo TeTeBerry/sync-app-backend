@@ -1,12 +1,11 @@
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { getModelToken } from '@nestjs/mongoose';
 import { TravelGuideSavedPlanService } from '@src/modules/travel-guide/travel-guide-saved-plan.service';
-import { TravelGuideSavedPlan } from '@src/database/schemas/travel-guide-saved-plan.schema';
 import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 import { BffReadCacheInvalidationService } from '@src/infra/cache/bff-read-cache.service';
 import { UserGoalService } from '@src/modules/goal/goal.service';
 import { TripPlanCollaborationService } from '@src/modules/trip-plan/trip-plan-collaboration.service';
+import { TravelGuidePlanRepository } from '@src/modules/travel-guide/persistence/travel-guide-plan.repository';
 
 const plan: TravelGuidePlan = {
   activityName: 'Storm',
@@ -25,18 +24,14 @@ const plan: TravelGuidePlan = {
 
 describe('TravelGuideSavedPlanService', () => {
   let service: TravelGuideSavedPlanService;
-  let updateOne: jest.Mock;
-  let findOne: jest.Mock;
-  let sort: jest.Mock;
-  let lean: jest.Mock;
-  let exec: jest.Mock;
+  let upsertPlan: jest.Mock;
+  let findByGuideId: jest.Mock;
+  let findLatestByOwnerAndActivity: jest.Mock;
 
   beforeEach(async () => {
-    updateOne = jest.fn().mockReturnValue({ exec: jest.fn() });
-    exec = jest.fn().mockResolvedValue(null);
-    lean = jest.fn().mockReturnValue({ exec });
-    sort = jest.fn().mockReturnValue({ lean });
-    findOne = jest.fn().mockReturnValue({ sort, lean });
+    upsertPlan = jest.fn().mockResolvedValue(undefined);
+    findByGuideId = jest.fn().mockResolvedValue(null);
+    findLatestByOwnerAndActivity = jest.fn().mockResolvedValue(null);
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -49,8 +44,14 @@ describe('TravelGuideSavedPlanService', () => {
           },
         },
         {
-          provide: getModelToken(TravelGuideSavedPlan.name),
-          useValue: { updateOne, findOne },
+          provide: TravelGuidePlanRepository,
+          useValue: {
+            upsertPlan,
+            findByGuideId,
+            findLatestByOwnerAndActivity,
+            updatePlan: jest.fn(),
+            updateBudgetTier: jest.fn(),
+          },
         },
         {
           provide: BffReadCacheInvalidationService,
@@ -85,61 +86,69 @@ describe('TravelGuideSavedPlanService', () => {
       plan,
     );
 
-    expect(updateOne).toHaveBeenCalledWith(
-      { guideId: 'guide-12345678' },
+    expect(upsertPlan).toHaveBeenCalledWith(
       expect.objectContaining({
-        $set: expect.objectContaining({
-          guideId: 'guide-12345678',
-          ownerUserId: 'wx_user',
-          activityLegacyId: 4,
-          form: {
-            departure: '上海',
-            headcount: 2,
-            budgetTier: 'standard',
-            selfDrive: true,
-            accommodationNights: 2,
-          },
-          plan,
-        }),
-      }),
-      { upsert: true },
-    );
-  });
-
-  it('returns null when guide id is blank', async () => {
-    await expect(service.findByGuideId('   ')).resolves.toBeNull();
-    expect(findOne).not.toHaveBeenCalled();
-  });
-
-  it('finds latest saved plan for owner and activity', async () => {
-    exec.mockResolvedValueOnce({ guideId: 'guide-latest' });
-
-    await expect(
-      service.findLatestByOwnerAndActivity('wx_user', 4),
-    ).resolves.toEqual({ guideId: 'guide-latest' });
-
-    expect(findOne).toHaveBeenCalledWith({
-      ownerUserId: 'wx_user',
-      activityLegacyId: 4,
-    });
-    expect(sort).toHaveBeenCalledWith({ updatedAt: -1 });
-  });
-
-  it('maps stored document to read view', async () => {
-    const createdAt = new Date('2026-01-01T00:00:00.000Z');
-    lean.mockReturnValueOnce({
-      exec: jest.fn().mockResolvedValue({
         guideId: 'guide-12345678',
+        ownerUserId: 'wx_user',
         activityLegacyId: 4,
         form: {
           departure: '上海',
           headcount: 2,
           budgetTier: 'standard',
+          selfDrive: true,
           accommodationNights: 2,
         },
         plan,
-        createdAt,
       }),
+    );
+  });
+
+  it('returns null when guide id is blank', async () => {
+    await expect(service.findByGuideId('   ')).resolves.toBeNull();
+    expect(findByGuideId).not.toHaveBeenCalled();
+  });
+
+  it('finds latest saved plan for owner and activity', async () => {
+    findLatestByOwnerAndActivity.mockResolvedValueOnce({
+      guideId: 'guide-latest',
+      form: {
+        departure: '上海',
+        headcount: 2,
+        budgetTier: 'standard',
+        accommodationNights: 2,
+      },
+    });
+
+    await expect(
+      service.findLatestByOwnerAndActivity('wx_user', 4),
+    ).resolves.toEqual({
+      guideId: 'guide-latest',
+      form: {
+        departure: '上海',
+        headcount: 2,
+        budgetTier: 'standard',
+        accommodationNights: 2,
+      },
+    });
+
+    expect(findLatestByOwnerAndActivity).toHaveBeenCalledWith('wx_user', 4);
+  });
+
+  it('maps stored document to read view', async () => {
+    const createdAt = new Date('2026-01-01T00:00:00.000Z');
+    findByGuideId.mockResolvedValueOnce({
+      guideId: 'guide-12345678',
+      ownerUserId: 'wx_user',
+      activityLegacyId: 4,
+      form: {
+        departure: '上海',
+        headcount: 2,
+        budgetTier: 'standard',
+        accommodationNights: 2,
+      },
+      plan,
+      expiresAt: new Date(),
+      createdAt,
     });
 
     await expect(service.findByGuideId('guide-12345678')).resolves.toEqual({

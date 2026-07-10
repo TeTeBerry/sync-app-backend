@@ -68,17 +68,18 @@ describe('travel-guide-abroad-accommodation', () => {
     );
   });
 
-  it('builds hotelByTier for overseas tier switching', () => {
+  it('builds hotelByTier for selected overseas budget tier only', () => {
     const hotelByTier = buildPlanHotelByTierFromHotPath(edcThailand, {
       accommodationNights: 3,
       headcount: 2,
+      budgetTier: 'standard',
     });
 
-    expect(hotelByTier?.economy?.hotels.length).toBeGreaterThan(0);
     expect(hotelByTier?.standard?.hotels.length).toBeGreaterThan(0);
-    expect(hotelByTier?.comfort?.hotels.length).toBeGreaterThan(0);
-    expect(hotelByTier?.economy?.hotels[0]?.name).not.toBe(
-      hotelByTier?.comfort?.hotels[0]?.name,
+    expect(hotelByTier?.economy).toBeUndefined();
+    expect(hotelByTier?.comfort).toBeUndefined();
+    expect(hotelByTier?.standard?.hotels[0]?.name).toMatch(
+      /Hilton|Pullman|Lub d|Novotel|Holiday Inn/i,
     );
   });
 });

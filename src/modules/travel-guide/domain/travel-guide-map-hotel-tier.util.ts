@@ -21,7 +21,7 @@ function roomHint(headcount: number): string {
   return `建议 ${rooms} 间房（${headcount} 人可双人间拼住）`;
 }
 
-/** 将地图 POI 按三档预算分别排序后写入 plan.hotelByTier，供档位切换展示。 */
+/** 将地图 POI 写入 plan.hotelByTier；默认仅构建 selectedBudgetTier（用户所选档）。 */
 export function buildPlanHotelByTierFromMapRankings(
   hotelsByTier: Partial<Record<TravelGuideBudgetTier, RankedMapPoi[]>>,
   input: {
@@ -36,8 +36,11 @@ export function buildPlanHotelByTierFromMapRankings(
   const nightLabel = `${input.accommodationNights} 晚`;
   const room = roomHint(input.headcount);
   const result: NonNullable<TravelGuidePlan['hotelByTier']> = {};
+  const tiersToBuild: TravelGuideBudgetTier[] = input.selectedBudgetTier
+    ? [input.selectedBudgetTier]
+    : TIER_ORDER;
 
-  for (const tier of TIER_ORDER) {
+  for (const tier of tiersToBuild) {
     const ranked = hotelsByTier[tier];
     if (!ranked?.length) continue;
 

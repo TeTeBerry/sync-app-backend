@@ -9,7 +9,6 @@ import {
 } from '../map/travel-guide-map-plan.builder';
 import {
   pickTierAccommodationHotels,
-  rankHotelPoisForAllBudgetTiers,
   rankHotelPoisForBudgetTier,
 } from '../map/travel-guide-poi.ranker';
 import { TRAVEL_GUIDE_TIER_HOTEL_SCHEME_COUNT } from './travel-guide-accommodation.constants';
@@ -79,6 +78,7 @@ export function buildPlanHotelByTierFromHotPath(
   input: {
     accommodationNights: number;
     headcount: number;
+    budgetTier: TravelGuideBudgetTier;
   },
 ): ReturnType<typeof buildPlanHotelByTierFromMapRankings> {
   const rawHotels = hotPathHotelPois(activity.legacyId);
@@ -86,12 +86,18 @@ export function buildPlanHotelByTierFromHotPath(
     return undefined;
   }
 
+  const ranked = rankHotelPoisForBudgetTier(rawHotels, input.budgetTier);
+  if (!ranked.length) {
+    return undefined;
+  }
+
   return buildPlanHotelByTierFromMapRankings(
-    rankHotelPoisForAllBudgetTiers(rawHotels),
+    { [input.budgetTier]: ranked },
     {
       accommodationNights: input.accommodationNights,
       headcount: input.headcount,
       activity,
+      selectedBudgetTier: input.budgetTier,
     },
   );
 }

@@ -120,7 +120,7 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
         );
         hotelByTier = await this.fetchHotelTierQuotes(
           query,
-          SYNC_BUDGET_TIER_ORDER,
+          [query.budgetTier],
           mcpOptions,
         );
       }

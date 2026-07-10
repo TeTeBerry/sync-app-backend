@@ -69,7 +69,9 @@
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/activities/:legacyId/travel-guide/generate` | 生成攻略（需登录） |
-| GET | `/api/travel-guide/place-suggestions?keyword=&region=` | 出发地输入提示（Public） |
+| GET | `/api/travel-guide/place-suggestions?keyword=&region=` | 出发地输入提示（小程序，高德 + 本地城市库） |
+| GET | `/api/raven/place-suggestions?keyword=&limit=` | Raven 出发地：关键词搜城市（+ IATA 直达） |
+| GET | `/api/raven/place-suggestions?city=&country=` | Raven 出发地：返回该城市全部机场（选中城市后） |
 
 ## 配置
 

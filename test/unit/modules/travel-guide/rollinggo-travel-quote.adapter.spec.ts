@@ -75,7 +75,7 @@ describe('RollingGoTravelQuoteAdapter', () => {
     expect(searchHotels).toHaveBeenCalledTimes(1);
   });
 
-  it('enrich fetches all three hotel tiers on cold path', async () => {
+  it('enrich fetches selected hotel tier on cold path', async () => {
     const searchHotels = jest
       .fn()
       .mockResolvedValue([{ minPrice: 300, maxPrice: 450, name: 'Hotel C' }]);
@@ -113,6 +113,6 @@ describe('RollingGoTravelQuoteAdapter', () => {
       2,
     );
 
-    expect(searchHotels).toHaveBeenCalledTimes(3);
+    expect(searchHotels).toHaveBeenCalledTimes(1);
   });
 });

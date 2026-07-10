@@ -1,11 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import {
-  TravelGuideSavedPlan,
-  TravelGuideSavedPlanDocument,
-} from '../../database/schemas/travel-guide-saved-plan.schema';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
 import type {
   AiGuidePlanFormValues,
@@ -18,6 +12,7 @@ import { BffReadCacheInvalidationService } from '../../infra/cache/bff-read-cach
 import type { RequestActor } from '../../common/auth/request-actor.types';
 import { UserGoalService } from '../goal/goal.service';
 import { TripPlanCollaborationService } from '../trip-plan/trip-plan-collaboration.service';
+import { TravelGuidePlanRepository } from './persistence/travel-guide-plan.repository';
 
 export type TravelGuideSavedPlanView = TravelGuidePlanReadResult;
 
@@ -26,8 +21,7 @@ export class TravelGuideSavedPlanService {
   private readonly ttlSec: number;
 
   constructor(
-    @InjectModel(TravelGuideSavedPlan.name)
-    private readonly model: Model<TravelGuideSavedPlanDocument>,
+    private readonly planRepository: TravelGuidePlanRepository,
     config: ConfigService,
     private readonly bffCacheInvalidation: BffReadCacheInvalidationService,
     private readonly goalService: UserGoalService,
@@ -52,20 +46,14 @@ export class TravelGuideSavedPlanService {
     const expiresAt = new Date(Date.now() + this.ttlSec * 1000);
     const form = buildSavedPlanForm(dto, accommodationNights);
 
-    await this.model.updateOne(
-      { guideId: id },
-      {
-        $set: {
-          guideId: id,
-          ownerUserId,
-          activityLegacyId,
-          form,
-          plan,
-          expiresAt,
-        },
-      },
-      { upsert: true },
-    );
+    await this.planRepository.upsertPlan({
+      guideId: id,
+      ownerUserId,
+      activityLegacyId,
+      form,
+      plan,
+      expiresAt,
+    });
 
     await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
       ownerUserId,
@@ -86,16 +74,10 @@ export class TravelGuideSavedPlanService {
     ownerUserId: string,
     activityLegacyId: number,
   ): Promise<{ guideId: string; form: AiGuidePlanFormValues } | null> {
-    const doc = await this.model
-      .findOne({ ownerUserId, activityLegacyId })
-      .sort({ updatedAt: -1 })
-      .lean()
-      .exec();
-    if (!doc?.guideId?.trim()) return null;
-    return {
-      guideId: doc.guideId.trim(),
-      form: doc.form,
-    };
+    return this.planRepository.findLatestByOwnerAndActivity(
+      ownerUserId,
+      activityLegacyId,
+    );
   }
 
   async findByGuideId(
@@ -104,19 +86,10 @@ export class TravelGuideSavedPlanService {
     const id = guideId.trim();
     if (!id) return null;
 
-    const doc = await this.model.findOne({ guideId: id }).lean().exec();
+    const doc = await this.planRepository.findByGuideId(id);
     if (!doc) return null;
 
-    return {
-      guideId: doc.guideId,
-      activityLegacyId: doc.activityLegacyId,
-      form: doc.form,
-      plan: doc.plan,
-      createdAt:
-        doc.createdAt instanceof Date
-          ? doc.createdAt.toISOString()
-          : new Date().toISOString(),
-    };
+    return toView(doc);
   }
 
   async findOwnedByGuideId(
@@ -126,20 +99,10 @@ export class TravelGuideSavedPlanService {
     const id = guideId.trim();
     if (!id) return null;
 
-    const doc = await this.model.findOne({ guideId: id }).lean().exec();
+    const doc = await this.planRepository.findByGuideId(id);
     if (!doc || doc.ownerUserId !== ownerUserId) return null;
 
-    return {
-      guideId: doc.guideId,
-      activityLegacyId: doc.activityLegacyId,
-      ownerUserId: doc.ownerUserId,
-      form: doc.form,
-      plan: doc.plan,
-      createdAt:
-        doc.createdAt instanceof Date
-          ? doc.createdAt.toISOString()
-          : new Date().toISOString(),
-    };
+    return { ...toView(doc), ownerUserId: doc.ownerUserId };
   }
 
   async findAccessibleByGuideId(
@@ -149,36 +112,16 @@ export class TravelGuideSavedPlanService {
     const id = guideId.trim();
     if (!id) return null;
 
-    const doc = await this.model.findOne({ guideId: id }).lean().exec();
+    const doc = await this.planRepository.findByGuideId(id);
     if (!doc) return null;
 
     const userId = actor.resolvedUserId?.trim();
     if (doc.ownerUserId === userId) {
-      return {
-        guideId: doc.guideId,
-        activityLegacyId: doc.activityLegacyId,
-        ownerUserId: doc.ownerUserId,
-        form: doc.form,
-        plan: doc.plan,
-        createdAt:
-          doc.createdAt instanceof Date
-            ? doc.createdAt.toISOString()
-            : new Date().toISOString(),
-      };
+      return { ...toView(doc), ownerUserId: doc.ownerUserId };
     }
 
     await this.tripPlanCollaboration.assertGuideAccess(id, actor);
-    return {
-      guideId: doc.guideId,
-      activityLegacyId: doc.activityLegacyId,
-      ownerUserId: doc.ownerUserId,
-      form: doc.form,
-      plan: doc.plan,
-      createdAt:
-        doc.createdAt instanceof Date
-          ? doc.createdAt.toISOString()
-          : new Date().toISOString(),
-    };
+    return { ...toView(doc), ownerUserId: doc.ownerUserId };
   }
 
   async updateForm(
@@ -211,7 +154,14 @@ export class TravelGuideSavedPlanService {
       else delete form.note;
     }
 
-    await this.model.updateOne({ guideId: guideId.trim() }, { $set: { form } });
+    await this.planRepository.upsertPlan({
+      guideId: guideId.trim(),
+      ownerUserId: saved.ownerUserId,
+      activityLegacyId: saved.activityLegacyId,
+      form,
+      plan: saved.plan,
+      expiresAt: new Date(Date.now() + this.ttlSec * 1000),
+    });
 
     await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
       saved.ownerUserId,
@@ -230,7 +180,7 @@ export class TravelGuideSavedPlanService {
   async updatePlan(guideId: string, plan: TravelGuidePlan): Promise<void> {
     const id = guideId.trim();
     if (!id) return;
-    await this.model.updateOne({ guideId: id }, { $set: { plan } });
+    await this.planRepository.updatePlan(id, plan);
   }
 
   async updateBudgetTier(
@@ -242,32 +192,48 @@ export class TravelGuideSavedPlanService {
     const id = guideId.trim();
     if (!id) return null;
 
-    const doc = await this.model.findOne({ guideId: id }).lean().exec();
-    if (!doc || doc.ownerUserId !== ownerUserId) return null;
+    const existing = await this.planRepository.findByGuideId(id);
+    if (!existing || existing.ownerUserId !== ownerUserId) return null;
 
     const form = {
-      ...doc.form,
+      ...existing.form,
       budgetTier,
     };
 
-    await this.model.updateOne({ guideId: id }, { $set: { form, plan } });
+    const doc = await this.planRepository.updateBudgetTier(
+      id,
+      ownerUserId,
+      form,
+      plan,
+    );
+    if (!doc) return null;
 
     await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
       ownerUserId,
       doc.activityLegacyId,
     );
 
-    return {
-      guideId: doc.guideId,
-      activityLegacyId: doc.activityLegacyId,
-      form,
-      plan,
-      createdAt:
-        doc.createdAt instanceof Date
-          ? doc.createdAt.toISOString()
-          : new Date().toISOString(),
-    };
+    return toView(doc);
   }
+}
+
+function toView(doc: {
+  guideId: string;
+  activityLegacyId: number;
+  form: AiGuidePlanFormValues;
+  plan: TravelGuidePlan;
+  createdAt?: Date;
+}): TravelGuideSavedPlanView {
+  return {
+    guideId: doc.guideId,
+    activityLegacyId: doc.activityLegacyId,
+    form: doc.form,
+    plan: doc.plan,
+    createdAt:
+      doc.createdAt instanceof Date
+        ? doc.createdAt.toISOString()
+        : new Date().toISOString(),
+  };
 }
 
 function buildSavedPlanForm(

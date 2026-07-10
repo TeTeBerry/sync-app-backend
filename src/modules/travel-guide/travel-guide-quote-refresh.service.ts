@@ -9,9 +9,8 @@ import {
   hasStaticFlightBudgetTemplate,
 } from './domain/travel-guide-flight-budget-detect.util';
 import { planHasFullFlightTierQuotes } from './domain/travel-guide-budget-tier-quote.util';
-import { travelGuideRegionKind } from './domain/travel-guide-international.util';
 import { resolveTravelGuideBudgetTier } from './domain/parse-activity-days.util';
-import { applyTravelQuoteEnrichment } from './domain/travel-guide-quote-merge.util';
+import { attachQuoteTierMetadataToPlan } from './domain/attach-quote-tier-metadata.util';
 import { buildMinimalMapContextForQuote } from './domain/travel-guide-quote-map-context.util';
 import {
   isPlanQuoteFresh,
@@ -65,7 +64,6 @@ export class TravelGuideQuoteRefreshService {
     );
     if (!activity) return input.plan;
 
-    const regionKind = travelGuideRegionKind(activity);
     const dto = buildDtoFromSavedForm(input.form);
     const mapCtx = buildMinimalMapContextForQuote(input.plan, activity, dto);
     const quoteEligible = shouldFetchTravelQuote(activity, dto, mapCtx);
@@ -102,11 +100,9 @@ export class TravelGuideQuoteRefreshService {
       return input.plan;
     }
 
-    const enriched = applyTravelQuoteEnrichment(input.plan, quoteSnapshot, {
+    const enriched = attachQuoteTierMetadataToPlan(input.plan, quoteSnapshot, {
       headcount: dto.headcount,
       accommodationNights: input.accommodationNights,
-      regionKind,
-      interCity: true,
       budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
     });
 

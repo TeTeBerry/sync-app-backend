@@ -237,6 +237,10 @@ export default () => ({
         cleanEnv(process.env.PUBLIC_API_TRAVEL_GUIDE_PLAN_MAX, '40'),
         10,
       ),
+      ravenPlaceSuggestionsMax: parseInt(
+        cleanEnv(process.env.PUBLIC_API_RAVEN_PLACE_SUGGESTIONS_MAX, '60'),
+        10,
+      ),
       personalityNicknameUsageMax: parseInt(
         cleanEnv(process.env.PUBLIC_API_PERSONALITY_NICKNAME_USAGE_MAX, '30'),
         10,
@@ -277,6 +281,18 @@ export default () => ({
         10,
       ),
     },
+  },
+
+  /** Raven / sync-web public helpers */
+  raven: {
+    openflightsAirportsUrl: cleanEnv(
+      process.env.RAVEN_OPENFLIGHTS_AIRPORTS_URL,
+      'https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat',
+    ),
+    openflightsCacheTtlMs: parseInt(
+      cleanEnv(process.env.RAVEN_OPENFLIGHTS_CACHE_TTL_MS, String(86_400_000)),
+      10,
+    ),
   },
 
   /** RollingGo MCP — 出行攻略机票/酒店参考价（可选） */
