@@ -51,7 +51,8 @@ export const ACTIVITY_IMAGE_SOURCES = [
   {
     legacyId: 9,
     code: 'untold-romania',
-    sourceUrl: 'https://mma.prnewswire.com/media/2759444/UNTOLD_Festival.jpg',
+    /** Local asset — UNTOLD ONE 2026 key visual (see assets/activity/untold-romania.jpg) */
+    sourceUrl: '',
   },
   {
     legacyId: 10,
