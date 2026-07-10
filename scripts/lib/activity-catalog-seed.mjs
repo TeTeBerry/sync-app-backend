@@ -9,5 +9,6 @@ export const DEPRECATED_ACTIVITY_FILTER = {
     { code: 'ultra' },
     { code: 'edc' },
     { code: 'vac-zhuhai' },
+    { code: 'sunburn-mumbai' },
   ],
 };
