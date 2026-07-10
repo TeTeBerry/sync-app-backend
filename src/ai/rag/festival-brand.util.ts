@@ -51,6 +51,11 @@ export const FESTIVAL_BRANDS: FestivalBrand[] = [
     aliases: ['ultra europe', 'ultra european', '欧洲ultra'],
   },
   {
+    code: 'ultra-taiwan',
+    name: 'Ultra Taiwan',
+    aliases: ['ultra taiwan', '台北ultra', '台湾ultra', '台灣ultra'],
+  },
+  {
     code: 'tomorrowland',
     name: 'Tomorrowland',
     aliases: [

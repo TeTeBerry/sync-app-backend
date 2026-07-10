@@ -10,6 +10,7 @@ export const FESTIVAL_VIBE_BY_CODE: Record<string, string> = {
   'tomorrowland-shanghai': '体验展 · Mainstage 风格 · 室内沉浸',
   'ultra-europe': 'Mainstage / Resistance Techno · 欧洲海滨',
   'ultra-japan': 'Mainstage / Resistance · 东京海滨',
+  'ultra-taiwan': 'Mainstage / Resistance · 台北河滨',
   'world-dj-festival': '多舞台主流 · Big Room / Bass',
   defqon1: 'Hardstyle / Hardcore 主场',
   'vac-zhuhai': '国内新锐 · Bass / Hardstyle',

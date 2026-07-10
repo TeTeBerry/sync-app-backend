@@ -95,4 +95,10 @@ export const ACTIVITY_IMAGE_SOURCES = [
     /** Local asset — see assets/activity/tomorrowland-shanghai.png */
     sourceUrl: '',
   },
+  {
+    legacyId: 21,
+    code: 'ultra-taiwan',
+    /** Local asset — Ultra Taiwan 2026 6th edition key visual (see assets/activity/ultra-taiwan.jpg) */
+    sourceUrl: '',
+  },
 ];

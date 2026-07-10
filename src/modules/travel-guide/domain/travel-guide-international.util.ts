@@ -73,6 +73,12 @@ const OVERSEAS_TICKET_CHANNELS_BY_CODE: Record<
       note: '日本 Ultra 系列常用第三方，支持海外信用卡；电子票邮件发送，入场前截图保存。',
     },
   ],
+  'ultra-taiwan': [
+    {
+      name: 'Ultra Taiwan 官网',
+      note: 'https://ultrataiwan.com — 官方售票与早鸟释出时间以官网公告为准。',
+    },
+  ],
   'tomorrowland-belgium': [
     {
       name: 'Tomorrowland 官网',

@@ -117,6 +117,17 @@ export const FESTIVAL_RAG_CORPUS: FestivalRagCorpusEntry[] = [
       'Ultra Japan 2026 东京台场区域。别名：ultra japan、东京ultra。',
   },
   {
+    code: 'ultra-taiwan',
+    story:
+      'Ultra Taiwan 为 Ultra 品牌台北场，大佳河滨公园户外举办，偏 mainstream + Resistance 混合。',
+    lineupAnnounceHint:
+      '第六届 Ultra Taiwan 已官宣 2026 年 11 月 14 日；阵容与售票以 ultrataiwan.com 为准。',
+    survivalHint:
+      '台北河滨场地注意防晒与蚊虫；捷运大直/松山线周边住宿提前预订。',
+    activityFaq:
+      'Ultra Taiwan 2026 11 月 14 日台北大佳河滨公园。别名：ultra taiwan、台北ultra、台湾ultra。',
+  },
+  {
     code: 'world-dj-festival',
     story:
       'World DJ Festival Japan 东京台场海滨多舞台音乐节，亚洲 summer 重要 bass/house 场之一。',
