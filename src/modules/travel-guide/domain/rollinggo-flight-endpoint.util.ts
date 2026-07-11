@@ -56,6 +56,12 @@ const AIRPORT_METRO_CITY_CODE: Record<string, string> = {
   ITM: 'OSA',
   LPL: 'MAN',
   MAN: 'MAN',
+  LHR: 'LON',
+  LGW: 'LON',
+  STN: 'LON',
+  JFK: 'NYC',
+  EWR: 'NYC',
+  LGA: 'NYC',
 };
 
 /** RollingGo city code to use with `fromCity`/`toCity` for an airport IATA. */

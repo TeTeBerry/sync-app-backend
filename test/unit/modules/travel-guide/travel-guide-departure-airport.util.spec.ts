@@ -3,6 +3,7 @@ import {
   resolveDepartureAirportLabel,
   resolveDestinationAirportLabel,
   resolveFlightDestinationAirportKeyword,
+  resolveKnownDepartureAlternateAirportCodes,
   resolveKnownDepartureCityCode,
   resolveKnownDestinationCityCode,
   resolveRollingGoHotelCountryCode,
@@ -34,6 +35,34 @@ describe('travel-guide-departure-airport.util', () => {
 
   it('resolveKnownDepartureCityCode maps 深圳 to SZX', () => {
     expect(resolveKnownDepartureCityCode('深圳')).toBe('SZX');
+  });
+
+  it('maps Raven EN departure cities to airport IATA without MCP', () => {
+    expect(resolveKnownDepartureCityCode('Singapore')).toBe('SIN');
+    expect(resolveKnownDepartureCityCode('singapore')).toBe('SIN');
+    expect(resolveKnownDepartureCityCode('新加坡')).toBe('SIN');
+    expect(resolveKnownDepartureCityCode('London')).toBe('LHR');
+    expect(resolveKnownDepartureCityCode('New York')).toBe('JFK');
+    expect(resolveKnownDepartureCityCode('Los Angeles')).toBe('LAX');
+    expect(resolveKnownDepartureCityCode('Shanghai')).toBe('PVG');
+    expect(resolveKnownDepartureCityCode('Tokyo')).toBe('HND');
+  });
+
+  it('lists departure alternate airports after primary', () => {
+    expect(resolveKnownDepartureAlternateAirportCodes('London')).toEqual([
+      'LGW',
+    ]);
+    expect(resolveKnownDepartureAlternateAirportCodes('New York')).toEqual([
+      'EWR',
+    ]);
+    expect(resolveKnownDepartureAlternateAirportCodes('Shanghai')).toEqual([
+      'SHA',
+    ]);
+    expect(resolveKnownDepartureAlternateAirportCodes('Singapore')).toEqual([]);
+  });
+
+  it('resolveDepartureAirportLabel works for Singapore', () => {
+    expect(resolveDepartureAirportLabel('Singapore')).toContain('SIN');
   });
 
   it('resolveFlightDestinationAirportKeyword maps Pattaya to 曼谷', () => {

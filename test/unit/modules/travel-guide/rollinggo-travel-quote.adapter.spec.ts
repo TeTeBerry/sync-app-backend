@@ -23,6 +23,7 @@ describe('RollingGoTravelQuoteAdapter', () => {
     searchFlightsDetailed?: jest.Mock;
     searchHotels?: jest.Mock;
     enabled?: boolean;
+    resolveFlightAirportIatas?: jest.Mock;
   }) {
     const rollingGo = {
       enabled: mocks.enabled ?? true,
@@ -46,7 +47,13 @@ describe('RollingGoTravelQuoteAdapter', () => {
           ]),
     } as unknown as RollingGoMcpClient;
 
-    return new RollingGoTravelQuoteAdapter(rollingGo);
+    const openFlights = mocks.resolveFlightAirportIatas
+      ? ({
+          resolveFlightAirportIatas: mocks.resolveFlightAirportIatas,
+        } as never)
+      : undefined;
+
+    return new RollingGoTravelQuoteAdapter(rollingGo, openFlights);
   }
 
   it('tries fromCity/toCity first with metro city codes, then airports', async () => {
@@ -223,6 +230,122 @@ describe('RollingGoTravelQuoteAdapter', () => {
     });
     expect(destinations).toContain('CMH');
     expect(destinations).toContain('CLE');
+  });
+
+  it('resolves Singapore departure to SIN without searchAirports MCP', async () => {
+    const searchAirports = jest.fn().mockResolvedValue([]);
+    const searchFlightsDetailed = jest.fn().mockResolvedValue({
+      offers: [{ totalAdultPrice: 2100, currency: 'CNY' }],
+    });
+    const adapter = createAdapter({ searchAirports, searchFlightsDetailed });
+
+    const result = await adapter.fetchFlightQuoteForTier(
+      {
+        ...query,
+        departureText: 'Singapore',
+        departureCity: 'Singapore',
+        destinationCity: '仁川',
+        activityLegacyId: 8,
+        activityName: 'EDC Korea 2026',
+        activityArea: '韩国',
+        activityLocation: '韩国·仁川',
+        regionKind: 'overseas',
+        venueTitle: 'Incheon Munhak Stadium',
+        venueAddress: 'Incheon, Korea',
+      },
+      'standard',
+    );
+
+    expect(searchAirports).not.toHaveBeenCalled();
+    expect(result?.minPricePerAdult).toBe(2100);
+    const firstCall = searchFlightsDetailed.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
+    // City-first: SIN metro city is SIN; destination ICN → SEL city then ICN airport.
+    expect(firstCall.fromCity ?? firstCall.fromAirport).toBe('SIN');
+    expect(
+      firstCall.toCity === 'SEL' ||
+        firstCall.toCity === 'ICN' ||
+        firstCall.toAirport === 'ICN',
+    ).toBe(true);
+  });
+
+  it('falls back to departure alternate when primary has no offers', async () => {
+    const searchAirports = jest.fn().mockResolvedValue([]);
+    const searchFlightsDetailed = jest
+      .fn()
+      .mockImplementation(
+        async (args: { fromCity?: string; fromAirport?: string }) => {
+          const origin = args.fromCity ?? args.fromAirport;
+          if (origin === 'LHR') {
+            return { offers: [], message: 'none' };
+          }
+          if (origin === 'LGW') {
+            return {
+              offers: [{ totalAdultPrice: 3500, currency: 'CNY' }],
+            };
+          }
+          return { offers: [], message: 'none' };
+        },
+      );
+    const adapter = createAdapter({ searchAirports, searchFlightsDetailed });
+
+    const result = await adapter.fetchFlightQuoteForTier(
+      {
+        ...query,
+        departureText: 'London',
+        departureCity: 'London',
+        destinationCity: '仁川',
+        activityLegacyId: 8,
+        activityName: 'EDC Korea 2026',
+        activityArea: '韩国',
+        activityLocation: '韩国·仁川',
+        regionKind: 'overseas',
+      },
+      'standard',
+    );
+
+    expect(result?.fromCityCode).toBe('LGW');
+    expect(searchAirports).not.toHaveBeenCalled();
+    const origins = searchFlightsDetailed.mock.calls.map((call) => {
+      const args = call[0] as { fromCity?: string; fromAirport?: string };
+      return args.fromCity ?? args.fromAirport;
+    });
+    expect(origins).toContain('LHR');
+    expect(origins).toContain('LGW');
+  });
+
+  it('uses OpenFlights IATA when departure city is not in the static map', async () => {
+    const searchAirports = jest.fn().mockResolvedValue([]);
+    const resolveFlightAirportIatas = jest.fn().mockResolvedValue(['SYD']);
+    const searchFlightsDetailed = jest.fn().mockResolvedValue({
+      offers: [{ totalAdultPrice: 4800, currency: 'CNY' }],
+    });
+    const adapter = createAdapter({
+      searchAirports,
+      searchFlightsDetailed,
+      resolveFlightAirportIatas,
+    });
+
+    const result = await adapter.fetchFlightQuoteForTier(
+      {
+        ...query,
+        departureText: 'Sydney',
+        departureCity: 'Sydney',
+        destinationCity: '仁川',
+        activityLegacyId: 8,
+        activityName: 'EDC Korea 2026',
+        activityArea: '韩国',
+        activityLocation: '韩国·仁川',
+        regionKind: 'overseas',
+      },
+      'standard',
+    );
+
+    expect(resolveFlightAirportIatas).toHaveBeenCalledWith('Sydney');
+    expect(searchAirports).not.toHaveBeenCalled();
+    expect(result?.fromCityCode).toBe('SYD');
   });
 
   it('fetchHotelQuoteForTier calls searchHotels once for a tier', async () => {

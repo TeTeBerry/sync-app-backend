@@ -244,3 +244,57 @@ export function listAirportsForCity(
 
   return [toCitySuggestion(matches[0]!), ...airports];
 }
+
+/**
+ * Return ranked commercial airport IATAs for a city label (EN/local).
+ * Used as RollingGo departure fallback when the static map has no entry.
+ */
+export function resolveOpenFlightsFlightAirportIatas(
+  records: OpenFlightsAirportRecord[],
+  cityLabel: string,
+  limit = 4,
+): string[] {
+  const q = cityLabel.trim();
+  if (!q || limit <= 0) return [];
+
+  const suggestions = searchOpenFlightsPlaceSuggestions(records, q, 5);
+  const top = suggestions[0];
+  const city = top?.city?.trim() || q;
+  const country = top?.country?.trim() || undefined;
+
+  const airportRows = listAirportsForCity(records, city, country).filter(
+    (row) => row.kind === 'airport' && row.iata?.trim().length === 3,
+  );
+
+  const ranked = [...airportRows].sort(
+    (a, b) => rankOpenFlightsAirport(b) - rankOpenFlightsAirport(a),
+  );
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const row of ranked) {
+    const code = row.iata!.trim().toUpperCase();
+    if (seen.has(code)) continue;
+    seen.add(code);
+    out.push(code);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+function rankOpenFlightsAirport(row: RavenPlaceSuggestion): number {
+  const name = `${row.airportName ?? ''} ${row.title ?? ''}`.toLowerCase();
+  let score = 0;
+  if (/international/.test(name)) score += 100;
+  if (
+    /heathrow|changi|narita|haneda|incheon|kennedy|newark|charles de gaulle|schiphol|suvarnabhumi|pudong|capital international/.test(
+      name,
+    )
+  ) {
+    score += 40;
+  }
+  if (/air base|airbase|raf |afb|military|heliport/.test(name)) score -= 300;
+  if (/municipal|regional|city airport/.test(name)) score -= 20;
+  if (row.iata) score += 10;
+  return score;
+}

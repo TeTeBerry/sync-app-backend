@@ -1,6 +1,7 @@
 import {
   listAirportsForCity,
   parseOpenFlightsAirportsDat,
+  resolveOpenFlightsFlightAirportIatas,
   searchOpenFlightsPlaceSuggestions,
   splitOpenFlightsCsvLine,
 } from '@src/modules/travel-guide/raven/openflights-airports.util';
@@ -11,6 +12,7 @@ const SAMPLE_DAT = `
 510,"London Stansted Airport","London","United Kingdom","STN","EGSS",51.884998,0.235,348,0,"E","Europe/London","airport","OurAirports"
 3406,"Shanghai Pudong International Airport","Shanghai","China","PVG","ZSPD",31.1434,121.805,13,8,"U","Asia/Shanghai","airport","OurAirports"
 3391,"Beijing Capital International Airport","Beijing","China","PEK","ZBAA",40.080101,116.584999,116,8,"U","Asia/Shanghai","airport","OurAirports"
+3361,"Sydney Kingsford Smith International Airport","Sydney","Australia","SYD","YSSY",-33.94609832763672,151.177001953125,21,10,"O","Australia/Sydney","airport","OurAirports"
 1,"Goroka Airport","Goroka","Papua New Guinea","GKA","AYGA",-6.08,145.39,5282,10,"U","Pacific/Port_Moresby","airport","OurAirports"
 `.trim();
 
@@ -25,7 +27,7 @@ describe('openflights-airports.util', () => {
 
   it('parses airports.dat rows', () => {
     const records = parseOpenFlightsAirportsDat(SAMPLE_DAT);
-    expect(records.length).toBe(6);
+    expect(records.length).toBe(7);
     expect(records.find((r) => r.iata === 'PVG')?.city).toBe('Shanghai');
   });
 
@@ -91,5 +93,17 @@ describe('openflights-airports.util', () => {
         .filter((s) => s.kind === 'airport')
         .map((s) => s.iata),
     ).toEqual(['PVG']);
+  });
+
+  it('ranks commercial IATAs for RollingGo departure fallback', () => {
+    const records = parseOpenFlightsAirportsDat(SAMPLE_DAT);
+    expect(resolveOpenFlightsFlightAirportIatas(records, 'London')).toEqual([
+      'LHR',
+      'LGW',
+      'STN',
+    ]);
+    expect(resolveOpenFlightsFlightAirportIatas(records, 'Sydney')).toEqual([
+      'SYD',
+    ]);
   });
 });

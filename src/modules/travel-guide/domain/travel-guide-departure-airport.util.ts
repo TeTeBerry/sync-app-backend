@@ -59,7 +59,59 @@ const DEPARTURE_AIRPORTS: Record<string, AirportInfo> = {
   普吉: { name: '普吉国际机场', iata: 'HKT' },
   大阪: { name: '关西/伊丹国际机场', iata: 'KIX/ITM' },
   迪拜: { name: '迪拜国际机场', iata: 'DXB' },
+  新加坡: { name: '新加坡樟宜国际机场', iata: 'SIN' },
+  伦敦: { name: '伦敦希思罗/盖特威克机场', iata: 'LHR/LGW' },
+  纽约: { name: '纽约肯尼迪/纽瓦克国际机场', iata: 'JFK/EWR' },
+  洛杉矶: { name: '洛杉矶国际机场', iata: 'LAX' },
 };
+
+/**
+ * EN / alternate labels → canonical DEPARTURE_AIRPORTS key.
+ * Raven EN presets use English city names (Singapore, London, …).
+ */
+const DEPARTURE_CITY_ALIASES: Record<string, string> = {
+  singapore: '新加坡',
+  shanghai: '上海',
+  beijing: '北京',
+  guangzhou: '广州',
+  shenzhen: '深圳',
+  hangzhou: '杭州',
+  chengdu: '成都',
+  'hong kong': '香港',
+  hongkong: '香港',
+  macau: '澳门',
+  macao: '澳门',
+  seoul: '首尔',
+  incheon: '首尔',
+  tokyo: '东京',
+  bangkok: '曼谷',
+  phuket: '普吉',
+  osaka: '大阪',
+  dubai: '迪拜',
+  london: '伦敦',
+  'new york': '纽约',
+  newyork: '纽约',
+  nyc: '纽约',
+  'los angeles': '洛杉矶',
+  losangeles: '洛杉矶',
+};
+
+/** Normalize departure/destination city label for airport IATA lookup. */
+export function canonicalizeDepartureCityForAirport(cityLabel: string): string {
+  const trimmed = cityLabel.trim();
+  if (!trimmed) return trimmed;
+
+  const lower = trimmed.toLowerCase();
+  const aliased = DEPARTURE_CITY_ALIASES[lower];
+  if (aliased) return aliased;
+
+  if (DEPARTURE_AIRPORTS[trimmed]) return trimmed;
+
+  const caseHit = Object.keys(DEPARTURE_AIRPORTS).find(
+    (key) => key.toLowerCase() === lower,
+  );
+  return caseHit ?? trimmed;
+}
 
 function primaryIataCode(iata: string): string | undefined {
   const primary = iata.split('/')[0]?.trim().toUpperCase();
@@ -70,7 +122,7 @@ function primaryIataCode(iata: string): string | undefined {
 export function resolveKnownDepartureCityCode(
   cityLabel: string,
 ): string | undefined {
-  const city = cityLabel.trim();
+  const city = canonicalizeDepartureCityForAirport(cityLabel);
   const airport = DEPARTURE_AIRPORTS[city];
   if (!airport) return undefined;
   return primaryIataCode(airport.iata);
@@ -86,6 +138,32 @@ export function resolveKnownDepartureAirportCode(
   return resolveKnownDepartureCityCode(cityLabel);
 }
 
+/**
+ * Secondary departure airport IATAs (slash-separated after primary) to probe
+ * when the primary returns no flight offers (e.g. LGW after LHR, EWR after JFK).
+ */
+export function resolveKnownDepartureAlternateAirportCodes(
+  cityLabel: string,
+): string[] {
+  const city = canonicalizeDepartureCityForAirport(cityLabel);
+  const airport = DEPARTURE_AIRPORTS[city];
+  if (!airport?.iata) return [];
+  const parts = airport.iata
+    .split('/')
+    .map((part) => part.trim().toUpperCase())
+    .filter((code) => code.length === 3);
+  const primary = parts[0];
+  if (!primary) return [];
+  const seen = new Set<string>([primary]);
+  const out: string[] = [];
+  for (const code of parts.slice(1)) {
+    if (seen.has(code)) continue;
+    seen.add(code);
+    out.push(code);
+  }
+  return out;
+}
+
 /** 国内/港澳台目的地城市 → IATA（与出发城市共用映射，支持 RollingGo 国内线）。 */
 export function resolveKnownDestinationCityCode(
   cityLabel: string,
@@ -97,13 +175,14 @@ export function resolveKnownDestinationCityCode(
  * English-first keywords for RollingGo searchAirports (official CLI prefers EN).
  */
 export function rollingGoAirportSearchKeywords(cityLabel: string): string[] {
-  const city = cityLabel.trim();
+  const city = canonicalizeDepartureCityForAirport(cityLabel);
   if (!city) return [];
   const mapped = DEPARTURE_AIRPORT_SEARCH_KEYWORDS[city];
   if (mapped?.length) return [...mapped];
+  const raw = cityLabel.trim();
   // Latin / IATA already — keep as-is; otherwise try raw Chinese as last resort.
-  if (/^[A-Za-z0-9\s\-']+$/.test(city)) return [city];
-  return [city];
+  if (/^[A-Za-z0-9\s\-']+$/.test(raw)) return [raw];
+  return [raw || city];
 }
 
 const DEPARTURE_AIRPORT_SEARCH_KEYWORDS: Record<string, string[]> = {
@@ -121,6 +200,10 @@ const DEPARTURE_AIRPORT_SEARCH_KEYWORDS: Record<string, string[]> = {
   普吉: ['Phuket', 'HKT'],
   大阪: ['Osaka', 'KIX'],
   迪拜: ['Dubai', 'DXB'],
+  新加坡: ['Singapore', 'SIN', 'Changi'],
+  伦敦: ['London', 'LHR', 'LGW', 'Heathrow'],
+  纽约: ['New York', 'JFK', 'EWR', 'NYC'],
+  洛杉矶: ['Los Angeles', 'LAX'],
   珠海: ['Zhuhai', 'ZUH'],
   南京: ['Nanjing', 'NKG'],
   武汉: ['Wuhan', 'WUH'],
@@ -231,7 +314,9 @@ export function resolveDepartureAirportLabel(
   departureText: string,
   departureCity?: string,
 ): string {
-  const city = resolveDepartureCityLabel(departureText, departureCity);
+  const city = canonicalizeDepartureCityForAirport(
+    resolveDepartureCityLabel(departureText, departureCity),
+  );
   const airport = city ? DEPARTURE_AIRPORTS[city] : undefined;
   if (airport) {
     return `${airport.name}（${airport.iata}）`;

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import type { GenerateTravelGuideDto } from '../../dto/generate-travel-guide.dto';
 import {
   buildTravelQuoteQuery,
@@ -20,6 +20,7 @@ import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
 import {
   resolveDepartureCityLabel,
   resolveKnownDepartureAirportCode,
+  resolveKnownDepartureAlternateAirportCodes,
   resolveKnownDestinationCityCode,
   rollingGoAirportSearchKeywords,
 } from '../../domain/travel-guide-departure-airport.util';
@@ -56,6 +57,7 @@ import { buildRollingGoHotelOriginQuery } from '../../domain/travel-guide-rollin
 import { buildDiversifiedRollingGoHotelQuotesByTier } from '../../domain/travel-guide-rollinggo-hotel-quotes.util';
 import { reportTravelGuideProgress } from '../../domain/travel-guide-generation-progress.util';
 import type { TravelQuoteEnrichOptions } from '../../ports/travel-quote.port';
+import { OpenFlightsAirportCatalogService } from '../../raven/openflights-airport-catalog.service';
 
 type ActivityRecord = TravelQuoteActivity;
 
@@ -68,6 +70,11 @@ type ResolvedFlightWindow = {
   returnDate?: string;
   /** Probe-proven city/airport mode — reuse for cabin/tier searches. */
   preferredMode?: FlightEndpointQueryMode;
+};
+
+type FlightOriginCandidate = {
+  from: RollingGoFlightEndpoint;
+  source: string;
 };
 
 type FlightDestinationCandidate = {
@@ -91,7 +98,11 @@ function isTransientRollingGoFlightFailure(message?: string): boolean {
 export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
   private readonly logger = new Logger(RollingGoTravelQuoteAdapter.name);
 
-  constructor(private readonly rollingGo: RollingGoMcpClient) {}
+  constructor(
+    private readonly rollingGo: RollingGoMcpClient,
+    @Optional()
+    private readonly openFlights?: OpenFlightsAirportCatalogService,
+  ) {}
 
   async enrich(
     activity: ActivityRecord,
@@ -298,7 +309,7 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
 
   /**
    * Resolve from/to endpoints per official RollingGo contract, then pick the
-   * first destination that returns offers (primary airport → alternates).
+   * first origin×destination pair that returns offers (primary → alternates).
    */
   private async resolveWorkingFlightRoute(
     query: TravelQuoteQuery,
@@ -315,74 +326,79 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
     );
     if (!resolved) return null;
 
-    const tryCandidates = async (
-      candidates: FlightDestinationCandidate[],
+    const tryPair = async (
+      origin: FlightOriginCandidate,
+      candidate: FlightDestinationCandidate,
     ): Promise<{
       from: RollingGoFlightEndpoint;
       to: RollingGoFlightEndpoint;
       source: string;
       flightWindow: ResolvedFlightWindow;
     } | null> => {
-      for (const candidate of candidates) {
-        const flightWindow = await this.resolveFlightWindow(
-          query,
-          resolved.from,
-          candidate.to,
-          mcpOptions,
-        );
+      const flightWindow = await this.resolveFlightWindow(
+        query,
+        origin.from,
+        candidate.to,
+        mcpOptions,
+      );
 
-        let preferredMode = flightWindow.preferredMode;
-        // Round-trip window scan already probed return dates; only re-probe
-        // for one-way (no dates scanned) or when window found no inventory.
-        if (!preferredMode && flightWindow.tripType === 'ONE_WAY') {
-          preferredMode =
-            (await this.probeFlightSearch(
-              query,
-              resolved.from,
-              candidate.to,
-              'ECONOMY',
-              undefined,
-              mcpOptions,
-            )) ?? undefined;
-        }
-
-        if (preferredMode) {
-          this.logger.log(
-            `RollingGo flight airports: ${formatFlightEndpoint(resolved.from)} → ${formatFlightEndpoint(candidate.to)} (${candidate.source}) via ${formatFlightEndpoint(preferredMode.from)}→${formatFlightEndpoint(preferredMode.to)}`,
-          );
-          return {
-            from: resolved.from,
-            to: candidate.to,
-            source: candidate.source,
-            flightWindow: { ...flightWindow, preferredMode },
-          };
-        }
-        this.logger.log(
-          `RollingGo flight no offers probing ${formatFlightEndpoint(resolved.from)}→${formatFlightEndpoint(candidate.to)} (${candidate.source})`,
-        );
+      let preferredMode = flightWindow.preferredMode;
+      // Round-trip window scan already probed return dates; only re-probe
+      // for one-way (no dates scanned).
+      if (!preferredMode && flightWindow.tripType === 'ONE_WAY') {
+        preferredMode =
+          (await this.probeFlightSearch(
+            query,
+            origin.from,
+            candidate.to,
+            'ECONOMY',
+            undefined,
+            mcpOptions,
+          )) ?? undefined;
       }
-      return null;
+
+      if (!preferredMode) {
+        this.logger.log(
+          `RollingGo flight no offers probing ${formatFlightEndpoint(origin.from)}→${formatFlightEndpoint(candidate.to)} (${origin.source}→${candidate.source})`,
+        );
+        return null;
+      }
+
+      this.logger.log(
+        `RollingGo flight airports: ${formatFlightEndpoint(origin.from)} → ${formatFlightEndpoint(candidate.to)} (${origin.source}→${candidate.source}) via ${formatFlightEndpoint(preferredMode.from)}→${formatFlightEndpoint(preferredMode.to)}`,
+      );
+      return {
+        from: origin.from,
+        to: candidate.to,
+        source: `${origin.source}|${candidate.source}`,
+        flightWindow: { ...flightWindow, preferredMode },
+      };
     };
 
-    const hit = await tryCandidates(resolved.toCandidates);
-    if (hit) return hit;
+    for (const origin of resolved.fromCandidates) {
+      for (const candidate of resolved.toCandidates) {
+        const hit = await tryPair(origin, candidate);
+        if (hit) return hit;
+      }
+    }
 
-    const primary = resolved.toCandidates[0];
-    if (!primary) return null;
+    const primaryFrom = resolved.fromCandidates[0];
+    const primaryTo = resolved.toCandidates[0];
+    if (!primaryFrom || !primaryTo) return null;
 
     const flightWindow = await this.resolveFlightWindow(
       query,
-      resolved.from,
-      primary.to,
+      primaryFrom.from,
+      primaryTo.to,
       mcpOptions,
     );
     this.logger.log(
-      `RollingGo flight airports: ${formatFlightEndpoint(resolved.from)} → ${formatFlightEndpoint(primary.to)} (${primary.source}, no inventory on any candidate)`,
+      `RollingGo flight airports: ${formatFlightEndpoint(primaryFrom.from)} → ${formatFlightEndpoint(primaryTo.to)} (${primaryFrom.source}→${primaryTo.source}, no inventory on any candidate)`,
     );
     return {
-      from: resolved.from,
-      to: primary.to,
-      source: primary.source,
+      from: primaryFrom.from,
+      to: primaryTo.to,
+      source: `${primaryFrom.source}|${primaryTo.source}`,
       flightWindow,
     };
   }
@@ -391,7 +407,7 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
     query: TravelQuoteQuery,
     mcpOptions?: RollingGoMcpCallOptions,
   ): Promise<{
-    from: RollingGoFlightEndpoint;
+    fromCandidates: FlightOriginCandidate[];
     toCandidates: FlightDestinationCandidate[];
   } | null> {
     const geo = this.buildGeoContext(query);
@@ -401,26 +417,65 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
     );
     const flightUrl = this.rollingGo.flightMcpUrl;
 
-    const knownFrom = airportEndpoint(
-      resolveKnownDepartureAirportCode(departureCity) ?? '',
-    );
-    const from =
-      knownFrom ??
-      (await this.resolveFlightEndpointFromKeywords(
-        rollingGoAirportSearchKeywords(departureCity),
-        flightUrl,
-        mcpOptions,
-      ));
+    const fromCandidates: FlightOriginCandidate[] = [];
+    const seenFrom: RollingGoFlightEndpoint[] = [];
+    const pushFrom = (
+      endpoint: RollingGoFlightEndpoint | undefined,
+      source: string,
+    ) => {
+      if (!endpoint) return;
+      if (seenFrom.some((item) => sameFlightEndpoint(item, endpoint))) return;
+      seenFrom.push(endpoint);
+      fromCandidates.push({ from: endpoint, source });
+    };
+
+    const knownPrimary = resolveKnownDepartureAirportCode(departureCity);
+    if (knownPrimary) {
+      pushFrom(airportEndpoint(knownPrimary), 'known departure airport');
+      for (const alt of resolveKnownDepartureAlternateAirportCodes(
+        departureCity,
+      )) {
+        pushFrom(airportEndpoint(alt), 'known departure alternate');
+      }
+    } else {
+      let openFlightsCodes: string[] = [];
+      try {
+        openFlightsCodes =
+          (await this.openFlights?.resolveFlightAirportIatas(departureCity)) ??
+          [];
+      } catch {
+        openFlightsCodes = [];
+      }
+      if (openFlightsCodes.length) {
+        for (let i = 0; i < openFlightsCodes.length; i++) {
+          pushFrom(
+            airportEndpoint(openFlightsCodes[i]!),
+            i === 0
+              ? 'openflights departure'
+              : 'openflights departure alternate',
+          );
+        }
+      } else {
+        pushFrom(
+          await this.resolveFlightEndpointFromKeywords(
+            rollingGoAirportSearchKeywords(departureCity),
+            flightUrl,
+            mcpOptions,
+          ),
+          'mcp searchAirports departure',
+        );
+      }
+    }
 
     const toCandidates: FlightDestinationCandidate[] = [];
-    const seen: RollingGoFlightEndpoint[] = [];
+    const seenTo: RollingGoFlightEndpoint[] = [];
     const pushTo = (
       endpoint: RollingGoFlightEndpoint | undefined,
       source: string,
     ) => {
       if (!endpoint) return;
-      if (seen.some((item) => sameFlightEndpoint(item, endpoint))) return;
-      seen.push(endpoint);
+      if (seenTo.some((item) => sameFlightEndpoint(item, endpoint))) return;
+      seenTo.push(endpoint);
       toCandidates.push({ to: endpoint, source });
     };
 
@@ -449,19 +504,31 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
       const keywordEndpoints = await this.resolveKeywordDestinationEndpoints(
         query,
         mcpOptions,
-        seen,
+        seenTo,
       );
       toCandidates.push(...keywordEndpoints);
     }
 
-    if (!from || !toCandidates.length) {
+    if (!fromCandidates.length || !toCandidates.length) {
       this.logger.log(
-        `RollingGo flight unresolved: from=${from ? formatFlightEndpoint(from) : 'none'} (${departureCity}) to=none (keywords=${geo.airportKeywords.join('|')}, iata=${geo.destinationCityCode ?? 'none'}, raw=${query.destinationCity})`,
+        `RollingGo flight unresolved: from=${
+          fromCandidates.length
+            ? fromCandidates
+                .map((c) => `${formatFlightEndpoint(c.from)}/${c.source}`)
+                .join('|')
+            : 'none'
+        } (${departureCity}) to=${
+          toCandidates.length
+            ? toCandidates
+                .map((c) => `${formatFlightEndpoint(c.to)}/${c.source}`)
+                .join('|')
+            : 'none'
+        } (keywords=${geo.airportKeywords.join('|')}, iata=${geo.destinationCityCode ?? 'none'}, raw=${query.destinationCity})`,
       );
       return null;
     }
 
-    return { from, toCandidates };
+    return { fromCandidates, toCandidates };
   }
 
   private async resolveKeywordDestinationEndpoints(

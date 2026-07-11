@@ -10,6 +10,7 @@ import { join } from 'path';
 import {
   listAirportsForCity,
   parseOpenFlightsAirportsDat,
+  resolveOpenFlightsFlightAirportIatas,
   searchOpenFlightsPlaceSuggestions,
 } from './openflights-airports.util';
 import {
@@ -53,6 +54,18 @@ export class OpenFlightsAirportCatalogService {
   ): Promise<RavenPlaceSuggestion[]> {
     await this.ensureLoaded();
     return listAirportsForCity(this.records, city, country);
+  }
+
+  /**
+   * Ranked commercial IATAs for RollingGo flight quotes when the static
+   * departure map has no entry (e.g. Sydney, Paris).
+   */
+  async resolveFlightAirportIatas(
+    cityLabel: string,
+    limit = 4,
+  ): Promise<string[]> {
+    await this.ensureLoaded();
+    return resolveOpenFlightsFlightAirportIatas(this.records, cityLabel, limit);
   }
 
   /** Test / ops helper */

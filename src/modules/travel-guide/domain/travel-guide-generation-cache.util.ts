@@ -51,7 +51,7 @@ export function normalizeTravelGuideGenerationParams(
  * stay-total normalization, Hunyuan locale language prompts, EN prose language
  * guard, bilingual ticket-channel catalog, per-activity flight airport
  * destinations, or RollingGo city/airport endpoint contract changes. */
-export const TRAVEL_GUIDE_MAP_DATA_VERSION = 16;
+export const TRAVEL_GUIDE_MAP_DATA_VERSION = 18;
 
 /**
  * Normalize params for fuzzy matching.
