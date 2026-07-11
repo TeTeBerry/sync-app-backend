@@ -105,11 +105,11 @@ describe('travel-guide-rollinggo-geo.util', () => {
 
     expect(geo.destinationCityCode).toBe('CMH');
     expect(resolveActivityAlternateAirportCodes(19)).toEqual(['CLE']);
-    expect(geo.airportKeywords[0]).toBe('哥伦布');
+    expect(geo.airportKeywords[0]).toBe('Columbus');
     expect(geo.airportKeywords).toEqual(
       expect.arrayContaining(['Columbus', 'CMH']),
     );
-    const columbusIdx = geo.airportKeywords.indexOf('哥伦布');
+    const columbusIdx = geo.airportKeywords.indexOf('Columbus');
     const laxIdx = geo.airportKeywords.indexOf('洛杉矶');
     expect(columbusIdx).toBeGreaterThanOrEqual(0);
     if (laxIdx >= 0) {

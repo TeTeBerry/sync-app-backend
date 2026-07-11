@@ -12,6 +12,10 @@ import {
   isPlausibleFlightPrice,
   isPlausibleHotelNightlyPrice,
 } from '../../domain/travel-quote-plausibility.util';
+import {
+  airportEndpoint,
+  type RollingGoFlightEndpoint,
+} from '../../domain/rollinggo-flight-endpoint.util';
 import type {
   RollingGoAirportRecord,
   RollingGoFlightOfferRecord,
@@ -521,6 +525,16 @@ function isKnownPriceField(key: string): boolean {
 export function pickCityCode(
   records: RollingGoAirportRecord[],
 ): string | undefined {
+  return pickFlightEndpoint(records)?.code;
+}
+
+/**
+ * Prefer city codes for RollingGo `fromCity`/`toCity`; fall back to airport IATA
+ * for `fromAirport`/`toAirport` when no cityCode is present.
+ */
+export function pickFlightEndpoint(
+  records: RollingGoAirportRecord[],
+): RollingGoFlightEndpoint | undefined {
   const normalized = records.map((r) => ({
     ...r,
     iataCode: r.iataCode ?? r.airportCode,
@@ -531,13 +545,24 @@ export function pickCityCode(
         : undefined),
   }));
 
-  const withCode = normalized.filter((r) => r.iataCode?.trim());
+  const withCity = normalized.filter((r) => r.cityCode?.trim()?.length === 3);
+  const cityHit =
+    withCity.find((r) => r.subType === 'AIRPORT') ??
+    withCity.find((r) => /机场|airport/i.test(String(r.name ?? ''))) ??
+    withCity[0];
+  const cityCode = cityHit?.cityCode?.trim().toUpperCase();
+  if (cityCode?.length === 3) {
+    return { kind: 'city', code: cityCode };
+  }
+
+  const withIata = normalized.filter((r) => r.iataCode?.trim());
   const airport =
-    withCode.find((r) => r.subType === 'AIRPORT') ??
-    withCode.find((r) => /机场|airport/i.test(String(r.name ?? ''))) ??
-    withCode[0];
-  const code = airport?.cityCode?.trim() || airport?.iataCode?.trim();
-  return code?.length === 3 ? code.toUpperCase() : undefined;
+    withIata.find((r) => r.subType === 'AIRPORT') ??
+    withIata.find((r) => /机场|airport/i.test(String(r.name ?? ''))) ??
+    withIata[0];
+  const iata = airport?.iataCode?.trim().toUpperCase();
+  if (!iata || iata.length !== 3) return undefined;
+  return airportEndpoint(iata) ?? { kind: 'airport', code: iata };
 }
 
 function flightOfferPrice(

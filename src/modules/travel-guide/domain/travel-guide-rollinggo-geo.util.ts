@@ -252,8 +252,8 @@ export function buildRollingGoQuoteGeoContext(
 }
 
 /**
- * Resolve RollingGo `toCity`: activity common airport → hot-path hub →
- * domestic/hmt known city map. Never use country-level defaults as IATA.
+ * Resolve RollingGo destination airport IATA (`toAirport`): activity common
+ * airport → hot-path hub → domestic/hmt known airport map.
  */
 function resolveDestinationAirportCode(
   regionKind: TravelGuideRegionKind,

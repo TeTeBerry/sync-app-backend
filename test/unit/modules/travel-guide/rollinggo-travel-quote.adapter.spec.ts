@@ -49,7 +49,7 @@ describe('RollingGoTravelQuoteAdapter', () => {
     return new RollingGoTravelQuoteAdapter(rollingGo);
   }
 
-  it('resolves domestic airports via known city IATA codes', async () => {
+  it('tries fromCity/toCity first with metro city codes, then airports', async () => {
     const searchAirports = jest.fn().mockResolvedValue([]);
     const searchFlightsDetailed = jest.fn().mockResolvedValue({
       offers: [{ totalAdultPrice: 1200, currency: 'CNY' }],
@@ -58,12 +58,91 @@ describe('RollingGoTravelQuoteAdapter', () => {
 
     const result = await adapter.fetchFlightQuoteForTier(query, 'standard');
 
-    expect(result?.fromCityCode).toBe('PVG');
+    // City mode wins first: Shanghai metro SHA, Shenzhen SZX.
+    expect(result?.fromCityCode).toBe('SHA');
     expect(result?.toCityCode).toBe('SZX');
     expect(searchAirports).not.toHaveBeenCalled();
+    const firstCall = searchFlightsDetailed.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
+    expect(firstCall).toMatchObject({
+      fromCity: 'SHA',
+      toCity: 'SZX',
+      adultNumber: 2,
+      childNumber: 0,
+      tripType: 'ROUND_TRIP',
+    });
+    expect(firstCall.fromAirport).toBeUndefined();
+    expect(firstCall.toAirport).toBeUndefined();
   });
 
-  it('uses Lost Lands Columbus IATA without searching airports MCP', async () => {
+  it('falls back to fromAirport/toAirport when city codes return no offers', async () => {
+    const searchAirports = jest.fn().mockResolvedValue([]);
+    const searchFlightsDetailed = jest
+      .fn()
+      .mockImplementation(async (args: Record<string, unknown>) => {
+        if (args.fromCity || args.toCity) {
+          return { offers: [], message: 'none' };
+        }
+        if (args.fromAirport === 'PVG' && args.toAirport === 'SZX') {
+          return {
+            offers: [{ totalAdultPrice: 1300, currency: 'CNY' }],
+          };
+        }
+        return { offers: [], message: 'none' };
+      });
+    const adapter = createAdapter({ searchAirports, searchFlightsDetailed });
+
+    const result = await adapter.fetchFlightQuoteForTier(query, 'standard');
+
+    expect(result?.minPricePerAdult).toBe(1300);
+    expect(result?.fromCityCode).toBe('PVG');
+    expect(result?.toCityCode).toBe('SZX');
+    expect(
+      searchFlightsDetailed.mock.calls.some(
+        (call) =>
+          (call[0] as { fromAirport?: string }).fromAirport === 'PVG' &&
+          (call[0] as { toAirport?: string }).toAirport === 'SZX',
+      ),
+    ).toBe(true);
+  });
+
+  it('reuses probe-proven mode for tier search without re-trying city', async () => {
+    const searchAirports = jest.fn().mockResolvedValue([]);
+    const searchFlightsDetailed = jest
+      .fn()
+      .mockImplementation(async (args: Record<string, unknown>) => {
+        if (args.fromCity || args.toCity) {
+          return { offers: [], message: 'none' };
+        }
+        if (args.fromAirport === 'PVG' && args.toAirport === 'SZX') {
+          return {
+            offers: [{ totalAdultPrice: 1400, currency: 'CNY' }],
+          };
+        }
+        return { offers: [], message: 'none' };
+      });
+    const adapter = createAdapter({ searchAirports, searchFlightsDetailed });
+
+    await adapter.fetchFlightQuoteForTier(query, 'standard');
+
+    const cityCalls = searchFlightsDetailed.mock.calls.filter(
+      (call) =>
+        (call[0] as { fromCity?: string }).fromCity != null ||
+        (call[0] as { toCity?: string }).toCity != null,
+    );
+    const airportCalls = searchFlightsDetailed.mock.calls.filter(
+      (call) =>
+        (call[0] as { fromAirport?: string }).fromAirport === 'PVG' &&
+        (call[0] as { toAirport?: string }).toAirport === 'SZX',
+    );
+    // Probe finds airport once; tier search reuses preferred airport mode.
+    expect(cityCalls.length).toBe(1);
+    expect(airportCalls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('uses Lost Lands Columbus city codes first without searching airports MCP', async () => {
     const searchAirports = jest
       .fn()
       .mockResolvedValue([
@@ -89,31 +168,36 @@ describe('RollingGoTravelQuoteAdapter', () => {
       'standard',
     );
 
-    expect(result?.fromCityCode).toBe('PVG');
+    expect(result?.fromCityCode).toBe('SHA');
     expect(result?.toCityCode).toBe('CMH');
     expect(searchAirports).not.toHaveBeenCalled();
-    expect(searchFlightsDetailed).toHaveBeenCalled();
-    const firstCall = searchFlightsDetailed.mock.calls[0]?.[0] as {
-      toCity?: string;
-    };
-    expect(firstCall?.toCity).toBe('CMH');
+    const firstCall = searchFlightsDetailed.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >;
+    expect(firstCall.toCity).toBe('CMH');
+    expect(firstCall.fromCity).toBe('SHA');
+    expect(firstCall.toAirport).toBeUndefined();
   });
 
-  it('falls back to alternate IATA when primary destination has no offers', async () => {
+  it('falls back to alternate airport when primary has no offers', async () => {
     const searchAirports = jest.fn().mockResolvedValue([]);
     const searchFlightsDetailed = jest
       .fn()
-      .mockImplementation(async (args: { toCity: string }) => {
-        if (args.toCity === 'CMH') {
+      .mockImplementation(
+        async (args: { toCity?: string; toAirport?: string }) => {
+          const dest = args.toCity ?? args.toAirport;
+          if (dest === 'CMH') {
+            return { offers: [], message: 'none' };
+          }
+          if (dest === 'CLE') {
+            return {
+              offers: [{ totalAdultPrice: 7200, currency: 'CNY' }],
+            };
+          }
           return { offers: [], message: 'none' };
-        }
-        if (args.toCity === 'CLE') {
-          return {
-            offers: [{ totalAdultPrice: 7200, currency: 'CNY' }],
-          };
-        }
-        return { offers: [], message: 'none' };
-      });
+        },
+      );
     const adapter = createAdapter({ searchAirports, searchFlightsDetailed });
 
     const result = await adapter.fetchFlightQuoteForTier(
@@ -133,11 +217,12 @@ describe('RollingGoTravelQuoteAdapter', () => {
 
     expect(result?.toCityCode).toBe('CLE');
     expect(searchAirports).not.toHaveBeenCalled();
-    const toCities = searchFlightsDetailed.mock.calls.map(
-      (call) => (call[0] as { toCity?: string }).toCity,
-    );
-    expect(toCities).toContain('CMH');
-    expect(toCities).toContain('CLE');
+    const destinations = searchFlightsDetailed.mock.calls.map((call) => {
+      const args = call[0] as { toCity?: string; toAirport?: string };
+      return args.toCity ?? args.toAirport;
+    });
+    expect(destinations).toContain('CMH');
+    expect(destinations).toContain('CLE');
   });
 
   it('fetchHotelQuoteForTier calls searchHotels once for a tier', async () => {

@@ -55,6 +55,10 @@ const DEPARTURE_AIRPORTS: Record<string, AirportInfo> = {
   澳门: { name: '澳门国际机场', iata: 'MFM' },
   首尔: { name: '仁川/金浦国际机场', iata: 'ICN/GMP' },
   东京: { name: '羽田/成田国际机场', iata: 'HND/NRT' },
+  曼谷: { name: '曼谷素万那普/廊曼国际机场', iata: 'BKK/DMK' },
+  普吉: { name: '普吉国际机场', iata: 'HKT' },
+  大阪: { name: '关西/伊丹国际机场', iata: 'KIX/ITM' },
+  迪拜: { name: '迪拜国际机场', iata: 'DXB' },
 };
 
 function primaryIataCode(iata: string): string | undefined {
@@ -62,7 +66,7 @@ function primaryIataCode(iata: string): string | undefined {
   return primary?.length === 3 ? primary : undefined;
 }
 
-/** 已知出发城市 → RollingGo 航班 searchFlights 城市码（优先于 MCP 机场搜索）。 */
+/** 已知出发城市 → RollingGo 航班 searchFlights 机场码（优先于 MCP 机场搜索）。 */
 export function resolveKnownDepartureCityCode(
   cityLabel: string,
 ): string | undefined {
@@ -72,12 +76,59 @@ export function resolveKnownDepartureCityCode(
   return primaryIataCode(airport.iata);
 }
 
+/**
+ * Known departure cities map to airport IATA — use RollingGo `fromAirport`
+ * (not `fromCity`) per official contract.
+ */
+export function resolveKnownDepartureAirportCode(
+  cityLabel: string,
+): string | undefined {
+  return resolveKnownDepartureCityCode(cityLabel);
+}
+
 /** 国内/港澳台目的地城市 → IATA（与出发城市共用映射，支持 RollingGo 国内线）。 */
 export function resolveKnownDestinationCityCode(
   cityLabel: string,
 ): string | undefined {
   return resolveKnownDepartureCityCode(cityLabel);
 }
+
+/**
+ * English-first keywords for RollingGo searchAirports (official CLI prefers EN).
+ */
+export function rollingGoAirportSearchKeywords(cityLabel: string): string[] {
+  const city = cityLabel.trim();
+  if (!city) return [];
+  const mapped = DEPARTURE_AIRPORT_SEARCH_KEYWORDS[city];
+  if (mapped?.length) return [...mapped];
+  // Latin / IATA already — keep as-is; otherwise try raw Chinese as last resort.
+  if (/^[A-Za-z0-9\s\-']+$/.test(city)) return [city];
+  return [city];
+}
+
+const DEPARTURE_AIRPORT_SEARCH_KEYWORDS: Record<string, string[]> = {
+  上海: ['Shanghai', 'PVG', 'SHA'],
+  北京: ['Beijing', 'PEK', 'PKX'],
+  广州: ['Guangzhou', 'CAN'],
+  深圳: ['Shenzhen', 'SZX'],
+  杭州: ['Hangzhou', 'HGH'],
+  成都: ['Chengdu', 'TFU', 'CTU'],
+  香港: ['Hong Kong', 'HKG'],
+  澳门: ['Macau', 'MFM'],
+  首尔: ['Seoul', 'Incheon', 'ICN'],
+  东京: ['Tokyo', 'HND', 'NRT'],
+  曼谷: ['Bangkok', 'BKK', 'DMK'],
+  普吉: ['Phuket', 'HKT'],
+  大阪: ['Osaka', 'KIX'],
+  迪拜: ['Dubai', 'DXB'],
+  珠海: ['Zhuhai', 'ZUH'],
+  南京: ['Nanjing', 'NKG'],
+  武汉: ['Wuhan', 'WUH'],
+  重庆: ['Chongqing', 'CKG'],
+  西安: ['Xian', 'XIY'],
+  厦门: ['Xiamen', 'XMN'],
+  昆明: ['Kunming', 'KMG'],
+};
 
 /** 任意中国城市名 → RollingGo 航班三字码（出发/到达通用）。 */
 export function resolveKnownCityAirportCode(
