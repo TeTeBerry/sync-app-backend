@@ -29,19 +29,21 @@ describe('openflights-airports.util', () => {
     expect(records.find((r) => r.iata === 'PVG')?.city).toBe('Shanghai');
   });
 
-  it('keyword search prefers city rows for place names', () => {
+  it('keyword search returns city rows only for place names', () => {
     const records = parseOpenFlightsAirportsDat(SAMPLE_DAT);
     const suggestions = searchOpenFlightsPlaceSuggestions(records, 'London', 8);
 
-    expect(suggestions[0]?.kind).toBe('city');
+    expect(suggestions.every((s) => s.kind === 'city')).toBe(true);
     expect(suggestions[0]?.city).toBe('London');
+    expect(suggestions[0]?.title).toBe('London');
   });
 
-  it('prioritizes exact IATA matches', () => {
+  it('resolves IATA matches to the parent city (no airport rows)', () => {
     const records = parseOpenFlightsAirportsDat(SAMPLE_DAT);
     const suggestions = searchOpenFlightsPlaceSuggestions(records, 'PVG', 5);
-    expect(suggestions[0]?.kind).toBe('airport');
-    expect(suggestions[0]?.iata).toBe('PVG');
+    expect(suggestions[0]?.kind).toBe('city');
+    expect(suggestions[0]?.city).toBe('Shanghai');
+    expect(suggestions[0]?.title).toBe('Shanghai');
   });
 
   it('returns empty for blank keyword', () => {
@@ -55,7 +57,8 @@ describe('openflights-airports.util', () => {
 
     expect(rows[0]).toMatchObject({
       kind: 'city',
-      title: 'London, United Kingdom',
+      title: 'London',
+      city: 'London',
     });
     expect(rows.slice(1).every((s) => s.kind === 'airport')).toBe(true);
     expect(
@@ -69,14 +72,15 @@ describe('openflights-airports.util', () => {
     );
   });
 
-  it('formats city title as City, Country', () => {
+  it('formats city title as city name only', () => {
     const records = parseOpenFlightsAirportsDat(SAMPLE_DAT);
     const suggestions = searchOpenFlightsPlaceSuggestions(
       records,
       'Shanghai',
       5,
     );
-    expect(suggestions[0]?.title).toBe('Shanghai, China');
+    expect(suggestions[0]?.title).toBe('Shanghai');
+    expect(suggestions[0]?.country).toBe('China');
   });
 
   it('disambiguates same city name via country', () => {

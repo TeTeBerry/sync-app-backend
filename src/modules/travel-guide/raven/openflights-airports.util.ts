@@ -105,7 +105,7 @@ function toCitySuggestion(
 ): RavenPlaceSuggestion {
   return {
     kind: 'city',
-    title: `${record.city}, ${record.country}`,
+    title: record.city,
     city: record.city,
     country: record.country,
     lat: record.lat,
@@ -146,8 +146,8 @@ function sortAirports(
 }
 
 /**
- * Keyword search for departure UX step 1: city rows (+ direct IATA/airport hits).
- * Selecting a city should then call listAirportsForCity for the full airport list.
+ * Keyword search for departure UX: city rows only (city name as title).
+ * IATA / airport-name hits resolve to their city so the picker stays single-select.
  */
 export function searchOpenFlightsPlaceSuggestions(
   records: OpenFlightsAirportRecord[],
@@ -159,7 +159,7 @@ export function searchOpenFlightsPlaceSuggestions(
 
   const useful = records.filter(isUsefulAirport);
 
-  // Direct airport-code / airport-name hits (e.g. PVG, Heathrow).
+  // Airport-code / airport-name hits map to the parent city (no airport rows in results).
   const airportHits = useful
     .map((record) => ({ record, score: scoreAirportCode(record, q) }))
     .filter((row) => row.score > 0)
@@ -168,14 +168,16 @@ export function searchOpenFlightsPlaceSuggestions(
       return sortAirports(a.record, b.record);
     });
 
-  // City aggregation from matching city/country names.
   const cityBest = new Map<
     string,
     { score: number; record: OpenFlightsAirportRecord }
   >();
-  for (const record of useful) {
-    const score = scoreCity(record.city, record.country, q);
-    if (score <= 0) continue;
+
+  const upsertCity = (
+    record: OpenFlightsAirportRecord,
+    score: number,
+  ): void => {
+    if (score <= 0) return;
     const key = `${record.city.toLowerCase()}|${record.country.toLowerCase()}`;
     const prev = cityBest.get(key);
     if (
@@ -185,56 +187,31 @@ export function searchOpenFlightsPlaceSuggestions(
     ) {
       cityBest.set(key, { score, record });
     }
+  };
+
+  for (const record of useful) {
+    upsertCity(record, scoreCity(record.city, record.country, q));
   }
 
-  const cityHits = [...cityBest.values()].sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return a.record.city.localeCompare(b.record.city);
-  });
-
-  const out: RavenPlaceSuggestion[] = [];
-  const seenAirport = new Set<string>();
-
-  // Prefer cities for typed place names; still surface exact IATA first when relevant.
-  const preferAirportFirst =
-    q.length <= 4 && airportHits.some((h) => h.score >= 850);
-
-  if (preferAirportFirst) {
-    for (const { record } of airportHits) {
-      if (out.length >= limit) break;
-      const key = record.iata || record.icao || String(record.id);
-      if (seenAirport.has(key)) continue;
-      seenAirport.add(key);
-      out.push(toAirportSuggestion(record));
+  // Exact / strong IATA hits boost that city to the top.
+  for (const { record, score } of airportHits) {
+    if (score >= 850) {
+      upsertCity(record, score + 50);
     }
   }
 
-  for (const { record } of cityHits) {
-    if (out.length >= limit) break;
-    out.push(toCitySuggestion(record));
-  }
-
-  if (!preferAirportFirst) {
-    for (const { record } of airportHits) {
-      if (out.length >= limit) break;
-      const key = record.iata || record.icao || String(record.id);
-      if (seenAirport.has(key)) continue;
-      seenAirport.add(key);
-      out.push(toAirportSuggestion(record));
-    }
-  }
-
-  return out.slice(0, limit);
+  return [...cityBest.values()]
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.record.city.localeCompare(b.record.city);
+    })
+    .slice(0, limit)
+    .map(({ record }) => toCitySuggestion(record));
 }
 
 /**
  * Return city row + every useful airport for that city (optional country).
- * No limit truncation — frontend needs the full set after city selection.
- *
- * Example titles:
- * - Shanghai, China
- * - Shanghai Pudong International Airport · PVG
- * - Shanghai Hongqiao International Airport · SHA
+ * Kept for API compatibility; Raven departure UX uses city-only keyword search.
  */
 export function listAirportsForCity(
   records: OpenFlightsAirportRecord[],
@@ -256,7 +233,6 @@ export function listAirportsForCity(
 
   if (!matches.length) return [];
 
-  // Deduplicate by IATA (fallback ICAO/id).
   const seen = new Set<string>();
   const airports: RavenPlaceSuggestion[] = [];
   for (const record of matches) {

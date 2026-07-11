@@ -7,9 +7,8 @@ import { OpenFlightsAirportCatalogService } from './openflights-airport-catalog.
 /**
  * Raven / sync-web departure suggestions (OpenFlights).
  *
- * Flow:
- * 1) `?keyword=` → city suggestions (+ direct IATA hits)
- * 2) `?city=&country=` → all airports for that city
+ * `?keyword=` → city suggestions only (city name as title).
+ * `?city=&country=` → city + airports (legacy / advanced; Raven UX uses keyword only).
  *
  * Mini program continues to use GET /api/travel-guide/place-suggestions (Amap).
  */
