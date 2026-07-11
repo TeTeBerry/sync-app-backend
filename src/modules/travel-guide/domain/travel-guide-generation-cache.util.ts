@@ -49,8 +49,9 @@ export function normalizeTravelGuideGenerationParams(
 /** Bump when map POI / venue resolution, overseas ticket channel, locale copy,
  * EN USD display, EN RouteStack hotel provider, hotel-hub fallback, ourprice
  * stay-total normalization, Hunyuan locale language prompts, EN prose language
- * guard, or bilingual ticket-channel catalog changes. */
-export const TRAVEL_GUIDE_MAP_DATA_VERSION = 12;
+ * guard, bilingual ticket-channel catalog, or per-activity flight airport
+ * destinations change. */
+export const TRAVEL_GUIDE_MAP_DATA_VERSION = 14;
 
 /**
  * Normalize params for fuzzy matching.

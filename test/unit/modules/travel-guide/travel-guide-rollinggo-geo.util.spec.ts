@@ -1,8 +1,16 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   buildRollingGoQuoteGeoContext,
   normalizeQuoteDestinationCity,
   resolveHotPathPrimaryAirportCode,
 } from '@src/modules/travel-guide/domain/travel-guide-rollinggo-geo.util';
+import {
+  ACTIVITY_PRIMARY_AIRPORTS,
+  listActivityAirportLegacyIds,
+  resolveActivityAlternateAirportCodes,
+  resolveActivityPrimaryAirportCode,
+} from '@src/data/travel-guide/travel-guide-activity-airports.data';
 
 describe('travel-guide-rollinggo-geo.util', () => {
   it('normalizeQuoteDestinationCity extracts 仁川 from EDC Korea location', () => {
@@ -64,6 +72,7 @@ describe('travel-guide-rollinggo-geo.util', () => {
 
     expect(geo.destinationCity).toBe('芭提雅');
     expect(geo.hotelCountryCode).toBe('TH');
+    expect(geo.destinationCityCode).toBe('BKK');
     expect(geo.airportKeywords).toEqual(
       expect.arrayContaining(['曼谷', 'Bangkok', '芭提雅']),
     );
@@ -83,5 +92,71 @@ describe('travel-guide-rollinggo-geo.util', () => {
   it('resolveHotPathPrimaryAirportCode reads IATA from hot path hub', () => {
     expect(resolveHotPathPrimaryAirportCode(8)).toBe('ICN');
     expect(resolveHotPathPrimaryAirportCode(1)).toBe('BKK');
+  });
+
+  it('uses Lost Lands Columbus airport instead of US LAX country default', () => {
+    const geo = buildRollingGoQuoteGeoContext({
+      activityLegacyId: 19,
+      activityName: 'Lost Lands 2026',
+      activityArea: '美国',
+      location: '美国·俄亥俄州 Legend Valley',
+      regionKind: 'overseas',
+    });
+
+    expect(geo.destinationCityCode).toBe('CMH');
+    expect(resolveActivityAlternateAirportCodes(19)).toEqual(['CLE']);
+    expect(geo.airportKeywords[0]).toBe('哥伦布');
+    expect(geo.airportKeywords).toEqual(
+      expect.arrayContaining(['Columbus', 'CMH']),
+    );
+    const columbusIdx = geo.airportKeywords.indexOf('哥伦布');
+    const laxIdx = geo.airportKeywords.indexOf('洛杉矶');
+    expect(columbusIdx).toBeGreaterThanOrEqual(0);
+    if (laxIdx >= 0) {
+      expect(columbusIdx).toBeLessThan(laxIdx);
+    }
+  });
+
+  it('uses Creamfields Manchester and UNTOLD Cluj as fly-in airports', () => {
+    expect(
+      buildRollingGoQuoteGeoContext({
+        activityLegacyId: 10,
+        activityName: 'Creamfields',
+        activityArea: '英国',
+        location: '英国·沃灵顿 Daresbury Estate',
+        regionKind: 'overseas',
+      }).destinationCityCode,
+    ).toBe('MAN');
+    expect(resolveActivityAlternateAirportCodes(10)).toEqual(['LPL']);
+
+    expect(
+      buildRollingGoQuoteGeoContext({
+        activityLegacyId: 9,
+        activityName: 'UNTOLD',
+        activityArea: '罗马尼亚',
+        location: '罗马尼亚·克卢日 Cluj Arena',
+        regionKind: 'overseas',
+      }).destinationCityCode,
+    ).toBe('CLJ');
+  });
+
+  it('covers every catalog seed activity with a primary fly-in airport', () => {
+    const seedPath = join(
+      __dirname,
+      '../../../../scripts/lib/activity-catalog-seed-data.mjs',
+    );
+    const raw = readFileSync(seedPath, 'utf8');
+    const seedIds = [...raw.matchAll(/legacyId:\s*(\d+)/g)].map((match) =>
+      Number(match[1]),
+    );
+    const uniqueSeedIds = [...new Set(seedIds)].sort((a, b) => a - b);
+
+    expect(listActivityAirportLegacyIds()).toEqual(uniqueSeedIds);
+    for (const legacyId of uniqueSeedIds) {
+      expect(resolveActivityPrimaryAirportCode(legacyId)).toMatch(/^[A-Z]{3}$/);
+      expect(
+        ACTIVITY_PRIMARY_AIRPORTS[legacyId]?.airportKeywords.length,
+      ).toBeGreaterThan(0);
+    }
   });
 });

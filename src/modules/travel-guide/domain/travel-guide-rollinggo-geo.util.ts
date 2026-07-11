@@ -1,3 +1,7 @@
+import {
+  findActivityAirportProfile,
+  resolveActivityPrimaryAirportCode,
+} from '@src/data/travel-guide/travel-guide-activity-airports.data';
 import { findHotActivityProfile } from '@src/data/travel-guide/travel-guide-hot-path.data';
 import type { TravelGuideRegionKind } from './travel-guide-international.util';
 import { resolveKnownDestinationCityCode } from './travel-guide-departure-airport.util';
@@ -198,8 +202,12 @@ export function buildRollingGoQuoteGeoContext(
   const areaDefaults = input.activityArea
     ? OVERSEAS_AREA_QUOTE[input.activityArea.trim()]
     : undefined;
+  const activityAirport = findActivityAirportProfile(input.activityLegacyId);
 
+  // Prefer activity fly-in airport keywords first so country hubs (e.g. LAX for
+  // all US festivals) never win MCP fallback ahead of Columbus / Manchester / Cluj.
   const airportKeywords = uniqueKeywords([
+    ...(activityAirport?.airportKeywords ?? []),
     destinationCity,
     ...corpusAirportKeywordsFromText(corpus),
     ...(areaDefaults?.airportKeywords ?? []),
@@ -243,12 +251,17 @@ export function buildRollingGoQuoteGeoContext(
   };
 }
 
+/**
+ * Resolve RollingGo `toCity`: activity common airport → hot-path hub →
+ * domestic/hmt known city map. Never use country-level defaults as IATA.
+ */
 function resolveDestinationAirportCode(
   regionKind: TravelGuideRegionKind,
   activityLegacyId: number | undefined,
   destinationCity: string,
 ): string | undefined {
   return (
+    resolveActivityPrimaryAirportCode(activityLegacyId) ??
     resolveHotPathPrimaryAirportCode(activityLegacyId) ??
     (regionKind === 'domestic' || regionKind === 'hmt'
       ? resolveKnownDestinationCityCode(destinationCity)
@@ -284,6 +297,19 @@ function corpusAirportKeywordsFromText(corpus: string): string[] {
     keywords.push('奥兰多', 'Orlando');
   if (/拉斯维加斯|las vegas|edc las/.test(corpus)) {
     keywords.push('拉斯维加斯', 'Las Vegas');
+  }
+  if (
+    /俄亥俄|ohio|columbus|thornville|legend\s*valley|lost\s*lands/.test(corpus)
+  ) {
+    keywords.push('哥伦布', 'Columbus', 'CMH');
+  }
+  if (/克卢日|cluj|untold/.test(corpus) && /罗马尼亚|romania/.test(corpus)) {
+    keywords.push('克卢日', 'Cluj', 'CLJ');
+  }
+  if (
+    /沃灵顿|warrington|daresbury|creamfields|曼彻斯特|manchester/.test(corpus)
+  ) {
+    keywords.push('曼彻斯特', 'Manchester', 'MAN');
   }
   if (/香港|hong\s*kong/.test(corpus)) keywords.push('香港');
   if (/澳门|macau/.test(corpus)) keywords.push('澳门');

@@ -23,6 +23,7 @@ import {
   resolveKnownDestinationCityCode,
 } from '../../domain/travel-guide-departure-airport.util';
 import { buildRollingGoQuoteGeoContext } from '../../domain/travel-guide-rollinggo-geo.util';
+import { resolveActivityAlternateAirportCodes } from '@src/data/travel-guide/travel-guide-activity-airports.data';
 import { addDays } from '../../domain/travel-guide-quote-dates.util';
 import type { TravelGuideMapContext } from '../../map/travel-guide-map.types';
 import type { ITravelQuotePort } from '../../ports/travel-quote.port';
@@ -54,6 +55,12 @@ const FLIGHT_TIER_GAP_MS = 200;
 type ResolvedFlightWindow = {
   tripType: 'ROUND_TRIP' | 'ONE_WAY';
   returnDate?: string;
+};
+
+type FlightAirportCandidate = {
+  toCity: string;
+  /** How this destination code was chosen (for logs). */
+  source: string;
 };
 
 function sleep(ms: number): Promise<void> {
@@ -204,14 +211,15 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
     tier: TravelGuideBudgetTier,
     mcpOptions?: RollingGoMcpCallOptions,
   ): Promise<FlightQuoteSnapshot | null> {
-    const airports = await this.resolveFlightAirports(query, mcpOptions);
-    if (!airports) return null;
+    const route = await this.resolveWorkingFlightRoute(query, mcpOptions);
+    if (!route) return null;
     return this.fetchFlightQuoteForTierImpl(
       query,
-      airports.fromCity,
-      airports.toCity,
+      route.fromCity,
+      route.toCity,
       tier,
       mcpOptions,
+      route.flightWindow,
     );
   }
 
@@ -233,15 +241,8 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
     tiers: TravelGuideBudgetTier[],
     mcpOptions?: RollingGoMcpCallOptions,
   ): Promise<Partial<Record<TravelGuideBudgetTier, FlightQuoteSnapshot>>> {
-    const airports = await this.resolveFlightAirports(query, mcpOptions);
-    if (!airports) return {};
-
-    const flightWindow = await this.resolveFlightWindow(
-      query,
-      airports.fromCity,
-      airports.toCity,
-      mcpOptions,
-    );
+    const route = await this.resolveWorkingFlightRoute(query, mcpOptions);
+    if (!route) return {};
 
     const flightByTier: Partial<
       Record<TravelGuideBudgetTier, FlightQuoteSnapshot>
@@ -258,11 +259,11 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
       const tier = tiers[i]!;
       const quote = await this.fetchFlightQuoteForTierImpl(
         query,
-        airports.fromCity,
-        airports.toCity,
+        route.fromCity,
+        route.toCity,
         tier,
         mcpOptions,
-        flightWindow,
+        route.flightWindow,
         cabinOfferCache,
       );
       if (quote) {
@@ -274,16 +275,103 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
     }
 
     this.logger.log(
-      `RollingGo flight tier quotes done: ${Object.keys(flightByTier).length}/${tiers.length} tiers${flightWindow.returnDate ? ` ret=${flightWindow.returnDate}` : ''}`,
+      `RollingGo flight tier quotes done: ${Object.keys(flightByTier).length}/${tiers.length} tiers${route.flightWindow.returnDate ? ` ret=${route.flightWindow.returnDate}` : ''} via ${route.fromCity}→${route.toCity}`,
     );
 
     return flightByTier;
   }
 
-  private async resolveFlightAirports(
+  /**
+   * Pick fromCity + first destination airport that actually returns offers.
+   * Tries activity primary → alternate IATAs; MCP keywords only when no static IATA.
+   */
+  private async resolveWorkingFlightRoute(
     query: TravelQuoteQuery,
     mcpOptions?: RollingGoMcpCallOptions,
-  ): Promise<{ fromCity: string; toCity: string } | null> {
+  ): Promise<{
+    fromCity: string;
+    toCity: string;
+    source: string;
+    flightWindow: ResolvedFlightWindow;
+  } | null> {
+    const resolved = await this.resolveFlightAirportCandidates(
+      query,
+      mcpOptions,
+    );
+    if (!resolved) return null;
+
+    const tryCandidates = async (
+      candidates: FlightAirportCandidate[],
+    ): Promise<{
+      fromCity: string;
+      toCity: string;
+      source: string;
+      flightWindow: ResolvedFlightWindow;
+    } | null> => {
+      for (let i = 0; i < candidates.length; i++) {
+        const candidate = candidates[i]!;
+        const flightWindow = await this.resolveFlightWindow(
+          query,
+          resolved.fromCity,
+          candidate.toCity,
+          mcpOptions,
+        );
+        const hasOffers = await this.probeFlightSearch(
+          query,
+          resolved.fromCity,
+          candidate.toCity,
+          'ECONOMY',
+          flightWindow.returnDate,
+          mcpOptions,
+        );
+        if (hasOffers) {
+          this.logger.log(
+            `RollingGo flight airports: ${resolved.fromCity} → ${candidate.toCity} (${candidate.source})`,
+          );
+          return {
+            fromCity: resolved.fromCity,
+            toCity: candidate.toCity,
+            source: candidate.source,
+            flightWindow,
+          };
+        }
+        this.logger.log(
+          `RollingGo flight no offers probing ${resolved.fromCity}→${candidate.toCity} (${candidate.source})`,
+        );
+      }
+      return null;
+    };
+
+    const hit = await tryCandidates(resolved.toCities);
+    if (hit) return hit;
+
+    const primary = resolved.toCities[0];
+    if (!primary) return null;
+
+    const flightWindow = await this.resolveFlightWindow(
+      query,
+      resolved.fromCity,
+      primary.toCity,
+      mcpOptions,
+    );
+    this.logger.log(
+      `RollingGo flight airports: ${resolved.fromCity} → ${primary.toCity} (${primary.source}, no inventory on any candidate)`,
+    );
+    return {
+      fromCity: resolved.fromCity,
+      toCity: primary.toCity,
+      source: primary.source,
+      flightWindow,
+    };
+  }
+
+  private async resolveFlightAirportCandidates(
+    query: TravelQuoteQuery,
+    mcpOptions?: RollingGoMcpCallOptions,
+  ): Promise<{
+    fromCity: string;
+    toCities: FlightAirportCandidate[];
+  } | null> {
     const geo = this.buildGeoContext(query);
     const departureCity = resolveDepartureCityLabel(
       query.departureText,
@@ -295,36 +383,78 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
       resolveKnownDepartureCityCode(departureCity) ??
       (await this.resolveAirportCityCode(departureCity, flightUrl, mcpOptions));
 
-    let toCity =
-      geo.destinationCityCode ??
-      resolveKnownDestinationCityCode(geo.destinationCity);
-    let matchedKeyword: string | undefined;
-
-    if (!toCity) {
-      const codes = await Promise.all(
-        geo.airportKeywords.map((keyword) =>
-          this.resolveAirportCityCode(keyword, flightUrl, mcpOptions),
-        ),
-      );
-      const idx = codes.findIndex(Boolean);
-      if (idx >= 0) {
-        toCity = codes[idx];
-        matchedKeyword = geo.airportKeywords[idx];
+    const toCities: FlightAirportCandidate[] = [];
+    const seen = new Set<string>();
+    const pushTo = (code: string | undefined, source: string) => {
+      const normalized = code?.trim().toUpperCase();
+      if (!normalized || normalized.length !== 3 || seen.has(normalized)) {
+        return;
       }
+      seen.add(normalized);
+      toCities.push({ toCity: normalized, source });
+    };
+
+    if (geo.destinationCityCode) {
+      pushTo(geo.destinationCityCode, 'activity/hot-path/known IATA');
+    } else {
+      pushTo(
+        resolveKnownDestinationCityCode(geo.destinationCity),
+        'known destination city',
+      );
     }
 
-    if (!fromCity || !toCity) {
+    for (const alt of resolveActivityAlternateAirportCodes(
+      query.activityLegacyId,
+    )) {
+      pushTo(alt, 'activity alternate IATA');
+    }
+
+    // MCP keywords only when we still have no destination — never as a way to
+    // "recover" inventory via country hubs (e.g. LAX after CMH/CLE are dry).
+    if (!toCities.length) {
+      const keywordCities = await this.resolveKeywordAirportCandidates(
+        query,
+        mcpOptions,
+        seen,
+      );
+      toCities.push(...keywordCities);
+    }
+
+    if (!fromCity || !toCities.length) {
       this.logger.log(
-        `RollingGo flight unresolved: from=${fromCity ?? 'none'} (${departureCity}) to=${toCity ?? 'none'} (keywords=${geo.airportKeywords.join('|')}, hotPath=${geo.destinationCityCode ?? 'none'}, raw=${query.destinationCity})`,
+        `RollingGo flight unresolved: from=${fromCity ?? 'none'} (${departureCity}) to=none (keywords=${geo.airportKeywords.join('|')}, iata=${geo.destinationCityCode ?? 'none'}, raw=${query.destinationCity})`,
       );
       return null;
     }
 
-    this.logger.log(
-      `RollingGo flight airports: ${fromCity} → ${toCity}${matchedKeyword ? ` (keyword=${matchedKeyword})` : geo.destinationCityCode ? ' (hot-path IATA)' : ''}`,
-    );
+    return { fromCity, toCities };
+  }
 
-    return { fromCity, toCity };
+  private async resolveKeywordAirportCandidates(
+    query: TravelQuoteQuery,
+    mcpOptions: RollingGoMcpCallOptions | undefined,
+    alreadySeen: Set<string>,
+  ): Promise<FlightAirportCandidate[]> {
+    const geo = this.buildGeoContext(query);
+    const flightUrl = this.rollingGo.flightMcpUrl;
+    const out: FlightAirportCandidate[] = [];
+    const seen = new Set(alreadySeen);
+
+    const keywordCodes = await Promise.all(
+      geo.airportKeywords.map(async (keyword) => ({
+        keyword,
+        code: await this.resolveAirportCityCode(keyword, flightUrl, mcpOptions),
+      })),
+    );
+    for (const { keyword, code } of keywordCodes) {
+      const normalized = code?.trim().toUpperCase();
+      if (!normalized || normalized.length !== 3 || seen.has(normalized)) {
+        continue;
+      }
+      seen.add(normalized);
+      out.push({ toCity: normalized, source: `keyword=${keyword}` });
+    }
+    return out;
   }
 
   private async fetchFlightQuoteForTierImpl(

@@ -63,6 +63,83 @@ describe('RollingGoTravelQuoteAdapter', () => {
     expect(searchAirports).not.toHaveBeenCalled();
   });
 
+  it('uses Lost Lands Columbus IATA without searching airports MCP', async () => {
+    const searchAirports = jest
+      .fn()
+      .mockResolvedValue([
+        { iataCode: 'LAX', cityCode: 'LAX', airportName: 'Los Angeles' },
+      ]);
+    const searchFlightsDetailed = jest.fn().mockResolvedValue({
+      offers: [{ totalAdultPrice: 6800, currency: 'CNY' }],
+    });
+    const adapter = createAdapter({ searchAirports, searchFlightsDetailed });
+
+    const result = await adapter.fetchFlightQuoteForTier(
+      {
+        ...query,
+        destinationCity: '俄亥俄州',
+        activityLegacyId: 19,
+        activityName: 'Lost Lands 2026',
+        activityArea: '美国',
+        activityLocation: '美国·俄亥俄州 Legend Valley',
+        regionKind: 'overseas',
+        venueTitle: 'Legend Valley',
+        venueAddress: 'Thornville, OH',
+      },
+      'standard',
+    );
+
+    expect(result?.fromCityCode).toBe('PVG');
+    expect(result?.toCityCode).toBe('CMH');
+    expect(searchAirports).not.toHaveBeenCalled();
+    expect(searchFlightsDetailed).toHaveBeenCalled();
+    const firstCall = searchFlightsDetailed.mock.calls[0]?.[0] as {
+      toCity?: string;
+    };
+    expect(firstCall?.toCity).toBe('CMH');
+  });
+
+  it('falls back to alternate IATA when primary destination has no offers', async () => {
+    const searchAirports = jest.fn().mockResolvedValue([]);
+    const searchFlightsDetailed = jest
+      .fn()
+      .mockImplementation(async (args: { toCity: string }) => {
+        if (args.toCity === 'CMH') {
+          return { offers: [], message: 'none' };
+        }
+        if (args.toCity === 'CLE') {
+          return {
+            offers: [{ totalAdultPrice: 7200, currency: 'CNY' }],
+          };
+        }
+        return { offers: [], message: 'none' };
+      });
+    const adapter = createAdapter({ searchAirports, searchFlightsDetailed });
+
+    const result = await adapter.fetchFlightQuoteForTier(
+      {
+        ...query,
+        destinationCity: '俄亥俄州',
+        activityLegacyId: 19,
+        activityName: 'Lost Lands 2026',
+        activityArea: '美国',
+        activityLocation: '美国·俄亥俄州 Legend Valley',
+        regionKind: 'overseas',
+        venueTitle: 'Legend Valley',
+        venueAddress: 'Thornville, OH',
+      },
+      'standard',
+    );
+
+    expect(result?.toCityCode).toBe('CLE');
+    expect(searchAirports).not.toHaveBeenCalled();
+    const toCities = searchFlightsDetailed.mock.calls.map(
+      (call) => (call[0] as { toCity?: string }).toCity,
+    );
+    expect(toCities).toContain('CMH');
+    expect(toCities).toContain('CLE');
+  });
+
   it('fetchHotelQuoteForTier calls searchHotels once for a tier', async () => {
     const searchHotels = jest
       .fn()
