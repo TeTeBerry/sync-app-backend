@@ -86,3 +86,19 @@ export interface RouteStackSearchHotelsResponse {
   code?: number;
   result?: RouteStackSearchHotelsResult | null;
 }
+
+export interface RouteStackHotelDetailsRequest {
+  hotelId: string;
+  contentType: 'ALL';
+  correlationId: string;
+  token: string;
+}
+
+/** Detail payload differs by supplier, so retain the response as opaque data. */
+export interface RouteStackHotelDetailsResponse {
+  success?: boolean;
+  message?: string | null;
+  code?: number | string;
+  result?: unknown;
+  token?: string;
+}

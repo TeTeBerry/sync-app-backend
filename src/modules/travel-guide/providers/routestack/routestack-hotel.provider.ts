@@ -10,8 +10,10 @@ import {
   buildRouteStackDestinationQueries,
   buildRouteStackRooms,
   destinationCoords,
+  enrichRouteStackHotelFromDetails,
   normalizeRouteStackHotels,
   pickRouteStackDestination,
+  rankRouteStackHotelsForStayPreference,
 } from '../../infra/routestack/routestack-hotel.util';
 import type {
   RouteStackDestinationItem,
@@ -82,6 +84,7 @@ export class RouteStackHotelProvider implements HotelProvider {
           rooms,
           venue,
           accommodationNights: input.accommodationNights,
+          stayPreference: input.stayPreference,
         });
         if (normalized.length) {
           return normalized;
@@ -112,6 +115,7 @@ export class RouteStackHotelProvider implements HotelProvider {
     rooms: ReturnType<typeof buildRouteStackRooms>;
     venue?: { lat: number; lng: number };
     accommodationNights: number;
+    stayPreference?: HotelSearchInput['stayPreference'];
   }): Promise<NormalizedHotelOption[]> {
     const destinationsRes = await this.client.searchDestinations({
       query: input.query,
@@ -156,10 +160,19 @@ export class RouteStackHotelProvider implements HotelProvider {
         venue: input.venue,
       });
       if (normalized.length) {
-        this.logger.log(
-          `RouteStack hotels ok query="${input.query}" destination=${destination.id} (${destination.fullName ?? destination.type}) count=${normalized.length}`,
+        const withDetails = await this.enrichDetails(
+          normalized,
+          hotels.records,
+          hotels.correlationId,
+          hotels.token,
         );
-        return normalized;
+        this.logger.log(
+          `RouteStack hotels ok query="${input.query}" destination=${destination.id} (${destination.fullName ?? destination.type}) count=${withDetails.length}`,
+        );
+        return rankRouteStackHotelsForStayPreference(
+          withDetails,
+          input.stayPreference,
+        );
       }
     }
 
@@ -168,7 +181,12 @@ export class RouteStackHotelProvider implements HotelProvider {
 
   private async searchHotelsWithPoll(
     body: Parameters<RouteStackHttpClient['searchHotels']>[0],
-  ): Promise<{ records: RouteStackHotelRecord[]; currency?: string }> {
+  ): Promise<{
+    records: RouteStackHotelRecord[];
+    currency?: string;
+    correlationId?: string;
+    token?: string;
+  }> {
     let correlationId = body.correlationId;
     let token = body.token;
     let nextResultsKey = body.nextResultsKey;
@@ -187,7 +205,7 @@ export class RouteStackHotelProvider implements HotelProvider {
       nextResultsKey = result?.nextResultsKey ?? nextResultsKey;
 
       if (records.length) {
-        return { records, currency: result?.currency };
+        return { records, currency: result?.currency, correlationId, token };
       }
 
       // Only poll while the provider reports an in-progress first page.
@@ -195,13 +213,52 @@ export class RouteStackHotelProvider implements HotelProvider {
       const status = (result?.status ?? '').toLowerCase();
       const stillLoading = status === 'inprogress' || status === 'in_progress';
       if (!stillLoading || attempt === MAX_HOTEL_POLL_ATTEMPTS - 1) {
-        return { records, currency: result?.currency };
+        return { records, currency: result?.currency, correlationId, token };
       }
 
       await sleep(HOTEL_POLL_DELAY_MS);
     }
 
     return { records: [] };
+  }
+
+  /** Detail calls are best-effort: inventory remains usable if a supplier omits content. */
+  private async enrichDetails(
+    hotels: NormalizedHotelOption[],
+    records: RouteStackHotelRecord[],
+    correlationId?: string,
+    token?: string,
+  ): Promise<NormalizedHotelOption[]> {
+    if (!correlationId || !token) return hotels;
+
+    const sourceById = new Map(
+      records
+        .filter((record) => record.id?.trim())
+        .map((record) => [record.id!.trim(), record]),
+    );
+    const detailCandidates = hotels.slice(0, 6);
+    const details = await Promise.all(
+      detailCandidates.map(async (hotel) => {
+        const source = sourceById.get(hotel.id);
+        if (!source?.id) return hotel;
+        try {
+          const response = await this.client.getHotelDetails({
+            hotelId: source.id,
+            contentType: 'ALL',
+            correlationId,
+            token,
+          });
+          return enrichRouteStackHotelFromDetails(hotel, response);
+        } catch (error) {
+          this.logger.debug(
+            `RouteStack hotel details skipped hotel=${hotel.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          return hotel;
+        }
+      }),
+    );
+    const enrichedById = new Map(details.map((hotel) => [hotel.id, hotel]));
+    return hotels.map((hotel) => enrichedById.get(hotel.id) ?? hotel);
   }
 }
 

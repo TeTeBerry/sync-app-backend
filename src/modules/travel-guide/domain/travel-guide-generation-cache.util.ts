@@ -9,6 +9,7 @@ import {
   resolveTravelGuideLocale,
   type TravelGuideLocale,
 } from './travel-guide-locale';
+import type { TravelGuideStayPreference } from '@sync/travel-guide-contracts';
 
 export type TravelGuideGenerationCacheParams = {
   activityLegacyId: number;
@@ -18,6 +19,7 @@ export type TravelGuideGenerationCacheParams = {
   budgetTier: GenerateTravelGuideDto['budgetTier'];
   selfDrive: boolean;
   accommodationNights: number;
+  stayPreference: TravelGuideStayPreference;
   note: string;
   locale: TravelGuideLocale;
 };
@@ -41,6 +43,7 @@ export function normalizeTravelGuideGenerationParams(
     budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
     selfDrive: Boolean(dto.selfDrive),
     accommodationNights,
+    stayPreference: dto.stayPreference ?? 'festival',
     note: dto.note?.trim().replace(/\s+/g, ' ') ?? '',
     locale: resolveTravelGuideLocale(dto.locale),
   };
@@ -50,8 +53,9 @@ export function normalizeTravelGuideGenerationParams(
  * EN USD display, EN RouteStack hotel provider, hotel-hub fallback, ourprice
  * stay-total normalization, Hunyuan locale language prompts, EN prose language
  * guard, bilingual ticket-channel catalog, per-activity flight airport
- * destinations, or RollingGo city/airport endpoint contract changes. */
-export const TRAVEL_GUIDE_MAP_DATA_VERSION = 18;
+ * destinations, RollingGo city/airport endpoint, or cached quote-budget
+ * recalculation changes. */
+export const TRAVEL_GUIDE_MAP_DATA_VERSION = 20;
 
 /**
  * Normalize params for fuzzy matching.
@@ -90,6 +94,7 @@ export function isFuzzyTravelGuideParamsMatch(
   if (exact.departure !== candidate.departure) return false;
   if (exact.departureCity !== candidate.departureCity) return false;
   if (exact.note !== candidate.note) return false;
+  if (exact.stayPreference !== candidate.stayPreference) return false;
   if ((candidate.mapDataVersion ?? 0) !== TRAVEL_GUIDE_MAP_DATA_VERSION) {
     return false;
   }

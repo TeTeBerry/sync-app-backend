@@ -155,6 +155,9 @@ export class TravelGuideSavedPlanService {
     if (patch.accommodationNights !== undefined) {
       form.accommodationNights = patch.accommodationNights;
     }
+    if (patch.stayPreference !== undefined) {
+      form.stayPreference = patch.stayPreference;
+    }
     if (patch.note !== undefined) {
       const note = patch.note.trim();
       if (note) form.note = note;
@@ -256,6 +259,7 @@ function buildSavedPlanForm(
     budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
     ...(dto.selfDrive != null ? { selfDrive: dto.selfDrive } : {}),
     accommodationNights,
+    ...(dto.stayPreference ? { stayPreference: dto.stayPreference } : {}),
     ...(dto.note?.trim() ? { note: dto.note.trim() } : {}),
     ...(dto.locale ? { locale: dto.locale } : {}),
   };

@@ -1,6 +1,7 @@
 import type { TravelGuideBudgetTier } from './types';
 
 export type TravelGuideLocale = 'zh' | 'en';
+export type TravelGuideStayPreference = 'festival' | 'city' | 'value';
 
 export type AiGuidePlanFormValues = {
   departure: string;
@@ -9,6 +10,8 @@ export type AiGuidePlanFormValues = {
   budgetTier?: TravelGuideBudgetTier;
   selfDrive?: boolean;
   accommodationNights?: number;
+  /** What should lead the stay recommendation: venue proximity, city energy, or price. */
+  stayPreference?: TravelGuideStayPreference;
   note?: string;
   /** Plan copy language. Defaults to zh when omitted. */
   locale?: TravelGuideLocale;

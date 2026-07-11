@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { NormalizedHotelOption } from '../types/normalized-hotel-option';
 import type { TravelGuideBudgetConstraints } from '../budget/budget-constraints.types';
+import type { TravelGuideStayPreference } from '@sync/travel-guide-contracts';
 import {
   dominantCurrency,
   isViableBudgetFit,
@@ -29,6 +30,7 @@ export class HotelRecommendationService {
   recommend(
     hotels: NormalizedHotelOption[],
     constraints?: TravelGuideBudgetConstraints | null,
+    stayPreference: TravelGuideStayPreference = 'festival',
   ): HotelRecommendationSet {
     if (!hotels.length) {
       return { ranked: [] };
@@ -47,7 +49,7 @@ export class HotelRecommendationService {
       comparable.length > 0 && comparable.length < hotels.length;
 
     const scored = pool.map((hotel) =>
-      scoreHotel(hotel, pool, constraints, crossCurrency),
+      scoreHotel(hotel, pool, constraints, crossCurrency, stayPreference),
     );
     scored.sort((a, b) => b.score - a.score);
 
@@ -138,6 +140,7 @@ function scoreHotel(
   all: NormalizedHotelOption[],
   constraints: TravelGuideBudgetConstraints | null | undefined,
   crossCurrency: boolean,
+  stayPreference: TravelGuideStayPreference,
 ): {
   hotel: NormalizedHotelOption;
   score: number;
@@ -227,7 +230,9 @@ function scoreHotel(
     HOTEL_SCORE_WEIGHTS.supplierTrust * supplierNorm;
 
   const score =
-    (1 - HOTEL_BUDGET_FIT_BLEND) * quality + HOTEL_BUDGET_FIT_BLEND * budgetFit;
+    (1 - HOTEL_BUDGET_FIT_BLEND) * quality +
+    HOTEL_BUDGET_FIT_BLEND * budgetFit +
+    stayPreferenceBonus(hotel, stayPreference);
 
   const valueScore =
     nightly > 0
@@ -244,6 +249,22 @@ function scoreHotel(
     budgetBand,
     reasonCodes: uniqueReasons(reasonCodes),
   };
+}
+
+function stayPreferenceBonus(
+  hotel: NormalizedHotelOption,
+  preference: TravelGuideStayPreference,
+): number {
+  if (preference === 'festival') {
+    return hotel.distanceToFestivalKm != null && hotel.distanceToFestivalKm <= 2
+      ? 0.18
+      : 0;
+  }
+  if (preference === 'value') {
+    return hotel.price?.nightlyAmount ? 0.08 : 0;
+  }
+  const amenities = (hotel.amenities ?? []).join(' ').toLowerCase();
+  return /metro|restaurant|bar|nightclub|city/.test(amenities) ? 0.12 : 0;
 }
 
 function resolveTransportConvenience(

@@ -2,8 +2,10 @@ import {
   buildRouteStackDestinationQueries,
   buildRouteStackDestinationQuery,
   buildRouteStackRooms,
+  enrichRouteStackHotelFromDetails,
   normalizeRouteStackHotels,
   pickRouteStackDestination,
+  rankRouteStackHotelsForStayPreference,
 } from '@src/modules/travel-guide/infra/routestack/routestack-hotel.util';
 import type { RouteStackDestinationItem } from '@src/modules/travel-guide/infra/routestack/routestack.types';
 
@@ -189,5 +191,37 @@ describe('routestack-hotel.util', () => {
         },
       });
     });
+  });
+
+  it('uses verified hotel details when ranking a city-oriented stay', () => {
+    const cityHotel = enrichRouteStackHotelFromDetails(
+      {
+        id: 'city',
+        provider: 'routestack',
+        name: 'City Hotel',
+        reviewScore: 4.2,
+        price: { totalAmount: 160, nightlyAmount: 80, currency: 'USD' },
+      },
+      {
+        result: {
+          facilities: [{ name: 'Metro access' }, { name: 'Rooftop bar' }],
+          description: 'In the centre of town',
+        },
+      },
+    );
+    const quietHotel = {
+      id: 'quiet',
+      provider: 'routestack',
+      name: 'Quiet Hotel',
+      reviewScore: 4.2,
+      price: { totalAmount: 160, nightlyAmount: 80, currency: 'USD' as const },
+    };
+
+    expect(cityHotel.amenities).toEqual(['Metro access', 'Rooftop bar']);
+    expect(cityHotel.description).toBe('In the centre of town');
+    expect(
+      rankRouteStackHotelsForStayPreference([quietHotel, cityHotel], 'city')[0]
+        ?.id,
+    ).toBe('city');
   });
 });

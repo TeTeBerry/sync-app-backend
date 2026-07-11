@@ -65,6 +65,7 @@ import { destinationCityFromActivityLocation } from './map/travel-guide-intercit
 import { selectOptionsFromRecommendations } from './domain/select-recommended-options.util';
 import { assembleTravelGuidePlanFromContext } from './domain/assemble-travel-guide-plan.util';
 import { attachQuoteTierMetadataToPlan } from './domain/attach-quote-tier-metadata.util';
+import { applyTravelQuoteEnrichment } from './domain/travel-guide-quote-merge.util';
 import { dominantCurrency } from './budget/budget-constraints.types';
 import { mapCandidatesToLlmFallback } from './map/travel-guide-map-plan.builder';
 
@@ -369,6 +370,7 @@ export class TravelGuideGenerationOrchestrator {
             accommodationNights,
             headcount: generationDto.headcount,
             budgetTier: selectedBudgetTier,
+            stayPreference: generationDto.stayPreference,
             regionKind,
             locale: 'en',
             venue: {
@@ -445,6 +447,7 @@ export class TravelGuideGenerationOrchestrator {
       ctx.recommendations.hotels = this.hotelRecommendation.recommend(
         ctx.searchResults.hotels,
         ctx.budgetConstraints,
+        generationDto.stayPreference,
       );
 
       // Authoritative selection — do not re-select in builder/LLM/enrich.
@@ -753,12 +756,36 @@ export class TravelGuideGenerationOrchestrator {
       };
     }
 
-    const enriched = attachQuoteTierMetadataToPlan(plan, quoteSnapshot, {
-      headcount: dto.headcount,
-      accommodationNights,
-      budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
-      locale: resolveTravelGuideLocale(dto.locale),
-    });
+    // Cached plans may have been authored before a provider quote was ready.
+    // Recalculate the visible breakdown from this fresh quote before attaching
+    // tier metadata, while preserving the traveller's existing route and stay.
+    const quotePricedPlan = applyTravelQuoteEnrichment(
+      plan,
+      quoteSnapshot,
+      {
+        headcount: dto.headcount,
+        accommodationNights,
+        regionKind: travelGuideRegionKind(activity),
+        interCity: Boolean(mapCtx.interCity),
+        budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
+        locale: resolveTravelGuideLocale(dto.locale),
+      },
+      {
+        selectedFlight: true,
+        selectedHotel: true,
+        itinerary: true,
+      },
+    );
+    const enriched = attachQuoteTierMetadataToPlan(
+      quotePricedPlan,
+      quoteSnapshot,
+      {
+        headcount: dto.headcount,
+        accommodationNights,
+        budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
+        locale: resolveTravelGuideLocale(dto.locale),
+      },
+    );
 
     return {
       plan: applyTravelGuideAccommodationPreference(

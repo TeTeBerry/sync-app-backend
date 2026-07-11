@@ -5,6 +5,7 @@ import type {
   RouteStackHotelRecord,
   RouteStackRoomOccupancy,
 } from './routestack.types';
+import type { TravelGuideStayPreference } from '@sync/travel-guide-contracts';
 
 const CITY_TYPE_PRIORITY = new Set([
   'city',
@@ -352,6 +353,125 @@ export function normalizeRouteStackHotels(
         supplierTrust: 0.75,
       } satisfies NormalizedHotelOption;
     });
+}
+
+/**
+ * Detail responses are supplier-shaped. Extract only display-safe facts that
+ * Raven can use to honour a stay preference; retain no booking/session data.
+ */
+export function enrichRouteStackHotelFromDetails(
+  hotel: NormalizedHotelOption,
+  payload: unknown,
+): NormalizedHotelOption {
+  const root = asRecord(payload);
+  if (!root) return hotel;
+  const content = asRecord(root.result) ?? root;
+  const amenities = uniqueStrings([
+    ...collectStrings(content.amenities),
+    ...collectStrings(content.facilities),
+    ...collectStrings(content.mainAmenity),
+    ...collectStrings(content.mainamenity),
+  ]).slice(0, 12);
+  const description = firstString(
+    content.description,
+    content.summary,
+    content.overview,
+  );
+  return {
+    ...hotel,
+    ...(amenities.length ? { amenities } : {}),
+    ...(description ? { description } : {}),
+  };
+}
+
+/** Keep the recommendation intent visible before the shared scoring pass. */
+export function rankRouteStackHotelsForStayPreference(
+  hotels: NormalizedHotelOption[],
+  preference: TravelGuideStayPreference | undefined,
+): NormalizedHotelOption[] {
+  const selected = preference ?? 'festival';
+  return [...hotels].sort(
+    (left, right) =>
+      stayPreferenceScore(right, selected) -
+      stayPreferenceScore(left, selected),
+  );
+}
+
+function stayPreferenceScore(
+  hotel: NormalizedHotelOption,
+  preference: TravelGuideStayPreference,
+): number {
+  const amenities = (hotel.amenities ?? []).join(' ').toLowerCase();
+  if (preference === 'festival') {
+    return (
+      -((hotel.distanceToFestivalKm ?? 99) * 100) +
+      amenityScore(amenities, ['shuttle', 'parking', 'late'])
+    );
+  }
+  if (preference === 'city') {
+    return (
+      (hotel.reviewScore ?? 0) * 20 +
+      (hotel.starRating ?? 0) * 8 +
+      amenityScore(amenities, [
+        'metro',
+        'restaurant',
+        'bar',
+        'nightclub',
+        'city',
+      ])
+    );
+  }
+  return (
+    -(
+      hotel.price?.nightlyAmount ??
+      hotel.price?.totalAmount ??
+      Number.MAX_SAFE_INTEGER
+    ) + (hotel.reviewScore ?? 0)
+  );
+}
+
+function amenityScore(value: string, terms: string[]): number {
+  return terms.reduce(
+    (total, term) => total + (value.includes(term) ? 15 : 0),
+    0,
+  );
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function collectStrings(value: unknown): string[] {
+  if (typeof value === 'string') return [value];
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) =>
+    typeof item === 'string'
+      ? [item]
+      : asRecord(item)
+        ? ([
+            firstString(
+              asRecord(item)!.name,
+              asRecord(item)!.label,
+              asRecord(item)!.description,
+            ),
+          ].filter(Boolean) as string[])
+        : [],
+  );
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function firstString(...values: unknown[]): string | undefined {
+  return values
+    .find(
+      (value): value is string =>
+        typeof value === 'string' && value.trim().length > 0,
+    )
+    ?.trim();
 }
 
 function formatHotelAddress(hotel: RouteStackHotelRecord): string | undefined {

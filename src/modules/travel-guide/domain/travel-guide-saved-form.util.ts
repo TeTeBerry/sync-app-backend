@@ -36,6 +36,11 @@ export function buildDtoFromSavedForm(
     ...(resolvedBudgetTier ? { budgetTier: resolvedBudgetTier } : {}),
     selfDrive: Boolean(form.selfDrive),
     accommodationNights,
+    ...(form.stayPreference === 'festival' ||
+    form.stayPreference === 'city' ||
+    form.stayPreference === 'value'
+      ? { stayPreference: form.stayPreference }
+      : {}),
     ...(typeof form.locale === 'string' &&
     (form.locale === 'zh' || form.locale === 'en')
       ? { locale: form.locale }

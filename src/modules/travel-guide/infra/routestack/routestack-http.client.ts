@@ -6,6 +6,8 @@ import type {
   RouteStackDestinationsResponse,
   RouteStackSearchHotelsRequest,
   RouteStackSearchHotelsResponse,
+  RouteStackHotelDetailsRequest,
+  RouteStackHotelDetailsResponse,
 } from './routestack.types';
 
 type RouteStackEnvelope = {
@@ -48,6 +50,15 @@ export class RouteStackHttpClient {
   ): Promise<RouteStackSearchHotelsResponse> {
     return this.postJson<RouteStackSearchHotelsResponse>(
       '/mcp/hotel/search-hotels',
+      body as unknown as Record<string, unknown>,
+    );
+  }
+
+  async getHotelDetails(
+    body: RouteStackHotelDetailsRequest,
+  ): Promise<RouteStackHotelDetailsResponse> {
+    return this.postJson<RouteStackHotelDetailsResponse>(
+      '/mcp/hotel/get-hotel-details',
       body as unknown as Record<string, unknown>,
     );
   }

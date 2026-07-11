@@ -41,6 +41,10 @@ export class PatchTravelGuideFormDto {
   accommodationNights?: number;
 
   @IsOptional()
+  @IsIn(['festival', 'city', 'value'])
+  stayPreference?: 'festival' | 'city' | 'value';
+
+  @IsOptional()
   @IsString()
   @MaxLength(300)
   note?: string;

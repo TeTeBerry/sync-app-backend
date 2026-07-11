@@ -19,6 +19,9 @@ export interface NormalizedHotelOption {
   bookingUrl?: string;
   searchedAt?: string;
   expiresAt?: string;
+  /** Verified content returned by the hotel detail endpoint. */
+  amenities?: string[];
+  description?: string;
   /** 0–1 cancellation flexibility; defaults to neutral when omitted */
   cancellationFlexibility?: number;
   /** 0–1 supplier trust; defaults derived from provider when omitted */

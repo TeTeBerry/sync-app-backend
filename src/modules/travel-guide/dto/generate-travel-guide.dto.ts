@@ -46,6 +46,11 @@ export class GenerateTravelGuideDto {
   @Max(7)
   accommodationNights?: number;
 
+  /** Raven stay preference: close to the festival, connected to the city, or best value. */
+  @IsOptional()
+  @IsIn(['festival', 'city', 'value'])
+  stayPreference?: 'festival' | 'city' | 'value';
+
   /** 用户对行程或观演偏好的补充备注，会进入攻略生成上下文 */
   @IsOptional()
   @IsString()

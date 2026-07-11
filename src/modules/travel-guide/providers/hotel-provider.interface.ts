@@ -1,5 +1,6 @@
 import type { NormalizedHotelOption } from '../types/normalized-hotel-option';
 import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
+import type { TravelGuideStayPreference } from '@sync/travel-guide-contracts';
 
 export interface HotelSearchInput {
   destinationCity: string;
@@ -8,6 +9,7 @@ export interface HotelSearchInput {
   accommodationNights: number;
   headcount: number;
   budgetTier: TravelGuideBudgetTier;
+  stayPreference?: TravelGuideStayPreference;
   regionKind: 'domestic' | 'hmt' | 'overseas';
   /** Plan locale — EN Raven plans prefer RouteStack inventory. */
   locale?: 'zh' | 'en';
