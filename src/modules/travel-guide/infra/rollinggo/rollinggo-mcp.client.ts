@@ -647,11 +647,13 @@ export function summarizeFlightOffers(
 
       const itinerary = offer.itineraries?.[0];
       if (!itinerary?.segments) return [];
-      const stops = itinerary.stops?.trim()
-        ? itinerary.stops
-        : en
-          ? 'Direct'
-          : '直飞';
+      const rawStops = itinerary.stops?.trim();
+      const stops =
+        rawStops && !(en && /[\u4e00-\u9fff]/.test(rawStops))
+          ? rawStops
+          : en
+            ? 'Direct'
+            : '直飞';
       return [
         en
           ? `${itinerary.segments} · ${stops} · about ${priceLabel}/person`

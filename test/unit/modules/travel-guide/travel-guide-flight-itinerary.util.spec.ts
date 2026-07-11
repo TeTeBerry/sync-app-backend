@@ -153,6 +153,28 @@ describe('summarizeFlightOffers ranking', () => {
     });
   });
 
+  it('keeps EN sample lines free of Chinese stop labels', () => {
+    const summary = summarizeFlightOffers(
+      [
+        {
+          price: '¥2869 CNY',
+          itineraries: [
+            {
+              segments: 'HGH → CTU',
+              stops: '直飞',
+            },
+          ],
+        },
+      ],
+      2,
+      'Economy',
+      'en',
+    );
+    expect(summary.sampleLines[0]).toMatch(/HGH → CTU/);
+    expect(summary.sampleLines[0]).toMatch(/Direct/);
+    expect(summary.sampleLines[0]).not.toMatch(/[\u4e00-\u9fff]/);
+  });
+
   it('limits min/max to displayed flight offers only', () => {
     const summary = summarizeFlightOffers(
       [

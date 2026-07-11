@@ -404,8 +404,10 @@ export function buildFlightSampleLine(
       : `（${formatFlightReasonCodes(reasonCodes, locale)}）`
     : '';
   const prefix = category ? `${FLIGHT_CATEGORY_LABEL[category]} · ` : '';
-  if (flight.sampleLine?.trim()) {
-    return `${prefix}${flight.sampleLine.trim()}${reason}`;
+  const sample = flight.sampleLine?.trim();
+  // Never attach a Chinese RollingGo sample line onto an EN journey.
+  if (sample && !(locale === 'en' && /[\u4e00-\u9fff]/.test(sample))) {
+    return `${prefix}${sample}${reason}`;
   }
   const price =
     flight.price.currency === 'USD'
