@@ -39,6 +39,10 @@ export type TravelGuideCopy = {
     eventDates: string;
     companionNote: (note: string) => string;
   };
+  errors: {
+    mapPoiUnavailable: string;
+    venueResolveUnavailable: string;
+  };
 };
 
 const ZH: TravelGuideCopy = {
@@ -79,6 +83,11 @@ const ZH: TravelGuideCopy = {
     venue: '活动场馆',
     eventDates: '详见官方日程',
     companionNote: (note) => `同行偏好：${note}`,
+  },
+  errors: {
+    mapPoiUnavailable:
+      '无法获取场馆周边推荐（酒店/散场/停车），请确认活动地址或明日再试；若使用高德 Key，请检查配额是否用尽',
+    venueResolveUnavailable: '无法解析场馆位置，请确认活动坐标后重试',
   },
 };
 
@@ -121,10 +130,25 @@ const EN: TravelGuideCopy = {
     eventDates: 'See official schedule',
     companionNote: (note) => `Travel notes: ${note}`,
   },
+  errors: {
+    mapPoiUnavailable:
+      'Unable to load nearby stays / afterparty / parking. Check the venue address or try again later; if using an Amap key, verify quota.',
+    venueResolveUnavailable:
+      'Unable to resolve the festival venue. Check the activity location coordinates and try again.',
+  },
 };
 
 export function getTravelGuideCopy(locale: TravelGuideLocale): TravelGuideCopy {
   return locale === 'en' ? EN : ZH;
+}
+
+/** Map/POI collection failure message (domestic Amap vs abroad venue resolve). */
+export function travelGuideMapCollectUnavailableMessage(
+  locale: TravelGuideLocale,
+  abroad: boolean,
+): string {
+  const errors = getTravelGuideCopy(locale).errors;
+  return abroad ? errors.venueResolveUnavailable : errors.mapPoiUnavailable;
 }
 
 export function isAccommodationBudgetLabel(label: string): boolean {

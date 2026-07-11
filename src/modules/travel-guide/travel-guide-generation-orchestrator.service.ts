@@ -19,6 +19,7 @@ import {
   resolveTravelGuideBudgetTier,
 } from './domain/parse-activity-days.util';
 import { resolveTravelGuideLocale } from './domain/travel-guide-locale';
+import { travelGuideMapCollectUnavailableMessage } from './domain/travel-guide-copy';
 import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 import { applyTravelGuideAccommodationPreference } from './domain/travel-guide-accommodation-preference.util';
 import { TravelGuideGuardService } from './travel-guide-guard.service';
@@ -266,7 +267,10 @@ export class TravelGuideGenerationOrchestrator {
       );
       if (!location.mapCtx || !location.ranked) {
         throw new ServiceUnavailableException(
-          '无法获取场馆周边推荐（酒店/散场/停车），请确认活动地址或明日再试；若使用高德 Key，请检查配额是否用尽',
+          travelGuideMapCollectUnavailableMessage(
+            resolveTravelGuideLocale(generationDto.locale),
+            isTravelGuideAbroad(activity),
+          ),
         );
       }
       ctx.locations = {

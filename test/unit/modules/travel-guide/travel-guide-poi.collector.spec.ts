@@ -84,4 +84,70 @@ describe('TravelGuidePoiCollector', () => {
       ),
     ).toBe(true);
   });
+
+  it('returns empty POIs for abroad venues without a curated catalog (no Amap)', async () => {
+    const ohioActivity: Activity = {
+      legacyId: 19,
+      code: 'lost-lands',
+      name: 'Lost Lands 2026',
+      date: '09/18-20',
+      location: '美国·俄亥俄州 Legend Valley',
+      latitude: 39.9612,
+      longitude: -82.9988,
+      region: 'overseas',
+      area: '美国',
+      hot: false,
+    } as Activity;
+
+    const searchPoisCached = jest.fn().mockResolvedValue([]);
+    const geoCache = {
+      resolveVenue: jest.fn().mockResolvedValue({
+        venue: {
+          title: '美国·俄亥俄州 Legend Valley',
+          address: '美国·俄亥俄州 Legend Valley',
+          lat: 39.9612,
+          lng: -82.9988,
+        },
+        readableAddress: '美国·俄亥俄州 Legend Valley',
+        source: 'database',
+      }),
+      resolveDeparture: jest.fn().mockResolvedValue(null),
+      resolveTransport: jest.fn().mockResolvedValue({
+        source: 'none',
+        hintLines: [],
+      }),
+      searchPoisCached,
+    };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        TravelGuidePoiCollector,
+        { provide: TravelGuideGeoCacheService, useValue: geoCache },
+      ],
+    }).compile();
+
+    const collector = moduleRef.get(TravelGuidePoiCollector);
+    const ctx = await collector.collect(ohioActivity, {
+      departure: '纽约',
+      headcount: 2,
+      budgetTier: 'standard',
+      selfDrive: false,
+    });
+
+    expect(ctx).not.toBeNull();
+    expect(ctx?.pois).toEqual([]);
+    expect(geoCache.resolveDeparture).not.toHaveBeenCalled();
+    expect(searchPoisCached).toHaveBeenCalled();
+    expect(
+      searchPoisCached.mock.calls.every(
+        (call: [{ abroad?: boolean }]) => call[0].abroad === true,
+      ),
+    ).toBe(true);
+    expect(geoCache.resolveTransport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locale: 'zh',
+        activity: ohioActivity,
+      }),
+    );
+  });
 });

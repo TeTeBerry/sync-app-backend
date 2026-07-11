@@ -19,10 +19,13 @@ import {
 } from '@src/data/travel-guide/travel-guide-hot-path.data';
 import {
   buildGenericInterCityHints,
+  departureLooksNearDestination,
   destinationCityFromActivityLocation,
   isInterCityByDistance,
 } from './travel-guide-intercity.util';
 import { isTravelGuideAbroad } from '../domain/travel-guide-international.util';
+import type { TravelGuideLocale } from '../domain/travel-guide-locale';
+import { resolveTravelGuideLocale } from '../domain/travel-guide-locale';
 import { getHotPathFallbackPois } from '@src/data/travel-guide/travel-guide-hot-path-pois.data';
 import {
   findDepartureCityAnchor,
@@ -155,6 +158,7 @@ export class TravelGuideGeoCacheService {
     destinationCity?: string;
     selfDrive: boolean;
     departureCity?: string;
+    locale?: TravelGuideLocale;
     activity?: Pick<
       import('../../../database/schemas/activity.schema').Activity,
       'name' | 'location' | 'region' | 'area'
@@ -163,6 +167,7 @@ export class TravelGuideGeoCacheService {
     const hot = findHotActivityProfile(input.activityLegacyId);
     const abroadActivity =
       input.activity != null && isTravelGuideAbroad(input.activity);
+    const locale = resolveTravelGuideLocale(input.locale);
     if (hot) {
       const interCity = matchHotInterCityRoute(hot, input.departureText);
       if (interCity) {
@@ -202,6 +207,37 @@ export class TravelGuideGeoCacheService {
           transitHint: hub.transitHint,
         };
       }
+    }
+
+    // Overseas / HMT: never call Amap direction or departure geocode APIs.
+    if (abroadActivity) {
+      const destCity =
+        input.destinationCity?.trim() ||
+        (input.activity
+          ? destinationCityFromActivityLocation(
+              input.activity.location,
+              input.activity.area,
+            )
+          : '') ||
+        'destination';
+      const interCity = !departureLooksNearDestination(
+        input.departureText,
+        destCity,
+        input.venue.title,
+      );
+      return {
+        source: 'none',
+        interCity,
+        hintLines: buildGenericInterCityHints({
+          departureLabel: input.departureText.trim() || destCity,
+          destinationCity: destCity,
+          venueTitle: input.venue.title,
+          selfDrive: input.selfDrive,
+          activity: input.activity,
+          interCity,
+          locale,
+        }),
+      };
     }
 
     const departure = await this.resolveDeparture(

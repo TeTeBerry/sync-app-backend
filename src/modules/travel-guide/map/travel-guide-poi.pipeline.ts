@@ -5,7 +5,9 @@ import {
 } from '@nestjs/common';
 import type { Activity } from '../../../database/schemas/activity.schema';
 import type { GenerateTravelGuideDto } from '../dto/generate-travel-guide.dto';
+import { travelGuideMapCollectUnavailableMessage } from '../domain/travel-guide-copy';
 import { isTravelGuideAbroad } from '../domain/travel-guide-international.util';
+import { resolveTravelGuideLocale } from '../domain/travel-guide-locale';
 import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
 import type {
   TravelGuideMapContext,
@@ -30,10 +32,12 @@ export class TravelGuidePoiPipeline {
     mapCtx: TravelGuideMapContext;
     ranked: TravelGuideRankedCandidates;
   }> {
+    const locale = resolveTravelGuideLocale(generationDto.locale);
+    const abroad = isTravelGuideAbroad(activity);
     const mapCtx = await this.poiCollector.collect(activity, generationDto);
     if (!mapCtx) {
       throw new ServiceUnavailableException(
-        '无法获取场馆周边推荐（酒店/散场/停车），请确认活动地址或明日再试；若使用高德 Key，请检查配额是否用尽',
+        travelGuideMapCollectUnavailableMessage(locale, abroad),
       );
     }
 
@@ -42,7 +46,7 @@ export class TravelGuidePoiPipeline {
       ranked,
       Boolean(generationDto.selfDrive),
       accommodationNights,
-      isTravelGuideAbroad(activity),
+      abroad,
     );
 
     return { mapCtx, ranked };

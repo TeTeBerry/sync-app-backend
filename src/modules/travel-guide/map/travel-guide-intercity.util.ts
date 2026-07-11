@@ -79,4 +79,28 @@ export function departureTextImpliesOtherCity(
   return majorOrigins.some((city) => city !== dest && q.includes(city));
 }
 
+/**
+ * Heuristic same-area check without Amap geocode (overseas / HMT).
+ * True when departure text overlaps destination city or venue tokens.
+ */
+export function departureLooksNearDestination(
+  departureText: string,
+  destinationCity: string,
+  venueTitle?: string,
+): boolean {
+  const dep = departureText.trim().toLowerCase();
+  if (!dep) return false;
+
+  const rawTokens = [
+    destinationCity,
+    ...(destinationCity.match(/[\u4e00-\u9fa5]{2,}|[a-zA-Z]{3,}/g) ?? []),
+    ...(venueTitle?.match(/[\u4e00-\u9fa5]{2,}|[a-zA-Z]{3,}/g) ?? []),
+  ];
+  const tokens = rawTokens
+    .map((t) => t.trim().toLowerCase())
+    .filter((t) => t.length >= 2);
+
+  return tokens.some((token) => dep.includes(token) || token.includes(dep));
+}
+
 export { buildGenericInterCityHints } from '../domain/travel-guide-transport.util';

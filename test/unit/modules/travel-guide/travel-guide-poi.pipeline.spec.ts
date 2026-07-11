@@ -37,6 +37,30 @@ describe('TravelGuidePoiPipeline', () => {
     );
   });
 
+  it('throws locale-aware venue error when abroad collector returns null', async () => {
+    const abroadActivity = {
+      legacyId: 19,
+      name: 'Lost Lands',
+      location: '美国·俄亥俄州 Legend Valley',
+      region: 'overseas',
+    } as never;
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        TravelGuidePoiPipeline,
+        {
+          provide: TravelGuidePoiCollector,
+          useValue: { collect: jest.fn().mockResolvedValue(null) },
+        },
+        { provide: TravelGuidePoiRanker, useValue: { rank: jest.fn() } },
+      ],
+    }).compile();
+
+    const pipeline = moduleRef.get(TravelGuidePoiPipeline);
+    await expect(
+      pipeline.run(abroadActivity, { ...generationDto, locale: 'en' }, 2),
+    ).rejects.toThrow(/Unable to resolve the festival venue/);
+  });
+
   it('throws when ranked hotels are empty for multi-night stay', async () => {
     const mapCtx = { venue: { title: '会场' } };
     const moduleRef = await Test.createTestingModule({

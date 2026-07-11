@@ -9,6 +9,7 @@ import {
   parseActivityDayCount,
   resolveTravelGuideBudgetTier,
 } from '../domain/parse-activity-days.util';
+import { resolveTravelGuideLocale } from '../domain/travel-guide-locale';
 import { destinationCityFromActivityLocation } from './travel-guide-intercity.util';
 import {
   AFTERPARTY_SEARCH_KEYWORD,
@@ -51,6 +52,7 @@ export class TravelGuidePoiCollector {
       activity.location,
     );
     const abroad = isTravelGuideAbroad(activity);
+    const locale = resolveTravelGuideLocale(dto.locale);
     const accommodationNights =
       dto.accommodationNights ?? parseActivityDayCount(activity.date);
     const poiSearchTasks = buildPoiSearchTasks(
@@ -61,11 +63,14 @@ export class TravelGuidePoiCollector {
     );
 
     const [departure, transport, poiBatches] = await Promise.all([
-      this.geoCache.resolveDeparture(
-        dto.departure.trim(),
-        eventRegion || undefined,
-        dto.departureCity?.trim(),
-      ),
+      // Overseas / HMT: skip Amap departure geocode (China coverage only).
+      abroad
+        ? Promise.resolve(null)
+        : this.geoCache.resolveDeparture(
+            dto.departure.trim(),
+            eventRegion || undefined,
+            dto.departureCity?.trim(),
+          ),
       this.geoCache.resolveTransport({
         activityLegacyId: activity.legacyId,
         departureText: dto.departure.trim(),
@@ -74,6 +79,7 @@ export class TravelGuidePoiCollector {
         selfDrive: Boolean(dto.selfDrive),
         activity,
         departureCity: dto.departureCity?.trim(),
+        locale,
       }),
       runInBatches(poiSearchTasks, POI_SEARCH_BATCH_SIZE, (task) =>
         this.geoCache.searchPoisCached({
@@ -110,6 +116,13 @@ export class TravelGuidePoiCollector {
             p.kind !== 'hotel' &&
             (!p.kind.startsWith('nightlife') || isAfterpartyMapPoi(p)),
         );
+      } else if (abroad) {
+        // Overseas / HMT never use Amap nearby search. Empty curated catalog is OK —
+        // hotels come from RouteStack / RollingGo / template accommodation.
+        this.logger.log(
+          `abroad activity ${activity.legacyId}: no curated POIs for ${venue.title}; skipping Amap nearby search`,
+        );
+        pois = [];
       } else {
         this.logger.warn(`no POIs near venue: ${venue.title}`);
         return null;

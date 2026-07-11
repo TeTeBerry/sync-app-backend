@@ -1127,15 +1127,19 @@ export function buildGenericInterCityHints(input: {
   selfDrive: boolean;
   regionKind?: TravelGuideRegionKind;
   activity?: Pick<Activity, 'name' | 'location' | 'region'>;
+  /** Defaults to true (legacy callers). */
+  interCity?: boolean;
+  locale?: 'zh' | 'en';
 }): string[] {
   return buildInterCityTransportLines({
     departure: input.departureLabel,
     venueTitle: input.venueTitle,
     venueReadableAddress: input.destinationCity,
     selfDrive: input.selfDrive,
-    interCity: true,
+    interCity: input.interCity ?? true,
     transportHints: [],
     destinationCity: input.destinationCity,
     activity: input.activity,
+    locale: input.locale,
   });
 }
