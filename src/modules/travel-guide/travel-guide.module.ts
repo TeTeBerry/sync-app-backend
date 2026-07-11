@@ -60,6 +60,8 @@ import { HOTEL_PROVIDER } from './providers/hotel-provider.interface';
 import { TICKET_PROVIDER } from './providers/ticket-provider.interface';
 import { RollingGoFlightProvider } from './providers/rollinggo/rolling-go-flight.provider';
 import { RollingGoHotelProvider } from './providers/rollinggo/rolling-go-hotel.provider';
+import { RouteStackHttpClient } from './infra/routestack/routestack-http.client';
+import { RouteStackHotelProvider } from './providers/routestack/routestack-hotel.provider';
 import { CatalogTicketProvider } from './providers/catalog-ticket.provider';
 import { OpenFlightsAirportCatalogService } from './raven/openflights-airport-catalog.service';
 import { RavenPlaceSuggestionsController } from './raven/raven-place-suggestions.controller';
@@ -124,6 +126,8 @@ import { RavenPlanController } from './raven/raven-plan.controller';
     },
     RollingGoFlightProvider,
     RollingGoHotelProvider,
+    RouteStackHttpClient,
+    RouteStackHotelProvider,
     CatalogTicketProvider,
     {
       provide: FLIGHT_PROVIDER,

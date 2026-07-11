@@ -7,6 +7,7 @@ import {
 } from './travel-guide-flight-tier.util';
 import { buildPlanHotelByTierFromQuotes } from './travel-guide-hotel-tier.util';
 import type { TravelGuideBudgetTier } from '@sync/travel-guide-contracts';
+import type { TravelGuideLocale } from './travel-guide-locale';
 
 /**
  * Attach RollingGo tier metadata only.
@@ -20,6 +21,7 @@ export function attachQuoteTierMetadataToPlan(
     headcount: number;
     accommodationNights: number;
     budgetTier?: TravelGuideBudgetTier;
+    locale?: TravelGuideLocale;
   },
 ): TravelGuidePlan {
   if (
@@ -44,6 +46,7 @@ export function attachQuoteTierMetadataToPlan(
     ? buildPlanHotelByTierFromQuotes(enrichment.hotelByTier, {
         accommodationNights: input.accommodationNights,
         headcount: input.headcount,
+        locale: input.locale,
       })
     : undefined;
   const hotelByTier = builtHotelByTier

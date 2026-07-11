@@ -309,6 +309,7 @@ export function applyTravelQuoteEnrichment(
           ? enrichment.flight.sampleLines
           : undefined,
       hotelRecommendations: enrichment.hotel?.recommendations,
+      locale,
     });
     if (overseasPatch) {
       if (!protect.selectedFlight) {
@@ -334,6 +335,7 @@ export function applyTravelQuoteEnrichment(
     ? buildPlanHotelByTierFromQuotes(enrichment.hotelByTier, {
         accommodationNights: input.accommodationNights,
         headcount: input.headcount,
+        locale,
       })
     : undefined;
   const hotelByTier = builtHotelByTier

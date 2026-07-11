@@ -19,6 +19,7 @@ import {
   sanitizeTicketChannelsForActivity,
 } from './domain/travel-guide-international.util';
 import { sanitizeLlmTravelGuidePayload } from './domain/travel-guide-payload-normalize.util';
+import { passesTravelGuideLocaleLanguage } from './domain/travel-guide-locale-language.util';
 import { stripLlmAccommodationPayload } from './domain/travel-guide-accommodation-preference.util';
 import {
   mapCandidatesToLlmFallback,
@@ -71,6 +72,7 @@ export class TravelGuideLlmPolishService {
     mapCtx: TravelGuideMapContext,
     ranked: TravelGuideRankedCandidates,
   ): Promise<LlmTravelGuidePayload> {
+    const locale = resolveTravelGuideLocale(dto.locale);
     const mapPayload = mapCandidatesToLlmFallback(mapCtx, ranked, {
       departure: dto.departure.trim(),
       departureCity: dto.departureCity?.trim(),
@@ -78,7 +80,7 @@ export class TravelGuideLlmPolishService {
       accommodationNights,
       headcount: dto.headcount,
       activity,
-      locale: dto.locale,
+      locale,
     });
 
     if (
@@ -98,7 +100,11 @@ export class TravelGuideLlmPolishService {
           isTravelGuideAbroad(activity),
         )
       ) {
-        throw new ServiceUnavailableException('攻略内容生成失败，请稍后重试');
+        throw new ServiceUnavailableException(
+          locale === 'en'
+            ? 'Travel guide generation failed. Please try again shortly.'
+            : '攻略内容生成失败，请稍后重试',
+        );
       }
       return accommodationNights > 0
         ? mapPayload
@@ -136,6 +142,7 @@ export class TravelGuideLlmPolishService {
           ? polishedOrMap.ticketChannels
           : mapPayload.ticketChannels,
         activity,
+        locale,
       ),
       essentials: polishedOrMap.essentials ?? mapPayload.essentials,
       venueTransportOptions: mergeVenueTransportWithLlmPolish(
@@ -170,7 +177,11 @@ export class TravelGuideLlmPolishService {
         isTravelGuideAbroad(activity),
       )
     ) {
-      throw new ServiceUnavailableException('攻略内容生成失败，请稍后重试');
+      throw new ServiceUnavailableException(
+        locale === 'en'
+          ? 'Travel guide generation failed. Please try again shortly.'
+          : '攻略内容生成失败，请稍后重试',
+      );
     }
 
     return payload;
@@ -227,6 +238,12 @@ export class TravelGuideLlmPolishService {
     };
 
     const user = JSON.stringify({
+      locale,
+      outputLanguage: locale === 'en' ? 'en' : 'zh',
+      languageInstruction:
+        locale === 'en'
+          ? 'Respond in English only for all user-facing prose fields. Translate any Chinese candidate notes.'
+          : '所有面向用户的文案字段使用简体中文。',
       activityName: payload.activityName,
       venueLabel: payload.venueLabel,
       venueReadableAddress: payload.venueReadableAddress,
@@ -271,6 +288,12 @@ export class TravelGuideLlmPolishService {
           isTravelGuideAbroad(activity),
         )
       ) {
+        return null;
+      }
+      if (!passesTravelGuideLocaleLanguage(sanitized, locale)) {
+        this.logger.warn(
+          `travel guide AI polish rejected: prose language mismatch locale=${locale}`,
+        );
         return null;
       }
       return sanitized;

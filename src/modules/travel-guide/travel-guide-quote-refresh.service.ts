@@ -18,6 +18,7 @@ import {
 } from './domain/travel-guide-quote-freshness.util';
 import { shouldFetchTravelQuote } from './domain/travel-guide-quote.util';
 import { buildDtoFromSavedForm } from './domain/travel-guide-saved-form.util';
+import { resolveTravelGuideLocale } from './domain/travel-guide-locale';
 import { TravelQuoteEnrichmentService } from './travel-quote-enrichment.service';
 
 @Injectable()
@@ -104,6 +105,7 @@ export class TravelGuideQuoteRefreshService {
       headcount: dto.headcount,
       accommodationNights: input.accommodationNights,
       budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
+      locale: resolveTravelGuideLocale(dto.locale),
     });
 
     return applyTravelGuideAccommodationPreference(

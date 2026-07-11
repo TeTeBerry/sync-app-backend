@@ -4,6 +4,7 @@ import type {
   TravelGuidePlan,
 } from '@sync/travel-guide-contracts';
 import type { HotelQuoteSnapshot } from '../ports/travel-quote.types';
+import type { TravelGuideLocale } from './travel-guide-locale';
 import {
   rollingGoHotelSchemes,
   rollingGoHotelToGuideItem,
@@ -17,25 +18,31 @@ export function buildHotelTierAccommodationFromQuote(
     accommodationNights: number;
     headcount: number;
     tier?: TravelGuideBudgetTier;
+    locale?: 'zh' | 'en';
   },
 ): TravelGuideHotelTierAccommodation | null {
   if (!quote.recommendations?.length || input.accommodationNights <= 0) {
     return null;
   }
 
-  const nightLabel = `${input.accommodationNights} 晚`;
+  const locale = input.locale === 'en' ? 'en' : 'zh';
+  const nightLabel =
+    locale === 'en'
+      ? `${input.accommodationNights} night(s)`
+      : `${input.accommodationNights} 晚`;
   const hotels = quote.recommendations.map((rec, index) =>
     rollingGoHotelToGuideItem(rec, {
       nightLabel,
       headcount: input.headcount,
       currency: quote.currency,
       index,
+      locale,
     }),
   );
 
   return {
     hotels,
-    schemes: rollingGoHotelSchemes(hotels, input.tier ?? 'standard'),
+    schemes: rollingGoHotelSchemes(hotels, input.tier ?? 'standard', locale),
   };
 }
 
@@ -44,6 +51,7 @@ export function buildPlanHotelByTierFromQuotes(
   input: {
     accommodationNights: number;
     headcount: number;
+    locale?: 'zh' | 'en';
   },
 ): TravelGuidePlan['hotelByTier'] | undefined {
   const result: NonNullable<TravelGuidePlan['hotelByTier']> = {};
@@ -87,11 +95,14 @@ export function mergeHotelQuoteIntoPlanHotelByTier(
   input: {
     accommodationNights: number;
     headcount: number;
+    locale?: TravelGuideLocale;
   },
 ): TravelGuidePlan {
+  const locale = input.locale ?? 'zh';
   const accommodation = buildHotelTierAccommodationFromQuote(quote, {
     ...input,
     tier,
+    locale,
   });
   if (!accommodation) return plan;
 
@@ -102,7 +113,11 @@ export function mergeHotelQuoteIntoPlanHotelByTier(
       [tier]: accommodation,
     },
     accommodation: {
-      title: plan.accommodation.title || '住宿推荐（RollingGo 参考）',
+      title:
+        plan.accommodation.title ||
+        (locale === 'en'
+          ? 'Stay picks (RollingGo reference)'
+          : '住宿推荐（RollingGo 参考）'),
       hotels: accommodation.hotels,
       schemes: accommodation.schemes,
     },

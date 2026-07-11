@@ -74,6 +74,29 @@ describe('rollingGoHotelToGuideItem distance note', () => {
 
     expect(item.note).toContain('距会场约 1.8km（直线）');
   });
+
+  it('uses English booking hint and distance copy when locale is en', () => {
+    const item = rollingGoHotelToGuideItem(
+      {
+        name: 'Test Hotel',
+        minPricePerNight: 120,
+        distanceM: 1800,
+        bookingUrl: 'https://example.com/hotel',
+      },
+      {
+        nightLabel: '2 night(s)',
+        headcount: 2,
+        currency: 'USD',
+        index: 0,
+        locale: 'en',
+      },
+    );
+
+    expect(item.note).toContain('to venue (straight-line)');
+    expect(item.note).not.toContain('距会场');
+    expect(item.bookingHint).toMatch(/RollingGo reference/i);
+    expect(item.bookingHint).not.toMatch(/携程|查询参考/);
+  });
 });
 
 describe('normalizeHotelRecords geo fields', () => {

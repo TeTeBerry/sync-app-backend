@@ -40,6 +40,7 @@ import {
 import { isFlightBudgetItem } from './domain/travel-guide-flight-budget-detect.util';
 import { shouldFetchTravelQuote } from './domain/travel-guide-quote.util';
 import { TravelQuoteEnrichmentService } from './travel-quote-enrichment.service';
+import { HotelSearchService } from './search/hotel-search.service';
 import { missingFlightBudgetTiers } from './domain/travel-guide-budget-tier-quote.util';
 import {
   shouldFetchHotelQuoteForTier,
@@ -68,6 +69,7 @@ export class TravelGuideBudgetTierService {
     private readonly poiCollector: TravelGuidePoiCollector,
     private readonly poiRanker: TravelGuidePoiRanker,
     private readonly quoteEnrichment: TravelQuoteEnrichmentService,
+    private readonly hotelSearch: HotelSearchService,
   ) {}
 
   async selectBudgetTier(
@@ -195,8 +197,12 @@ export class TravelGuideBudgetTierService {
       );
     }
 
-    // Lazy-load hotel quote if needed for this tier
-    if (shouldFetchHotelQuoteForTier(updatedPlan, body.budgetTier)) {
+    // Lazy-load hotel quote if needed for this tier.
+    // EN + RouteStack: RollingGo hotel MCP is not used for stays.
+    if (
+      shouldFetchHotelQuoteForTier(updatedPlan, body.budgetTier) &&
+      !(locale === 'en' && this.hotelSearch.isRouteStackEnabled())
+    ) {
       try {
         const mapCtx = buildMinimalMapContextForQuote(
           updatedPlan,

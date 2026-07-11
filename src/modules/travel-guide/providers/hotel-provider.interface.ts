@@ -9,6 +9,8 @@ export interface HotelSearchInput {
   headcount: number;
   budgetTier: TravelGuideBudgetTier;
   regionKind: 'domestic' | 'hmt' | 'overseas';
+  /** Plan locale — EN Raven plans prefer RouteStack inventory. */
+  locale?: 'zh' | 'en';
   venue?: { lat: number; lng: number; title?: string };
   activityLegacyId?: number;
   activityName?: string;

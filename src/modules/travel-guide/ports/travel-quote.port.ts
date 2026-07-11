@@ -13,6 +13,11 @@ import type { TravelGuideProgressReporter } from '../domain/travel-guide-generat
 
 export type TravelQuoteEnrichOptions = {
   onProgress?: TravelGuideProgressReporter;
+  /**
+   * Skip RollingGo hotel MCP when RouteStack owns EN stays
+   * (Raven / sync-web with ROUTESTACK_ENABLED).
+   */
+  skipHotels?: boolean;
 };
 
 export interface ITravelQuotePort {

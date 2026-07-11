@@ -12,6 +12,7 @@ import {
   type HotelProvider,
   type HotelSearchInput,
 } from '../providers/hotel-provider.interface';
+import { RouteStackHotelProvider } from '../providers/routestack/routestack-hotel.provider';
 
 @Injectable()
 export class HotelSearchService {
@@ -21,10 +22,29 @@ export class HotelSearchService {
     @Optional()
     @Inject(HOTEL_PROVIDER)
     private readonly hotelProvider?: HotelProvider,
+    @Optional()
+    private readonly routeStackHotel?: RouteStackHotelProvider,
   ) {}
+
+  /** EN Raven plans use RouteStack when configured. */
+  isRouteStackEnabled(): boolean {
+    return this.routeStackHotel?.isEnabled() === true;
+  }
 
   async search(input: HotelSearchInput): Promise<NormalizedHotelOption[]> {
     if (input.accommodationNights <= 0) return [];
+
+    // Raven / sync-web English plans: RouteStack SearchDestinations → SearchHotels.
+    if (input.locale === 'en' && this.isRouteStackEnabled()) {
+      const started = Date.now();
+      const results = await this.routeStackHotel!.searchHotels(input);
+      const normalized = dedupeNormalizedHotels(results);
+      this.logger.log(
+        `hotel search (routestack) done count=${normalized.length} durationMs=${Date.now() - started} destination=${input.destinationCity}`,
+      );
+      return normalized;
+    }
+
     if (!this.hotelProvider) {
       if (input.mapHotels?.length) {
         return dedupeNormalizedHotels(

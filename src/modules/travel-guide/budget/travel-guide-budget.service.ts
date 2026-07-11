@@ -83,23 +83,33 @@ export class TravelGuideBudgetService {
     const currency = input.currency ?? 'CNY';
 
     const flightTarget = input.interCity
-      ? flightTargetPerAdult(tier, input.regionKind)
+      ? flightTargetPerAdult(tier, input.regionKind, currency)
       : undefined;
-    const hotelTarget = nights > 0 ? hotelNightlyTarget(tier) : undefined;
+    const hotelTarget =
+      nights > 0 ? hotelNightlyTarget(tier, currency) : undefined;
 
-    const ticketReserve = {
-      min: (input.regionKind === 'overseas' ? 800 : 380) * travelers,
-      max: (input.regionKind === 'overseas' ? 2200 : 1280) * travelers,
-    };
+    const ticketReserve = scaleMoneyRange(
+      {
+        min: (input.regionKind === 'overseas' ? 800 : 380) * travelers,
+        max: (input.regionKind === 'overseas' ? 2200 : 1280) * travelers,
+      },
+      currency,
+    );
     const days = nights > 0 ? Math.max(nights, 2) : 1;
-    const foodReserve = {
-      min: (input.regionKind === 'overseas' ? 120 : 80) * travelers * days,
-      max: (input.regionKind === 'overseas' ? 280 : 180) * travelers * days,
-    };
-    const transportReserve = {
-      min: (input.regionKind === 'overseas' ? 120 : 40) * travelers * days,
-      max: (input.regionKind === 'overseas' ? 350 : 120) * travelers * days,
-    };
+    const foodReserve = scaleMoneyRange(
+      {
+        min: (input.regionKind === 'overseas' ? 120 : 80) * travelers * days,
+        max: (input.regionKind === 'overseas' ? 280 : 180) * travelers * days,
+      },
+      currency,
+    );
+    const transportReserve = scaleMoneyRange(
+      {
+        min: (input.regionKind === 'overseas' ? 120 : 40) * travelers * days,
+        max: (input.regionKind === 'overseas' ? 350 : 120) * travelers * days,
+      },
+      currency,
+    );
 
     const flightTotal = flightTarget
       ? {
@@ -331,32 +341,57 @@ export class TravelGuideBudgetService {
 function flightTargetPerAdult(
   tier: TravelGuideBudgetTier,
   regionKind: TravelGuideRegionKind,
+  currency: 'CNY' | 'USD' = 'CNY',
 ): { min: number; max: number } {
+  let range: { min: number; max: number };
   if (regionKind === 'overseas') {
-    if (tier === 'economy') return { min: 1800, max: 3200 };
-    if (tier === 'comfort') return { min: 3500, max: 5500 };
-    return { min: 2500, max: 4200 };
+    if (tier === 'economy') range = { min: 1800, max: 3200 };
+    else if (tier === 'comfort') range = { min: 3500, max: 5500 };
+    else range = { min: 2500, max: 4200 };
+  } else if (regionKind === 'hmt') {
+    if (tier === 'economy') range = { min: 600, max: 1200 };
+    else if (tier === 'comfort') range = { min: 1400, max: 2200 };
+    else range = { min: 900, max: 1600 };
+  } else if (tier === 'economy') {
+    range = { min: 400, max: 900 };
+  } else if (tier === 'comfort') {
+    range = { min: 1000, max: 1600 };
+  } else {
+    range = { min: 600, max: 1200 };
   }
-  if (regionKind === 'hmt') {
-    if (tier === 'economy') return { min: 600, max: 1200 };
-    if (tier === 'comfort') return { min: 1400, max: 2200 };
-    return { min: 900, max: 1600 };
-  }
-  if (tier === 'economy') return { min: 400, max: 900 };
-  if (tier === 'comfort') return { min: 1000, max: 1600 };
-  return { min: 600, max: 1200 };
+  return scaleMoneyRange(range, currency);
 }
 
-function hotelNightlyTarget(tier: TravelGuideBudgetTier): {
+function hotelNightlyTarget(
+  tier: TravelGuideBudgetTier,
+  currency: 'CNY' | 'USD' = 'CNY',
+): {
   min: number;
   max: number;
 } {
   const ranges = budgetTierHotelNightRanges(tier);
   const primary = parseMoneyRange(ranges.primary);
   const secondary = parseMoneyRange(ranges.secondary);
+  return scaleMoneyRange(
+    {
+      min: primary.min,
+      max: Math.max(primary.max, secondary.max),
+    },
+    currency,
+  );
+}
+
+/** Rough CNY→USD for EN scoring bands (targets are authored in CNY). */
+const CNY_PER_USD = 7;
+
+function scaleMoneyRange(
+  range: { min: number; max: number },
+  currency: 'CNY' | 'USD',
+): { min: number; max: number } {
+  if (currency !== 'USD') return range;
   return {
-    min: primary.min,
-    max: Math.max(primary.max, secondary.max),
+    min: Math.max(1, Math.round(range.min / CNY_PER_USD)),
+    max: Math.max(1, Math.round(range.max / CNY_PER_USD)),
   };
 }
 

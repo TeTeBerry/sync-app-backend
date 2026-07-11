@@ -89,8 +89,9 @@ export function buildTicketChannels(
     Activity,
     'name' | 'externalUrl' | 'region' | 'code' | 'location'
   >,
+  locale: 'zh' | 'en' = 'zh',
 ): TravelGuideTicketChannel[] {
-  return buildTravelGuideTicketChannels(activity);
+  return buildTravelGuideTicketChannels(activity, locale);
 }
 
 export function buildParkingLinesFromMap(
@@ -127,7 +128,7 @@ export function hotelsFromRanked(
   locale: 'zh' | 'en' = 'zh',
 ): TravelGuideHotelItem[] {
   const bookingHint = activity
-    ? travelGuideHotelBookingHint(activity)
+    ? travelGuideHotelBookingHint(activity, locale)
     : locale === 'en'
       ? 'Trip.com / Meituan'
       : '携程 / 美团';
@@ -167,7 +168,7 @@ export function accommodationSchemesFromRanked(
   locale: 'zh' | 'en' = 'zh',
 ): TravelGuideAccommodationScheme[] {
   const bookingHint = activity
-    ? travelGuideHotelBookingHint(activity)
+    ? travelGuideHotelBookingHint(activity, locale)
     : locale === 'en'
       ? 'Trip.com / Meituan / Fliggy'
       : '携程 / 美团 / 飞猪';
@@ -483,7 +484,7 @@ export function mapCandidatesToLlmFallback(
     ),
     tipItems,
     documentItems,
-    ticketChannels: buildTicketChannels(input.activity),
+    ticketChannels: buildTicketChannels(input.activity, locale),
     essentials,
     venueTransportOptions: buildVenueTransportOptions({
       departure: input.departure,

@@ -37,6 +37,7 @@ import {
   travelGuideRegionKind,
 } from './domain/travel-guide-international.util';
 import { shouldFetchTravelQuote } from './domain/travel-guide-quote.util';
+import { resolveTravelGuideQuoteDates } from './domain/travel-guide-quote-dates.util';
 import {
   isPlanQuoteFresh,
   resolveQuoteCacheTtlMs,
@@ -279,6 +280,9 @@ export class TravelGuideGenerationOrchestrator {
         generationDto,
         location.mapCtx,
       );
+      const planLocale = resolveTravelGuideLocale(generationDto.locale);
+      const useRouteStackHotels =
+        planLocale === 'en' && this.hotelSearch.isRouteStackEnabled();
 
       let quoteSnapshot = null;
       if (quoteEligible) {
@@ -288,12 +292,18 @@ export class TravelGuideGenerationOrchestrator {
             generationDto,
             location.mapCtx,
             accommodationNights,
-            { onProgress },
+            {
+              onProgress,
+              // EN + RouteStack: do not call RollingGo searchHotels.
+              skipHotels: useRouteStackHotels,
+            },
           );
           ctx.quoteEnrichment = quoteSnapshot;
         } catch (error) {
           ctx.sectionStatus.flights = 'failed';
-          ctx.sectionStatus.hotels = 'failed';
+          if (!useRouteStackHotels) {
+            ctx.sectionStatus.hotels = 'failed';
+          }
           ctx.errors.push({
             section: 'flights',
             code: 'QUOTE_PROVIDER_FAILED',
@@ -324,11 +334,78 @@ export class TravelGuideGenerationOrchestrator {
         location.ranked.hotels,
         accommodationNights,
       );
-      const quoteHotels = this.hotelSearch.fromEnrichment(
-        quoteSnapshot,
-        accommodationNights,
+      const quoteHotels = useRouteStackHotels
+        ? []
+        : this.hotelSearch.fromEnrichment(quoteSnapshot, accommodationNights);
+      const selectedBudgetTier = resolveTravelGuideBudgetTier(
+        generationDto.budgetTier,
       );
-      const hotels = [...quoteHotels, ...mapHotels];
+      const regionKind = travelGuideRegionKind(activity);
+
+      // EN Raven / sync-web: RouteStack SearchDestinations → SearchHotels only.
+      // Do not fall back to Amap map hotels (often Chinese / CNY) when RouteStack is on.
+      let hotels = useRouteStackHotels ? [] : [...quoteHotels, ...mapHotels];
+      if (useRouteStackHotels && accommodationNights > 0) {
+        const destinationCity =
+          destinationCityFromActivityLocation(
+            activity.location,
+            activity.area,
+          ) ||
+          location.mapCtx.venue.title ||
+          '';
+        const { outboundDate, returnDate } = resolveTravelGuideQuoteDates(
+          activity.date,
+          accommodationNights,
+        );
+        try {
+          const routeStackHotels = await this.hotelSearch.search({
+            destinationCity,
+            checkInDate: outboundDate,
+            checkOutDate: returnDate,
+            accommodationNights,
+            headcount: generationDto.headcount,
+            budgetTier: selectedBudgetTier,
+            regionKind,
+            locale: 'en',
+            venue: {
+              lat: location.mapCtx.venue.lat,
+              lng: location.mapCtx.venue.lng,
+              title: location.mapCtx.venue.title,
+            },
+            activityLegacyId: activity.legacyId,
+            activityName: activity.name,
+            activityCode: activity.code,
+            activityArea: activity.area,
+            activityLocation: activity.location,
+            forceRefresh: Boolean(generationDto.forceRegenerate),
+          });
+          hotels = routeStackHotels;
+          this.logger.log(
+            `EN hotel provider=routestack activity=${activityLegacyId} count=${hotels.length}`,
+          );
+          if (!hotels.length) {
+            ctx.errors.push({
+              section: 'hotels',
+              code: 'ROUTESTACK_HOTEL_EMPTY',
+              message: 'RouteStack hotel search returned no listings',
+            });
+          }
+        } catch (error) {
+          this.logger.warn(
+            `RouteStack EN hotel search failed activity=${activityLegacyId}: ${
+              error instanceof Error ? error.message : error
+            }`,
+          );
+          hotels = [];
+          ctx.sectionStatus.hotels = 'failed';
+          ctx.errors.push({
+            section: 'hotels',
+            code: 'ROUTESTACK_HOTEL_SEARCH_FAILED',
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
       ctx.searchResults.hotels = hotels;
       ctx.sectionStatus.hotels =
         accommodationNights <= 0
@@ -338,17 +415,15 @@ export class TravelGuideGenerationOrchestrator {
             : ctx.sectionStatus.hotels === 'failed'
               ? 'failed'
               : 'unavailable';
-
-      const selectedBudgetTier = resolveTravelGuideBudgetTier(
-        generationDto.budgetTier,
-      );
-      const regionKind = travelGuideRegionKind(activity);
       const interCity = quoteEligible || Boolean(location.mapCtx.interCity);
+      // EN plans score in USD (RouteStack stays + EN display currency).
       const scoringCurrency =
-        dominantCurrency([
-          ...ctx.searchResults.flights.map((f) => f.price.currency),
-          ...ctx.searchResults.hotels.map((h) => h.price?.currency),
-        ]) ?? 'CNY';
+        planLocale === 'en'
+          ? 'USD'
+          : (dominantCurrency([
+              ...ctx.searchResults.flights.map((f) => f.price.currency),
+              ...ctx.searchResults.hotels.map((h) => h.price?.currency),
+            ]) ?? 'CNY');
 
       // A) Budget policy / constraints BEFORE recommendation scoring.
       ctx.budgetConstraints = this.budgetService.resolveBudgetConstraints({
@@ -386,6 +461,7 @@ export class TravelGuideGenerationOrchestrator {
           activityLocation: activity.location,
           region: activity.region,
           externalUrl: activity.externalUrl,
+          locale: planLocale,
         });
         ctx.sectionStatus.tickets = ctx.searchResults.tickets.length
           ? 'ready'
@@ -651,7 +727,12 @@ export class TravelGuideGenerationOrchestrator {
       dto,
       mapCtx,
       accommodationNights,
-      { onProgress },
+      {
+        onProgress,
+        skipHotels:
+          resolveTravelGuideLocale(dto.locale) === 'en' &&
+          this.hotelSearch.isRouteStackEnabled(),
+      },
     );
 
     if (
@@ -672,6 +753,7 @@ export class TravelGuideGenerationOrchestrator {
       headcount: dto.headcount,
       accommodationNights,
       budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
+      locale: resolveTravelGuideLocale(dto.locale),
     });
 
     return {

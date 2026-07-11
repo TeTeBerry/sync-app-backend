@@ -113,7 +113,7 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
         Record<TravelGuideBudgetTier, HotelQuoteSnapshot>
       > | null = null;
 
-      if (accommodationNights > 0) {
+      if (accommodationNights > 0 && !options?.skipHotels) {
         await reportTravelGuideProgress(options?.onProgress, 'quotes_hotels');
         this.logger.log(
           `RollingGo hotel tier quotes start: ${query.destinationCity} nights=${accommodationNights} checkIn=${query.outboundDate}`,
@@ -122,6 +122,10 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
           query,
           [query.budgetTier],
           mcpOptions,
+        );
+      } else if (options?.skipHotels && accommodationNights > 0) {
+        this.logger.log(
+          `RollingGo hotel quotes skipped (RouteStack owns EN stays) destination=${query.destinationCity}`,
         );
       }
 

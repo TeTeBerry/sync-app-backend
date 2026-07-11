@@ -254,6 +254,25 @@ describe('travel guide enhanced sections', () => {
       ),
     ).toBe(false);
 
+    const tmlThailandEn = buildTicketChannels(
+      {
+        name: 'Tomorrowland Thailand 2026',
+        location: 'Pattaya Wisdom Valley',
+        region: 'overseas',
+        code: 'tomorrowland',
+      },
+      'en',
+    );
+    expect(tmlThailandEn.map((c) => c.name)).toEqual([
+      'Tomorrowland Thailand official site',
+      'Klook',
+    ]);
+    expect(tmlThailandEn[0]?.note).toMatch(/Official tickets and packages/i);
+    expect(tmlThailandEn[1]?.note).toMatch(/official partner badge/i);
+    expect(
+      tmlThailandEn.some((c) => /[\u4e00-\u9fff]/.test(`${c.name}${c.note}`)),
+    ).toBe(false);
+
     const wdjf = buildTicketChannels({
       name: 'World DJ Festival Japan 2026',
       location: '日本·东京 海の森水上競技場',
@@ -351,6 +370,57 @@ describe('travel guide enhanced sections', () => {
     expect(
       sanitized.some((c) => /thailand\.tomorrowland\.com/i.test(c.note)),
     ).toBe(true);
+  });
+
+  it('replaces Chinese LLM ticket notes with EN catalog when locale is en', () => {
+    const sanitized = sanitizeTicketChannelsForActivity(
+      [
+        {
+          name: 'Tomorrowland Thailand 官网',
+          note: 'https://thailand.tomorrowland.com — 早鸟与通票通常最先释出。',
+        },
+        {
+          name: 'Klook / Trip.com（境外场）',
+          note: 'EDC Thailand、Tomorrowland 等境外场常用。',
+        },
+      ],
+      {
+        name: 'Tomorrowland Thailand 2026',
+        location: 'Pattaya Wisdom Valley',
+        region: 'overseas',
+        code: 'tomorrowland',
+      },
+      'en',
+    );
+    expect(sanitized.every((c) => !/早鸟|通票|境外场/.test(c.note))).toBe(true);
+    expect(sanitized.some((c) => /official site/i.test(c.name))).toBe(true);
+    expect(
+      sanitized.some((c) => /thailand\.tomorrowland\.com/i.test(c.note)),
+    ).toBe(true);
+    expect(sanitized.some((c) => /Klook/i.test(c.name))).toBe(true);
+  });
+
+  it('builds English domestic ticket channels for mainland festivals', () => {
+    const channels = buildTicketChannels(
+      {
+        name: '风暴电音节 深圳站 2026',
+        location: '深圳国际会展中心',
+        region: 'domestic',
+        code: 'storm',
+        externalUrl: 'https://detail.damai.cn/item.htm?id=1',
+      },
+      'en',
+    );
+    expect(channels[0]?.name).toBe('Official ticket link');
+    expect(channels.some((c) => c.name === 'Damai / Maoyan')).toBe(true);
+    expect(
+      channels.some((c) =>
+        /Official WeChat mini program \/ account/i.test(c.name),
+      ),
+    ).toBe(true);
+    expect(channels.every((c) => !/大麦|猫眼|小程序|公众号/.test(c.name))).toBe(
+      true,
+    );
   });
 
   it('includes official url in ticket channels', () => {

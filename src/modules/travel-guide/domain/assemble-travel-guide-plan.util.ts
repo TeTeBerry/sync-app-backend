@@ -139,6 +139,7 @@ export function assembleTravelGuidePlanFromContext(
     headcount: dto.headcount,
     accommodationNights,
     budgetTier,
+    locale,
   });
 
   return applyTravelGuideAccommodationPreference(plan, accommodationNights);

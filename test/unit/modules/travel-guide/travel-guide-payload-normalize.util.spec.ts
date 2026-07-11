@@ -26,6 +26,12 @@ describe('travel-guide-payload-normalize', () => {
     ]);
   });
 
+  it('uses ASCII colon for English title/detail objects', () => {
+    expect(
+      coerceGuideLine({ title: 'Arrival', detail: 'Taxi about 40 min' }),
+    ).toBe('Arrival: Taxi about 40 min');
+  });
+
   it('drops unparseable objects instead of [object Object]', () => {
     expect(coerceGuideLine({ foo: { bar: 1 } })).toBeNull();
     expect(normalizeGuideLines([{ foo: 1 }, '有效文案'])).toEqual(['有效文案']);

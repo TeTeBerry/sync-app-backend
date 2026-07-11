@@ -13,13 +13,16 @@ export class CatalogTicketProvider implements TicketProvider {
   async searchTickets(
     input: TicketSearchInput,
   ): Promise<NormalizedTicketOption[]> {
-    const channels = buildTravelGuideTicketChannels({
-      name: input.activityName,
-      code: input.activityCode ?? '',
-      location: input.activityLocation,
-      region: input.region as 'domestic' | 'overseas' | 'hmt' | undefined,
-      externalUrl: input.externalUrl,
-    });
+    const channels = buildTravelGuideTicketChannels(
+      {
+        name: input.activityName,
+        code: input.activityCode ?? '',
+        location: input.activityLocation,
+        region: input.region as 'domestic' | 'overseas' | 'hmt' | undefined,
+        externalUrl: input.externalUrl,
+      },
+      input.locale === 'en' ? 'en' : 'zh',
+    );
     return normalizeTicketOptionsFromChannels(channels, 'catalog');
   }
 }

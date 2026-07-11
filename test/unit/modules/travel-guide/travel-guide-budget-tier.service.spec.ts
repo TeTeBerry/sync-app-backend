@@ -7,6 +7,7 @@ import { AmapMapService } from '@src/modules/travel-guide/map/amap.service';
 import { TravelGuidePoiCollector } from '@src/modules/travel-guide/map/travel-guide-poi.collector';
 import { TravelGuidePoiRanker } from '@src/modules/travel-guide/map/travel-guide-poi.ranker';
 import { TravelQuoteEnrichmentService } from '@src/modules/travel-guide/travel-quote-enrichment.service';
+import { HotelSearchService } from '@src/modules/travel-guide/search/hotel-search.service';
 import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 
 const testActor = {
@@ -126,6 +127,10 @@ describe('TravelGuideBudgetTierService', () => {
             fetchHotelQuoteForTier: jest.fn().mockResolvedValue(null),
           },
         },
+        {
+          provide: HotelSearchService,
+          useValue: { isRouteStackEnabled: jest.fn().mockReturnValue(false) },
+        },
       ],
     }).compile();
 
@@ -210,6 +215,10 @@ describe('TravelGuideBudgetTierService', () => {
             fetchHotelQuoteForTier: jest.fn(),
           },
         },
+        {
+          provide: HotelSearchService,
+          useValue: { isRouteStackEnabled: jest.fn().mockReturnValue(false) },
+        },
       ],
     }).compile();
 
@@ -248,6 +257,10 @@ describe('TravelGuideBudgetTierService', () => {
             run: jest.fn(),
             fetchHotelQuoteForTier: jest.fn(),
           },
+        },
+        {
+          provide: HotelSearchService,
+          useValue: { isRouteStackEnabled: jest.fn().mockReturnValue(false) },
         },
       ],
     }).compile();

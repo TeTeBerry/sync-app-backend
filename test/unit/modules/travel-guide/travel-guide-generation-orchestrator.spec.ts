@@ -147,6 +147,7 @@ describe('TravelGuideGenerationOrchestrator', () => {
             fromEnrichment: jest.fn().mockReturnValue([]),
             fromMapRanked: jest.fn().mockReturnValue([]),
             search: jest.fn().mockResolvedValue([]),
+            isRouteStackEnabled: jest.fn().mockReturnValue(false),
           },
         },
         {
@@ -265,6 +266,179 @@ describe('TravelGuideGenerationOrchestrator', () => {
     expect(llmBuild).toHaveBeenCalled();
     expect(locationResolve).toHaveBeenCalled();
     expect(llmStarted).toBeGreaterThanOrEqual(quoteFinished);
+  });
+
+  it('skips RollingGo hotels and searches RouteStack for EN locale', async () => {
+    const hotelSearch = jest.fn().mockResolvedValue([
+      {
+        id: 'rs1',
+        provider: 'routestack',
+        name: 'Docklands Hotel',
+        price: { nightlyAmount: 180, totalAmount: 360, currency: 'USD' },
+      },
+    ]);
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        TravelGuideGenerationOrchestrator,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: (key: string) =>
+              key === 'rollinggo.quoteCacheTtlSec' ? 3600 : undefined,
+          },
+        },
+        {
+          provide: ActivityService,
+          useValue: {
+            findByLegacyId: jest.fn().mockResolvedValue({
+              legacyId: 4,
+              name: 'Storm',
+              date: '06/13-14',
+              location: '安特卫普',
+              region: 'overseas',
+              code: 'storm',
+              area: '比利时',
+            }),
+          },
+        },
+        { provide: AmapMapService, useValue: { enabled: true } },
+        {
+          provide: LocationSearchService,
+          useValue: { resolveAndCollect: locationResolve },
+        },
+        {
+          provide: FlightSearchService,
+          useValue: {
+            fromEnrichment: jest.fn().mockReturnValue([]),
+            search: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: HotelSearchService,
+          useValue: {
+            fromEnrichment: jest.fn().mockReturnValue([
+              {
+                id: 'rg-hotel',
+                provider: 'rollinggo',
+                name: 'Should Not Appear',
+              },
+            ]),
+            fromMapRanked: jest
+              .fn()
+              .mockReturnValue([
+                { id: 'map-hotel', provider: 'amap', name: 'Map Hotel' },
+              ]),
+            search: hotelSearch,
+            isRouteStackEnabled: jest.fn().mockReturnValue(true),
+          },
+        },
+        {
+          provide: TicketSearchService,
+          useValue: { search: jest.fn().mockResolvedValue([]) },
+        },
+        {
+          provide: FlightRecommendationService,
+          useValue: { recommend: jest.fn().mockReturnValue({ ranked: [] }) },
+        },
+        {
+          provide: HotelRecommendationService,
+          useValue: {
+            recommend: jest.fn().mockImplementation((hotels: unknown[]) => ({
+              ranked: [],
+              bestOverall: hotels[0]
+                ? {
+                    optionId: (hotels[0] as { id: string }).id,
+                    category: 'bestOverall',
+                    score: 1,
+                    reasonCodes: [],
+                  }
+                : undefined,
+            })),
+          },
+        },
+        {
+          provide: TravelGuideLlmService,
+          useValue: { generatePlanContent: llmBuild },
+        },
+        {
+          provide: TravelGuideCacheService,
+          useValue: {
+            findGeneratedPlan: jest.fn().mockResolvedValue(null),
+            findSimilarGeneratedPlan: jest.fn().mockResolvedValue(null),
+            saveGeneratedPlan: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: TravelGuideBudgetService,
+          useValue: {
+            resolveBudgetConstraints: jest.fn().mockReturnValue({
+              tier: 'standard',
+              tierAlias: 'balanced',
+              currency: 'USD',
+              travelers: 2,
+              nights: 2,
+              rooms: 1,
+              interCity: true,
+              flightTarget: { min: 300, max: 600 },
+              hotelTarget: { min: 40, max: 90 },
+              estimated: true,
+            }),
+            buildFromSelected: jest.fn().mockReturnValue({
+              currency: 'USD',
+              tier: 'standard',
+              tierAlias: 'balanced',
+              total: { min: 1000, max: 2000 },
+              items: [],
+            }),
+            summarizeFromPlan: jest.fn().mockReturnValue({
+              currency: 'USD',
+              tier: 'standard',
+              tierAlias: 'balanced',
+              total: { min: 0, max: 0 },
+              items: [],
+            }),
+          },
+        },
+        {
+          provide: TravelGuideGuardService,
+          useValue: {
+            assertCanGenerate: jest.fn().mockResolvedValue(undefined),
+            acquireGenerationLock: jest.fn().mockResolvedValue(true),
+            releaseGenerationLock: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: TravelGuideSavedPlanService,
+          useValue: { upsert: jest.fn() },
+        },
+        {
+          provide: WechatContentSecurityService,
+          useValue: { assertTextsSafe: jest.fn().mockResolvedValue(undefined) },
+        },
+        {
+          provide: TravelQuoteEnrichmentService,
+          useValue: { run: quoteRun },
+        },
+      ],
+    }).compile();
+
+    const enOrchestrator = moduleRef.get(TravelGuideGenerationOrchestrator);
+    await enOrchestrator.generate(
+      4,
+      { ...dto, locale: 'en', departure: 'London, United Kingdom' },
+      testActor,
+    );
+
+    expect(quoteRun).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ locale: 'en' }),
+      expect.anything(),
+      expect.any(Number),
+      expect.objectContaining({ skipHotels: true }),
+    );
+    expect(hotelSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: 'en' }),
+    );
   });
 
   it('uses recommendation bestOverall + BudgetService as response source of truth', async () => {

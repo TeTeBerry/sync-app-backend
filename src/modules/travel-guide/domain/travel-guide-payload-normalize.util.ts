@@ -35,7 +35,9 @@ export function coerceGuideLine(value: unknown): string | null {
         ? record.note.trim()
         : '';
   if (title && detail) {
-    return `${title}：${detail}`;
+    // Prefer Chinese fullwidth colon only when either side is CJK prose.
+    const sep = /[\u4e00-\u9fff]/.test(`${title}${detail}`) ? '：' : ': ';
+    return `${title}${sep}${detail}`;
   }
 
   for (const key of [

@@ -7,6 +7,7 @@ export interface TicketSearchInput {
   activityLocation?: string;
   region?: string;
   externalUrl?: string;
+  locale?: 'zh' | 'en';
 }
 
 export const TICKET_PROVIDER = Symbol('TICKET_PROVIDER');

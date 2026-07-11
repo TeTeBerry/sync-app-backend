@@ -337,6 +337,27 @@ export default () => ({
     ),
   },
 
+  /**
+   * RouteStack hotel inventory — used for Raven / sync-web EN generate-plan
+   * stays (SearchDestinations → SearchHotels). Optional; falls back to
+   * RollingGo / map POIs when disabled or unset.
+   * Auth: POST /mcp/auth/partner-token with HMAC(apiKey:timestamp:nonce).
+   * Docs: https://www.routestack.ai/docs#tag/Hotel/operation/SearchDestinations
+   */
+  routestack: {
+    enabled: cleanEnv(process.env.ROUTESTACK_ENABLED, 'false') === 'true',
+    apiKey: cleanEnv(process.env.ROUTESTACK_API_KEY),
+    apiSecret: cleanEnv(process.env.ROUTESTACK_API_SECRET),
+    baseUrl: cleanEnv(
+      process.env.ROUTESTACK_BASE_URL ?? process.env.MCP_BASE_URL,
+      'https://mcp.routestack.ai',
+    ),
+    timeoutMs: parseInt(
+      cleanEnv(process.env.ROUTESTACK_TIMEOUT_MS, '20000'),
+      10,
+    ),
+  },
+
   /** AI 出行攻略 — 高德地图 Web 服务 */
   amap: {
     key: cleanEnv(

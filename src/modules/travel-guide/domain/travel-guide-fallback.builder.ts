@@ -83,11 +83,12 @@ function buildHotels(
   headcount: number,
   nights: number,
   activity: Activity,
+  locale: 'zh' | 'en' = 'zh',
 ): TravelGuidePlan['accommodation']['hotels'] {
   const city = venueCity(location);
   const room = roomHint(headcount);
   const nightLabel = `${nights} 晚`;
-  const abroadBookingHint = travelGuideHotelBookingHint(activity);
+  const abroadBookingHint = travelGuideHotelBookingHint(activity, locale);
 
   if (isTravelGuideAbroad(activity)) {
     const ranges = budgetTierHotelNightRanges(budgetTier);
@@ -106,6 +107,8 @@ function buildHotels(
   }
 
   const ranges = budgetTierHotelNightRanges(budgetTier);
+  const domesticHint =
+    locale === 'en' ? travelGuideHotelBookingHint(activity, locale) : null;
 
   const tiers: Record<
     TravelGuideBudgetTier,
@@ -115,36 +118,36 @@ function buildHotels(
       {
         name: `${city}地铁沿线连锁酒店`,
         note: `约 ${ranges.primary}/晚 · ${nightLabel} · ${room}`,
-        bookingHint: '美团 / 携程「近地铁」',
+        bookingHint: domesticHint ?? '美团 / 携程「近地铁」',
       },
       {
         name: `${city}会展中心周边快捷酒店`,
         note: `约 ${ranges.secondary}/晚 · 步行/接驳场馆 · ${room}`,
-        bookingHint: '飞猪「国际会展中心」',
+        bookingHint: domesticHint ?? '飞猪「国际会展中心」',
       },
     ],
     standard: [
       {
         name: `${city}会展中心商务酒店`,
         note: `约 ${ranges.primary}/晚 · ${nightLabel} · ${room}`,
-        bookingHint: '携程 / Booking',
+        bookingHint: domesticHint ?? '携程 / Booking',
       },
       {
         name: `${city}核心商圈四星酒店`,
         note: `约 ${ranges.secondary}/晚 · 散场后餐饮方便 · ${room}`,
-        bookingHint: '大众点评高分榜',
+        bookingHint: domesticHint ?? '大众点评高分榜',
       },
     ],
     comfort: [
       {
         name: `${city}五星/精品设计酒店`,
         note: `约 ${ranges.primary}/晚 · ${nightLabel} · ${room}`,
-        bookingHint: 'Booking / 酒店官网',
+        bookingHint: domesticHint ?? 'Booking / 酒店官网',
       },
       {
         name: `${city}度假型豪华酒店`,
         note: `约 ${ranges.secondary}/晚 · 适合多人同行品质出行 · ${room}`,
-        bookingHint: '携程「豪华型」',
+        bookingHint: domesticHint ?? '携程「豪华型」',
       },
     ],
   };
@@ -193,8 +196,16 @@ function buildAccommodationSchemes(
   headcount: number,
   nights: number,
   activity: Activity,
+  locale: 'zh' | 'en' = 'zh',
 ): TravelGuidePlan['accommodation']['schemes'] {
-  const hotels = buildHotels(location, budgetTier, headcount, nights, activity);
+  const hotels = buildHotels(
+    location,
+    budgetTier,
+    headcount,
+    nights,
+    activity,
+    locale,
+  );
   return [
     {
       label: '就近方案',
@@ -280,6 +291,7 @@ function buildExtendedSections(
   const ticketChannels = sanitizeTicketChannelsForActivity(
     llm?.ticketChannels?.length ? llm.ticketChannels : undefined,
     activity,
+    locale,
   );
 
   const essentialsRaw =
@@ -400,6 +412,7 @@ export function buildTravelGuidePlan(input: {
           headcount,
           accommodationNights,
           activity,
+          locale,
         );
 
   const hotels = input.llm?.hotels?.length
@@ -418,6 +431,7 @@ export function buildTravelGuidePlan(input: {
             headcount,
             accommodationNights,
             activity,
+            locale,
           );
 
   const parkingLines =
