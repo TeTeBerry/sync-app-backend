@@ -37,6 +37,7 @@ import { PublicEventModule } from './modules/public-event/public-event.module';
 import { TripPlanModule } from './modules/trip-plan/trip-plan.module';
 import { MarketingAiModule } from './modules/marketing-ai/marketing-ai.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { FestivalSquadModule } from './modules/festival-squad/festival-squad.module';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     UserGoalModule,
     TripPlanModule,
     MarketingAiModule,
+    FestivalSquadModule,
     ScheduleModule.forRoot(),
   ],
   providers: [RequestActorMiddleware, ActivityContextMiddleware],
