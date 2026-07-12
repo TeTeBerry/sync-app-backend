@@ -128,13 +128,11 @@ function overlayRecommendationContext(
         ? `Recommended stay: ${selectedHotel.name}` +
             (hotelReasons.length
               ? ` (${formatHotelReasonCodes(hotelReasons, locale)})`
-              : '') +
-            '. Explain why — do not pick a different hotel.'
+              : '')
         : `推荐住宿：${selectedHotel.name}` +
             (hotelReasons.length
               ? `（${formatHotelReasonCodes(hotelReasons, locale)}）`
-              : '') +
-            '。请解释推荐理由，勿另行挑选酒店。',
+              : ''),
     );
   }
 
