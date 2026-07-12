@@ -15,6 +15,27 @@ export class User {
   @Prop({ index: true, sparse: true })
   unionid?: string;
 
+  /**
+   * Display email (domain lowercased). Never use as public user id.
+   * Temporary Raven email-only auth leaves ownership unverified.
+   */
+  @Prop()
+  email?: string;
+
+  /** Unique lookup key: local-part lowercased + domain lowercased. */
+  @Prop({ unique: true, sparse: true, index: true })
+  emailNormalized?: string;
+
+  /**
+   * Set when email ownership is verified (OTP / magic link / OAuth).
+   * Remains null for temporary email-only Raven MVP logins.
+   */
+  @Prop({ type: Date, default: null })
+  emailVerifiedAt?: Date | null;
+
+  @Prop({ type: Date })
+  lastLoginAt?: Date;
+
   @Prop()
   name: string;
 

@@ -16,6 +16,7 @@ export type UserRecord = Partial<UserDocument> & {
 export interface IUserRepository {
   findByOpenid(openid: string): Promise<UserRecord | null>;
   findByExternalId(externalId: string): Promise<UserRecord | null>;
+  findByEmailNormalized(emailNormalized: string): Promise<UserRecord | null>;
   upsertWechatUser(
     openid: string,
     data: Partial<UserDocument> & { unionid?: string },

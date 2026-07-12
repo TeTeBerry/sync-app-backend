@@ -126,6 +126,14 @@ export default () => ({
     jwtExpiresIn: cleanEnv(process.env.JWT_EXPIRES_IN, '30d'),
     /** `wechat` is the only supported production auth mode. */
     mode: cleanEnv(process.env.AUTH_MODE, 'wechat'),
+    /**
+     * Temporary Raven email-only auth (no ownership proof).
+     * Production must set TEMP_EMAIL_ONLY_AUTH_ENABLED=true explicitly.
+     */
+    tempEmailOnlyAuthEnabled: cleanEnv(
+      process.env.TEMP_EMAIL_ONLY_AUTH_ENABLED,
+      process.env.NODE_ENV === 'production' ? 'false' : 'true',
+    ),
     sms: {
       sdkAppId: cleanEnv(process.env.SMS_SDK_APP_ID, ''),
       templateId: cleanEnv(process.env.SMS_TEMPLATE_ID, ''),
@@ -266,6 +274,18 @@ export default () => ({
           process.env.PUBLIC_API_POSTER_BACKGROUND_WINDOW_MS,
           String(24 * 60 * 60 * 1000),
         ),
+        10,
+      ),
+      authEmailLoginIpMax: parseInt(
+        cleanEnv(process.env.TEMP_AUTH_LOGIN_IP_MAX, '20'),
+        10,
+      ),
+      authEmailLoginEmailMax: parseInt(
+        cleanEnv(process.env.TEMP_AUTH_LOGIN_EMAIL_MAX, '10'),
+        10,
+      ),
+      authEmailLoginWindowMs: parseInt(
+        cleanEnv(process.env.TEMP_AUTH_LOGIN_WINDOW_MS, String(15 * 60 * 1000)),
         10,
       ),
     },

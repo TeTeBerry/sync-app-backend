@@ -27,6 +27,7 @@ import { HealthModule } from './common/health/health.module';
 import { AuthCoreModule } from './common/auth/auth-core.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuthH5Module } from './modules/auth-h5/auth-h5.module';
+import { AuthEmailModule } from './modules/auth-email/auth-email.module';
 import { SmsModule } from './modules/sms/sms.module';
 import { CloudModule } from './infra/cloud/cloud.module';
 import { ActivityContextMiddleware } from './common/middleware/activity-context.middleware';
@@ -67,6 +68,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ActivityModule,
     AuthModule,
     AuthH5Module,
+    AuthEmailModule,
     AuthCoreModule,
     UserModule,
     ProfileModule,
@@ -94,6 +96,7 @@ export class AppModule implements NestModule {
       .apply(RequestActorMiddleware, ActivityContextMiddleware)
       .exclude(
         { path: 'auth/wechat', method: RequestMethod.POST },
+        { path: 'auth/email-login', method: RequestMethod.POST },
         { path: 'auth-h5/sms/send', method: RequestMethod.POST },
         { path: 'auth-h5/sms/login', method: RequestMethod.POST },
         { path: 'health', method: RequestMethod.GET },

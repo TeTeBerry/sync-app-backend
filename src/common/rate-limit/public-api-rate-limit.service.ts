@@ -20,7 +20,9 @@ export type PublicRateLimitScope =
   | 'chat_session'
   | 'personality_nickname_usage'
   | 'poster_background'
-  | 'public_events';
+  | 'public_events'
+  | 'auth_email_login_ip'
+  | 'auth_email_login_email';
 
 const RAVEN_RATE_KEY_HEADER = 'x-raven-rate-key';
 const RAVEN_RATE_KEY_PATTERN = /^[a-zA-Z0-9_-]{8,64}$/;
@@ -116,6 +118,21 @@ export class PublicApiRateLimitService {
         windowMs:
           config.get<number>('publicApi.rateLimit.publicEventsWindowMs') ??
           windowMs,
+      },
+      auth_email_login_ip: {
+        maxRequests:
+          config.get<number>('publicApi.rateLimit.authEmailLoginIpMax') ?? 20,
+        windowMs:
+          config.get<number>('publicApi.rateLimit.authEmailLoginWindowMs') ??
+          15 * 60 * 1000,
+      },
+      auth_email_login_email: {
+        maxRequests:
+          config.get<number>('publicApi.rateLimit.authEmailLoginEmailMax') ??
+          10,
+        windowMs:
+          config.get<number>('publicApi.rateLimit.authEmailLoginWindowMs') ??
+          15 * 60 * 1000,
       },
     };
   }

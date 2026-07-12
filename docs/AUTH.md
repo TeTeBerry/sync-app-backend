@@ -10,6 +10,7 @@
 | `@Public()` 无 Bearer | `resolveRequestActor` 返回 `anonymous`（空 `resolvedUserId`） |
 | Logout | `POST /api/auth/logout`（Bearer）递增 Mongo `user.tokenVersion`；JWT 含 `tv` 声明，与库中版本不一致则 401 |
 | AI Scene | `POST /api/ai/scene-run` 走 REST + Bearer（与受保护路由相同） |
+| Raven email (temporary) | `POST /api/auth/email-login` — unverified email-only; `GET /api/auth/session`; flag `TEMP_EMAIL_ONLY_AUTH_ENABLED` |
 
 ## 环境变量
 
@@ -18,12 +19,14 @@
 | `JWT_SECRET` | 强随机 | 签名密钥 |
 | `JWT_EXPIRES_IN` | `30d` 等 | Token 有效期 |
 | `WECHAT_MINI_APP_ID` / `WECHAT_MINI_APP_SECRET` | 必填 | `POST /api/auth/wechat` |
+| `TEMP_EMAIL_ONLY_AUTH_ENABLED` | 显式 `true` 才开 | Raven 临时邮箱登录（未验证所有权） |
 
 ## 生产清单
 
 1. 配置 `WECHAT_MINI_APP_ID` / `WECHAT_MINI_APP_SECRET`
 2. 更换 `JWT_SECRET`，勿使用示例值
 3. 前端已登录请求只带 `Authorization: Bearer`
+4. Raven 临时邮箱登录仅在显式开启 `TEMP_EMAIL_ONLY_AUTH_ENABLED` 时可用
 
 ## 代码入口
 
@@ -31,9 +34,12 @@
 - `src/common/auth/jwt-auth.guard.ts` — 全局 Guard
 - `src/common/auth/resolve-request-actor.ts` — `req.actor` → `RequestActor`
 - `src/common/auth/actor-query.util.ts` — `toRequestActor`、`ownerFilterFromActor`
+- `src/common/auth/auth-capabilities.ts` — Raven capability helpers（勿散落 `emailVerifiedAt` 判断）
+- `src/modules/auth-email/` — 临时 email-only 登录
 
 ## 遗留边界
 
 - Mongo 文档字段仍为 `userId` / `authorName`（持久化作者）
 - `UserService.resolveProfileFromStoredAuthor` — 评论/通知等历史作者展示（`StoredAuthorRecord`）
 - Partner `PostModerationPort` 入参为 `RequestActor`（`assessPost`）
+- Raven web MVP cookie sessions 在 sync-web；Nest JWT 供后续 Festival Squad API

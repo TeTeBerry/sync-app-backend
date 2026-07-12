@@ -17,6 +17,12 @@ export class UserRepository implements IUserRepository {
     return this.model.findOne({ externalId }).lean();
   }
 
+  async findByEmailNormalized(
+    emailNormalized: string,
+  ): Promise<UserRecord | null> {
+    return this.model.findOne({ emailNormalized }).lean();
+  }
+
   async findByOpenid(openid: string): Promise<UserRecord | null> {
     return this.model.findOne({ openid }).lean();
   }
