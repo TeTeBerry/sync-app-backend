@@ -50,6 +50,12 @@ export function assembleTravelGuidePlanFromContext(
     locale,
   });
 
+  plan = {
+    ...plan,
+    recommendedDepartureDate: dto.departureDate,
+    recommendedReturnDate: dto.returnDate,
+  };
+
   if (ctx.budget?.items?.length) {
     plan.budget = {
       title: section.budget,

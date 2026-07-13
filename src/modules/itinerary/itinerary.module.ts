@@ -31,6 +31,14 @@ import { ArtistLikeService } from './artist-like.service';
 import { ItineraryService } from './itinerary.service';
 import { ItineraryScheduleService } from './itinerary-schedule.service';
 import { ItineraryConflictService } from './itinerary-conflict.service';
+import { LineupConflictService } from './lineup-conflict.service';
+import { StageTransferService } from './stage-transfer.service';
+import { ScheduleOverlapService } from './schedule-overlap.service';
+import { ClashResolutionService } from './clash-resolution.service';
+import {
+  UserLineupClashState,
+  UserLineupClashStateSchema,
+} from '../../database/schemas/user-lineup-clash-state.schema';
 import { ArtistProfileResolver } from './artist-profile-resolver.service';
 import { ItineraryGenerationService } from './itinerary-generation.service';
 import { ItineraryCacheService } from './itinerary-cache.service';
@@ -57,6 +65,10 @@ import { TripPlanModule } from '../trip-plan/trip-plan.module';
         name: ItineraryGenerationLog.name,
         schema: ItineraryGenerationLogSchema,
       },
+      {
+        name: UserLineupClashState.name,
+        schema: UserLineupClashStateSchema,
+      },
     ]),
   ],
   controllers: [ItineraryController, ArtistController],
@@ -65,10 +77,22 @@ import { TripPlanModule } from '../trip-plan/trip-plan.module';
     ItineraryService,
     ItineraryScheduleService,
     ItineraryConflictService,
+    StageTransferService,
+    ScheduleOverlapService,
+    LineupConflictService,
+    ClashResolutionService,
     ArtistProfileResolver,
     ItineraryGenerationService,
     ItineraryCacheService,
   ],
-  exports: [ItineraryService, ItineraryScheduleService],
+  exports: [
+    ItineraryService,
+    ItineraryScheduleService,
+    ArtistLikeService,
+    LineupConflictService,
+    ClashResolutionService,
+    StageTransferService,
+    ScheduleOverlapService,
+  ],
 })
 export class ItineraryModule {}

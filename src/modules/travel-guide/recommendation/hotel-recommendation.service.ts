@@ -125,14 +125,11 @@ export class HotelRecommendationService {
   }
 }
 
-function nightlyAmount(hotel: NormalizedHotelOption, nights: number): number {
-  if (hotel.price?.nightlyAmount && hotel.price.nightlyAmount > 0) {
-    return hotel.price.nightlyAmount;
+function totalPrice(hotel: NormalizedHotelOption, nights: number): number {
+  if (hotel.price?.totalAmount && hotel.price.totalAmount > 0) {
+    return hotel.price.totalAmount;
   }
-  if (hotel.price?.totalAmount && hotel.price.totalAmount > 0 && nights > 0) {
-    return hotel.price.totalAmount / nights;
-  }
-  return hotel.price?.totalAmount ?? 0;
+  return (hotel.price?.nightlyAmount ?? 0) * Math.max(1, nights);
 }
 
 function scoreHotel(
@@ -149,8 +146,8 @@ function scoreHotel(
   reasonCodes: HotelReasonCode[];
 } {
   const nights = Math.max(1, constraints?.nights ?? 1);
-  const nightlies = all
-    .map((h) => nightlyAmount(h, nights))
+  const totalPrices = all
+    .map((h) => totalPrice(h, nights))
     .filter((p) => p > 0);
   const distances = all
     .map((h) => h.distanceToFestivalKm)
@@ -159,18 +156,21 @@ function scoreHotel(
     .map((h) => h.travelTimeToFestivalMinutes)
     .filter((t): t is number => typeof t === 'number' && t >= 0);
 
-  const minPrice = nightlies.length ? Math.min(...nightlies) : 0;
-  const maxPrice = nightlies.length ? Math.max(...nightlies) : 0;
+  const minPrice = totalPrices.length ? Math.min(...totalPrices) : 0;
+  const maxPrice = totalPrices.length ? Math.max(...totalPrices) : 0;
   const minDist = distances.length ? Math.min(...distances) : 0;
   const maxDist = distances.length ? Math.max(...distances) : 0;
   const minTravel = travelTimes.length ? Math.min(...travelTimes) : 0;
   const maxTravel = travelTimes.length ? Math.max(...travelTimes) : 0;
 
-  const nightly = nightlyAmount(hotel, nights);
+  const nightly =
+    hotel.price?.nightlyAmount ??
+    totalPrice(hotel, nights) / Math.max(1, nights);
+  const total = totalPrice(hotel, nights);
   const priceNorm =
-    maxPrice > minPrice && nightly > 0
-      ? 1 - (nightly - minPrice) / (maxPrice - minPrice)
-      : nightly > 0
+    maxPrice > minPrice && total > 0
+      ? 1 - (total - minPrice) / (maxPrice - minPrice)
+      : total > 0
         ? 0.7
         : 0.4;
 
@@ -184,15 +184,6 @@ function scoreHotel(
         : 0.5;
 
   const reviewNorm = clamp((hotel.reviewScore ?? 4) / 5);
-  const transportNorm = resolveTransportConvenience(
-    hotel,
-    distanceNorm,
-    minTravel,
-    maxTravel,
-  );
-  const cancellationNorm = resolveCancellation(hotel);
-  const supplierNorm = resolveSupplierTrust(hotel);
-
   const { fit: budgetFit, band: budgetBand } = scoreBudgetFit(
     nightly,
     constraints?.hotelTarget,
@@ -206,10 +197,17 @@ function scoreHotel(
   }
   if ((hotel.reviewScore ?? 0) >= 4.3) reasonCodes.push('BEST_REVIEW_SCORE');
   if ((hotel.starRating ?? 0) >= 4) reasonCodes.push('HIGH_STAR_RATING');
+  const transportNorm = resolveTransportConvenience(
+    hotel,
+    distanceNorm,
+    minTravel,
+    maxTravel,
+  );
   if (transportNorm >= 0.75) reasonCodes.push('CONVENIENT_TRANSPORT');
   if (transportNorm <= 0.35) reasonCodes.push('LONG_TRAVEL_TIME');
-  if (cancellationNorm >= 0.75) reasonCodes.push('FLEXIBLE_CANCELLATION');
-  if (supplierNorm >= 0.8) reasonCodes.push('TRUSTED_SUPPLIER');
+  if (resolveCancellation(hotel) >= 0.75)
+    reasonCodes.push('FLEXIBLE_CANCELLATION');
+  if (resolveSupplierTrust(hotel) >= 0.8) reasonCodes.push('TRUSTED_SUPPLIER');
   if (budgetBand === 'within') reasonCodes.push('WITHIN_HOTEL_BUDGET');
   else if (budgetBand === 'slightly_over') {
     reasonCodes.push('SLIGHTLY_OVER_HOTEL_BUDGET');
@@ -224,20 +222,15 @@ function scoreHotel(
   const quality =
     HOTEL_SCORE_WEIGHTS.distance * distanceNorm +
     HOTEL_SCORE_WEIGHTS.price * priceNorm +
-    HOTEL_SCORE_WEIGHTS.review * reviewNorm +
-    HOTEL_SCORE_WEIGHTS.transportConvenience * transportNorm +
-    HOTEL_SCORE_WEIGHTS.cancellation * cancellationNorm +
-    HOTEL_SCORE_WEIGHTS.supplierTrust * supplierNorm;
+    HOTEL_SCORE_WEIGHTS.review * reviewNorm;
 
   const score =
-    (1 - HOTEL_BUDGET_FIT_BLEND) * quality +
-    HOTEL_BUDGET_FIT_BLEND * budgetFit +
-    stayPreferenceBonus(hotel, stayPreference);
+    (1 - HOTEL_BUDGET_FIT_BLEND) * quality + HOTEL_BUDGET_FIT_BLEND * budgetFit;
 
   const valueScore =
-    nightly > 0
+    total > 0
       ? (reviewNorm * 0.45 + distanceNorm * 0.35 + transportNorm * 0.2) /
-        Math.max(nightly / 500, 0.5)
+        Math.max(total / 500, 0.5)
       : score;
 
   if (valueScore >= 0.8) reasonCodes.push('GOOD_VALUE_SCORE');

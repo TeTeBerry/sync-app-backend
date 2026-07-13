@@ -36,7 +36,6 @@ import {
   type FlightEndpointQueryMode,
   type RollingGoFlightEndpoint,
 } from '../../domain/rollinggo-flight-endpoint.util';
-import { addDays } from '../../domain/travel-guide-quote-dates.util';
 import type { TravelGuideMapContext } from '../../map/travel-guide-map.types';
 import type { ITravelQuotePort } from '../../ports/travel-quote.port';
 import type {
@@ -650,37 +649,19 @@ export class RollingGoTravelQuoteAdapter implements ITravelQuotePort {
       return { tripType: 'ONE_WAY' };
     }
 
-    const retCandidates = [
+    const preferredMode = await this.probeFlightSearch(
+      query,
+      from,
+      to,
+      'ECONOMY',
       query.returnDate,
-      addDays(query.returnDate, 1),
-      addDays(query.returnDate, 2),
-    ];
-
-    for (let i = 0; i < retCandidates.length; i++) {
-      const retDate = retCandidates[i];
-      const preferredMode = await this.probeFlightSearch(
-        query,
-        from,
-        to,
-        'ECONOMY',
-        retDate,
-        mcpOptions,
-      );
-      if (preferredMode) {
-        if (i > 0) {
-          this.logger.log(
-            `RollingGo flight return date recovered: ${retDate} (planned ${query.returnDate})`,
-          );
-        }
-        return {
-          tripType: 'ROUND_TRIP',
-          returnDate: retDate,
-          preferredMode,
-        };
-      }
-    }
-
-    return { tripType: 'ROUND_TRIP', returnDate: query.returnDate };
+      mcpOptions,
+    );
+    return {
+      tripType: 'ROUND_TRIP',
+      returnDate: query.returnDate,
+      ...(preferredMode ? { preferredMode } : {}),
+    };
   }
 
   private async probeFlightSearch(

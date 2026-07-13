@@ -100,6 +100,8 @@ export interface TravelGuidePlan {
   budgetLabel: string;
   accommodationNights: number;
   selfDrive: boolean;
+  recommendedDepartureDate?: string;
+  recommendedReturnDate?: string;
   transport: {
     title: string;
     lines: string[];

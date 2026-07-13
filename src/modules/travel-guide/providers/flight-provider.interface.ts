@@ -7,6 +7,9 @@ export interface FlightSearchInput {
   destinationCity: string;
   outboundDate: string;
   returnDate?: string;
+  /** Raven-selected window takes precedence over manually supplied dates. */
+  recommendedDepartureDate?: string;
+  recommendedReturnDate?: string;
   headcount: number;
   budgetTier: TravelGuideBudgetTier;
   regionKind: 'domestic' | 'hmt' | 'overseas';

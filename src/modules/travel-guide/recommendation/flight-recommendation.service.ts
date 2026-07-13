@@ -136,9 +136,6 @@ function scoreFlight(
 
   const stopsNorm = flight.stops <= 0 ? 1 : flight.stops === 1 ? 0.65 : 0.3;
 
-  const arrivalNorm = arrivalTimeScore(flight.arrivalAt);
-  const supplierNorm = resolveSupplierReliability(flight);
-
   const { fit: budgetFit, band: budgetBand } = scoreBudgetFit(
     flight.price.amount,
     constraints?.flightTarget,
@@ -161,12 +158,14 @@ function scoreFlight(
   ) {
     reasonCodes.push('LONG_DURATION');
   }
-  if (arrivalNorm >= 0.75) reasonCodes.push('GOOD_ARRIVAL_TIME');
+  if (arrivalTimeScore(flight.arrivalAt) >= 0.75)
+    reasonCodes.push('GOOD_ARRIVAL_TIME');
   const depHour = extractHour(flight.departureAt);
   if (depHour != null && depHour >= 7 && depHour <= 21) {
     reasonCodes.push('GOOD_DEPARTURE_TIME');
   }
-  if (supplierNorm >= 0.8) reasonCodes.push('RELIABLE_SUPPLIER');
+  if (resolveSupplierReliability(flight) >= 0.8)
+    reasonCodes.push('RELIABLE_SUPPLIER');
   if (budgetBand === 'within') reasonCodes.push('WITHIN_FLIGHT_BUDGET');
   else if (budgetBand === 'slightly_over') {
     reasonCodes.push('SLIGHTLY_OVER_FLIGHT_BUDGET');
@@ -181,9 +180,7 @@ function scoreFlight(
   const quality =
     FLIGHT_SCORE_WEIGHTS.price * priceNorm +
     FLIGHT_SCORE_WEIGHTS.duration * durationNorm +
-    FLIGHT_SCORE_WEIGHTS.stops * stopsNorm +
-    FLIGHT_SCORE_WEIGHTS.arrival * arrivalNorm +
-    FLIGHT_SCORE_WEIGHTS.supplierReliability * supplierNorm;
+    FLIGHT_SCORE_WEIGHTS.stops * stopsNorm;
 
   const score =
     (1 - FLIGHT_BUDGET_FIT_BLEND) * quality +

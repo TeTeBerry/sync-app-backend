@@ -94,23 +94,18 @@ export interface HotelRecommendationSet {
  * Weights sum to 1.0 before budgetFit blend.
  */
 export const FLIGHT_SCORE_WEIGHTS = {
-  price: 0.3,
-  duration: 0.25,
+  price: 0.5,
+  duration: 0.3,
   stops: 0.2,
-  arrival: 0.15,
-  supplierReliability: 0.1,
 } as const;
 
 /** Blend: 70% quality/relative + 30% user budget fit */
-export const FLIGHT_BUDGET_FIT_BLEND = 0.3;
+export const FLIGHT_BUDGET_FIT_BLEND = 0;
 
 export const HOTEL_SCORE_WEIGHTS = {
   distance: 0.3,
-  price: 0.25,
-  review: 0.15,
-  transportConvenience: 0.15,
-  cancellation: 0.1,
-  supplierTrust: 0.05,
+  price: 0.4,
+  review: 0.3,
 } as const;
 
-export const HOTEL_BUDGET_FIT_BLEND = 0.3;
+export const HOTEL_BUDGET_FIT_BLEND = 0;

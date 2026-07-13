@@ -18,6 +18,7 @@ import { WechatContentSecurityService } from '../auth/wechat-content-security.se
 import { UserGoalService } from '../goal/goal.service';
 import type { SaveItineraryDto } from './dto/save-itinerary.dto';
 import type { GenerateItineraryDto } from './dto/generate-itinerary.dto';
+import { type TomorrowlandBelgiumWeekend } from './domain/tomorrowland-belgium-weekend.util';
 import { normalizeItineraryDaysForSave } from '@sync/itinerary-contracts';
 import { TripPlanCollaborationService } from '../trip-plan/trip-plan-collaboration.service';
 
@@ -38,6 +39,7 @@ export class ItineraryService {
     activityLegacyId: number,
     query: {
       dateKey?: string;
+      weekend?: TomorrowlandBelgiumWeekend;
       selectedDjIds?: string;
     },
   ) {
@@ -50,6 +52,7 @@ export class ItineraryService {
 
     return this.scheduleService.getSchedule(activityLegacyId, {
       dateKey: query.dateKey,
+      weekend: query.weekend,
       selectedDjIds,
     });
   }

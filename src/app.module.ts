@@ -38,6 +38,7 @@ import { TripPlanModule } from './modules/trip-plan/trip-plan.module';
 import { MarketingAiModule } from './modules/marketing-ai/marketing-ai.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { FestivalSquadModule } from './modules/festival-squad/festival-squad.module';
+import { LineupDiscoveryModule } from './modules/lineup-discovery/lineup-discovery.module';
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { FestivalSquadModule } from './modules/festival-squad/festival-squad.mod
     TripPlanModule,
     MarketingAiModule,
     FestivalSquadModule,
+    LineupDiscoveryModule,
     ScheduleModule.forRoot(),
   ],
   providers: [RequestActorMiddleware, ActivityContextMiddleware],

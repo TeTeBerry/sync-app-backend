@@ -28,6 +28,12 @@ export function buildDtoFromSavedForm(
 
   return {
     departure,
+    ...(typeof form.departureDate === 'string' && form.departureDate.trim()
+      ? { departureDate: form.departureDate.trim() }
+      : {}),
+    ...(typeof form.returnDate === 'string' && form.returnDate.trim()
+      ? { returnDate: form.returnDate.trim() }
+      : {}),
     departureCity:
       typeof form.departureCity === 'string' && form.departureCity.trim()
         ? form.departureCity.trim()

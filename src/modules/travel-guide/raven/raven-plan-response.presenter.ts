@@ -15,6 +15,8 @@ export type RavenPlanResponse = {
   budgetLabel: string;
   accommodationNights: number;
   selfDrive: boolean;
+  recommendedDepartureDate?: string;
+  recommendedReturnDate?: string;
   transport: {
     title: string;
     lines: string[];
@@ -94,6 +96,12 @@ export function presentRavenPlan(plan: TravelGuidePlan): RavenPlanResponse {
     budgetLabel: plan.budgetLabel,
     accommodationNights: plan.accommodationNights,
     selfDrive: plan.selfDrive,
+    ...(plan.recommendedDepartureDate
+      ? { recommendedDepartureDate: plan.recommendedDepartureDate }
+      : {}),
+    ...(plan.recommendedReturnDate
+      ? { recommendedReturnDate: plan.recommendedReturnDate }
+      : {}),
     transport: {
       title: plan.transport.title,
       lines: [...plan.transport.lines],

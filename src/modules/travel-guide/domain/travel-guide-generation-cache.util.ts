@@ -15,6 +15,8 @@ export type TravelGuideGenerationCacheParams = {
   activityLegacyId: number;
   departure: string;
   departureCity: string;
+  departureDate: string;
+  returnDate: string;
   headcount: number;
   budgetTier: GenerateTravelGuideDto['budgetTier'];
   selfDrive: boolean;
@@ -39,6 +41,8 @@ export function normalizeTravelGuideGenerationParams(
     activityLegacyId,
     departure,
     departureCity,
+    departureDate: dto.departureDate!,
+    returnDate: dto.returnDate!,
     headcount: dto.headcount,
     budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
     selfDrive: Boolean(dto.selfDrive),
@@ -55,7 +59,7 @@ export function normalizeTravelGuideGenerationParams(
  * guard, bilingual ticket-channel catalog, per-activity flight airport
  * destinations, RollingGo city/airport endpoint, or cached quote-budget
  * recalculation changes. */
-export const TRAVEL_GUIDE_MAP_DATA_VERSION = 20;
+export const TRAVEL_GUIDE_MAP_DATA_VERSION = 21;
 
 /**
  * Normalize params for fuzzy matching.
@@ -93,6 +97,8 @@ export function isFuzzyTravelGuideParamsMatch(
   if (exact.locale !== candidate.locale) return false;
   if (exact.departure !== candidate.departure) return false;
   if (exact.departureCity !== candidate.departureCity) return false;
+  if (exact.departureDate !== candidate.departureDate) return false;
+  if (exact.returnDate !== candidate.returnDate) return false;
   if (exact.note !== candidate.note) return false;
   if (exact.stayPreference !== candidate.stayPreference) return false;
   if ((candidate.mapDataVersion ?? 0) !== TRAVEL_GUIDE_MAP_DATA_VERSION) {

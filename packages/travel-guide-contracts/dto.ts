@@ -5,6 +5,10 @@ export type TravelGuideStayPreference = 'festival' | 'city' | 'value';
 
 export type AiGuidePlanFormValues = {
   departure: string;
+  travelDateMode?: 'raven' | 'manual';
+  /** Raven's user-selected travel window (required for new plan requests). */
+  departureDate?: string;
+  returnDate?: string;
   departureCity?: string;
   headcount: number;
   budgetTier?: TravelGuideBudgetTier;

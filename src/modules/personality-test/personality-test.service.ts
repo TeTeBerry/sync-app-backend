@@ -18,6 +18,7 @@ import { PERSONALITY_TEST_DRAW_COUNT } from './data/personality-question-slots';
 import { PERSONALITY_TEST_CATALOG_VERSION } from './data/personality-test-catalog.seed';
 import { PersonalityTestCatalogService } from './personality-test-catalog.service';
 import type { PersonalityTestResult } from './personality-test.types';
+import { recommendDjLineup } from './utils/recommend-dj-lineup.util';
 import { buildPersonalityNarrative } from './utils/build-narrative.util';
 import {
   LINEUP_POOL_EMPTY,
@@ -184,6 +185,84 @@ export class PersonalityTestService {
       await this.persistResult(trimmed, withFreshGenres);
     }
     return withFreshGenres;
+  }
+
+  /**
+   * Keep personality recommendations inside the festival the visitor is
+   * currently exploring. This is intentionally rule-based and therefore
+   * explainable from the saved test score plus each artist's stored genre.
+   */
+  async getLineupMatch(activityLegacyId: number, actor: RequestActor) {
+    const result = await this.getSavedResult(actor.resolvedUserId);
+    if (!result) {
+      return {
+        available: false as const,
+        reason: 'no_personality_result' as const,
+      };
+    }
+
+    return this.getLineupMatchForResult(activityLegacyId, result);
+  }
+
+  async getLineupMatchForResult(
+    activityLegacyId: number,
+    result: PersonalityTestResult,
+  ) {
+    if (result.version !== 1 || !result.score?.primaryType) {
+      return {
+        available: false as const,
+        reason: 'no_personality_result' as const,
+      };
+    }
+
+    const runtimeCatalog = await this.catalog.getRuntimeCatalog();
+    const type = runtimeCatalog.typeMeta[result.score.primaryType];
+    if (!type) {
+      return {
+        available: false as const,
+        reason: 'no_personality_result' as const,
+      };
+    }
+
+    const schedule = await this.scheduleService.getSchedule(activityLegacyId);
+    if (!schedule.djs.length) {
+      return {
+        available: false as const,
+        reason: 'lineup_unavailable' as const,
+      };
+    }
+    const seen = new Set<string>();
+    const lineup = schedule.djs
+      .filter((dj) => {
+        if (seen.has(dj.id)) return false;
+        seen.add(dj.id);
+        return true;
+      })
+      .map((dj) => ({
+        id: dj.id,
+        name: dj.name,
+        genre: dj.genre,
+        genreLabel: dj.genreLabel,
+        stage: 'main' as const,
+        popularity: dj.popularity,
+        genreColor: dj.genreColor,
+      }));
+    const recommendations = recommendDjLineup(result.score, lineup, {
+      typeMeta: runtimeCatalog.typeMeta,
+      soulProfiles: runtimeCatalog.soulProfiles,
+    });
+    return {
+      available: true as const,
+      personality: {
+        type: result.score.primaryType,
+        label: type.label,
+        labelEn: type.labelEn,
+        description: type.description,
+        genreTags: type.genreTags,
+        color: type.primaryColor,
+      },
+      recommendations,
+    };
   }
 
   private async persistResult(

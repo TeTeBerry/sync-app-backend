@@ -33,11 +33,16 @@ export class HotelSearchService {
 
   async search(input: HotelSearchInput): Promise<NormalizedHotelOption[]> {
     if (input.accommodationNights <= 0) return [];
+    const searchInput: HotelSearchInput = {
+      ...input,
+      checkInDate: input.recommendedCheckInDate ?? input.checkInDate,
+      checkOutDate: input.recommendedCheckOutDate ?? input.checkOutDate,
+    };
 
     // Raven / sync-web English plans: RouteStack SearchDestinations → SearchHotels.
     if (input.locale === 'en' && this.isRouteStackEnabled()) {
       const started = Date.now();
-      const results = await this.routeStackHotel!.searchHotels(input);
+      const results = await this.routeStackHotel!.searchHotels(searchInput);
       const normalized = dedupeNormalizedHotels(results);
       this.logger.log(
         `hotel search (routestack) done count=${normalized.length} durationMs=${Date.now() - started} destination=${input.destinationCity}`,
@@ -59,7 +64,7 @@ export class HotelSearchService {
     }
 
     const started = Date.now();
-    const results = await this.hotelProvider.searchHotels(input);
+    const results = await this.hotelProvider.searchHotels(searchInput);
     const normalized = dedupeNormalizedHotels(results);
     this.logger.log(
       `hotel search done count=${normalized.length} durationMs=${Date.now() - started} destination=${input.destinationCity}`,

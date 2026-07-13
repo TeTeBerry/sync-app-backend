@@ -73,6 +73,11 @@ export class ItineraryCacheService {
   ): Promise<void> {
     await this.jsonCache.delete(this.scheduleKey(activityLegacyId, dateKey));
     if (!dateKey) {
+      // Tomorrowland Belgium caches each selectable weekend independently.
+      await Promise.all([
+        this.jsonCache.delete(this.scheduleKey(activityLegacyId, 'weekend:w1')),
+        this.jsonCache.delete(this.scheduleKey(activityLegacyId, 'weekend:w2')),
+      ]);
       return;
     }
     await this.jsonCache.delete(this.scheduleKey(activityLegacyId));

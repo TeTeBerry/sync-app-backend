@@ -39,6 +39,8 @@ import {
   ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID,
 } from '@src/data/itinerary/itinerary.seed';
 import { ItineraryConflictService } from './itinerary-conflict.service';
+import { LineupConflictService } from './lineup-conflict.service';
+import { ClashResolutionService } from './clash-resolution.service';
 import { DiscogsGenreEnrichmentService } from './discogs-genre-enrichment.service';
 import { LineupCatalogService } from './lineup-catalog.service';
 import { ArtistProfileResolver } from './artist-profile-resolver.service';
@@ -50,6 +52,10 @@ import type {
   ItineraryScheduleDto,
 } from './itinerary-schedule.types';
 import type { ActivityLookupRecord } from '../activity/ports/activity-lookup.port';
+import {
+  dateKeysForTomorrowlandBelgiumWeekend,
+  type TomorrowlandBelgiumWeekend,
+} from './domain/tomorrowland-belgium-weekend.util';
 
 export type {
   ArtistPerformanceHit,
@@ -73,6 +79,8 @@ export class ItineraryScheduleService implements OnModuleInit {
     private readonly catalogRefresh: IActivityCatalogRefreshPort,
     private readonly cache: ItineraryCacheService,
     private readonly conflictService: ItineraryConflictService,
+    private readonly lineupConflicts: LineupConflictService,
+    private readonly clashResolution: ClashResolutionService,
     private readonly discogsGenre: DiscogsGenreEnrichmentService,
     private readonly lineupCatalog: LineupCatalogService,
     private readonly artistProfileResolver: ArtistProfileResolver,
@@ -158,6 +166,17 @@ export class ItineraryScheduleService implements OnModuleInit {
     await Promise.all(
       activityIds.map((legacyId) => this.cache.invalidateSchedule(legacyId)),
     );
+    // Timetable seed/upsert may change fingerprints — mark prior clash decisions for review.
+    await Promise.all(
+      activityIds.map(async (legacyId) => {
+        const loaded =
+          await this.lineupConflicts.loadClashPerformances(legacyId);
+        await this.clashResolution.invalidateForScheduleChange(
+          legacyId,
+          loaded.scheduleVersion,
+        );
+      }),
+    );
     await this.catalogRefresh.refreshAfterLineupCatalogChange();
   }
 
@@ -182,12 +201,16 @@ export class ItineraryScheduleService implements OnModuleInit {
     activityLegacyId: number,
     options?: {
       dateKey?: string;
+      weekend?: TomorrowlandBelgiumWeekend;
       selectedDjIds?: string[];
     },
   ): Promise<ItineraryScheduleDto> {
+    const cacheKey = options?.weekend
+      ? `weekend:${options.weekend}`
+      : options?.dateKey;
     const cached = await this.cache.getScheduleCache<ItineraryScheduleDto>(
       activityLegacyId,
-      options?.dateKey,
+      cacheKey,
     );
     if (cached && !options?.selectedDjIds?.length) {
       return cached;
@@ -200,7 +223,14 @@ export class ItineraryScheduleService implements OnModuleInit {
 
     const sessionFilter: Record<string, unknown> = { activityLegacyId };
     const perfFilter: Record<string, unknown> = { activityLegacyId };
-    if (options?.dateKey) {
+    const weekendDateKeys = dateKeysForTomorrowlandBelgiumWeekend(
+      activityLegacyId,
+      options?.weekend,
+    );
+    if (weekendDateKeys) {
+      sessionFilter.dateKey = { $in: weekendDateKeys };
+      perfFilter.dateKey = { $in: weekendDateKeys };
+    } else if (options?.dateKey) {
       sessionFilter.dateKey = options.dateKey;
       perfFilter.dateKey = options.dateKey;
     }
@@ -268,11 +298,7 @@ export class ItineraryScheduleService implements OnModuleInit {
     };
 
     if (!options?.selectedDjIds?.length) {
-      await this.cache.setScheduleCache(
-        activityLegacyId,
-        dto,
-        options?.dateKey,
-      );
+      await this.cache.setScheduleCache(activityLegacyId, dto, cacheKey);
     }
 
     return dto;

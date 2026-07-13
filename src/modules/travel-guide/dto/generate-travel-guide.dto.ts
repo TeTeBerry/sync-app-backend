@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsDateString,
   IsIn,
   IsInt,
   IsOptional,
@@ -21,6 +22,20 @@ export class GenerateTravelGuideDto {
   @IsString()
   @MinLength(1)
   departure!: string;
+
+  @IsOptional()
+  @IsIn(['raven', 'manual'])
+  travelDateMode?: 'raven' | 'manual';
+
+  /** User-selected outbound date. Raven requires it before generation. */
+  @IsOptional()
+  @IsDateString()
+  departureDate?: string;
+
+  /** User-selected return / hotel checkout date. */
+  @IsOptional()
+  @IsDateString()
+  returnDate?: string;
 
   /** POI 补全返回的城市（如「上海市」），地理编码时优先于活动举办城市 */
   @IsOptional()

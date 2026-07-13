@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   Logger,
   NotFoundException,
   ServiceUnavailableException,
@@ -14,10 +15,7 @@ import { ActivityService } from '../activity/activity.service';
 import { WechatContentSecurityService } from '../auth/wechat-content-security.service';
 import { AmapMapService } from './map/amap.service';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
-import {
-  parseActivityDayCount,
-  resolveTravelGuideBudgetTier,
-} from './domain/parse-activity-days.util';
+import { resolveTravelGuideBudgetTier } from './domain/parse-activity-days.util';
 import { resolveTravelGuideLocale } from './domain/travel-guide-locale';
 import { travelGuideMapCollectUnavailableMessage } from './domain/travel-guide-copy';
 import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
@@ -38,7 +36,7 @@ import {
   travelGuideRegionKind,
 } from './domain/travel-guide-international.util';
 import { shouldFetchTravelQuote } from './domain/travel-guide-quote.util';
-import { resolveTravelGuideQuoteDates } from './domain/travel-guide-quote-dates.util';
+import { recommendFestivalTravelDates } from './domain/travel-guide-quote-dates.util';
 import {
   isPlanQuoteFresh,
   resolveQuoteCacheTtlMs,
@@ -127,8 +125,20 @@ export class TravelGuideGenerationOrchestrator {
       collectTravelGuideUgcTexts(dto),
     );
 
-    const accommodationNights =
-      dto.accommodationNights ?? parseActivityDayCount(activity.date);
+    const dates =
+      dto.travelDateMode === 'raven'
+        ? recommendFestivalTravelDates(activity.date)
+        : null;
+    const { departureDate, returnDate } = dates
+      ? {
+          departureDate: dates.recommendedDepartureDate,
+          returnDate: dates.recommendedReturnDate,
+        }
+      : requireTravelDates(dto);
+    const accommodationNights = nightsBetweenSelectedDates(
+      departureDate,
+      returnDate,
+    );
 
     const departure = dto.departure.trim();
     const departureCity = reconcileDepartureCityForCache(
@@ -140,6 +150,8 @@ export class TravelGuideGenerationOrchestrator {
     const generationDto: GenerateTravelGuideDto = {
       ...dtoRest,
       departure,
+      departureDate,
+      returnDate,
       ...(departureCity ? { departureCity } : {}),
       accommodationNights,
       budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
@@ -324,7 +336,10 @@ export class TravelGuideGenerationOrchestrator {
         ctx.sectionStatus.flights = 'skipped';
       }
 
-      const flights = this.flightSearch.fromEnrichment(quoteSnapshot);
+      const flights = this.flightSearch.fromEnrichment(
+        quoteSnapshot,
+        activity.date,
+      );
       ctx.searchResults.flights = flights;
       ctx.sectionStatus.flights =
         ctx.sectionStatus.flights === 'failed'
@@ -358,15 +373,11 @@ export class TravelGuideGenerationOrchestrator {
           ) ||
           location.mapCtx.venue.title ||
           '';
-        const { outboundDate, returnDate } = resolveTravelGuideQuoteDates(
-          activity.date,
-          accommodationNights,
-        );
         try {
           const routeStackHotels = await this.hotelSearch.search({
             destinationCity,
-            checkInDate: outboundDate,
-            checkOutDate: returnDate,
+            checkInDate: generationDto.departureDate!,
+            checkOutDate: generationDto.returnDate!,
             accommodationNights,
             headcount: generationDto.headcount,
             budgetTier: selectedBudgetTier,
@@ -624,6 +635,13 @@ export class TravelGuideGenerationOrchestrator {
             : undefined;
 
       let plan = assembleTravelGuidePlanFromContext(ctx);
+      if (generationDto.travelDateMode === 'raven') {
+        plan = {
+          ...plan,
+          recommendedDepartureDate: generationDto.departureDate,
+          recommendedReturnDate: generationDto.returnDate,
+        };
+      }
       if (mapHotelByTier) {
         plan = {
           ...plan,
@@ -844,4 +862,32 @@ export class TravelGuideGenerationOrchestrator {
     );
     return guideId;
   }
+}
+
+function requireTravelDates(dto: GenerateTravelGuideDto): {
+  departureDate: string;
+  returnDate: string;
+} {
+  const departureDate = dto.departureDate?.trim();
+  const returnDate = dto.returnDate?.trim();
+  if (!departureDate || !returnDate) {
+    throw new BadRequestException('Departure and return dates are required');
+  }
+  return { departureDate, returnDate };
+}
+
+function nightsBetweenSelectedDates(
+  departureDate: string,
+  returnDate: string,
+): number {
+  const departure = Date.parse(`${departureDate}T00:00:00Z`);
+  const returning = Date.parse(`${returnDate}T00:00:00Z`);
+  if (
+    !Number.isFinite(departure) ||
+    !Number.isFinite(returning) ||
+    returning <= departure
+  ) {
+    throw new BadRequestException('Return date must be after departure date');
+  }
+  return Math.round((returning - departure) / 86_400_000);
 }

@@ -66,6 +66,9 @@ export class TravelGuideQuoteRefreshService {
     if (!activity) return input.plan;
 
     const dto = buildDtoFromSavedForm(input.form);
+    // Older saved plans predate Raven's explicit travel window. Keep their
+    // existing quoted inventory rather than silently inferring new dates.
+    if (!dto.departureDate || !dto.returnDate) return input.plan;
     const mapCtx = buildMinimalMapContextForQuote(input.plan, activity, dto);
     const quoteEligible = shouldFetchTravelQuote(activity, dto, mapCtx);
     if (!this.needsFlightQuoteRefresh(input.plan, quoteEligible)) {

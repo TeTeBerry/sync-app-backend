@@ -6,6 +6,8 @@ export interface HotelSearchInput {
   destinationCity: string;
   checkInDate: string;
   checkOutDate?: string;
+  recommendedCheckInDate?: string;
+  recommendedCheckOutDate?: string;
   accommodationNights: number;
   headcount: number;
   budgetTier: TravelGuideBudgetTier;

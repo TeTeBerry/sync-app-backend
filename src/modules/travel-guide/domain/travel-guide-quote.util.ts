@@ -12,7 +12,6 @@ import type {
   FlightQuoteSnapshot,
   TravelQuoteQuery,
 } from '../ports/travel-quote.types';
-import { resolveTravelGuideQuoteDates } from './travel-guide-quote-dates.util';
 import { resolveTravelGuideLocale } from './travel-guide-locale';
 
 export type TravelQuoteActivity = Partial<
@@ -52,11 +51,6 @@ export function buildTravelQuoteQuery(
   );
   if (!destinationCity.trim()) return null;
 
-  const { outboundDate, returnDate } = resolveTravelGuideQuoteDates(
-    activity.date,
-    accommodationNights,
-  );
-
   return {
     departureText: dto.departure.trim(),
     departureCity:
@@ -77,8 +71,9 @@ export function buildTravelQuoteQuery(
     headcount: dto.headcount,
     accommodationNights,
     budgetTier: resolveTravelGuideBudgetTier(dto.budgetTier),
-    outboundDate,
-    returnDate,
+    // The traveller owns this window. Do not infer or broaden provider dates.
+    outboundDate: dto.departureDate!,
+    returnDate: dto.returnDate!,
     selfDrive: Boolean(dto.selfDrive),
     locale: resolveTravelGuideLocale(dto.locale),
   };

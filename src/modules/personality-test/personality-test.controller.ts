@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+  Req,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { Public } from '../../common/auth/public.decorator';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
@@ -7,6 +16,7 @@ import { PublicApiRateLimitService } from '../../common/rate-limit/public-api-ra
 import { SubmitPersonalityTestDto } from './dto/submit-personality-test.dto';
 import { SavePersonalityTestResultDto } from './dto/save-personality-test-result.dto';
 import { PersonalityTestService } from './personality-test.service';
+import type { PersonalityTestResult } from './personality-test.types';
 
 @Controller('personality-test')
 export class PersonalityTestController {
@@ -56,6 +66,31 @@ export class PersonalityTestController {
   @Get('result')
   getSavedResult(@CurrentActor() actor: RequestActor) {
     return this.personalityTest.getSavedResult(actor.resolvedUserId);
+  }
+
+  /**
+   * A festival-specific reading of a saved personality result. This deliberately
+   * uses the same deterministic matcher as the test; Raven can explain every
+   * recommendation without making a vague AI claim.
+   */
+  @Get('lineup/:legacyId')
+  getLineupMatch(
+    @Param('legacyId', ParseIntPipe) legacyId: number,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.personalityTest.getLineupMatch(legacyId, actor);
+  }
+
+  @Public()
+  @Post('lineup/:legacyId')
+  getAnonymousLineupMatch(
+    @Param('legacyId', ParseIntPipe) legacyId: number,
+    @Body() body: { result?: PersonalityTestResult },
+  ) {
+    if (!body.result) {
+      throw new Error('Personality result is required');
+    }
+    return this.personalityTest.getLineupMatchForResult(legacyId, body.result);
   }
 
   @Post('save')

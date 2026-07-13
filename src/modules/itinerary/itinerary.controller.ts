@@ -13,6 +13,10 @@ import type { RequestActor } from '../../common/auth/request-actor.types';
 import { GenerateItineraryDto } from './dto/generate-itinerary.dto';
 import { SaveItineraryDto } from './dto/save-itinerary.dto';
 import { ItineraryService } from './itinerary.service';
+import {
+  isTomorrowlandBelgiumWeekend,
+  type TomorrowlandBelgiumWeekend,
+} from './domain/tomorrowland-belgium-weekend.util';
 
 @Controller('activities/:legacyId/itinerary')
 export class ItineraryController {
@@ -24,11 +28,13 @@ export class ItineraryController {
     @Param('legacyId', ParseIntPipe) legacyId: number,
     @CurrentActor() actor: RequestActor,
     @Query('dateKey') dateKey?: string,
+    @Query('weekend') weekend?: string,
     @Query('selectedDjIds') selectedDjIds?: string,
   ) {
     void actor;
     return this.itineraryService.getSchedule(legacyId, {
       dateKey,
+      weekend: isTomorrowlandBelgiumWeekend(weekend) ? weekend : undefined,
       selectedDjIds,
     });
   }
