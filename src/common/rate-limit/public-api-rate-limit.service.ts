@@ -14,6 +14,7 @@ export type PublicRateLimitScope =
   | 'raven_plan'
   | 'raven_plan_poll'
   | 'raven_plan_read'
+  | 'raven_festival_weather'
   | 'post_ai_search'
   | 'post_ai_compose'
   | 'scene_run'
@@ -74,6 +75,12 @@ export class PublicApiRateLimitService {
       raven_plan_read: {
         maxRequests:
           config.get<number>('publicApi.rateLimit.ravenPlanReadMax') ?? 30,
+        windowMs,
+      },
+      raven_festival_weather: {
+        maxRequests:
+          config.get<number>('publicApi.rateLimit.ravenFestivalWeatherMax') ??
+          30,
         windowMs,
       },
       post_ai_search: {

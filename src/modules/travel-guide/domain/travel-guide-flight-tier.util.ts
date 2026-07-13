@@ -204,7 +204,16 @@ export function applyFlightTierQuoteToPlan(
     (line) => !isRollingGoFlightSampleLine(line),
   );
 
-  const flightOffers = resolveDisplayFlightOffers(tierQuote);
+  const flightOffers = resolveDisplayFlightOffers(tierQuote)?.map(
+    (offer, index) =>
+      index === 0 && plan.transport.flightOffers?.[0]?.recommendationReason
+        ? {
+            ...offer,
+            recommendationReason:
+              plan.transport.flightOffers[0].recommendationReason,
+          }
+        : offer,
+  );
 
   return {
     ...plan,

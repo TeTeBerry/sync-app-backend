@@ -59,6 +59,8 @@ export interface TravelGuideFlightOffer {
   return?: TravelGuideFlightLeg;
   /** 舱位说明，如「经济舱」「公务舱」 */
   cabinLabel?: string;
+  /** Score-derived explanation for the selected recommendation. */
+  recommendationReason?: string;
 }
 
 /** 各预算档 RollingGo 机票参考价（舱位不同） */

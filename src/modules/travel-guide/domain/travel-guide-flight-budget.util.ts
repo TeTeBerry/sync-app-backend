@@ -1,9 +1,6 @@
 import type { TravelGuideBudgetItem } from '@sync/travel-guide-contracts';
 import type { FlightQuoteSnapshot } from '../ports/travel-quote.types';
-import {
-  flightBudgetLabelForQuote,
-  TRAVEL_QUOTE_DISCLAIMER,
-} from './travel-guide-quote.util';
+import { flightBudgetLabelForQuote } from './travel-guide-quote.util';
 import type { TravelGuideRegionKind } from './travel-guide-international.util';
 import {
   formatTravelGuideMoneyRange,
@@ -64,7 +61,7 @@ export function buildRollingGoFlightBudgetItem(
   const locale = input.locale === 'en' ? 'en' : 'zh';
   const { minPricePerAdult, maxPricePerAdult, currency, sampleLines } = flight;
   const quoteCurrency = (currency ?? 'CNY') as TravelGuideCurrency;
-  const baseLabel = flightBudgetLabelForQuote(regionKind, flight);
+  const baseLabel = flightBudgetLabelForQuote(regionKind, flight, locale);
   const route = routeLabel(flight);
 
   const perPersonRange = formatQuoteMoneyRange(
@@ -95,7 +92,6 @@ export function buildRollingGoFlightBudgetItem(
           flight.cabinFallback && flight.requestedCabinLabel
             ? `${flight.requestedCabinLabel} unavailable — showing ${flight.cabinLabel ?? 'Economy'} reference fares`
             : null,
-          TRAVEL_QUOTE_DISCLAIMER,
         ]
       : [
           flight.cabinLabel,
@@ -107,7 +103,6 @@ export function buildRollingGoFlightBudgetItem(
           flight.cabinFallback && flight.requestedCabinLabel
             ? `暂无${flight.requestedCabinLabel}，以下为${flight.cabinLabel ?? '经济舱'}参考价`
             : null,
-          TRAVEL_QUOTE_DISCLAIMER,
         ];
 
   const details = flight.flightOffers?.length

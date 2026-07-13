@@ -66,6 +66,8 @@ import { CatalogTicketProvider } from './providers/catalog-ticket.provider';
 import { OpenFlightsAirportCatalogService } from './raven/openflights-airport-catalog.service';
 import { RavenPlaceSuggestionsController } from './raven/raven-place-suggestions.controller';
 import { RavenPlanController } from './raven/raven-plan.controller';
+import { RavenFestivalWeatherController } from './raven/raven-festival-weather.controller';
+import { RavenFestivalWeatherService } from './raven/raven-festival-weather.service';
 
 @Module({
   imports: [
@@ -97,6 +99,7 @@ import { RavenPlanController } from './raven/raven-plan.controller';
     TravelGuideMapController,
     RavenPlaceSuggestionsController,
     RavenPlanController,
+    RavenFestivalWeatherController,
   ],
   providers: [
     AmapMapService,
@@ -150,6 +153,7 @@ import { RavenPlanController } from './raven/raven-plan.controller';
     TravelQuoteEnrichmentService,
     TravelGuideQuoteRefreshService,
     OpenFlightsAirportCatalogService,
+    RavenFestivalWeatherService,
   ],
   exports: [
     TravelGuideGenerationService,

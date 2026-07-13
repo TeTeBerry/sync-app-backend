@@ -4,7 +4,6 @@ import type {
 } from '@sync/travel-guide-contracts';
 import type { TravelQuoteEnrichment } from '../ports/travel-quote.types';
 import type { TravelGuideRegionKind } from './travel-guide-international.util';
-import { TRAVEL_QUOTE_DISCLAIMER } from './travel-guide-quote.util';
 import { isPlausibleHotelNightlyPrice } from './travel-quote-plausibility.util';
 import { applyOverseasRollingGoRecommendations } from './travel-guide-rollinggo-recommendations.util';
 import { buildRollingGoFlightBudgetItem } from './travel-guide-flight-budget.util';
@@ -286,8 +285,8 @@ export function applyTravelQuoteEnrichment(
       ),
       note:
         locale === 'en'
-          ? `${TRAVEL_QUOTE_DISCLAIMER} Based on ${rooms} room(s) · ${nights} night(s) · ${tierWord} tier.`
-          : `${TRAVEL_QUOTE_DISCLAIMER} 按 ${rooms} 间房 · ${nights} 晚 · ${tierWord}档估算。`,
+          ? `Based on ${rooms} room(s) · ${nights} night(s) · ${tierWord} tier.`
+          : `按 ${rooms} 间房 · ${nights} 晚 · ${tierWord}档估算。`,
     });
   }
 

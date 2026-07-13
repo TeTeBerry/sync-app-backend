@@ -123,6 +123,7 @@ export function normalizedFlightToOffer(
   flight: NormalizedFlightOption,
   category?: FlightRecommendationCategory,
   locale: 'zh' | 'en' = 'zh',
+  reasonCodes?: FlightReasonCode[],
 ): TravelGuideFlightOffer {
   const en = locale === 'en';
   const stopsLabel =
@@ -146,6 +147,9 @@ export function normalizedFlightToOffer(
         ? `${categoryLabel} · ${localizeCabinLabel(flight.cabinLabel, locale)}`
         : categoryLabel
       : localizeCabinLabel(flight.cabinLabel, locale),
+    ...(reasonCodes?.length
+      ? { recommendationReason: formatFlightReasonCodes(reasonCodes, locale) }
+      : {}),
     outbound: {
       route: `${flight.originAirportCode}-${flight.destinationAirportCode}`,
       depAirport: flight.originAirportCode,
@@ -380,7 +384,15 @@ export function buildFlightOffersFromRecommendations(input: {
     const flight = byId.get(id);
     if (!flight) return;
     seen.add(id);
-    offers.push(normalizedFlightToOffer(flight, category, locale));
+    const recommendation = input.flightRecommendations[category];
+    offers.push(
+      normalizedFlightToOffer(
+        flight,
+        category,
+        locale,
+        recommendation?.reasonCodes,
+      ),
+    );
   };
 
   push(

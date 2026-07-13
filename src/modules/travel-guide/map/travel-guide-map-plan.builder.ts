@@ -41,6 +41,29 @@ import type {
 export { TRAVEL_GUIDE_TIER_HOTEL_LIST_LIMIT as TRAVEL_GUIDE_HOTEL_LIST_LIMIT };
 export const TRAVEL_GUIDE_NIGHTLIFE_LIST_LIMIT = 6;
 
+// Some curated POIs only have a local-language name in the static seed data.
+// Keep English plans fully English without changing the source names used by
+// Chinese plans or map lookups.
+const ENGLISH_POI_NAMES: Record<string, string> = {
+  '海底捞火锅(沙井京基百纳店)': 'Haidilao Hot Pot (Shajing Kingkey Branch)',
+  '潮汕砂锅粥(沙井店)': 'Chaoshan Claypot Congee (Shajing Branch)',
+  永宗岛韩式烤肉: 'Yeongjong-do Korean BBQ',
+  仁川机场美食街: 'Incheon Airport Food Street',
+  江南深夜烤肉: 'Gangnam Late-night BBQ',
+  蚕室夜市小吃街: 'Jamsil Night Market Food Street',
+  台场深夜章鱼烧: 'Odaiba Late-night Takoyaki',
+  新桥居酒屋通: 'Shimbashi Izakaya Street',
+  台场拉面横丁: 'Odaiba Ramen Alley',
+  涩谷深夜烧鸟: 'Shibuya Late-night Yakitori',
+  '海底捞火锅(西藏南路店)': 'Haidilao Hot Pot (Xizang South Road Branch)',
+  '很久以前羊肉串(世博源店)':
+    'Hengjiu Yiqian Lamb Skewers (Expo Source Branch)',
+};
+
+function poiNameForLocale(name: string, locale: 'zh' | 'en'): string {
+  return locale === 'en' ? (ENGLISH_POI_NAMES[name] ?? name) : name;
+}
+
 function resolveMapTransportRoute(
   ctx: TravelGuideMapContext,
   selfDrive: boolean,
@@ -248,7 +271,7 @@ export function nightlifeFromRanked(
   locale: 'zh' | 'en' = 'zh',
 ): TravelGuideSpotItem[] {
   return ranked.slice(0, TRAVEL_GUIDE_NIGHTLIFE_LIST_LIMIT).map((p) => ({
-    name: p.name,
+    name: poiNameForLocale(p.name, locale),
     note: formatNightlifeNote(p, locale),
     reason: nightlifeReasonFromPoi(p, eventEndHour, locale),
   }));

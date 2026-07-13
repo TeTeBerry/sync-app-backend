@@ -11,7 +11,6 @@ import {
 } from './travel-guide-accommodation.constants';
 import { formatVenueDistanceLabel } from './travel-guide-venue-distance.util';
 import { travelGuideHotelBookingHint } from './travel-guide-international.util';
-import { TRAVEL_QUOTE_DISCLAIMER } from './travel-guide-quote.util';
 import { formatTravelGuideMoney } from './travel-guide-currency.util';
 
 const ROLLINGGO_HOTEL_BOOKING_HINT_ZH = 'RollingGo 查询参考 · OTA 比价预订';
@@ -76,11 +75,11 @@ export function rollingGoHotelToGuideItem(
     reason:
       input.index === 0
         ? locale === 'en'
-          ? `RollingGo live search pick; ${TRAVEL_QUOTE_DISCLAIMER}`
-          : `RollingGo 实时查询推荐；${TRAVEL_QUOTE_DISCLAIMER}`
+          ? 'RollingGo live search pick'
+          : 'RollingGo 实时查询推荐'
         : locale === 'en'
-          ? `RollingGo backup stay; ${TRAVEL_QUOTE_DISCLAIMER}`
-          : `RollingGo 备选酒店；${TRAVEL_QUOTE_DISCLAIMER}`,
+          ? 'RollingGo backup stay'
+          : 'RollingGo 备选酒店',
     bookingHint: rec.bookingUrl
       ? locale === 'en'
         ? ROLLINGGO_HOTEL_BOOKING_HINT_EN
@@ -101,7 +100,8 @@ export function rollingGoHotelSchemes(
       label: tierAccommodationSchemeLabel(index, tier, locale),
       name: hotel.name,
       note: hotel.note,
-      reason: hotel.reason ?? TRAVEL_QUOTE_DISCLAIMER,
+      reason:
+        hotel.reason ?? (locale === 'en' ? 'Recommended stay' : '推荐住宿'),
       bookingHint: hotel.bookingHint,
     }));
 }

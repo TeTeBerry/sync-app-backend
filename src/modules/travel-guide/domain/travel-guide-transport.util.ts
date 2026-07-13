@@ -506,10 +506,12 @@ export function buildInterCityTransportLines(
     const depAirport = resolveDepartureAirportLabel(
       departure,
       input.departureCity,
+      input.locale,
     );
     const destAirport = resolveDestinationAirportLabel(
       profile,
       input.activity?.location,
+      input.locale,
     );
 
     lines.push(
@@ -924,7 +926,7 @@ function buildInterCityTransportLinesEn(
   const profile = resolveDestinationTransportProfile(input);
   const { departure, venueTitle, venueReadableAddress, selfDrive, interCity } =
     input;
-  const dest = profile.destinationCity;
+  const dest = englishDestinationCity(profile.destinationCity);
   const venueLabel = venueReadableAddress || venueTitle;
 
   if (!interCity) {
@@ -1021,6 +1023,17 @@ function buildInterCityTransportLinesEn(
     `Buy intercity tickets early; last-mile rideshare / metro is under Venue transfer.`,
     'Return tickets sell out around festival weekends — book with outbound.',
   ];
+}
+
+function englishDestinationCity(value: string): string {
+  return value
+    .replace(/普吉岛|普吉/g, 'Phuket')
+    .replace(/曼谷/g, 'Bangkok')
+    .replace(/仁川/g, 'Incheon')
+    .replace(/东京/g, 'Tokyo')
+    .replace(/大阪/g, 'Osaka')
+    .replace(/布鲁塞尔/g, 'Brussels')
+    .replace(/安特卫普/g, 'Antwerp');
 }
 
 function buildVenueTransportOptionsEn(

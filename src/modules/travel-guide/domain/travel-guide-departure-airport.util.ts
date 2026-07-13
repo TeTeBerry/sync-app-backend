@@ -313,15 +313,20 @@ export function resolveDepartureCityLabel(
 export function resolveDepartureAirportLabel(
   departureText: string,
   departureCity?: string,
+  locale?: 'zh' | 'en',
 ): string {
   const city = canonicalizeDepartureCityForAirport(
     resolveDepartureCityLabel(departureText, departureCity),
   );
   const airport = city ? DEPARTURE_AIRPORTS[city] : undefined;
   if (airport) {
+    if (locale === 'en') {
+      return `${englishAirportName(airport.name)} (${airport.iata})`;
+    }
     return `${airport.name}（${airport.iata}）`;
   }
   const label = departureText.trim() || city || '出发地';
+  if (locale === 'en') return `${label} international airport`;
   return `${label}就近主要国际机场`;
 }
 
@@ -333,22 +338,31 @@ export function resolveDestinationAirportLabel(
     regionKind: TravelGuideRegionKind;
   },
   activityLocation?: string,
+  locale?: 'zh' | 'en',
 ): string {
   const corpus =
     `${activityLocation ?? ''} ${profile.destinationCity}`.toLowerCase();
 
   if (profile.thailand) {
     if (/普吉|phuket|patong/.test(corpus)) {
-      return '普吉国际机场（HKT）';
+      return locale === 'en'
+        ? 'Phuket International Airport (HKT)'
+        : '普吉国际机场（HKT）';
     }
     if (profile.bangkok) {
-      return '曼谷素万那普/廊曼机场（BKK/DMK）';
+      return locale === 'en'
+        ? 'Bangkok Suvarnabhumi / Don Mueang Airports (BKK/DMK)'
+        : '曼谷素万那普/廊曼机场（BKK/DMK）';
     }
-    return '曼谷/普吉等主要机场';
+    return locale === 'en'
+      ? 'Bangkok / Phuket major airports'
+      : '曼谷/普吉等主要机场';
   }
 
   if (/韩国|korea|仁川|incheon|首尔|seoul|永宗|yeongjong/.test(corpus)) {
-    return '仁川国际机场（ICN）';
+    return locale === 'en'
+      ? 'Incheon International Airport (ICN)'
+      : '仁川国际机场（ICN）';
   }
 
   if (
@@ -356,18 +370,49 @@ export function resolveDestinationAirportLabel(
       corpus,
     )
   ) {
-    return '羽田/成田国际机场（HND/NRT）';
+    return locale === 'en'
+      ? 'Haneda / Narita International Airports (HND/NRT)'
+      : '羽田/成田国际机场（HND/NRT）';
   }
 
   if (profile.regionKind === 'hmt') {
-    if (/香港|hong\s*kong/.test(corpus)) return '香港国际机场（HKG）';
-    if (/澳门|macau/.test(corpus)) return '澳门国际机场（MFM）';
+    if (/香港|hong\s*kong/.test(corpus))
+      return locale === 'en'
+        ? 'Hong Kong International Airport (HKG)'
+        : '香港国际机场（HKG）';
+    if (/澳门|macau/.test(corpus))
+      return locale === 'en'
+        ? 'Macau International Airport (MFM)'
+        : '澳门国际机场（MFM）';
     if (/台湾|台北|高雄|taoyuan/.test(corpus)) {
-      return '台湾桃园/高雄等机场（TPE/KHH）';
+      return locale === 'en'
+        ? 'Taiwan Taoyuan / Kaohsiung Airports (TPE/KHH)'
+        : '台湾桃园/高雄等机场（TPE/KHH）';
     }
   }
 
-  return `${profile.destinationCity}主要国际机场`;
+  return locale === 'en'
+    ? `${profile.destinationCity} major international airport`
+    : `${profile.destinationCity}主要国际机场`;
+}
+
+function englishAirportName(name: string): string {
+  return name
+    .replace(
+      /上海浦东\/虹桥国际机场/g,
+      'Shanghai Pudong / Hongqiao International Airports',
+    )
+    .replace(
+      /上海虹桥\/浦东国际机场/g,
+      'Shanghai Hongqiao / Pudong International Airports',
+    )
+    .replace(/普吉国际机场/g, 'Phuket International Airport')
+    .replace(
+      /曼谷素万那普\/廊曼国际机场/g,
+      'Bangkok Suvarnabhumi / Don Mueang International Airports',
+    )
+    .replace(/仁川\/金浦国际机场/g, 'Incheon / Gimpo International Airports')
+    .replace(/羽田\/成田国际机场/g, 'Haneda / Narita International Airports');
 }
 
 /** 过滤国内高铁/火车站枢纽提示，避免污染国际段攻略。 */

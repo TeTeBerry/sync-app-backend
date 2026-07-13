@@ -2,7 +2,9 @@ import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
 import { resolveTravelGuideBudgetTier } from './parse-activity-days.util';
 import { buildTravelGuidePlan } from './travel-guide-fallback.builder';
 import { attachQuoteTierMetadataToPlan } from './attach-quote-tier-metadata.util';
+import { applyFlightTierQuoteToPlan } from './travel-guide-flight-tier.util';
 import { applyTravelGuideAccommodationPreference } from './travel-guide-accommodation-preference.util';
+import { travelGuideRegionKind } from './travel-guide-international.util';
 import {
   buildFlightOffersFromRecommendations,
   buildFlightSampleLine,
@@ -90,6 +92,7 @@ export function assembleTravelGuidePlanFromContext(
                 ctx.selectedOptions.flight,
                 'bestOverall',
                 locale,
+                ctx.recommendations.flights.bestOverall?.reasonCodes,
               ),
             ],
     };
@@ -146,6 +149,14 @@ export function assembleTravelGuidePlanFromContext(
     accommodationNights,
     budgetTier,
     locale,
+  });
+
+  // Raven's final journey should surface the selected tier's real fare, not
+  // merely retain it as hidden metadata for a later budget change.
+  plan = applyFlightTierQuoteToPlan(plan, budgetTier, {
+    headcount: dto.headcount,
+    regionKind: travelGuideRegionKind(activity),
+    interCity,
   });
 
   return applyTravelGuideAccommodationPreference(plan, accommodationNights);

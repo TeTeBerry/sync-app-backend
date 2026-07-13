@@ -13,6 +13,7 @@ import type {
   TravelQuoteQuery,
 } from '../ports/travel-quote.types';
 import { resolveTravelGuideLocale } from './travel-guide-locale';
+import type { TravelGuideLocale } from './travel-guide-locale';
 
 export type TravelQuoteActivity = Partial<
   Pick<
@@ -81,7 +82,13 @@ export function buildTravelQuoteQuery(
 
 export function flightBudgetLabel(
   regionKind: TravelQuoteQuery['regionKind'],
+  locale: TravelGuideLocale = 'zh',
 ): string {
+  if (locale === 'en') {
+    if (regionKind === 'overseas') return 'Flights (round-trip)';
+    if (regionKind === 'hmt') return 'Flights / rail (round-trip)';
+    return 'Intercity travel (rail / flights)';
+  }
   if (regionKind === 'overseas') return '机票（往返）';
   if (regionKind === 'hmt') return '机票/高铁（往返）';
   return '城际交通（高铁/机票）';
@@ -90,13 +97,15 @@ export function flightBudgetLabel(
 export function flightBudgetLabelForQuote(
   regionKind: TravelQuoteQuery['regionKind'],
   flight: Pick<FlightQuoteSnapshot, 'fromCityCode' | 'toCityCode'>,
+  locale: TravelGuideLocale = 'zh',
 ): string {
   if (flight.fromCityCode && flight.toCityCode) {
+    if (locale === 'en') return 'Flights (round-trip)';
     if (regionKind === 'domestic') return '机票（往返）';
     if (regionKind === 'hmt') return '机票（往返）';
-    return flightBudgetLabel(regionKind);
+    return flightBudgetLabel(regionKind, locale);
   }
-  return flightBudgetLabel(regionKind);
+  return flightBudgetLabel(regionKind, locale);
 }
 
 export const TRAVEL_QUOTE_DISCLAIMER =

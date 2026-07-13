@@ -19,6 +19,8 @@ import {
 import { shouldFetchTravelQuote } from './domain/travel-guide-quote.util';
 import { buildDtoFromSavedForm } from './domain/travel-guide-saved-form.util';
 import { resolveTravelGuideLocale } from './domain/travel-guide-locale';
+import { applyFlightTierQuoteToPlan } from './domain/travel-guide-flight-tier.util';
+import { travelGuideRegionKind } from './domain/travel-guide-international.util';
 import { TravelQuoteEnrichmentService } from './travel-quote-enrichment.service';
 
 @Injectable()
@@ -66,24 +68,37 @@ export class TravelGuideQuoteRefreshService {
     if (!activity) return input.plan;
 
     const dto = buildDtoFromSavedForm(input.form);
+    const mapCtx = buildMinimalMapContextForQuote(input.plan, activity, dto);
+    const applyDisplayedFlightQuote = (plan: TravelGuidePlan) =>
+      applyFlightTierQuoteToPlan(
+        plan,
+        resolveTravelGuideBudgetTier(dto.budgetTier),
+        {
+          headcount: dto.headcount,
+          regionKind: travelGuideRegionKind(activity),
+          interCity: Boolean(mapCtx.interCity),
+        },
+      );
+
     // Older saved plans predate Raven's explicit travel window. Keep their
     // existing quoted inventory rather than silently inferring new dates.
-    if (!dto.departureDate || !dto.returnDate) return input.plan;
-    const mapCtx = buildMinimalMapContextForQuote(input.plan, activity, dto);
+    if (!dto.departureDate || !dto.returnDate) {
+      return applyDisplayedFlightQuote(input.plan);
+    }
     const quoteEligible = shouldFetchTravelQuote(activity, dto, mapCtx);
     if (!this.needsFlightQuoteRefresh(input.plan, quoteEligible)) {
-      return input.plan;
+      return applyDisplayedFlightQuote(input.plan);
     }
 
     if (!quoteEligible) {
-      return input.plan;
+      return applyDisplayedFlightQuote(input.plan);
     }
 
     const quoteTtlMs = resolveQuoteCacheTtlMs(
       this.config.get<number>('rollinggo.quoteCacheTtlSec'),
     );
     if (isPlanQuoteFresh(input.plan, quoteTtlMs)) {
-      return input.plan;
+      return applyDisplayedFlightQuote(input.plan);
     }
 
     this.logger.log(
@@ -101,7 +116,7 @@ export class TravelGuideQuoteRefreshService {
       !quoteSnapshot?.hotel &&
       !quoteSnapshot?.flightByTier
     ) {
-      return input.plan;
+      return applyDisplayedFlightQuote(input.plan);
     }
 
     const enriched = attachQuoteTierMetadataToPlan(input.plan, quoteSnapshot, {
@@ -112,7 +127,7 @@ export class TravelGuideQuoteRefreshService {
     });
 
     return applyTravelGuideAccommodationPreference(
-      enriched,
+      applyDisplayedFlightQuote(enriched),
       input.accommodationNights,
     );
   }

@@ -113,6 +113,9 @@ export function presentRavenPlan(plan: TravelGuidePlan): RavenPlanResponse {
               outbound: { ...offer.outbound },
               ...(offer.return ? { return: { ...offer.return } } : {}),
               ...(offer.cabinLabel ? { cabinLabel: offer.cabinLabel } : {}),
+              ...(offer.recommendationReason
+                ? { recommendationReason: offer.recommendationReason }
+                : {}),
             })),
           }
         : {}),
