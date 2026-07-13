@@ -506,12 +506,12 @@ export function buildInterCityTransportLines(
     const depAirport = resolveDepartureAirportLabel(
       departure,
       input.departureCity,
-      input.locale,
+      'zh',
     );
     const destAirport = resolveDestinationAirportLabel(
       profile,
       input.activity?.location,
-      input.locale,
+      'zh',
     );
 
     lines.push(
@@ -964,10 +964,12 @@ function buildInterCityTransportLinesEn(
     const depAirport = resolveDepartureAirportLabel(
       departure,
       input.departureCity,
+      'en',
     );
     const destAirport = resolveDestinationAirportLabel(
       profile,
       input.activity?.location,
+      'en',
     );
     const lines = [
       `Travel from 「${departure}」 to ${dest} is international — arrive 1–2 days early for immigration, SIM pickup, and rest.`,
@@ -1026,14 +1028,23 @@ function buildInterCityTransportLinesEn(
 }
 
 function englishDestinationCity(value: string): string {
-  return value
+  const translated = value
     .replace(/普吉岛|普吉/g, 'Phuket')
+    .replace(/芭提雅/g, 'Pattaya')
     .replace(/曼谷/g, 'Bangkok')
+    .replace(/清迈/g, 'Chiang Mai')
+    .replace(/苏梅岛|苏梅/g, 'Koh Samui')
     .replace(/仁川/g, 'Incheon')
+    .replace(/首尔/g, 'Seoul')
     .replace(/东京/g, 'Tokyo')
     .replace(/大阪/g, 'Osaka')
+    .replace(/香港/g, 'Hong Kong')
+    .replace(/澳门/g, 'Macau')
+    .replace(/台北/g, 'Taipei')
+    .replace(/高雄/g, 'Kaohsiung')
     .replace(/布鲁塞尔/g, 'Brussels')
     .replace(/安特卫普/g, 'Antwerp');
+  return /[\u3400-\u9fff]/.test(translated) ? 'the festival city' : translated;
 }
 
 function buildVenueTransportOptionsEn(
