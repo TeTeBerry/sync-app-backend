@@ -48,22 +48,49 @@ function normalizeCountryKey(value) {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-function resolveHunyuanConfig(options = {}) {
-  const apiKey = options.apiKey ?? process.env.HUNYUAN_API_KEY ?? '';
-  if (!apiKey) {
+/**
+ * CloudBase-only auth for offline scripts (same rules as TextLlmClient).
+ * @see https://docs.cloudbase.net/ai/model/nodejs-access#%E5%88%9D%E5%A7%8B%E5%8C%96
+ */
+function resolveCloudbaseAuth(options = {}) {
+  const envId = (
+    options.envId ??
+    process.env.CLOUDBASE_ENV_ID ??
+    ''
+  ).trim();
+  if (!envId) return null;
+
+  const secretId = (
+    options.secretId ??
+    process.env.TENCENTCLOUD_SECRETID ??
+    ''
+  ).trim();
+  const secretKey = (
+    options.secretKey ??
+    process.env.TENCENTCLOUD_SECRETKEY ??
+    ''
+  ).trim();
+  const accessKey = (
+    options.accessKey ??
+    process.env.CLOUDBASE_APIKEY ??
+    process.env.HUNYUAN_API_KEY ??
+    ''
+  ).trim();
+
+  const init = { env: envId, timeout: 120_000 };
+  if (secretId && secretKey) {
+    init.secretId = secretId;
+    init.secretKey = secretKey;
+  } else if (accessKey) {
+    init.accessKey = accessKey;
+  } else {
     return null;
   }
+
   return {
-    apiKey,
-    baseUrl:
-      options.baseUrl ??
-      process.env.HUNYUAN_BASE_URL ??
-      'https://tokenhub.tencentmaas.com/v1',
-    model: options.model ?? process.env.HUNYUAN_TEXT_MODEL ?? 'hy3-preview',
-    reasoningEffort:
-      options.reasoningEffort ??
-      process.env.HUNYUAN_REASONING_EFFORT ??
-      'no_think',
+    init,
+    model:
+      options.model ?? process.env.HUNYUAN_TEXT_MODEL ?? 'hy3',
   };
 }
 
@@ -85,37 +112,33 @@ export async function translateProfileToZh(profile, options = {}) {
     return trimmed;
   }
 
-  const hunyuan = resolveHunyuanConfig(options);
-  if (!hunyuan) {
+  const auth = resolveCloudbaseAuth(options);
+  if (!auth) {
     return trimmed;
   }
 
-  const response = await fetch(`${hunyuan.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${hunyuan.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: hunyuan.model,
-      temperature: 0.1,
-      stream: false,
-      messages: [
-        { role: 'system', content: PROFILE_TRANSLATE_SYSTEM },
-        { role: 'user', content: trimmed },
-      ],
-      extra_body: {
-        chat_template_kwargs: { reasoning_effort: hunyuan.reasoningEffort },
-      },
-    }),
+  const tcbMod = await import('@cloudbase/node-sdk');
+  const tcb = tcbMod.default ?? tcbMod;
+  const app = tcb.init(auth.init);
+  const model = app.ai().createModel('cloudbase');
+  const result = await model.generateText({
+    model: auth.model,
+    temperature: 0.1,
+    messages: [
+      { role: 'system', content: PROFILE_TRANSLATE_SYSTEM },
+      { role: 'user', content: trimmed },
+    ],
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data?.error?.message ?? `Hunyuan ${response.status}`);
+  if (result?.error) {
+    throw new Error(
+      result.error instanceof Error
+        ? result.error.message
+        : String(result.error),
+    );
   }
 
-  const text = data?.choices?.[0]?.message?.content?.trim() ?? '';
+  const text = (result?.text ?? '').trim();
   return text || trimmed;
 }
 

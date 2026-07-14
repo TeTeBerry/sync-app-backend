@@ -32,6 +32,8 @@ describe('validateProductionConfig', () => {
         'auth.wechatMini.appId': 'wx-test',
         'auth.wechatMini.appSecret': 'secret',
         'hunyuan.apiKey': 'hk-test',
+        'cloudbase.envId': 'sync-prd-xxx',
+        'cloudbase.apiKey': 'hk-test',
       }),
     );
     expect(result.errors.join('\n')).toMatch(/JWT_SECRET/);
@@ -45,10 +47,43 @@ describe('validateProductionConfig', () => {
         'auth.wechatMini.appId': 'wx-test',
         'auth.wechatMini.appSecret': 'secret',
         'hunyuan.apiKey': 'hk-test',
+        'cloudbase.envId': 'sync-prd-xxx',
+        'cloudbase.apiKey': 'hk-test',
       }),
     );
     expect(result.errors).toEqual([]);
     expect(result.warnings.join('\n')).toMatch(/CORS_ORIGINS/);
+  });
+
+  it('requires CLOUDBASE_ENV_ID for CloudBase text LLM', () => {
+    process.env.NODE_ENV = 'production';
+    const result = validateProductionConfig(
+      mockConfig({
+        'auth.jwtSecret': 'a'.repeat(32),
+        'auth.wechatMini.appId': 'wx-test',
+        'auth.wechatMini.appSecret': 'secret',
+        'hunyuan.apiKey': 'hk-test',
+        'cloudbase.envId': '',
+      }),
+    );
+    expect(result.errors.join('\n')).toMatch(/CLOUDBASE_ENV_ID/);
+  });
+
+  it('requires CloudBase credentials for text LLM', () => {
+    process.env.NODE_ENV = 'production';
+    const result = validateProductionConfig(
+      mockConfig({
+        'auth.jwtSecret': 'a'.repeat(32),
+        'auth.wechatMini.appId': 'wx-test',
+        'auth.wechatMini.appSecret': 'secret',
+        'hunyuan.apiKey': '',
+        'cloudbase.envId': 'sync-prd-xxx',
+        'cloudbase.apiKey': '',
+        'cloudbase.secretId': '',
+        'cloudbase.secretKey': '',
+      }),
+    );
+    expect(result.errors.join('\n')).toMatch(/CloudBase text LLM/);
   });
 
   it('formats fatal errors for startup logs', () => {

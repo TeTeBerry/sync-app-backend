@@ -1,14 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { buildCloudbaseInitOptions } from './cloudbase-app.util';
 
 export const HY_IMAGE_PLUS_MODEL = 'HY-Image-3.0-Plus-4090-Tob-v1.0';
 
 /**
  * CloudBase SDK image API provider (fixed route name, not the generation model).
  * @see https://docs.cloudbase.net/ai/image-model/wx-server-sdk
+ * @see https://docs.cloudbase.net/ai/model/nodejs-access
  */
 const CLOUDBASE_IMAGE_SDK_PROVIDER = 'hunyuan-image';
 const HY_IMAGE_PLUS_SUB_URL = 'images/ar/generations';
+const CLOUDBASE_IMAGE_INIT_TIMEOUT_MS = 150_000;
 
 export type HunyuanGenerateImageInput = {
   prompt: string;
@@ -58,18 +61,22 @@ export class HunyuanImageClient {
     }
 
     try {
-      const cloudbase = await import('@cloudbase/node-sdk');
-      const initOptions: Record<string, unknown> = {
-        env: this.envId,
-        timeout: 150_000,
-      };
-      if (this.accessKey) {
-        initOptions.accessKey = this.accessKey;
-      } else if (this.secretId && this.secretKey) {
-        initOptions.secretId = this.secretId;
-        initOptions.secretKey = this.secretKey;
+      const initOptions = buildCloudbaseInitOptions({
+        envId: this.envId,
+        secretId: this.secretId,
+        secretKey: this.secretKey,
+        accessKey: this.accessKey,
+        timeoutMs: CLOUDBASE_IMAGE_INIT_TIMEOUT_MS,
+      });
+      if (!initOptions) {
+        this.logger.warn(
+          'Image generation skipped: CloudBase env/credentials missing',
+        );
+        return null;
       }
 
+      const cloudbase = await import('@cloudbase/node-sdk');
+      // Docs: tcb.init({ env, secretId, secretKey, timeout }) then createImageModel
       const app = cloudbase.init(initOptions);
       const imageModel = app
         .ai()

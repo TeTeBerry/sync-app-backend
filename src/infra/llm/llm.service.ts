@@ -1,4 +1,4 @@
-/** Text via Hunyuan (TextLlmClient); vision via DashScope VL (QWEN_API_KEY). See docs/LLM.md. */
+/** Text via Hunyuan CloudBase AI+ only; vision via DashScope VL. See docs/LLM.md. */
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TextLlmClient, type HunyuanReasoningEffort } from './text-llm.client';

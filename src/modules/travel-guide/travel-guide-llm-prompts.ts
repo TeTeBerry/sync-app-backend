@@ -102,4 +102,4 @@ export function getTravelGuideMapJsonSystem(
     : TRAVEL_GUIDE_MAP_JSON_SYSTEM_NO_STAY;
 }
 
-export const TRAVEL_GUIDE_LLM_TIMEOUT_MS_DEFAULT = 25_000;
+export const TRAVEL_GUIDE_LLM_TIMEOUT_MS_DEFAULT = 60_000;

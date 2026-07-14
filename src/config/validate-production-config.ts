@@ -35,8 +35,22 @@ export function validateProductionConfig(
   }
 
   const hunyuanKey = config.get<string>('hunyuan.apiKey')?.trim() ?? '';
-  if (!hunyuanKey) {
-    errors.push('HUNYUAN_API_KEY is required for AI features in production');
+  const cloudbaseEnvId = config.get<string>('cloudbase.envId')?.trim() ?? '';
+  const cloudbaseApiKey = config.get<string>('cloudbase.apiKey')?.trim() ?? '';
+  const cloudbaseSecretId =
+    config.get<string>('cloudbase.secretId')?.trim() ?? '';
+  const cloudbaseSecretKey =
+    config.get<string>('cloudbase.secretKey')?.trim() ?? '';
+
+  if (!cloudbaseEnvId) {
+    errors.push('CLOUDBASE_ENV_ID is required for CloudBase text LLM');
+  }
+  const hasAccessKey = Boolean(cloudbaseApiKey || hunyuanKey);
+  const hasSecrets = Boolean(cloudbaseSecretId && cloudbaseSecretKey);
+  if (!hasAccessKey && !hasSecrets) {
+    errors.push(
+      'For CloudBase text LLM set TENCENTCLOUD_SECRETID + TENCENTCLOUD_SECRETKEY (docs), or CLOUDBASE_APIKEY / HUNYUAN_API_KEY',
+    );
   }
 
   const internalApiKey = config.get<string>('internal.apiKey')?.trim() ?? '';

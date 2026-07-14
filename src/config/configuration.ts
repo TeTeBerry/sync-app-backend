@@ -45,14 +45,14 @@ export default () => ({
     vlModel: cleanEnv(process.env.QWEN_VL_MODEL, 'qwen-vl-plus'),
   },
 
-  /** 混元文本（JSON / Agent）；必填 HUNYUAN_API_KEY */
+  /**
+   * 混元文本（JSON / Agent）— 仅经 CloudBase AI+（@cloudbase/node-sdk）。
+   * @see https://docs.cloudbase.net/ai/model/nodejs-access
+   */
   hunyuan: {
+    /** Also used as CloudBase accessKey when secrets are unset. */
     apiKey: cleanEnv(process.env.HUNYUAN_API_KEY),
-    baseUrl: cleanEnv(
-      process.env.HUNYUAN_BASE_URL,
-      'https://tokenhub.tencentmaas.com/v1',
-    ),
-    textModel: cleanEnv(process.env.HUNYUAN_TEXT_MODEL, 'hy3-preview'),
+    textModel: cleanEnv(process.env.HUNYUAN_TEXT_MODEL, 'hy3'),
     reasoningEffort: cleanEnv(process.env.HUNYUAN_REASONING_EFFORT, 'no_think'),
     /** AI 出行攻略润色：默认 low（快），需要更高质量可设 HUNYUAN_TRAVEL_GUIDE_REASONING_EFFORT=high */
     travelGuideReasoningEffort: cleanEnv(
@@ -60,7 +60,7 @@ export default () => ({
       'low',
     ),
     travelGuideLlmTimeoutMs: parseInt(
-      cleanEnv(process.env.HUNYUAN_TRAVEL_GUIDE_LLM_TIMEOUT_MS, '25000'),
+      cleanEnv(process.env.HUNYUAN_TRAVEL_GUIDE_LLM_TIMEOUT_MS, '60000'),
       10,
     ),
     /** 设为 true 启用 LLM 润色；默认 false 以降低攻略生成尾延迟 */

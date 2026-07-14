@@ -5,30 +5,61 @@
 ## 环境变量（仅需这些）
 
 ```env
-# 文本 — 混元（意图 / 解析 / 风控 / Agent）
+# 文本 — 混元（CloudBase AI+，官方 Node SDK）
+# https://docs.cloudbase.net/ai/model/nodejs-access#%E5%88%9D%E5%A7%8B%E5%8C%96
+CLOUDBASE_ENV_ID=                        # 必填
+# 独立 Node / Nest（文档推荐）：腾讯云 API 密钥
+TENCENTCLOUD_SECRETID=
+TENCENTCLOUD_SECRETKEY=
+# 或成长计划 API Key（accessKey，与生图共用）
 HUNYUAN_API_KEY=
-HUNYUAN_BASE_URL=https://tokenhub.tencentmaas.com/v1   # 云托管生产填 CloudBase 网关 URL
-# HUNYUAN_TEXT_MODEL=hy3-preview                       # 默认 hy3-preview
-# HUNYUAN_REASONING_EFFORT=no_think                    # 默认 no_think
-# HUNYUAN_TRAVEL_GUIDE_REASONING_EFFORT=high           # 出行攻略润色，默认 high
+# CLOUDBASE_APIKEY=                      # 可选，覆盖 HUNYUAN_API_KEY 作为 accessKey
+# HUNYUAN_TEXT_MODEL=hy3                 # 默认 hy3（与官方示例一致）
+# HUNYUAN_REASONING_EFFORT=no_think
+# HUNYUAN_TRAVEL_GUIDE_REASONING_EFFORT=low
+# HUNYUAN_TRAVEL_GUIDE_LLM_TIMEOUT_MS=60000
 
 # 视觉 — 千问 VL（小票 OCR、风控识图等）
 QWEN_API_KEY=
-# QWEN_VL_MODEL=qwen-vl-plus                           # 默认 qwen-vl-plus
+# QWEN_VL_MODEL=qwen-vl-plus
 
 # Agent 专用模型（可选，默认 HUNYUAN_TEXT_MODEL）
 # AI_AGENT_MODEL=
 ```
 
-**不再需要** `QWEN_MODEL`、`QWEN_JSON_MODEL`、`QWEN_RERANK_MODEL` 等 DashScope 文本变量。
+**不再需要** `QWEN_MODEL`、`QWEN_JSON_MODEL`、`QWEN_RERANK_MODEL` 等 DashScope 文本变量。  
+**已移除** TokenHub（`HUNYUAN_BASE_URL` / `HUNYUAN_TEXT_PROVIDER=tokenhub`）文本路径。
+
+## CloudBase 初始化（独立 Node / Nest）
+
+与官方文档一致：
+
+```js
+const tcb = require("@cloudbase/node-sdk");
+const app = tcb.init({
+  env: process.env.CLOUDBASE_ENV_ID,
+  secretId: process.env.TENCENTCLOUD_SECRETID,
+  secretKey: process.env.TENCENTCLOUD_SECRETKEY,
+  timeout: 120000, // 文档建议 ≥ 60000
+});
+const model = app.ai().createModel("cloudbase");
+const result = await model.generateText({
+  model: "hy3",
+  messages: [{ role: "user", content: "..." }],
+});
+```
+
+实现见 `cloudbase-app.util.ts` + `TextLlmClient`：优先 `secretId`/`secretKey`，否则用 `accessKey`（`CLOUDBASE_APIKEY` / `HUNYUAN_API_KEY`）。
 
 ## 提供商分工
 
 | 能力 | 实现 | 环境变量 |
 |------|------|----------|
-| 文本 JSON（意图、解析、风控、画像等） | 混元 OpenAI 兼容 API | `HUNYUAN_*` |
-| Agent 工具循环（聊天默认） | 混元 | `HUNYUAN_*` / `AI_AGENT_MODEL` |
-| 视觉 JSON（小票、截图、风控识图） | DashScope 多模态 | `QWEN_API_KEY` + `QWEN_VL_MODEL` |
+| 文本 JSON | **仅** `createModel("cloudbase").generateText` | `CLOUDBASE_ENV_ID` + 密钥或 API Key |
+| Agent 工具循环 | 同上 | 同上 / `AI_AGENT_MODEL` |
+| 视觉 JSON | DashScope 多模态 | `QWEN_API_KEY` + `QWEN_VL_MODEL` |
+
+缺 `CLOUDBASE_ENV_ID` 或鉴权时，文本 LLM **禁用**（不再回退 TokenHub）。
 
 `QWEN_API_KEY` **仅**用于 `LlmService.invokeVisionJson`，不会参与文本生成。
 
@@ -75,7 +106,7 @@ QWEN_API_KEY=
 - 成长计划 Token：约 10 亿（一期）/ 10 亿（二期补发）
 - 生图额度：1 万～10 万张（二期）
 - 告警：用量达 80% / 90% / 100% 时微信官方号自动提醒
-- 礼包用尽后备：切资源点套餐，provider 改 `cloudbase`（见 [AI 资源包 FAQ](https://docs.cloudbase.net/ai/ai-inspire-plan)）
+- 礼包用尽后备：切资源点套餐（见 [AI 资源包 FAQ](https://docs.cloudbase.net/ai/ai-inspire-plan)）。文本路径仅 CloudBase，无 TokenHub 回退。
 
 ### 服务端混元生图（海报背景 / 营销 Instagram 等共用）
 

@@ -1,3 +1,6 @@
+/**
+ * Shared chat message / completion shapes used by TextLlmClient (CloudBase → OpenAI-like mapping).
+ */
 export interface OpenAiChatCompletionResponse {
   choices?: Array<{
     message?: Record<string, unknown>;

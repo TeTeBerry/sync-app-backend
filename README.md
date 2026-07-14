@@ -22,7 +22,7 @@ NestJS API for **SYNC** — a WeChat mini program for electronic music festival 
 | Layer | Choice |
 |-------|--------|
 | Framework | NestJS 10 (Node ≥ 18.18, Mongoose 7) |
-| AI text | Tencent Hunyuan (`HUNYUAN_API_KEY`) |
+| AI text | Tencent Hunyuan via CloudBase AI+ (`CLOUDBASE_ENV_ID` + Secret 或 `HUNYUAN_API_KEY`) |
 | AI vision | Alibaba Qwen VL (`QWEN_API_KEY`) — ticket OCR, image risk |
 | Vector RAG | Chroma (`sync_knowledge`, optional) |
 | Primary DB | MongoDB |
@@ -104,8 +104,10 @@ See `package.json` for DB maintenance and media scripts.
 |----------|-------------|
 | `MONGODB_URI` | **Required** — MongoDB connection string |
 | `REDIS_URL` | Redis URL; empty skips Redis (in-memory / Mongo fallbacks) |
-| `HUNYUAN_API_KEY` | **Required** for text / agent JSON |
-| `HUNYUAN_BASE_URL` | Hunyuan API base; use CloudBase gateway URL in production |
+| `HUNYUAN_API_KEY` | CloudBase accessKey（无腾讯云 Secret 时使用） |
+| `CLOUDBASE_ENV_ID` | **Required** for text LLM + image generation |
+| `TENCENTCLOUD_SECRETID` / `TENCENTCLOUD_SECRETKEY` | Preferred auth for standalone Nest (official Node SDK docs) |
+| `HUNYUAN_TEXT_MODEL` | Default `hy3` (CloudBase docs example) |
 | `QWEN_API_KEY` | Qwen DashScope key for VL / OCR |
 | `JWT_SECRET` | **Required in production** (≥ 32 chars) |
 | `WECHAT_MINI_APP_ID` / `WECHAT_MINI_APP_SECRET` | WeChat mini program login |
@@ -195,7 +197,8 @@ docker compose --profile chroma up -d --build
 |----------|-------------|
 | `JWT_SECRET` | ≥ 32 characters, not dev default |
 | `WECHAT_MINI_APP_ID` / `WECHAT_MINI_APP_SECRET` | Required |
-| `HUNYUAN_API_KEY` | Required |
+| `HUNYUAN_API_KEY` | Required as CloudBase accessKey when secrets unset |
+| `CLOUDBASE_ENV_ID` | Required for default CloudBase text LLM |
 | `MONGODB_URI` | Reachable from runtime |
 | `CORS_ORIGINS` | Optional for mini program-only |
 
@@ -237,7 +240,7 @@ RAG degrades gracefully. Itinerary still uses Mongo lineup data. Check `GET /api
 
 ### Container back-off restart (Cloud Run)
 
-Usually failed production env validation in `main.ts`. Verify `JWT_SECRET`, WeChat credentials, `HUNYUAN_API_KEY`, and `MONGODB_URI`.
+Usually failed production env validation in `main.ts`. Verify `JWT_SECRET`, WeChat credentials, `CLOUDBASE_ENV_ID`, `HUNYUAN_API_KEY`, and `MONGODB_URI`.
 
 ## Related documentation
 
