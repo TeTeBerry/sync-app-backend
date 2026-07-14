@@ -18,6 +18,7 @@ import { TravelGuideGenerationService } from '../travel-guide-generation.service
 import { TravelGuideQuoteRefreshService } from '../travel-guide-quote-refresh.service';
 import { TravelGuideSavedPlanService } from '../travel-guide-saved-plan.service';
 import { presentRavenPlan } from './raven-plan-response.presenter';
+import { RavenHotelAvailabilityService } from './raven-hotel-availability.service';
 
 /**
  * Raven / sync-web plan APIs — public, no login required.
@@ -33,6 +34,7 @@ export class RavenPlanController {
     private readonly generationJobService: TravelGuideGenerationJobService,
     private readonly savedPlanService: TravelGuideSavedPlanService,
     private readonly quoteRefreshService: TravelGuideQuoteRefreshService,
+    private readonly hotelAvailability: RavenHotelAvailabilityService,
     private readonly publicRateLimit: PublicApiRateLimitService,
   ) {}
 
@@ -60,6 +62,17 @@ export class RavenPlanController {
   ) {
     await this.publicRateLimit.assertAllowedAsync('raven_plan', req);
     return this.generationJobService.createJob(legacyId, body, actor);
+  }
+
+  /** Optional hotel inventory, invoked only after the traveller chooses an area. */
+  @Post('activities/:legacyId/hotel-availability')
+  async hotelAvailabilitySearch(
+    @Param('legacyId', ParseIntPipe) legacyId: number,
+    @Body() body: GenerateTravelGuideDto,
+    @Req() req: Request,
+  ) {
+    await this.publicRateLimit.assertAllowedAsync('raven_plan', req);
+    return this.hotelAvailability.search(legacyId, body);
   }
 
   @Get('plan/generation-jobs/:jobId')

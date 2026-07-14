@@ -62,6 +62,22 @@ describe('travel-guide-locale-language', () => {
     expect(passesTravelGuideLocaleLanguage(payload, 'en')).toBe(true);
   });
 
+  it('rejects mixed Chinese prose in an otherwise English EN payload', () => {
+    const payload: LlmTravelGuidePayload = {
+      transportLines: ['Fly from New York to Brussels.'],
+      hotels: [],
+      nightlifeSpots: [],
+      tipItems: [
+        'Wake near the festival rhythm — 同档位内距离、评分与价位综合最优。',
+      ],
+      ticketChannels: [],
+      venueTransportOptions: [],
+      budgetItems: [],
+    };
+
+    expect(passesTravelGuideLocaleLanguage(payload, 'en')).toBe(false);
+  });
+
   it('rejects EN payload when transport lines are Chinese', () => {
     const payload: LlmTravelGuidePayload = {
       transportLines: ['从纽约飞往布鲁塞尔，落地后通关。'],

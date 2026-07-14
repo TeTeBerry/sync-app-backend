@@ -58,6 +58,7 @@ export type RavenPlanResponse = {
       bookingHint?: string;
     }>;
   };
+  stayGuide?: TravelGuidePlan['stayGuide'];
   parking?: { title: string; lines: string[] };
   nightlife: {
     title: string;
@@ -142,6 +143,7 @@ export function presentRavenPlan(plan: TravelGuidePlan): RavenPlanResponse {
           }
         : {}),
     },
+    ...(plan.stayGuide ? { stayGuide: plan.stayGuide } : {}),
     ...(plan.parking
       ? {
           parking: {

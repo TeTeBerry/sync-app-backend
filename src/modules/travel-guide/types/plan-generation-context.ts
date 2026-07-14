@@ -15,6 +15,7 @@ import type {
 import type { TravelGuideBudgetBreakdown } from '../budget/travel-guide-budget.service';
 import type { TravelGuideBudgetConstraints } from '../budget/budget-constraints.types';
 import type { LlmTravelGuidePayload } from '../domain/travel-guide-llm.types';
+import type { FestivalStayGuide } from '@sync/travel-guide-contracts';
 
 export type PlanSectionStatus =
   | 'pending'
@@ -68,6 +69,7 @@ export interface PlanGenerationContext {
     mapCtx: TravelGuideMapContext;
     ranked: TravelGuideRankedCandidates;
   };
+  stayGuide?: FestivalStayGuide;
   searchResults: PlanSearchResults;
   /** Estimated tier policy — computed before recommendation. */
   budgetConstraints?: TravelGuideBudgetConstraints;

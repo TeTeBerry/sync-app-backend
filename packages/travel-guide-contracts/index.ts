@@ -11,6 +11,8 @@ export type {
   TravelGuideFlightTierQuote,
   TravelGuideHotelTierAccommodation,
   TravelGuideBudgetItem,
+  FestivalStayGuideArea,
+  FestivalStayGuide,
   TravelGuidePlan,
 } from './types';
 

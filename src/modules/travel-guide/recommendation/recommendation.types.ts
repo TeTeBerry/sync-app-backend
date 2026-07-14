@@ -103,9 +103,11 @@ export const FLIGHT_SCORE_WEIGHTS = {
 export const FLIGHT_BUDGET_FIT_BLEND = 0;
 
 export const HOTEL_SCORE_WEIGHTS = {
-  distance: 0.3,
-  price: 0.4,
-  review: 0.3,
+  festivalLogistics: 0.4,
+  distanceTransport: 0.25,
+  areaSuitability: 0.2,
+  price: 0.1,
+  review: 0.05,
 } as const;
 
 export const HOTEL_BUDGET_FIT_BLEND = 0;

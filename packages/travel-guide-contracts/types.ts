@@ -93,6 +93,24 @@ export interface TravelGuideBudgetItem {
   details?: string[];
 }
 
+/** Festival-level accommodation intelligence. Inventory providers enrich these areas; they never define them. */
+export interface FestivalStayGuideArea {
+  area: string;
+  score: number;
+  tags: string[];
+  reason: string;
+}
+
+export interface FestivalStayGuide {
+  festivalId: string;
+  recommendedAreas: FestivalStayGuideArea[];
+  estimatedNightlyRange?: {
+    min: number;
+    max: number;
+    currency: 'CNY' | 'USD' | 'EUR';
+  };
+}
+
 export interface TravelGuidePlan {
   activityName: string;
   venue: string;
@@ -115,6 +133,8 @@ export interface TravelGuidePlan {
     hotels: TravelGuideHotelItem[];
     schemes?: TravelGuideAccommodationScheme[];
   };
+  /** Raven's independent answer to “Where should I stay?” */
+  stayGuide?: FestivalStayGuide;
   parking?: { title: string; lines: string[] };
   nightlife: { title: string; spots: TravelGuideSpotItem[] };
   tips: { title: string; items: string[] };

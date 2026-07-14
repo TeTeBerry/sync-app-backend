@@ -15,6 +15,7 @@ import {
   formatHotelReasonCodes,
 } from '../domain/map-selected-options-to-plan.util';
 import { resolveTravelGuideLocale } from '../domain/travel-guide-locale';
+import type { FestivalStayGuide } from '@sync/travel-guide-contracts';
 
 export type TravelGuideLlmGenerationInput = {
   activity: Activity;
@@ -28,6 +29,7 @@ export type TravelGuideLlmGenerationInput = {
   budget?: PlanGenerationContext['budget'];
   budgetConstraints?: PlanGenerationContext['budgetConstraints'];
   tickets?: PlanGenerationContext['searchResults']['tickets'];
+  stayGuide?: FestivalStayGuide;
 };
 
 /**
@@ -69,6 +71,15 @@ function overlayRecommendationContext(
     input.recommendations?.hotels.bestOverall?.reasonCodes ?? [];
   const locale = resolveTravelGuideLocale(input.dto.locale);
   const en = locale === 'en';
+  const primaryArea = input.stayGuide?.recommendedAreas[0];
+
+  if (primaryArea) {
+    tips.unshift(
+      en
+        ? `Stay area: ${primaryArea.area} — ${primaryArea.reason}`
+        : `推荐住宿区域：${primaryArea.area}。${primaryArea.reason}`,
+    );
+  }
 
   if (selectedFlight) {
     const line = buildFlightSampleLine(
@@ -97,7 +108,9 @@ function overlayRecommendationContext(
     );
   }
 
-  if (selectedHotel && input.accommodationNights > 0) {
+  // Festival Stay Intelligence is the stay recommendation. Optional inventory
+  // must not compete with it in the user-facing plan copy.
+  if (selectedHotel && input.accommodationNights > 0 && !input.stayGuide) {
     const hotels = buildHotelItemsFromRecommendations({
       hotels: selectedHotel ? [selectedHotel] : [],
       hotelRecommendations: input.recommendations?.hotels ?? { ranked: [] },

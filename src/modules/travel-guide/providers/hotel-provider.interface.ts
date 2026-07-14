@@ -21,6 +21,8 @@ export interface HotelSearchInput {
   activityCode?: string;
   activityArea?: string;
   activityLocation?: string;
+  /** Festival Stay Intelligence areas; providers may use these as inventory search hubs. */
+  recommendedAreas?: string[];
   forceRefresh?: boolean;
   /** Pre-ranked map POIs (domestic) — provider may ignore */
   mapHotels?: Array<{
@@ -35,8 +37,11 @@ export interface HotelSearchInput {
   }>;
 }
 
-export const HOTEL_PROVIDER = Symbol('HOTEL_PROVIDER');
+export const HOTEL_AVAILABILITY_PROVIDER = Symbol(
+  'HOTEL_AVAILABILITY_PROVIDER',
+);
 
-export interface HotelProvider {
+/** Optional inventory source. It never decides where a festival traveller should stay. */
+export interface HotelAvailabilityProvider {
   searchHotels(input: HotelSearchInput): Promise<NormalizedHotelOption[]>;
 }

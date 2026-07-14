@@ -78,5 +78,9 @@ export function passesTravelGuideLocaleLanguage(
   locale: TravelGuideLocale,
 ): boolean {
   if (locale !== 'en') return true;
-  return isMostlyEnglishProse(collectTravelGuideProseSamples(payload));
+  // A mixed sentence is still a broken English result. Merchant and venue names
+  // are deliberately excluded above, so prose can use a strict no-CJK rule.
+  return !collectTravelGuideProseSamples(payload).some((sample) =>
+    /[\u4e00-\u9fff]/.test(sample),
+  );
 }

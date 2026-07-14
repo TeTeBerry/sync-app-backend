@@ -66,6 +66,7 @@ import { attachQuoteTierMetadataToPlan } from './domain/attach-quote-tier-metada
 import { applyTravelQuoteEnrichment } from './domain/travel-guide-quote-merge.util';
 import { dominantCurrency } from './budget/budget-constraints.types';
 import { mapCandidatesToLlmFallback } from './map/travel-guide-map-plan.builder';
+import { FestivalStayGuideService } from './stay-guide/festival-stay-guide.service';
 
 export type TravelGuideGenerateOptions = {
   onProgress?: TravelGuideProgressReporter;
@@ -97,6 +98,7 @@ export class TravelGuideGenerationOrchestrator {
     private readonly savedPlanService: TravelGuideSavedPlanService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly quoteEnrichment: TravelQuoteEnrichmentService,
+    private readonly stayGuideService: FestivalStayGuideService,
   ) {}
 
   async generate(
@@ -270,6 +272,7 @@ export class TravelGuideGenerationOrchestrator {
       accommodationNights,
       cacheKey,
     });
+    ctx.stayGuide = this.stayGuideService.getGuide(activity);
 
     try {
       await reportTravelGuideProgress(onProgress, 'map_poi');
@@ -298,8 +301,6 @@ export class TravelGuideGenerationOrchestrator {
         location.mapCtx,
       );
       const planLocale = resolveTravelGuideLocale(generationDto.locale);
-      const useRouteStackHotels =
-        planLocale === 'en' && this.hotelSearch.isRouteStackEnabled();
 
       let quoteSnapshot = null;
       if (quoteEligible) {
@@ -311,16 +312,13 @@ export class TravelGuideGenerationOrchestrator {
             accommodationNights,
             {
               onProgress,
-              // EN + RouteStack: do not call RollingGo searchHotels.
-              skipHotels: useRouteStackHotels,
+              // Hotel inventory is an explicit follow-up, never a plan dependency.
+              skipHotels: true,
             },
           );
           ctx.quoteEnrichment = quoteSnapshot;
         } catch (error) {
           ctx.sectionStatus.flights = 'failed';
-          if (!useRouteStackHotels) {
-            ctx.sectionStatus.hotels = 'failed';
-          }
           ctx.errors.push({
             section: 'flights',
             code: 'QUOTE_PROVIDER_FAILED',
@@ -354,74 +352,14 @@ export class TravelGuideGenerationOrchestrator {
         location.ranked.hotels,
         accommodationNights,
       );
-      const quoteHotels = useRouteStackHotels
-        ? []
-        : this.hotelSearch.fromEnrichment(quoteSnapshot, accommodationNights);
       const selectedBudgetTier = resolveTravelGuideBudgetTier(
         generationDto.budgetTier,
       );
       const regionKind = travelGuideRegionKind(activity);
 
-      // EN Raven / sync-web: RouteStack SearchDestinations → SearchHotels only.
-      // Do not fall back to Amap map hotels (often Chinese / CNY) when RouteStack is on.
-      let hotels = useRouteStackHotels ? [] : [...quoteHotels, ...mapHotels];
-      if (useRouteStackHotels && accommodationNights > 0) {
-        const destinationCity =
-          destinationCityFromActivityLocation(
-            activity.location,
-            activity.area,
-          ) ||
-          location.mapCtx.venue.title ||
-          '';
-        try {
-          const routeStackHotels = await this.hotelSearch.search({
-            destinationCity,
-            checkInDate: generationDto.departureDate!,
-            checkOutDate: generationDto.returnDate!,
-            accommodationNights,
-            headcount: generationDto.headcount,
-            budgetTier: selectedBudgetTier,
-            stayPreference: generationDto.stayPreference,
-            regionKind,
-            locale: 'en',
-            venue: {
-              lat: location.mapCtx.venue.lat,
-              lng: location.mapCtx.venue.lng,
-              title: location.mapCtx.venue.title,
-            },
-            activityLegacyId: activity.legacyId,
-            activityName: activity.name,
-            activityCode: activity.code,
-            activityArea: activity.area,
-            activityLocation: activity.location,
-            forceRefresh: Boolean(generationDto.forceRegenerate),
-          });
-          hotels = routeStackHotels;
-          this.logger.log(
-            `EN hotel provider=routestack activity=${activityLegacyId} count=${hotels.length}`,
-          );
-          if (!hotels.length) {
-            ctx.errors.push({
-              section: 'hotels',
-              code: 'ROUTESTACK_HOTEL_EMPTY',
-              message: 'RouteStack hotel search returned no listings',
-            });
-          }
-        } catch (error) {
-          this.logger.warn(
-            `RouteStack EN hotel search failed activity=${activityLegacyId}: ${
-              error instanceof Error ? error.message : error
-            }`,
-          );
-          hotels = [];
-          ctx.sectionStatus.hotels = 'failed';
-          ctx.errors.push({
-            section: 'hotels',
-            code: 'ROUTESTACK_HOTEL_SEARCH_FAILED',
-            message: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
+      // Map candidates are lightweight availability context. RollingGo and
+      // RouteStack remain available for explicit hotel searches, not generation.
+      const hotels = mapHotels;
 
       ctx.searchResults.hotels = hotels;
       ctx.sectionStatus.hotels =
@@ -459,6 +397,7 @@ export class TravelGuideGenerationOrchestrator {
         ctx.searchResults.hotels,
         ctx.budgetConstraints,
         generationDto.stayPreference,
+        ctx.stayGuide?.recommendedAreas,
       );
 
       // Authoritative selection — do not re-select in builder/LLM/enrich.
@@ -509,7 +448,9 @@ export class TravelGuideGenerationOrchestrator {
         interCity,
         regionKind,
         selfDrive: Boolean(generationDto.selfDrive),
-        selected: ctx.selectedOptions,
+        // Inventory is optional enrichment. Initial Raven budget confidence comes
+        // from stable festival ranges, never a provider's live hotel price.
+        selected: { ...ctx.selectedOptions, hotel: undefined },
         flights: ctx.searchResults.flights,
         hotels: ctx.searchResults.hotels,
         tickets: ctx.searchResults.tickets,
@@ -532,6 +473,7 @@ export class TravelGuideGenerationOrchestrator {
           budget: ctx.budget,
           budgetConstraints: ctx.budgetConstraints,
           tickets: ctx.searchResults.tickets,
+          stayGuide: ctx.stayGuide,
         });
         ctx.sectionStatus.itinerary = 'ready';
       } catch (error) {
@@ -719,12 +661,23 @@ export class TravelGuideGenerationOrchestrator {
       };
     }
 
-    const mapCtx = buildMinimalMapContextForQuote(plan, activity, dto);
+    // Old cached plans predate Festival Stay Intelligence. Enrich their public
+    // shape synchronously, without waiting for or depending on hotel inventory.
+    const planWithStayGuide: TravelGuidePlan = {
+      ...plan,
+      stayGuide: plan.stayGuide ?? this.stayGuideService.getGuide(activity),
+    };
+
+    const mapCtx = buildMinimalMapContextForQuote(
+      planWithStayGuide,
+      activity,
+      dto,
+    );
     const quoteEligible = shouldFetchTravelQuote(activity, dto, mapCtx);
     if (!quoteEligible) {
       return {
         plan: applyTravelGuideAccommodationPreference(
-          plan,
+          planWithStayGuide,
           accommodationNights,
         ),
         quoteRefreshed: false,
@@ -734,13 +687,16 @@ export class TravelGuideGenerationOrchestrator {
     const quoteTtlMs = resolveQuoteCacheTtlMs(
       this.config.get<number>('rollinggo.quoteCacheTtlSec'),
     );
-    if (dto.forceRegenerate !== true && isPlanQuoteFresh(plan, quoteTtlMs)) {
+    if (
+      dto.forceRegenerate !== true &&
+      isPlanQuoteFresh(planWithStayGuide, quoteTtlMs)
+    ) {
       this.logger.log(
         `travel guide quote cache fresh activity=${activity.legacyId} fetchedAt=${plan.quoteFetchedAt}`,
       );
       return {
         plan: applyTravelGuideAccommodationPreference(
-          plan,
+          planWithStayGuide,
           accommodationNights,
         ),
         quoteRefreshed: false,
@@ -754,9 +710,8 @@ export class TravelGuideGenerationOrchestrator {
       accommodationNights,
       {
         onProgress,
-        skipHotels:
-          resolveTravelGuideLocale(dto.locale) === 'en' &&
-          this.hotelSearch.isRouteStackEnabled(),
+        // Cached plan refreshes keep flights current; hotel inventory is opt-in.
+        skipHotels: true,
       },
     );
 
@@ -767,7 +722,7 @@ export class TravelGuideGenerationOrchestrator {
     ) {
       return {
         plan: applyTravelGuideAccommodationPreference(
-          plan,
+          planWithStayGuide,
           accommodationNights,
         ),
         quoteRefreshed: false,
@@ -778,7 +733,7 @@ export class TravelGuideGenerationOrchestrator {
     // Recalculate the visible breakdown from this fresh quote before attaching
     // tier metadata, while preserving the traveller's existing route and stay.
     const quotePricedPlan = applyTravelQuoteEnrichment(
-      plan,
+      planWithStayGuide,
       quoteSnapshot,
       {
         headcount: dto.headcount,

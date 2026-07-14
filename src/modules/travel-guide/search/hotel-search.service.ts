@@ -8,8 +8,8 @@ import {
 } from '../domain/normalize-hotel-options.util';
 import type { NormalizedHotelOption } from '../types/normalized-hotel-option';
 import {
-  HOTEL_PROVIDER,
-  type HotelProvider,
+  HOTEL_AVAILABILITY_PROVIDER,
+  type HotelAvailabilityProvider,
   type HotelSearchInput,
 } from '../providers/hotel-provider.interface';
 import { RouteStackHotelProvider } from '../providers/routestack/routestack-hotel.provider';
@@ -20,8 +20,8 @@ export class HotelSearchService {
 
   constructor(
     @Optional()
-    @Inject(HOTEL_PROVIDER)
-    private readonly hotelProvider?: HotelProvider,
+    @Inject(HOTEL_AVAILABILITY_PROVIDER)
+    private readonly hotelProvider?: HotelAvailabilityProvider,
     @Optional()
     private readonly routeStackHotel?: RouteStackHotelProvider,
   ) {}

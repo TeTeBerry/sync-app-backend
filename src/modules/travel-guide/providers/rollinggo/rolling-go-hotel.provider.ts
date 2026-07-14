@@ -12,12 +12,12 @@ import {
 } from '../../domain/normalize-hotel-options.util';
 import type { NormalizedHotelOption } from '../../types/normalized-hotel-option';
 import type {
-  HotelProvider,
+  HotelAvailabilityProvider,
   HotelSearchInput,
 } from '../hotel-provider.interface';
 
 @Injectable()
-export class RollingGoHotelProvider implements HotelProvider {
+export class RollingGoHotelProvider implements HotelAvailabilityProvider {
   private readonly logger = new Logger(RollingGoHotelProvider.name);
 
   constructor(

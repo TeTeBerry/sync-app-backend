@@ -56,7 +56,7 @@ import { TravelGuideBudgetService } from './budget/travel-guide-budget.service';
 import { TravelGuideCacheService } from './cache/travel-guide-cache.service';
 import { TravelGuidePlanRepository } from './persistence/travel-guide-plan.repository';
 import { FLIGHT_PROVIDER } from './providers/flight-provider.interface';
-import { HOTEL_PROVIDER } from './providers/hotel-provider.interface';
+import { HOTEL_AVAILABILITY_PROVIDER } from './providers/hotel-provider.interface';
 import { TICKET_PROVIDER } from './providers/ticket-provider.interface';
 import { RollingGoFlightProvider } from './providers/rollinggo/rolling-go-flight.provider';
 import { RollingGoHotelProvider } from './providers/rollinggo/rolling-go-hotel.provider';
@@ -68,6 +68,8 @@ import { RavenPlaceSuggestionsController } from './raven/raven-place-suggestions
 import { RavenPlanController } from './raven/raven-plan.controller';
 import { RavenFestivalWeatherController } from './raven/raven-festival-weather.controller';
 import { RavenFestivalWeatherService } from './raven/raven-festival-weather.service';
+import { FestivalStayGuideService } from './stay-guide/festival-stay-guide.service';
+import { RavenHotelAvailabilityService } from './raven/raven-hotel-availability.service';
 
 @Module({
   imports: [
@@ -137,7 +139,7 @@ import { RavenFestivalWeatherService } from './raven/raven-festival-weather.serv
       useExisting: RollingGoFlightProvider,
     },
     {
-      provide: HOTEL_PROVIDER,
+      provide: HOTEL_AVAILABILITY_PROVIDER,
       useExisting: RollingGoHotelProvider,
     },
     {
@@ -154,6 +156,8 @@ import { RavenFestivalWeatherService } from './raven/raven-festival-weather.serv
     TravelGuideQuoteRefreshService,
     OpenFlightsAirportCatalogService,
     RavenFestivalWeatherService,
+    FestivalStayGuideService,
+    RavenHotelAvailabilityService,
   ],
   exports: [
     TravelGuideGenerationService,

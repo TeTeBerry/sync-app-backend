@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import type { NormalizedHotelOption } from '../types/normalized-hotel-option';
 import type { TravelGuideBudgetConstraints } from '../budget/budget-constraints.types';
-import type { TravelGuideStayPreference } from '@sync/travel-guide-contracts';
+import type {
+  FestivalStayGuide,
+  TravelGuideStayPreference,
+} from '@sync/travel-guide-contracts';
 import {
   dominantCurrency,
   isViableBudgetFit,
@@ -31,6 +34,7 @@ export class HotelRecommendationService {
     hotels: NormalizedHotelOption[],
     constraints?: TravelGuideBudgetConstraints | null,
     stayPreference: TravelGuideStayPreference = 'festival',
+    recommendedAreas: FestivalStayGuide['recommendedAreas'] = [],
   ): HotelRecommendationSet {
     if (!hotels.length) {
       return { ranked: [] };
@@ -49,7 +53,14 @@ export class HotelRecommendationService {
       comparable.length > 0 && comparable.length < hotels.length;
 
     const scored = pool.map((hotel) =>
-      scoreHotel(hotel, pool, constraints, crossCurrency, stayPreference),
+      scoreHotel(
+        hotel,
+        pool,
+        constraints,
+        crossCurrency,
+        stayPreference,
+        recommendedAreas,
+      ),
     );
     scored.sort((a, b) => b.score - a.score);
 
@@ -138,6 +149,7 @@ function scoreHotel(
   constraints: TravelGuideBudgetConstraints | null | undefined,
   crossCurrency: boolean,
   stayPreference: TravelGuideStayPreference,
+  recommendedAreas: FestivalStayGuide['recommendedAreas'],
 ): {
   hotel: NormalizedHotelOption;
   score: number;
@@ -219,8 +231,14 @@ function scoreHotel(
   }
   if (crossCurrency) reasonCodes.push('CURRENCY_MISMATCH');
 
+  const festivalLogistics = (distanceNorm + transportNorm) / 2;
+  // Hotel inventory is only an area enrichment. Operational suitability wins
+  // over a cheap nightly rate when Raven orders the available listings.
   const quality =
-    HOTEL_SCORE_WEIGHTS.distance * distanceNorm +
+    HOTEL_SCORE_WEIGHTS.festivalLogistics * festivalLogistics +
+    HOTEL_SCORE_WEIGHTS.distanceTransport * transportNorm +
+    HOTEL_SCORE_WEIGHTS.areaSuitability *
+      areaSuitabilityScore(hotel, recommendedAreas, stayPreference) +
     HOTEL_SCORE_WEIGHTS.price * priceNorm +
     HOTEL_SCORE_WEIGHTS.review * reviewNorm;
 
@@ -244,20 +262,41 @@ function scoreHotel(
   };
 }
 
-function stayPreferenceBonus(
+function areaSuitabilityScore(
   hotel: NormalizedHotelOption,
+  recommendedAreas: FestivalStayGuide['recommendedAreas'],
   preference: TravelGuideStayPreference,
 ): number {
+  const hotelText = normalizeAreaText(
+    [hotel.name, hotel.address, ...(hotel.amenities ?? [])]
+      .filter(Boolean)
+      .join(' '),
+  );
+  const matchedArea = recommendedAreas.find((area) => {
+    const areaText = normalizeAreaText(area.area);
+    return areaText.length >= 3 && hotelText.includes(areaText);
+  });
+  if (matchedArea) {
+    return clamp(matchedArea.score / 100);
+  }
+
+  // Inventory does not always include a district in its returned address.
+  // Keep a neutral score in that case, while still letting verified logistics
+  // and the traveller's stated preference influence the listing order.
   if (preference === 'festival') {
     return hotel.distanceToFestivalKm != null && hotel.distanceToFestivalKm <= 2
-      ? 0.18
-      : 0;
+      ? 0.8
+      : 0.5;
   }
   if (preference === 'value') {
-    return hotel.price?.nightlyAmount ? 0.08 : 0;
+    return hotel.price?.nightlyAmount ? 0.7 : 0.5;
   }
   const amenities = (hotel.amenities ?? []).join(' ').toLowerCase();
-  return /metro|restaurant|bar|nightclub|city/.test(amenities) ? 0.12 : 0;
+  return /metro|restaurant|bar|nightclub|city/.test(amenities) ? 0.7 : 0.5;
+}
+
+function normalizeAreaText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9\u00c0-\u024f]/g, '');
 }
 
 function resolveTransportConvenience(

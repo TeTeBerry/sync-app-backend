@@ -56,6 +56,7 @@ export function assembleTravelGuidePlanFromContext(
     ...plan,
     recommendedDepartureDate: dto.departureDate,
     recommendedReturnDate: dto.returnDate,
+    ...(ctx.stayGuide ? { stayGuide: ctx.stayGuide } : {}),
   };
 
   if (ctx.budget?.items?.length) {

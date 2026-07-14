@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { addDays } from '../../domain/travel-guide-quote-dates.util';
 import type { NormalizedHotelOption } from '../../types/normalized-hotel-option';
 import type {
-  HotelProvider,
+  HotelAvailabilityProvider,
   HotelSearchInput,
 } from '../../providers/hotel-provider.interface';
 import { RouteStackHttpClient } from '../../infra/routestack/routestack-http.client';
@@ -33,7 +33,7 @@ const CITY_DESTINATION_TYPES = new Set([
 ]);
 
 @Injectable()
-export class RouteStackHotelProvider implements HotelProvider {
+export class RouteStackHotelProvider implements HotelAvailabilityProvider {
   private readonly logger = new Logger(RouteStackHotelProvider.name);
 
   constructor(private readonly client: RouteStackHttpClient) {}
@@ -52,7 +52,7 @@ export class RouteStackHotelProvider implements HotelProvider {
     }
 
     const queries = buildRouteStackDestinationQueries({
-      destinationCity: input.destinationCity,
+      destinationCity: input.recommendedAreas?.[0] ?? input.destinationCity,
       venueTitle: input.venue?.title,
       activityArea: input.activityArea,
       activityLocation: input.activityLocation,

@@ -18,6 +18,7 @@ import { HotelRecommendationService } from '@src/modules/travel-guide/recommenda
 import { TravelGuideLlmService } from '@src/modules/travel-guide/ai/travel-guide-llm.service';
 import { TravelGuideCacheService } from '@src/modules/travel-guide/cache/travel-guide-cache.service';
 import { TravelGuideBudgetService } from '@src/modules/travel-guide/budget/travel-guide-budget.service';
+import { FestivalStayGuideService } from '@src/modules/travel-guide/stay-guide/festival-stay-guide.service';
 
 const testActor = {
   clientUserId: 'wx_test',
@@ -60,6 +61,8 @@ const freshCachedPlan: TravelGuidePlan = {
 describe('TravelGuideGenerationOrchestrator', () => {
   const dto = {
     departure: '上海',
+    departureDate: '2026-06-12',
+    returnDate: '2026-06-15',
     headcount: 2,
     budgetTier: 'standard' as const,
     selfDrive: true,
@@ -206,6 +209,15 @@ describe('TravelGuideGenerationOrchestrator', () => {
           },
         },
         {
+          provide: FestivalStayGuideService,
+          useValue: {
+            getGuide: jest.fn().mockReturnValue({
+              festivalId: 'storm',
+              recommendedAreas: [],
+            }),
+          },
+        },
+        {
           provide: TravelGuideGuardService,
           useValue: {
             assertCanGenerate: jest.fn().mockResolvedValue(undefined),
@@ -268,7 +280,7 @@ describe('TravelGuideGenerationOrchestrator', () => {
     expect(llmStarted).toBeGreaterThanOrEqual(quoteFinished);
   });
 
-  it('skips RollingGo hotels and searches RouteStack for EN locale', async () => {
+  it('skips live hotel inventory during EN plan generation', async () => {
     const hotelSearch = jest.fn().mockResolvedValue([
       {
         id: 'rs1',
@@ -400,6 +412,15 @@ describe('TravelGuideGenerationOrchestrator', () => {
           },
         },
         {
+          provide: FestivalStayGuideService,
+          useValue: {
+            getGuide: jest.fn().mockReturnValue({
+              festivalId: 'storm',
+              recommendedAreas: [],
+            }),
+          },
+        },
+        {
           provide: TravelGuideGuardService,
           useValue: {
             assertCanGenerate: jest.fn().mockResolvedValue(undefined),
@@ -436,9 +457,7 @@ describe('TravelGuideGenerationOrchestrator', () => {
       expect.any(Number),
       expect.objectContaining({ skipHotels: true }),
     );
-    expect(hotelSearch).toHaveBeenCalledWith(
-      expect.objectContaining({ locale: 'en' }),
-    );
+    expect(hotelSearch).not.toHaveBeenCalled();
   });
 
   it('uses recommendation bestOverall + BudgetService as response source of truth', async () => {
@@ -545,6 +564,15 @@ describe('TravelGuideGenerationOrchestrator', () => {
         HotelRecommendationService,
         TravelGuideBudgetService,
         {
+          provide: FestivalStayGuideService,
+          useValue: {
+            getGuide: jest.fn().mockReturnValue({
+              festivalId: 'storm',
+              recommendedAreas: [],
+            }),
+          },
+        },
+        {
           provide: TravelGuideLlmService,
           useValue: { generatePlanContent: llmBuild },
         },
@@ -585,12 +613,12 @@ describe('TravelGuideGenerationOrchestrator', () => {
     expect(llmBuild).toHaveBeenCalledWith(
       expect.objectContaining({
         selectedOptions: expect.objectContaining({
-          flight: expect.objectContaining({ id: 'best' }),
+          flight: expect.objectContaining({ id: 'cheap' }),
           hotel: expect.objectContaining({ id: 'near' }),
         }),
         recommendations: expect.objectContaining({
           flights: expect.objectContaining({
-            bestOverall: expect.objectContaining({ optionId: 'best' }),
+            bestOverall: expect.objectContaining({ optionId: 'cheap' }),
           }),
           hotels: expect.objectContaining({
             bestOverall: expect.objectContaining({ optionId: 'near' }),
@@ -602,7 +630,7 @@ describe('TravelGuideGenerationOrchestrator', () => {
       }),
     );
 
-    expect(result.plan.transport.flightOffers?.[0]?.pricePerAdult).toBe(1100);
+    expect(result.plan.transport.flightOffers?.[0]?.pricePerAdult).toBe(800);
     expect(result.plan.accommodation.hotels[0]?.name).toBe('Best Near');
     expect(result.plan.budget?.items?.length).toBeGreaterThan(0);
     expect(
