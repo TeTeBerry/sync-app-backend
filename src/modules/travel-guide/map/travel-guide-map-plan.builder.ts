@@ -440,13 +440,9 @@ export function mapCandidatesToLlmFallback(
     ? regionKind !== 'domestic'
       ? en
         ? [
-            'Afterparty and late-bite picks are curated; stays prefer live RollingGo quotes, with nearby references when quotes are missing — confirm OTA rates before booking.',
             'Prefer spots still open after the show; leave with friends late at night.',
           ]
-        : [
-            '散场与夜宵点位来自精选推荐；住宿优先 RollingGo 实时查询，无报价时展示场馆周边精选参考，下单前请在 OTA 核实价格与房态。',
-            '散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。',
-          ]
+        : ['散场后优先选择仍在营业的夜宵点；凌晨离场注意安全结伴。']
       : en
         ? [
             'Transport, stays, and afterparty picks come from map search ranked by budget and distance.',

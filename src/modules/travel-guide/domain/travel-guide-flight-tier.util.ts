@@ -1,5 +1,6 @@
 import type {
   TravelGuideBudgetTier,
+  TravelGuideBudgetItem,
   TravelGuideFlightOffer,
   TravelGuideFlightTierQuote,
   TravelGuidePlan,
@@ -11,9 +12,62 @@ import type { TravelGuideRegionKind } from './travel-guide-international.util';
 import { isRollingGoFlightSampleLine } from './travel-guide-flight-itinerary.util';
 import { SYNC_BUDGET_TIER_ORDER } from './travel-guide-rollinggo-flight-tier.util';
 import { resolveTravelGuideLocale } from './travel-guide-locale';
+import { getTravelGuideCopy, isTotalBudgetLabel } from './travel-guide-copy';
+import { formatTravelGuideMoneyRange } from './travel-guide-currency.util';
 
 function roundPrice(value: number): number {
   return value >= 1000 ? Math.round(value / 10) * 10 : Math.round(value);
+}
+
+function budgetRangeBounds(range: string): [number, number] {
+  const amounts =
+    range.match(/\d[\d,]*/g)?.map((value) => Number(value.replace(/,/g, ''))) ??
+    [];
+  const min = amounts[0] ?? 0;
+  return [min, amounts[amounts.length - 1] ?? min];
+}
+
+/** Keep the confidence total in lockstep with the displayed flight tier. */
+function recalculateBudgetTotal(
+  items: TravelGuideBudgetItem[],
+  headcount: number,
+  locale: 'zh' | 'en',
+): void {
+  const [subtotalMin, subtotalMax] = items.reduce(
+    ([min, max], item) => {
+      if (isTotalBudgetLabel(item.label)) return [min, max];
+      const [itemMin, itemMax] = budgetRangeBounds(item.range);
+      return [min + itemMin, max + itemMax];
+    },
+    [0, 0] as [number, number],
+  );
+  const copy = getTravelGuideCopy(locale);
+  const totalItem: TravelGuideBudgetItem = {
+    label:
+      headcount > 1
+        ? copy.budgetLabels.totalGroup
+        : copy.budgetLabels.totalSolo,
+    range: formatTravelGuideMoneyRange(
+      subtotalMin,
+      subtotalMax,
+      locale === 'en' ? 'USD' : 'CNY',
+      locale,
+    ),
+    note:
+      locale === 'en'
+        ? headcount > 1
+          ? `Trip-total estimate for ${headcount} travelers.`
+          : 'Trip-total estimate for one traveler.'
+        : headcount > 1
+          ? `以上各项为本次出行合计估算（${headcount} 人）。`
+          : '以上各项为单人合计估算。',
+  };
+  const totalIdx = items.findIndex((item) => isTotalBudgetLabel(item.label));
+  if (totalIdx >= 0) {
+    items[totalIdx] = totalItem;
+  } else {
+    items.push(totalItem);
+  }
 }
 
 function areSameFlightTierQuotes(
@@ -198,6 +252,9 @@ export function applyFlightTierQuoteToPlan(
     items[flightIdx] = flightItem;
   } else if (items.length) {
     items.unshift(flightItem);
+  }
+  if (items.length) {
+    recalculateBudgetTotal(items, input.headcount, locale);
   }
 
   const transportLines = plan.transport.lines.filter(

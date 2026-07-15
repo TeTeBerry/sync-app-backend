@@ -119,16 +119,6 @@ describe('presentRavenPlan', () => {
           },
         ],
       },
-      nightlife: {
-        title: 'Night',
-        spots: [
-          {
-            name: 'Festival grounds',
-            note: 'Follow the official schedule',
-            reason: 'On-site',
-          },
-        ],
-      },
       tips: { title: 'Tips', items: ['Bring earplugs'] },
       documents: { title: 'Documents', items: ['Passport'] },
       tickets: {

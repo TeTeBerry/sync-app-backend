@@ -203,5 +203,18 @@ describe('travel-guide-flight-tier.util', () => {
     expect(updated.transport.flightOffers?.[0]?.cabinLabel).toBe('超级经济舱');
     expect(updated.transport.flightOffers?.[0]?.pricePerAdult).toBe(2600);
     expect(updated.budget?.items[0]?.range).toContain('5200');
+    expect(updated.budget?.items.at(-1)?.range).toBe('约 ¥6000–6600');
+  });
+
+  it('recalculates the total from the displayed flight tier instead of keeping a stale cap', () => {
+    const plan = basePlan();
+    const updated = applyFlightTierQuoteToPlan(plan, 'comfort', {
+      headcount: 2,
+      regionKind: 'overseas',
+      interCity: true,
+    });
+
+    expect(updated.budget?.items[0]?.range).toBe('约 ¥10400–11600');
+    expect(updated.budget?.items.at(-1)?.range).toBe('约 ¥11200–12400');
   });
 });

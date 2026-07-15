@@ -60,10 +60,6 @@ export type RavenPlanResponse = {
   };
   stayGuide?: TravelGuidePlan['stayGuide'];
   parking?: { title: string; lines: string[] };
-  nightlife: {
-    title: string;
-    spots: Array<{ name: string; note: string; reason?: string }>;
-  };
   tips: { title: string; items: string[] };
   venueTransport?: {
     title: string;
@@ -152,14 +148,6 @@ export function presentRavenPlan(plan: TravelGuidePlan): RavenPlanResponse {
           },
         }
       : {}),
-    nightlife: {
-      title: plan.nightlife.title,
-      spots: plan.nightlife.spots.map((spot) => ({
-        name: spot.name,
-        note: spot.note,
-        ...(spot.reason ? { reason: spot.reason } : {}),
-      })),
-    },
     tips: {
       title: plan.tips.title,
       items: [...plan.tips.items],
