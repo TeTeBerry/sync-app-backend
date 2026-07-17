@@ -177,7 +177,11 @@ export class AuthEmailService {
       provider: input.provider ?? 'email',
       providerUserId: input.providerUserId,
     });
-    const tokenVersion = await this.users.incrementTokenVersion(id);
+    // Exchanging a verified Auth.js session for a Nest bearer token is not a
+    // new login. Rotating here invalidates the cookie we have just minted and
+    // races AuthService's token-version cache on the next `/me` request.
+    // Token versions are still rotated by explicit logout/revocation.
+    const tokenVersion = await this.users.getTokenVersion(id);
     const accessToken = this.jwtService.sign({
       sub: id,
       name: record.name,

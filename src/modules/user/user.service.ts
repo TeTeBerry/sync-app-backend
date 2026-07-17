@@ -226,6 +226,144 @@ export class UserService implements OnModuleInit {
     return this.profileModel.findOne({ userId }).lean();
   }
 
+  /**
+   * A deliberately small, authenticated summary for the Raven profile entry
+   * point. Detailed Squad data remains scoped to its festival endpoint so a
+   * profile cannot accidentally reveal another attendee's information.
+   */
+  async getRavenOverview(actor: RequestActor) {
+    const userId = this.resolveExternalId(actor);
+    const db = this.connection.db;
+    if (!db) throw new Error('Database connection unavailable');
+
+    const [profile, journeys, squadProfiles, artistLikes] = await Promise.all([
+      this.profileModel
+        .findOne(
+          { userId },
+          { favoriteFestivalIds: 1, favoriteGenres: 1, favoriteArtistIds: 1 },
+        )
+        .lean(),
+      db
+        .collection('travel_guide_saved_plans')
+        .find(
+          { ownerUserId: userId },
+          { projection: { guideId: 1, activityLegacyId: 1, updatedAt: 1 } },
+        )
+        .sort({ updatedAt: -1 })
+        .limit(12)
+        .toArray(),
+      db
+        .collection('festival_squad_profiles')
+        .find(
+          { userId },
+          {
+            projection: {
+              eventId: 1,
+              displayName: 1,
+              matchingPaused: 1,
+              visibility: 1,
+              updatedAt: 1,
+            },
+          },
+        )
+        .sort({ updatedAt: -1 })
+        .toArray(),
+      db
+        .collection('user_artist_likes')
+        .find({ userId }, { projection: { artistId: 1 } })
+        .toArray(),
+    ]);
+
+    const favoriteArtistIds = [
+      ...new Set(
+        [
+          ...(profile?.favoriteArtistIds ?? []),
+          ...artistLikes.map((like) => String(like.artistId ?? '').trim()),
+        ].filter(Boolean),
+      ),
+    ];
+    const favoriteArtists = favoriteArtistIds.length
+      ? await db
+          .collection('artist_performances')
+          .aggregate<{ _id: string; name: string }>([
+            { $match: { artistId: { $in: favoriteArtistIds } } },
+            { $group: { _id: '$artistId', name: { $first: '$artistName' } } },
+          ])
+          .toArray()
+      : [];
+    const artistNameById = new Map(
+      favoriteArtists.map((artist) => [artist._id, artist.name]),
+    );
+
+    const squadProfileIds = squadProfiles.map((profile) => String(profile._id));
+    const pendingSquadRequestsByEvent: Record<
+      string,
+      { received: number; sent: number }
+    > = {};
+    if (squadProfileIds.length) {
+      const profileEventById = new Map(
+        squadProfiles.map((profile) => [
+          String(profile._id),
+          Number(profile.eventId),
+        ]),
+      );
+      const pendingRequests = await db
+        .collection('festival_squad_connection_requests')
+        .find(
+          {
+            status: 'pending',
+            $or: [
+              { senderProfileId: { $in: squadProfileIds } },
+              { receiverProfileId: { $in: squadProfileIds } },
+            ],
+          },
+          { projection: { senderProfileId: 1, receiverProfileId: 1 } },
+        )
+        .toArray();
+      for (const request of pendingRequests) {
+        const senderEventId = profileEventById.get(
+          String(request.senderProfileId),
+        );
+        const receiverEventId = profileEventById.get(
+          String(request.receiverProfileId),
+        );
+        const eventId = receiverEventId ?? senderEventId;
+        if (eventId === undefined) continue;
+        const summary = (pendingSquadRequestsByEvent[String(eventId)] ??= {
+          received: 0,
+          sent: 0,
+        });
+        if (receiverEventId !== undefined) summary.received += 1;
+        if (senderEventId !== undefined) summary.sent += 1;
+      }
+    }
+
+    return {
+      profile: {
+        favoriteFestivalIds: profile?.favoriteFestivalIds ?? [],
+        favoriteGenres: profile?.favoriteGenres ?? [],
+        favoriteArtistIds,
+        favoriteArtists: favoriteArtistIds.map((id) => ({
+          id,
+          name: artistNameById.get(id) ?? id,
+        })),
+      },
+      journeys: journeys.map((journey) => ({
+        guideId: String(journey.guideId),
+        activityLegacyId: Number(journey.activityLegacyId),
+        updatedAt: journey.updatedAt,
+      })),
+      squadProfiles: squadProfiles.map((squadProfile) => ({
+        eventId: Number(squadProfile.eventId),
+        displayName: String(squadProfile.displayName ?? ''),
+        matchingPaused: Boolean(squadProfile.matchingPaused),
+        visibility: squadProfile.visibility ?? {},
+        updatedAt: squadProfile.updatedAt,
+      })),
+      pendingSquadRequestsByEvent,
+    };
+  }
+
   async patchRavenProfile(body: UpdateRavenProfileDto, actor: RequestActor) {
     const userId = this.resolveExternalId(actor);
     return this.profileModel

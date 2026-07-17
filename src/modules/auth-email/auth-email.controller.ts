@@ -62,6 +62,7 @@ export class AuthEmailController {
   }
 
   /** Server-to-server exchange. Only Auth.js may assert this verified identity. */
+  @Public()
   @Post('web-session')
   @UseGuards(InternalApiKeyGuard)
   webSession(

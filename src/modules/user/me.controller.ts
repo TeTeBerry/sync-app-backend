@@ -12,6 +12,9 @@ export class MeController {
   @Get('profile') profile(@CurrentActor() actor: RequestActor) {
     return this.users.getRavenProfile(actor);
   }
+  @Get('overview') overview(@CurrentActor() actor: RequestActor) {
+    return this.users.getRavenOverview(actor);
+  }
   @Patch('profile') patchProfile(
     @Body() body: UpdateRavenProfileDto,
     @CurrentActor() actor: RequestActor,
