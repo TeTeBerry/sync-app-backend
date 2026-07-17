@@ -385,7 +385,9 @@ describe('travel-guide-quote-merge.util', () => {
 
     expect(plan.accommodation.title).toContain('RollingGo');
     expect(plan.accommodation.hotels[0]?.name).toBe('Bangkok Riverside Hotel');
-    expect(plan.accommodation.hotels[0]?.note).toContain('$400');
+    // Display currency is localized to the plan locale, while the source quote
+    // remains USD. Do not assert a raw provider currency here.
+    expect(plan.accommodation.hotels[0]?.note).toContain('¥2880');
     expect(plan.accommodation.hotels[0]?.bookingHint).toContain('RollingGo');
     expect(plan.accommodation.schemes?.[0]?.name).toBe(
       'Bangkok Riverside Hotel',

@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Inject, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { CurrentActor } from '../../common/auth/current-actor.decorator';
 import type { RequestActor } from '../../common/auth/request-actor.types';
@@ -11,6 +19,7 @@ import {
 } from '../user/interfaces/user.repository.interface';
 import { AuthEmailService } from './auth-email.service';
 import { EmailLoginDto } from './dto/email-login.dto';
+import { InternalApiKeyGuard } from '../../common/auth/internal-api-key.guard';
 
 const ANON_CAPABILITIES = {
   canCreateSquadProfile: false,
@@ -50,6 +59,23 @@ export class AuthEmailController {
       returnUrl: body.returnUrl,
       intendedAction: body.intendedAction,
     });
+  }
+
+  /** Server-to-server exchange. Only Auth.js may assert this verified identity. */
+  @Post('web-session')
+  @UseGuards(InternalApiKeyGuard)
+  webSession(
+    @Body()
+    body: {
+      id?: string;
+      email?: string;
+      name?: string;
+      image?: string;
+      provider?: 'google' | 'email';
+      providerUserId?: string;
+    },
+  ) {
+    return this.authEmailService.issueWebSession(body);
   }
 
   /**

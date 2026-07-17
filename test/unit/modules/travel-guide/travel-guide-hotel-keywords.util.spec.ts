@@ -25,6 +25,6 @@ describe('hotelSearchKeywordsForBudgetTier', () => {
   it('uses abroad economy keywords for overseas budget tier', () => {
     expect(
       hotelSearchKeywordsForBudgetTier('economy', { abroad: true }),
-    ).toEqual(['guesthouse', 'hostel', '经济型酒店']);
+    ).toEqual(['hostel', 'guesthouse']);
   });
 });

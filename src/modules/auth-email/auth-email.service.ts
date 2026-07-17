@@ -144,6 +144,47 @@ export class AuthEmailService {
       intendedAction: sanitizeIntendedAction(options?.intendedAction),
     };
   }
+
+  async issueWebSession(input: {
+    id?: string;
+    email?: string;
+    name?: string;
+    image?: string;
+    provider?: 'google' | 'email';
+    providerUserId?: string;
+  }) {
+    const id = input.id?.trim();
+    const email = input.email?.trim();
+    if (!id || !email || !isValidEmail(email)) {
+      throw new UnauthorizedException('Invalid authenticated session.');
+    }
+    const normalized = normalizeEmail(email);
+    const existing = await this.users.findByExternalId(id);
+    const record = await this.users.upsertByExternalId(id, {
+      email: normalized.email,
+      emailNormalized: normalized.emailNormalized,
+      emailVerifiedAt: new Date(),
+      lastLoginAt: new Date(),
+      name:
+        existing?.name?.trim() ||
+        input.name?.trim() ||
+        normalized.email.split('@')[0] ||
+        'Raver',
+      handle: existing?.handle?.trim() || '@raven',
+      location: existing?.location,
+      bio: existing?.bio,
+      avatar: existing?.avatar || input.image?.trim() || '',
+      provider: input.provider ?? 'email',
+      providerUserId: input.providerUserId,
+    });
+    const tokenVersion = await this.users.incrementTokenVersion(id);
+    const accessToken = this.jwtService.sign({
+      sub: id,
+      name: record.name,
+      tv: tokenVersion,
+    });
+    return { accessToken };
+  }
 }
 
 function sanitizeReturnUrl(raw?: string): string | null {

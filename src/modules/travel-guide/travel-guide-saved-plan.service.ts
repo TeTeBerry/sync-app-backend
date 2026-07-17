@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { GenerateTravelGuideDto } from './dto/generate-travel-guide.dto';
 import type {
@@ -110,6 +114,45 @@ export class TravelGuideSavedPlanService {
     if (!doc || doc.ownerUserId !== ownerUserId) return null;
 
     return { ...toView(doc), ownerUserId: doc.ownerUserId };
+  }
+
+  /** Bind an anonymous, browser-created plan to the current account once. */
+  async claimPublicPlan(
+    guideId: string,
+    actor: RequestActor,
+  ): Promise<TravelGuideSavedPlanView> {
+    const id = guideId.trim();
+    const ownerUserId = actor.resolvedUserId?.trim();
+    if (!id || !ownerUserId) throw new ForbiddenException('Sign in required.');
+
+    const existing = await this.planRepository.findByGuideId(id);
+    if (!existing) throw new NotFoundException('Saved journey not found.');
+    if (existing.ownerUserId === ownerUserId) return toView(existing);
+
+    const claimed = await this.planRepository.claimPublicPlan(
+      id,
+      `raven-public:guide:${id}`,
+      ownerUserId,
+    );
+    if (!claimed) {
+      throw new ForbiddenException(
+        'This journey cannot be added to this account.',
+      );
+    }
+    await this.bffCacheInvalidation.invalidateFestivalPlanForUser(
+      ownerUserId,
+      claimed.activityLegacyId,
+    );
+    await this.goalService.subscribeOnEngagement(
+      actor,
+      claimed.activityLegacyId,
+    );
+    await this.tripPlanCollaboration.linkGuideForActivity(
+      actor,
+      claimed.activityLegacyId,
+      id,
+    );
+    return toView(claimed);
   }
 
   async findAccessibleByGuideId(

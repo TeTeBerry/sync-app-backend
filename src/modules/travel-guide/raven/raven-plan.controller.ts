@@ -6,9 +6,11 @@ import {
   ParseIntPipe,
   Post,
   Req,
+  SetMetadata,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { Public } from '../../../common/auth/public.decorator';
+import { IS_PUBLIC_KEY } from '../../../common/auth/auth.constants';
 import { CurrentActor } from '../../../common/auth/current-actor.decorator';
 import type { RequestActor } from '../../../common/auth/request-actor.types';
 import { PublicApiRateLimitService } from '../../../common/rate-limit/public-api-rate-limit.service';
@@ -124,5 +126,16 @@ export class RavenPlanController {
       plan: presentRavenPlan(saved.plan),
       createdAt: saved.createdAt,
     };
+  }
+
+  @Post('plans/:guideId/claim')
+  // The controller is public for anonymous plan generation, but claiming a
+  // journey must pass through the application's global JWT guard.
+  @SetMetadata(IS_PUBLIC_KEY, false)
+  claimSavedPlan(
+    @Param('guideId') guideId: string,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return this.savedPlanService.claimPublicPlan(guideId, actor);
   }
 }

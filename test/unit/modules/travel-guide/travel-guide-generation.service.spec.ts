@@ -18,6 +18,7 @@ import { HotelRecommendationService } from '@src/modules/travel-guide/recommenda
 import { TravelGuideLlmService } from '@src/modules/travel-guide/ai/travel-guide-llm.service';
 import { TravelGuideCacheService } from '@src/modules/travel-guide/cache/travel-guide-cache.service';
 import { TravelGuideBudgetService } from '@src/modules/travel-guide/budget/travel-guide-budget.service';
+import { FestivalStayGuideService } from '@src/modules/travel-guide/stay-guide/festival-stay-guide.service';
 
 const testActor = {
   clientUserId: 'wx_test',
@@ -48,6 +49,8 @@ describe('TravelGuideGenerationService cache', () => {
     budgetTier: 'standard' as const,
     selfDrive: true,
     accommodationNights: 2,
+    departureDate: '2026-06-13',
+    returnDate: '2026-06-15',
   };
 
   let service: TravelGuideGenerationService;
@@ -181,6 +184,10 @@ describe('TravelGuideGenerationService cache', () => {
         {
           provide: TravelQuoteEnrichmentService,
           useValue: { run: jest.fn().mockResolvedValue(null) },
+        },
+        {
+          provide: FestivalStayGuideService,
+          useValue: { getGuide: jest.fn().mockReturnValue(undefined) },
         },
       ],
     }).compile();

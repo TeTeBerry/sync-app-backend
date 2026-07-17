@@ -57,11 +57,15 @@ describe('isFuzzyTravelGuideParamsMatch accommodation', () => {
     activityLegacyId: 4,
     departure: '上海',
     departureCity: '',
+    departureDate: '2026-06-13',
+    returnDate: '2026-06-15',
     headcount: 2,
     budgetTier: 'standard' as const,
     selfDrive: false,
     accommodationNights: 2,
+    stayPreference: 'festival' as const,
     note: '',
+    locale: 'zh' as const,
   };
 
   it('does not fuzzy-match zero nights with positive nights', () => {

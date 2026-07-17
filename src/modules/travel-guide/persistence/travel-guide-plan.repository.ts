@@ -70,6 +70,23 @@ export class TravelGuidePlanRepository {
     return result.modifiedCount > 0 || result.matchedCount > 0;
   }
 
+  /** Atomically transfer only an anonymous guide to the authenticated owner. */
+  async claimPublicPlan(
+    guideId: string,
+    publicOwnerUserId: string,
+    ownerUserId: string,
+  ): Promise<TravelGuidePlanRecord | null> {
+    const doc = await this.model
+      .findOneAndUpdate(
+        { guideId, ownerUserId: publicOwnerUserId },
+        { $set: { ownerUserId } },
+        { new: true },
+      )
+      .lean()
+      .exec();
+    return doc?.guideId ? mapPlanRecord(doc) : null;
+  }
+
   async updateBudgetTier(
     guideId: string,
     ownerUserId: string,

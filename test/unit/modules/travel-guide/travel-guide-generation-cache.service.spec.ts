@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import { TravelGuideGenerationCache } from '@src/database/schemas/travel-guide-generation-cache.schema';
 import { TravelGuideGenerationCacheService } from '@src/modules/travel-guide/travel-guide-generation-cache.service';
 import type { TravelGuidePlan } from '@sync/travel-guide-contracts';
+import { TRAVEL_GUIDE_MAP_DATA_VERSION } from '@src/modules/travel-guide/domain/travel-guide-generation-cache.util';
 
 describe('TravelGuideGenerationCacheService', () => {
   let service: TravelGuideGenerationCacheService;
@@ -68,10 +69,13 @@ describe('TravelGuideGenerationCacheService', () => {
       activityLegacyId: 4,
       departure: '上海虹桥',
       departureCity: '上海市',
+      departureDate: '2026-06-13',
+      returnDate: '2026-06-15',
       headcount: 2,
       budgetTier: 'standard' as const,
       selfDrive: false,
       accommodationNights: 2,
+      stayPreference: 'festival' as const,
       note: '',
       locale: 'zh' as const,
     };
@@ -87,7 +91,7 @@ describe('TravelGuideGenerationCacheService', () => {
           activityLegacyId: 4,
           requestParams: expect.objectContaining({
             ...params,
-            mapDataVersion: 5,
+            mapDataVersion: TRAVEL_GUIDE_MAP_DATA_VERSION,
           }),
           plan,
           expiresAt: expect.any(Date),

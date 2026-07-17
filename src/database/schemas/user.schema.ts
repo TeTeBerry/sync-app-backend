@@ -5,6 +5,13 @@ export type UserDocument = HydratedDocument<User>;
 
 @Schema({ timestamps: true })
 export class User {
+  /** Identity is minimal and never contains OAuth access/refresh tokens. */
+  @Prop({ enum: ['google', 'email'], index: true })
+  provider?: 'google' | 'email';
+
+  /** Google `sub` only; not an access token. */
+  @Prop({ sparse: true })
+  providerUserId?: string;
   @Prop({ unique: true, sparse: true, index: true })
   externalId?: string;
 
@@ -32,6 +39,12 @@ export class User {
    */
   @Prop({ type: Date, default: null })
   emailVerifiedAt?: Date | null;
+
+  @Prop()
+  displayName?: string;
+
+  @Prop()
+  avatarUrl?: string;
 
   @Prop({ type: Date })
   lastLoginAt?: Date;
@@ -79,3 +92,11 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+UserSchema.index(
+  { provider: 1, providerUserId: 1 },
+  {
+    unique: true,
+    sparse: true,
+    name: 'user_provider_subject_unique',
+  },
+);

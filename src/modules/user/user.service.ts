@@ -5,9 +5,14 @@ import {
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model } from 'mongoose';
 import { User, UserDocument } from '../../database/schemas/user.schema';
+import {
+  UserProfile,
+  UserProfileDocument,
+} from '../../database/schemas/user-profile.schema';
+import { UpdateRavenProfileDto } from './dto/update-raven-profile.dto';
 import { normalizePrivacyLevel } from '../../common/utils/privacy.util';
 import {
   IUserRepository,
@@ -47,6 +52,10 @@ export class UserService implements OnModuleInit {
     private readonly repository: IUserRepository,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @InjectModel(UserProfile.name)
+    private readonly profileModel: Model<UserProfileDocument>,
+    @InjectConnection()
+    private readonly connection: Connection,
     private readonly accountRisk: AccountRiskService,
     private readonly wechatContentSecurity: WechatContentSecurityService,
     private readonly mediaChecks: MediaSecurityCheckService,
@@ -210,5 +219,52 @@ export class UserService implements OnModuleInit {
     }
 
     return this.toMeDto(record, externalId);
+  }
+
+  async getRavenProfile(actor: RequestActor) {
+    const userId = this.resolveExternalId(actor);
+    return this.profileModel.findOne({ userId }).lean();
+  }
+
+  async patchRavenProfile(body: UpdateRavenProfileDto, actor: RequestActor) {
+    const userId = this.resolveExternalId(actor);
+    return this.profileModel
+      .findOneAndUpdate(
+        { userId },
+        { $set: body, $setOnInsert: { userId } },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      )
+      .lean();
+  }
+
+  /**
+   * Permanently remove data that identifies this Raven account. Public content
+   * that has legal retention requirements must be anonymised by its owner module.
+   */
+  async deleteAccount(actor: RequestActor): Promise<void> {
+    const userId = this.resolveExternalId(actor);
+    const db = this.connection.db;
+    if (!db) throw new Error('Database connection unavailable');
+
+    const profiles = db.collection('festival_squad_profiles');
+    const profileIds = (
+      await profiles.find({ userId }, { projection: { _id: 1 } }).toArray()
+    ).map((row) => row._id);
+    await Promise.all([
+      db.collection('user_profiles').deleteMany({ userId }),
+      db.collection('user_itineraries').deleteMany({ userId }),
+      db
+        .collection('travel_guide_saved_plans')
+        .deleteMany({ ownerUserId: userId }),
+      db.collection('user_artist_likes').deleteMany({ userId }),
+      db.collection('festival_squad_connection_requests').deleteMany({
+        $or: [
+          { senderProfileId: { $in: profileIds.map(String) } },
+          { receiverProfileId: { $in: profileIds.map(String) } },
+        ],
+      }),
+      profiles.deleteMany({ userId }),
+      db.collection('users').deleteOne({ externalId: userId }),
+    ]);
   }
 }

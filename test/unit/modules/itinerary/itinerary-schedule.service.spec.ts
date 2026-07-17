@@ -3,6 +3,8 @@ import { ItineraryConflictService } from '@src/modules/itinerary/itinerary-confl
 import { DiscogsGenreEnrichmentService } from '@src/modules/itinerary/discogs-genre-enrichment.service';
 import { LineupCatalogService } from '@src/modules/itinerary/lineup-catalog.service';
 import { ArtistProfileResolver } from '@src/modules/itinerary/artist-profile-resolver.service';
+import { LineupConflictService } from '@src/modules/itinerary/lineup-conflict.service';
+import { ClashResolutionService } from '@src/modules/itinerary/clash-resolution.service';
 import { resolveLineupDisplayGenreFromCatalog } from '@src/modules/itinerary/domain/lineup-artist-data-policy';
 import { buildLineupOnlyArtistPerformanceSeed } from '@src/modules/itinerary/domain/itinerary-catalog.util';
 
@@ -154,6 +156,12 @@ describe('ItineraryScheduleService discogs styles', () => {
     });
 
     const conflictService = new ItineraryConflictService();
+    const lineupConflicts = {
+      loadClashPerformances: jest.fn().mockResolvedValue([]),
+    };
+    const clashResolution = {
+      invalidateForScheduleChange: jest.fn().mockResolvedValue(undefined),
+    };
     const discogsGenre = new DiscogsGenreEnrichmentService(djService as never);
     const lineupCatalog = new LineupCatalogService(
       performanceModel as never,
@@ -176,6 +184,8 @@ describe('ItineraryScheduleService discogs styles', () => {
       catalogRefresh as never,
       cache as never,
       conflictService,
+      lineupConflicts as unknown as LineupConflictService,
+      clashResolution as unknown as ClashResolutionService,
       discogsGenre,
       lineupCatalog,
       artistProfileResolver,
