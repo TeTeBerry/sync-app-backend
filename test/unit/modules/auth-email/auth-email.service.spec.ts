@@ -125,4 +125,65 @@ describe('AuthEmailService', () => {
       expect.objectContaining({ emailNormalized: 'existing@example.com' }),
     );
   });
+
+  it('issueWebSession links Google Auth.js ids to an existing email identity', async () => {
+    users.findByExternalId.mockResolvedValue(null as never);
+    users.findByEmailNormalized.mockResolvedValue({
+      externalId: 'email_existing',
+      name: 'Existing',
+      handle: '@existing',
+      avatar: '',
+    } as never);
+    users.upsertByExternalId.mockResolvedValue({
+      externalId: 'email_existing',
+      name: 'Existing',
+    } as never);
+    users.getTokenVersion.mockResolvedValue(4 as never);
+
+    const result = await service.issueWebSession({
+      id: 'authjs-mongo-object-id',
+      email: 'Existing@Example.com',
+      name: 'Google Name',
+      provider: 'google',
+      providerUserId: 'authjs-mongo-object-id',
+    });
+
+    expect(result.accessToken).toBe('jwt-token');
+    expect(users.upsertByExternalId).toHaveBeenCalledWith(
+      'email_existing',
+      expect.objectContaining({
+        provider: 'google',
+        providerUserId: 'authjs-mongo-object-id',
+        emailNormalized: 'existing@example.com',
+      }),
+    );
+    expect(jwtService.sign).toHaveBeenCalledWith(
+      expect.objectContaining({ sub: 'email_existing', tv: 4 }),
+    );
+  });
+
+  it('issueWebSession defaults providerUserId for new Google users', async () => {
+    users.findByExternalId.mockResolvedValue(null as never);
+    users.findByEmailNormalized.mockResolvedValue(null as never);
+    users.upsertByExternalId.mockResolvedValue({
+      externalId: 'authjs-user-1',
+      name: 'Raven',
+    } as never);
+    users.getTokenVersion.mockResolvedValue(0 as never);
+
+    await service.issueWebSession({
+      id: 'authjs-user-1',
+      email: 'raven@example.com',
+      name: 'Raven',
+      provider: 'google',
+    });
+
+    expect(users.upsertByExternalId).toHaveBeenCalledWith(
+      'authjs-user-1',
+      expect.objectContaining({
+        provider: 'google',
+        providerUserId: 'authjs-user-1',
+      }),
+    );
+  });
 });

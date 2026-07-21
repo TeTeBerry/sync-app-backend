@@ -159,8 +159,18 @@ export class AuthEmailService {
       throw new UnauthorizedException('Invalid authenticated session.');
     }
     const normalized = normalizeEmail(email);
-    const existing = await this.users.findByExternalId(id);
-    const record = await this.users.upsertByExternalId(id, {
+    const byId = await this.users.findByExternalId(id);
+    const byEmail = byId
+      ? null
+      : await this.users.findByEmailNormalized(normalized.emailNormalized);
+    // Prefer an existing Nest identity (by Auth.js id or verified email) so
+    // Google sign-in does not collide on unique emailNormalized / providerSubject.
+    const externalId =
+      byId?.externalId?.trim() || byEmail?.externalId?.trim() || id;
+    const existing = byId ?? byEmail;
+    const provider = input.provider ?? 'google';
+    const providerUserId = input.providerUserId?.trim() || id;
+    const record = await this.users.upsertByExternalId(externalId, {
       email: normalized.email,
       emailNormalized: normalized.emailNormalized,
       emailVerifiedAt: new Date(),
@@ -174,16 +184,16 @@ export class AuthEmailService {
       location: existing?.location,
       bio: existing?.bio,
       avatar: existing?.avatar || input.image?.trim() || '',
-      provider: input.provider ?? 'email',
-      providerUserId: input.providerUserId,
+      provider,
+      providerUserId,
     });
     // Exchanging a verified Auth.js session for a Nest bearer token is not a
     // new login. Rotating here invalidates the cookie we have just minted and
     // races AuthService's token-version cache on the next `/me` request.
     // Token versions are still rotated by explicit logout/revocation.
-    const tokenVersion = await this.users.getTokenVersion(id);
+    const tokenVersion = await this.users.getTokenVersion(externalId);
     const accessToken = this.jwtService.sign({
-      sub: id,
+      sub: externalId,
       name: record.name,
       tv: tokenVersion,
     });
