@@ -170,7 +170,7 @@ export class AuthEmailService {
     const existing = byId ?? byEmail;
     const provider = input.provider ?? 'google';
     const providerUserId = input.providerUserId?.trim() || id;
-    const record = await this.users.upsertByExternalId(externalId, {
+    const baseUpdate = {
       email: normalized.email,
       emailNormalized: normalized.emailNormalized,
       emailVerifiedAt: new Date(),
@@ -184,9 +184,25 @@ export class AuthEmailService {
       location: existing?.location,
       bio: existing?.bio,
       avatar: existing?.avatar || input.image?.trim() || '',
-      provider,
-      providerUserId,
-    });
+    };
+    let record;
+    try {
+      record = await this.users.upsertByExternalId(externalId, {
+        ...baseUpdate,
+        provider,
+        providerUserId,
+      });
+    } catch (error) {
+      // Unique (provider, providerUserId) can collide when an older Nest row
+      // already owns this Google subject. Still mint a session for the
+      // email/externalId we resolved — Squad must not hard-fail on mint.
+      this.logger.warn('web_session_provider_upsert_failed', {
+        externalId,
+        provider,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      record = await this.users.upsertByExternalId(externalId, baseUpdate);
+    }
     // Exchanging a verified Auth.js session for a Nest bearer token is not a
     // new login. Rotating here invalidates the cookie we have just minted and
     // races AuthService's token-version cache on the next `/me` request.
