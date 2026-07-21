@@ -156,7 +156,6 @@
     "@sync/scene-contracts": "*",
     "@sync/travel-guide-contracts": "*",
     "@sync/travel-plan-contracts": "*",
-    "chromadb": "^1.10.5",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "dayjs": "^1.11.21",
@@ -168,8 +167,7 @@
     "rimraf": "^5.0.10",
     "rxjs": "^7.8.1",
     "satori": "^0.12.2",
-    "uuid": "^11.0.5",
-    "ws": "^8.21.0"
+    "uuid": "^11.0.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",

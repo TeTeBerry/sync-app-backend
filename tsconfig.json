@@ -12,7 +12,6 @@
     "baseUrl": "./",
     "paths": {
       "@src/*": ["src/*"],
-      "@sync/agent-capabilities-contracts": ["packages/agent-capabilities-contracts"],
       "@sync/scene-contracts": ["packages/scene-contracts"]
     },
     "moduleResolution": "node",

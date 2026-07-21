@@ -1,20 +1,4 @@
-import type { RequestActor } from '../../common/auth/request-actor.types';
-
-/** TextParseAgent 结构化输出 */
-export interface ParsedPostDraft {
-  /** 发帖正文 */
-  body: string;
-  description?: string;
-  eventName?: string;
-  eventTime?: string;
-  location?: string;
-  buddyType?: string;
-  tags: string[];
-  activityKeyword?: string;
-  activityLegacyId?: number;
-  ready: boolean;
-}
-
+/** Shared violation taxonomy for account-risk escalation. */
 export type ViolationType =
   | 'spam'
   | 'duplicate'
@@ -26,36 +10,3 @@ export type ViolationType =
   | 'general';
 
 export type RiskSeverity = 'low' | 'medium' | 'high';
-
-/** RiskAgent 输出 */
-export interface RiskAssessment {
-  publishable: boolean;
-  reason?: string;
-  sanitizedBody?: string;
-  violationType?: ViolationType;
-  severity?: RiskSeverity;
-}
-
-export interface UserMatchProfile {
-  city?: string;
-  favorGenres?: string[];
-  budgetLevel?: string;
-}
-
-export interface RiskAssessOptions {
-  /** Skip LLM moderation when rules and duplicate checks pass (shortcut confirm path). */
-  rulesOnly?: boolean;
-}
-
-export interface RiskAgentInput {
-  body: string;
-  actor?: RequestActor;
-  activityLegacyId?: number;
-}
-
-export interface RiskImageInput {
-  body: string;
-  image?: string;
-  actor?: RequestActor;
-  activityLegacyId?: number;
-}

@@ -18,7 +18,6 @@ Festival Squad is journey-based traveler matching for Raven (sync-web).
 ## Proposed module (later)
 
 ```
-packages/festival-squad-contracts/
 src/modules/festival-squad/
 ```
 
