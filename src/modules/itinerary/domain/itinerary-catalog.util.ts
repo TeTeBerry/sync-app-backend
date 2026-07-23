@@ -12,6 +12,8 @@ import {
   ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID,
   ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID,
   ITINERARY_LOST_LANDS_ACTIVITY_LEGACY_ID,
+  ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID,
+  ITINERARY_ULTRA_JAPAN_ACTIVITY_LEGACY_ID,
 } from '@src/data/itinerary/itinerary.seed';
 import { DEFQON1_LINEUP_DJ_SEED } from '@src/data/itinerary/defqon1-itinerary.seed';
 import { EDC_THAILAND_LINEUP_DJ_SEED } from '@src/data/itinerary/edc-thailand-itinerary.seed';
@@ -21,6 +23,8 @@ import { TOMORROWLAND_THAILAND_LINEUP_DJ_SEED } from '@src/data/itinerary/tomorr
 import { ULTRA_EUROPE_LINEUP_DJ_SEED } from '@src/data/itinerary/ultra-europe-itinerary.seed';
 import { WORLD_DJ_FESTIVAL_LINEUP_DJ_SEED } from '@src/data/itinerary/world-dj-festival-japan-itinerary.seed';
 import { LOST_LANDS_LINEUP_DJ_SEED } from '@src/data/itinerary/lost-lands-itinerary.seed';
+import { FESTIVAL_808_LINEUP_DJ_SEED } from '@src/data/itinerary/808-festival-itinerary.seed';
+import { ULTRA_JAPAN_LINEUP_DJ_SEED } from '@src/data/itinerary/ultra-japan-itinerary.seed';
 
 export const ITINERARY_CATALOG_ACTIVITY_LEGACY_IDS = new Set([
   STORM_ACTIVITY_LEGACY_ID,
@@ -32,6 +36,8 @@ export const ITINERARY_CATALOG_ACTIVITY_LEGACY_IDS = new Set([
   ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID,
   ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID,
   ITINERARY_LOST_LANDS_ACTIVITY_LEGACY_ID,
+  ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID,
+  ITINERARY_ULTRA_JAPAN_ACTIVITY_LEGACY_ID,
 ]);
 
 export type LineupDjSeed = {
@@ -60,6 +66,8 @@ const LINEUP_DJS_BY_ACTIVITY_LEGACY_ID = new Map<number, LineupDjSeed[]>([
     WORLD_DJ_FESTIVAL_LINEUP_DJ_SEED,
   ],
   [ITINERARY_LOST_LANDS_ACTIVITY_LEGACY_ID, LOST_LANDS_LINEUP_DJ_SEED],
+  [ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID, FESTIVAL_808_LINEUP_DJ_SEED],
+  [ITINERARY_ULTRA_JAPAN_ACTIVITY_LEGACY_ID, ULTRA_JAPAN_LINEUP_DJ_SEED],
 ]);
 
 /** Festivals with lineup announced but no official timetable in seed yet. */
@@ -69,6 +77,7 @@ export const LINEUP_ONLY_CATALOG_ACTIVITY_LEGACY_IDS = [
   ITINERARY_EDC_KOREA_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_ORLANDO_ACTIVITY_LEGACY_ID,
   ITINERARY_LOST_LANDS_ACTIVITY_LEGACY_ID,
+  ITINERARY_ULTRA_JAPAN_ACTIVITY_LEGACY_ID,
 ] as const;
 
 /** Minutes sentinel when official timetable is not published yet. */

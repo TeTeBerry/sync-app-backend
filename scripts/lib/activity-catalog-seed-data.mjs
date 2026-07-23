@@ -329,7 +329,7 @@ export const ACTIVITY_SEED = [
       'bangkok 808',
       '808 festival thailand',
     ],
-    date: '10/02-03',
+    date: '12/05-07',
     location: '泰国·曼谷 BITEC Bangna',
     latitude: 13.6696,
     longitude: 100.6198,

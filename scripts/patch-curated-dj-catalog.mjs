@@ -7,6 +7,9 @@
  *   npm run db:patch-curated-dj-catalog
  *   npm run db:patch-curated-dj-catalog -- --pending-only
  *   npm run db:patch-curated-dj-catalog -- --weak-style-only
+ *
+ * Festival lineup artist styles (808, Ultra Japan, etc.) are stored in MongoDB only.
+ * Fresh environments should sync via `db:pull-lineup-artist-catalog-from-cloud`.
  */
 import mongoose from 'mongoose';
 import { CURATED_MISSING_DJ_CATALOG } from './data/curated-missing-dj-catalog.mjs';
@@ -36,20 +39,47 @@ const dryRun = argv.includes('--dry-run');
 const pendingOnly = argv.includes('--pending-only');
 const missingOnly = argv.includes('--missing-only');
 const weakStyleOnly = argv.includes('--weak-style-only');
+const keysArgIndex = argv.indexOf('--keys');
 
 const CURATED_SOURCE = 'manual-curated';
+
+function filterEntriesByKeys(entries) {
+  if (keysArgIndex < 0) {
+    return entries;
+  }
+  const keys = (argv[keysArgIndex + 1] ?? '')
+    .split(',')
+    .map((key) => key.trim())
+    .filter(Boolean);
+  if (!keys.length) {
+    return entries;
+  }
+  const allowed = new Set(keys);
+  return Object.fromEntries(
+    Object.entries(entries).filter(([key]) => allowed.has(key)),
+  );
+}
 
 function resolveCatalogBatches() {
   const batches = [];
   if (weakStyleOnly) {
-    batches.push({ label: 'weak-style', entries: CURATED_WEAK_STYLE_DJ_CATALOG });
+    batches.push({
+      label: 'weak-style',
+      entries: filterEntriesByKeys(CURATED_WEAK_STYLE_DJ_CATALOG),
+    });
     return batches;
   }
   if (!pendingOnly) {
-    batches.push({ label: 'missing-djs', entries: CURATED_MISSING_DJ_CATALOG });
+    batches.push({
+      label: 'missing-djs',
+      entries: filterEntriesByKeys(CURATED_MISSING_DJ_CATALOG),
+    });
   }
   if (!missingOnly) {
-    batches.push({ label: 'pending-review', entries: CURATED_PENDING_DJ_CATALOG });
+    batches.push({
+      label: 'pending-review',
+      entries: filterEntriesByKeys(CURATED_PENDING_DJ_CATALOG),
+    });
   }
   return batches;
 }
@@ -143,9 +173,33 @@ async function main() {
   for (const batch of resolveCatalogBatches()) {
     console.log(`\n── ${batch.label} ──`);
     for (const [lineupNameKey, curated] of Object.entries(batch.entries)) {
-      const mapRow = await mapCollection.findOne({ lineupNameKey });
+      let mapRow = await mapCollection.findOne({ lineupNameKey });
       if (!mapRow) {
-        console.warn(`⚠️  跳过 ${lineupNameKey}：map 不存在`);
+        const lineupName = curated.lineupName?.trim() || lineupNameKey;
+        console.warn(`⚠️  ${lineupNameKey}：map 不存在，将新建`);
+        if (!dryRun) {
+          await upsertDjDiscogsMapMapped(mapCollection, {
+            lineupName,
+            discogsId: null,
+            discogsName: lineupName,
+            matchScore: 0,
+            searchQuery: '#manual-curated-bootstrap',
+            discoveryStrategyId: 'curated-weak-style',
+            source: CURATED_SOURCE,
+            candidateScores: [],
+          });
+          mapRow = await mapCollection.findOne({ lineupNameKey });
+        }
+      }
+
+      if (!mapRow && dryRun) {
+        console.log(`${dryRun ? '[dry-run] ' : ''}would bootstrap map for ${lineupNameKey}`);
+        updated += 1;
+        continue;
+      }
+
+      if (!mapRow) {
+        console.warn(`⚠️  跳过 ${lineupNameKey}：map 仍不存在`);
         skipped += 1;
         continue;
       }

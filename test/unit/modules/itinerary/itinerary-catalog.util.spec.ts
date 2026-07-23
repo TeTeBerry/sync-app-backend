@@ -13,6 +13,8 @@ import {
   ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID,
   ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID,
   ITINERARY_LOST_LANDS_ACTIVITY_LEGACY_ID,
+  ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID,
+  ITINERARY_ULTRA_JAPAN_ACTIVITY_LEGACY_ID,
   STORM_ACTIVITY_LEGACY_ID,
 } from '@src/data/itinerary/itinerary.seed';
 
@@ -39,6 +41,12 @@ describe('itinerary-catalog.util', () => {
     ).toBe(true);
     expect(
       hasItineraryCatalogSeed(ITINERARY_LOST_LANDS_ACTIVITY_LEGACY_ID),
+    ).toBe(true);
+    expect(
+      hasItineraryCatalogSeed(ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID),
+    ).toBe(true);
+    expect(
+      hasItineraryCatalogSeed(ITINERARY_ULTRA_JAPAN_ACTIVITY_LEGACY_ID),
     ).toBe(true);
     expect(hasItineraryCatalogSeed(999)).toBe(false);
   });
@@ -396,6 +404,113 @@ describe('itinerary-catalog.util', () => {
         (dj) => dj.name === 'KSHMR',
       ),
     ).toBe(true);
+  });
+
+  it('returns 808 Festival day 1 We Rave You performances', () => {
+    const seed = resolveItineraryCatalogSeed(
+      ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID,
+      'dec5',
+    );
+
+    expect(seed.sessions).toHaveLength(1);
+    expect(seed.performances).toHaveLength(7);
+    expect(seed.performances.some((perf) => perf.artistName === 'MADDIX')).toBe(
+      true,
+    );
+    expect(
+      seed.performances.some(
+        (perf) =>
+          perf.stageLabel === 'We Rave You' && perf.startTime === '22:45',
+      ),
+    ).toBe(true);
+  });
+
+  it('returns 808 Festival day 2 performances across Main Stage and Drumcode', () => {
+    const seed = resolveItineraryCatalogSeed(
+      ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID,
+      'dec6',
+    );
+
+    expect(seed.sessions).toHaveLength(1);
+    expect(seed.performances).toHaveLength(12);
+    expect(
+      seed.performances.some(
+        (perf) =>
+          perf.artistName === 'DOM DOLLA' && perf.stageLabel === 'Main Stage',
+      ),
+    ).toBe(true);
+    expect(
+      seed.performances.some(
+        (perf) =>
+          perf.artistName === 'PAN-POT' && perf.stageLabel === 'Drumcode',
+      ),
+    ).toBe(true);
+  });
+
+  it('returns 808 Festival full timetable and lineup DJs', () => {
+    const seed = resolveItineraryCatalogSeed(
+      ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID,
+    );
+
+    expect(seed.sessions.map((session) => session.dateKey)).toEqual([
+      'dec5',
+      'dec6',
+      'dec7',
+    ]);
+    expect(seed.performances).toHaveLength(33);
+    expect(
+      resolveLineupDjs(ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID).length,
+    ).toBe(33);
+    expect(
+      resolveLineupDjs(ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID).some(
+        (dj) => dj.name === 'CHARLOTTE DE WITTE',
+      ),
+    ).toBe(true);
+    expect(
+      resolveLineupDjs(ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID).some(
+        (dj) => dj.name === 'WUKI',
+      ),
+    ).toBe(true);
+    expect(
+      resolveLineupDjs(ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID).find(
+        (dj) => dj.name === 'PAN-POT',
+      )?.stage,
+    ).toBe('drumcode');
+    expect(
+      resolveLineupDjs(ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID).find(
+        (dj) => dj.name === 'WUKI',
+      )?.stage,
+    ).toBe('monstercat');
+  });
+
+  it('returns lineup DJs without performances for Ultra Japan', () => {
+    const seed = resolveItineraryCatalogSeed(
+      ITINERARY_ULTRA_JAPAN_ACTIVITY_LEGACY_ID,
+    );
+
+    expect(seed.performances).toHaveLength(0);
+    expect(seed.sessions.map((session) => session.dateKey)).toEqual([
+      'sep19',
+      'sep20',
+    ]);
+    expect(
+      resolveLineupDjs(ITINERARY_ULTRA_JAPAN_ACTIVITY_LEGACY_ID).length,
+    ).toBe(15);
+    expect(
+      resolveLineupDjs(ITINERARY_ULTRA_JAPAN_ACTIVITY_LEGACY_ID).some(
+        (dj) => dj.name === 'ZEDD B2B KNOCK2',
+      ),
+    ).toBe(true);
+    expect(
+      resolveLineupDjs(ITINERARY_ULTRA_JAPAN_ACTIVITY_LEGACY_ID).some(
+        (dj) => dj.name === 'HALO',
+      ),
+    ).toBe(true);
+    expect(
+      buildLineupOnlyArtistPerformanceSeed(
+        ITINERARY_ULTRA_JAPAN_ACTIVITY_LEGACY_ID,
+      ),
+    ).toHaveLength(15);
   });
 
   it('filters catalog seed by dateKey', () => {

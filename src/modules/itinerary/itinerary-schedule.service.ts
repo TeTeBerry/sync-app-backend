@@ -37,6 +37,7 @@ import {
   ITINERARY_DEFQON1_ACTIVITY_LEGACY_ID,
   ITINERARY_ULTRA_EUROPE_ACTIVITY_LEGACY_ID,
   ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID,
+  ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID,
 } from '@src/data/itinerary/itinerary.seed';
 import { ItineraryConflictService } from './itinerary-conflict.service';
 import { LineupConflictService } from './lineup-conflict.service';
@@ -153,6 +154,12 @@ export class ItineraryScheduleService implements OnModuleInit {
       ALL_ARTIST_PERFORMANCE_SEED.filter(
         (p) =>
           p.activityLegacyId === ITINERARY_WORLD_DJ_FESTIVAL_ACTIVITY_LEGACY_ID,
+      ),
+    );
+    await this.pruneStalePerformances(
+      ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID,
+      ALL_ARTIST_PERFORMANCE_SEED.filter(
+        (p) => p.activityLegacyId === ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID,
       ),
     );
 

@@ -57,6 +57,7 @@ export const DISCOGS_LINEUP_SEARCH_ALIASES: Record<string, string> = {
   SM1LE: 'SM1LE',
   'JELLE DK': 'Jelle DK',
   HALŌ: 'Halō',
+  HALO: 'Halō',
   VEGAS: 'Vegas (2)',
   'ELI & FUR': 'Eli & Fur',
   YOTTO: 'Yotto',
