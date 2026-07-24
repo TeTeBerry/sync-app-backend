@@ -406,7 +406,7 @@ describe('itinerary-catalog.util', () => {
     ).toBe(true);
   });
 
-  it('returns 808 Festival day 1 We Rave You performances', () => {
+  it('returns 808 Festival day 1 We Rave You artists without invented set times', () => {
     const seed = resolveItineraryCatalogSeed(
       ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID,
       'dec5',
@@ -418,14 +418,19 @@ describe('itinerary-catalog.util', () => {
       true,
     );
     expect(
-      seed.performances.some(
+      seed.performances.every(
         (perf) =>
-          perf.stageLabel === 'We Rave You' && perf.startTime === '22:45',
+          perf.stageLabel === 'We Rave You' &&
+          !perf.startTime?.trim() &&
+          perf.startMinutes < 0,
       ),
+    ).toBe(true);
+    expect(
+      seed.performances.every((perf) => !isPublishedSchedulePerformance(perf)),
     ).toBe(true);
   });
 
-  it('returns 808 Festival day 2 performances across Main Stage and Drumcode', () => {
+  it('returns 808 Festival day 2 artists across Main Stage and Drumcode without set times', () => {
     const seed = resolveItineraryCatalogSeed(
       ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID,
       'dec6',
@@ -445,9 +450,14 @@ describe('itinerary-catalog.util', () => {
           perf.artistName === 'PAN-POT' && perf.stageLabel === 'Drumcode',
       ),
     ).toBe(true);
+    expect(
+      seed.performances.every(
+        (perf) => !perf.startTime?.trim() && perf.startMinutes < 0,
+      ),
+    ).toBe(true);
   });
 
-  it('returns 808 Festival full timetable and lineup DJs', () => {
+  it('returns 808 Festival date/stage lineup without a published timetable', () => {
     const seed = resolveItineraryCatalogSeed(
       ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID,
     );
@@ -458,6 +468,9 @@ describe('itinerary-catalog.util', () => {
       'dec7',
     ]);
     expect(seed.performances).toHaveLength(33);
+    expect(
+      seed.performances.every((perf) => !isPublishedSchedulePerformance(perf)),
+    ).toBe(true);
     expect(
       resolveLineupDjs(ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID).length,
     ).toBe(33);

@@ -1,7 +1,9 @@
-import { parseTimeToMinutes } from '@src/modules/itinerary/domain/time-minutes.util';
 import { LINEUP_SEED_GENRE_PLACEHOLDER } from './lineup-seed-genre.constants';
 
 export const ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID = 17;
+
+/** Matches `LINEUP_ONLY_UNPUBLISHED_MINUTES` — keep local to avoid seed↔catalog cycles. */
+const UNPUBLISHED_SET_MINUTES = -1;
 
 type StageDef = {
   id: string;
@@ -102,119 +104,66 @@ function metaFor(name: string, stageKey: keyof typeof STAGES): ArtistMeta {
   return FESTIVAL_808_ARTIST_OVERRIDES.get(name) ?? defaultMeta(name, stageKey);
 }
 
-const FESTIVAL_CLOSE_MINUTES = 24 * 60; // 00:00 next morning
-
-type Slot = {
+/**
+ * Artist + day + stage known from the official drop.
+ * Set times are NOT published yet — never invent HH:mm here.
+ */
+type DaySlot = {
   artistName: string;
-  stage: StageDef;
   stageKey: keyof typeof STAGES;
-  startTime: string;
 };
 
-function slot(
-  artistName: string,
-  stageKey: keyof typeof STAGES,
-  startTime: string,
-): Slot {
-  return {
-    artistName,
-    stage: STAGES[stageKey],
-    stageKey,
-    startTime,
-  };
+function slot(artistName: string, stageKey: keyof typeof STAGES): DaySlot {
+  return { artistName, stageKey };
 }
 
-function festivalStartMinutes(startTime: string): number {
-  return parseTimeToMinutes(startTime);
-}
-
-const FESTIVAL_808_DEC5_SLOTS: Slot[] = [
-  slot('IZECREAM', 'weRaveYou', '16:00'),
-  slot('AYRTON L', 'weRaveYou', '17:00'),
-  slot('MR.BLACK', 'weRaveYou', '18:00'),
-  slot('JULIET FOX B2B MEGURU', 'weRaveYou', '19:00'),
-  slot('MARLO', 'weRaveYou', '20:15'),
-  slot('MADDIX', 'weRaveYou', '21:30'),
-  slot('REINIER ZONNEVELD [LIVE]', 'weRaveYou', '22:45'),
+const FESTIVAL_808_DEC5_SLOTS: DaySlot[] = [
+  slot('IZECREAM', 'weRaveYou'),
+  slot('AYRTON L', 'weRaveYou'),
+  slot('MR.BLACK', 'weRaveYou'),
+  slot('JULIET FOX B2B MEGURU', 'weRaveYou'),
+  slot('MARLO', 'weRaveYou'),
+  slot('MADDIX', 'weRaveYou'),
+  slot('REINIER ZONNEVELD [LIVE]', 'weRaveYou'),
 ];
 
-const FESTIVAL_808_DEC6_SLOTS: Slot[] = [
-  slot('XILLIX', 'main', '16:00'),
-  slot('KANSHRIYA', 'main', '17:30'),
-  slot('WILLIAM KISS', 'main', '18:45'),
-  slot('ODD MOB', 'main', '20:00'),
-  slot('SAMMY VIRJI', 'main', '21:15'),
-  slot('DOM DOLLA', 'main', '22:30'),
-  slot('HEARTBREAKKIDZ B2B PVLMFKC', 'drumcode', '16:00'),
-  slot('DI SUN', 'drumcode', '17:30'),
-  slot('HNTR', 'drumcode', '18:45'),
-  slot('SPACE 92', 'drumcode', '20:00'),
-  slot('MASSANO', 'drumcode', '21:15'),
-  slot('PAN-POT', 'drumcode', '22:45'),
+const FESTIVAL_808_DEC6_SLOTS: DaySlot[] = [
+  slot('XILLIX', 'main'),
+  slot('KANSHRIYA', 'main'),
+  slot('WILLIAM KISS', 'main'),
+  slot('ODD MOB', 'main'),
+  slot('SAMMY VIRJI', 'main'),
+  slot('DOM DOLLA', 'main'),
+  slot('HEARTBREAKKIDZ B2B PVLMFKC', 'drumcode'),
+  slot('DI SUN', 'drumcode'),
+  slot('HNTR', 'drumcode'),
+  slot('SPACE 92', 'drumcode'),
+  slot('MASSANO', 'drumcode'),
+  slot('PAN-POT', 'drumcode'),
 ];
 
-const FESTIVAL_808_DEC7_SLOTS: Slot[] = [
-  slot('J-NANA', 'main', '16:00'),
-  slot('ATTA B2B SEESOUNDS', 'main', '17:00'),
-  slot('NETSKY', 'main', '18:25'),
-  slot("MALAA'S ALTER EGO", 'main', '19:30'),
-  slot('LUCAS & STEVE', 'main', '20:35'),
-  slot('TRYM', 'main', '21:40'),
-  slot('CHARLOTTE DE WITTE', 'main', '22:45'),
-  slot('LXYN', 'monstercat', '16:00'),
-  slot('KAMIKO', 'monstercat', '17:00'),
-  slot('OZZY', 'monstercat', '18:00'),
-  slot('OOTORO', 'monstercat', '19:00'),
-  slot('INZO', 'monstercat', '20:15'),
-  slot('HABSTRAKT', 'monstercat', '21:30'),
-  slot('WUKI', 'monstercat', '22:45'),
+const FESTIVAL_808_DEC7_SLOTS: DaySlot[] = [
+  slot('J-NANA', 'main'),
+  slot('ATTA B2B SEESOUNDS', 'main'),
+  slot('NETSKY', 'main'),
+  slot("MALAA'S ALTER EGO", 'main'),
+  slot('LUCAS & STEVE', 'main'),
+  slot('TRYM', 'main'),
+  slot('CHARLOTTE DE WITTE', 'main'),
+  slot('LXYN', 'monstercat'),
+  slot('KAMIKO', 'monstercat'),
+  slot('OZZY', 'monstercat'),
+  slot('OOTORO', 'monstercat'),
+  slot('INZO', 'monstercat'),
+  slot('HABSTRAKT', 'monstercat'),
+  slot('WUKI', 'monstercat'),
 ];
 
-function resolveStageEndMinutes(slots: Slot[]): Map<string, number> {
-  const endMinutesBySlot = new Map<string, number>();
-  const byStage = new Map<string, Slot[]>();
-
-  for (const entry of slots) {
-    const list = byStage.get(entry.stage.id) ?? [];
-    list.push(entry);
-    byStage.set(entry.stage.id, list);
-  }
-
-  for (const ordered of byStage.values()) {
-    ordered.sort(
-      (left, right) =>
-        festivalStartMinutes(left.startTime) -
-        festivalStartMinutes(right.startTime),
-    );
-    for (let index = 0; index < ordered.length; index += 1) {
-      const current = ordered[index]!;
-      const next = ordered[index + 1];
-      const endMinutes = next
-        ? festivalStartMinutes(next.startTime)
-        : FESTIVAL_CLOSE_MINUTES;
-      endMinutesBySlot.set(
-        `${current.stage.id}|${current.artistName}|${current.startTime}`,
-        endMinutes,
-      );
-    }
-  }
-
-  return endMinutesBySlot;
-}
-
-function perf(
-  dateKey: string,
-  dateLabel: string,
-  slotEntry: Slot,
-  endMinutesBySlot: Map<string, number>,
-) {
-  const { artistName, stage, stageKey, startTime } = slotEntry;
+function perf(dateKey: string, dateLabel: string, slotEntry: DaySlot) {
+  const { artistName, stageKey } = slotEntry;
+  const stage = STAGES[stageKey];
   const meta = metaFor(artistName, stageKey);
   const id = artistId(artistName);
-  const startMinutes = festivalStartMinutes(startTime);
-  const endMinutes =
-    endMinutesBySlot.get(`${stage.id}|${artistName}|${startTime}`) ??
-    FESTIVAL_CLOSE_MINUTES;
 
   return {
     activityLegacyId: ITINERARY_808_FESTIVAL_ACTIVITY_LEGACY_ID,
@@ -226,39 +175,26 @@ function perf(
     genreLabel: LINEUP_SEED_GENRE_PLACEHOLDER,
     stage: stage.id,
     stageLabel: stage.label,
-    startTime,
-    endTime: startTime,
-    startMinutes,
-    endMinutes,
+    startTime: '',
+    endTime: '',
+    startMinutes: UNPUBLISHED_SET_MINUTES,
+    endMinutes: UNPUBLISHED_SET_MINUTES,
     popularity: meta.popularity,
     avatarSeed: id,
     genreColor: stage.color,
   };
 }
 
-function dayPerformances(dateKey: string, dateLabel: string, slots: Slot[]) {
-  const endMinutesBySlot = resolveStageEndMinutes(slots);
-  return slots.map((entry) =>
-    perf(dateKey, dateLabel, entry, endMinutesBySlot),
-  );
-}
-
-const FESTIVAL_808_DEC5_PERFORMANCES = dayPerformances(
-  'dec5',
-  '12月5日',
-  FESTIVAL_808_DEC5_SLOTS,
+const FESTIVAL_808_DEC5_PERFORMANCES = FESTIVAL_808_DEC5_SLOTS.map((entry) =>
+  perf('dec5', '12月5日', entry),
 );
 
-const FESTIVAL_808_DEC6_PERFORMANCES = dayPerformances(
-  'dec6',
-  '12月6日',
-  FESTIVAL_808_DEC6_SLOTS,
+const FESTIVAL_808_DEC6_PERFORMANCES = FESTIVAL_808_DEC6_SLOTS.map((entry) =>
+  perf('dec6', '12月6日', entry),
 );
 
-const FESTIVAL_808_DEC7_PERFORMANCES = dayPerformances(
-  'dec7',
-  '12月7日',
-  FESTIVAL_808_DEC7_SLOTS,
+const FESTIVAL_808_DEC7_PERFORMANCES = FESTIVAL_808_DEC7_SLOTS.map((entry) =>
+  perf('dec7', '12月7日', entry),
 );
 
 const FESTIVAL_808_DATE_META = [
@@ -289,6 +225,10 @@ export const FESTIVAL_808_FESTIVAL_SESSION_SEED = FESTIVAL_808_DATE_META.map(
   }),
 );
 
+/**
+ * Date + stage known; official clock times not published.
+ * `schedulePublished` stays false until real HH:mm land in seed.
+ */
 export const FESTIVAL_808_ARTIST_PERFORMANCE_SEED = [
   ...FESTIVAL_808_DEC5_PERFORMANCES,
   ...FESTIVAL_808_DEC6_PERFORMANCES,

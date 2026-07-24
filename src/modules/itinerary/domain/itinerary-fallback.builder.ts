@@ -5,6 +5,7 @@ import type {
   ItineraryTimelineItem,
 } from '../../../database/schemas/user-itinerary.schema';
 import type { FestivalSession } from '../../../database/schemas/festival-session.schema';
+import { isPublishedSchedulePerformance } from './itinerary-catalog.util';
 import { parseTimeToMinutes } from './time-minutes.util';
 
 const DOT_ROTATION = ['pink', 'cyan', 'purple'] as const;
@@ -28,7 +29,7 @@ function sessionsFromPerformances(
   );
 }
 
-function buildPerformanceItem(
+function buildTimedPerformanceItem(
   perf: ArtistPerformance,
   index: number,
   highlighted: boolean,
@@ -47,6 +48,28 @@ function buildPerformanceItem(
       ? {
           highlighted: true,
           pill: { label: '重点演出 · 必看', variant: 'pink' as const },
+        }
+      : {}),
+  };
+}
+
+function buildUntimedPerformanceItem(
+  perf: ArtistPerformance,
+  index: number,
+  highlighted: boolean,
+): ItineraryTimelineItem {
+  const dotColor = DOT_ROTATION[index % DOT_ROTATION.length];
+  const stage = perf.stageLabel?.trim();
+  return {
+    id: `${perf.artistId}-${perf.dateKey}`,
+    time: '',
+    dotColor,
+    title: stage ? `${perf.artistName} · ${stage}` : perf.artistName,
+    subtitle: '官方演出时间尚未公布',
+    ...(highlighted
+      ? {
+          highlighted: true,
+          pill: { label: '重点艺人', variant: 'pink' as const },
         }
       : {}),
   };
@@ -91,15 +114,29 @@ export function buildFallbackItinerary(input: {
     const session = sessions.find((s) => s.dateKey === dateKey);
     const dayPerfs = input.performances
       .filter((p) => p.dateKey === dateKey && selected.has(p.artistId))
-      .sort((a, b) => a.startMinutes - b.startMinutes);
+      .sort((a, b) => {
+        const aTimed = isPublishedSchedulePerformance(a);
+        const bTimed = isPublishedSchedulePerformance(b);
+        if (aTimed && bTimed) return a.startMinutes - b.startMinutes;
+        if (aTimed) return -1;
+        if (bTimed) return 1;
+        return a.artistName.localeCompare(b.artistName);
+      });
 
     if (dayPerfs.length === 0) continue;
 
     const items: ItineraryTimelineItem[] = [];
+    const firstTimed = dayPerfs.find(isPublishedSchedulePerformance);
 
-    if (dateKey === input.primaryDateKey || dateKey === uniqueDateKeys[0]) {
-      const firstStart = dayPerfs[0]?.startTime ?? '18:00';
-      const departMinutes = Math.max(0, parseTimeToMinutes(firstStart) - 90);
+    // Only invent a departure clock when an official first set time exists.
+    if (
+      firstTimed &&
+      (dateKey === input.primaryDateKey || dateKey === uniqueDateKeys[0])
+    ) {
+      const departMinutes = Math.max(
+        0,
+        parseTimeToMinutes(firstTimed.startTime) - 90,
+      );
       items.push({
         id: `depart-${dateKey}`,
         time: formatMinutesAsClock(departMinutes),
@@ -111,7 +148,11 @@ export function buildFallbackItinerary(input: {
     }
 
     dayPerfs.forEach((perf, index) => {
-      items.push(buildPerformanceItem(perf, items.length + index, true));
+      items.push(
+        isPublishedSchedulePerformance(perf)
+          ? buildTimedPerformanceItem(perf, items.length + index, true)
+          : buildUntimedPerformanceItem(perf, items.length + index, true),
+      );
     });
 
     days.push({
@@ -133,7 +174,7 @@ export function buildFallbackItinerary(input: {
       items: [
         {
           id: 'placeholder',
-          time: '18:00',
+          time: '',
           dotColor: 'pink',
           title: '行程生成中',
           subtitle: '所选 DJ 暂无该日演出排期，请换选日期或艺人',

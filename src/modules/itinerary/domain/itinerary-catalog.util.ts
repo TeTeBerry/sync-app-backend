@@ -70,7 +70,12 @@ const LINEUP_DJS_BY_ACTIVITY_LEGACY_ID = new Map<number, LineupDjSeed[]>([
   [ITINERARY_ULTRA_JAPAN_ACTIVITY_LEGACY_ID, ULTRA_JAPAN_LINEUP_DJ_SEED],
 ]);
 
-/** Festivals with lineup announced but no official timetable in seed yet. */
+/**
+ * Festivals with lineup announced but no official timetable in seed yet.
+ * Note: 808 keeps date-aware unpublished rows in its own performance seed
+ * (not rebuilt via `buildLineupOnlyArtistPerformanceSeed`) so day/stage
+ * assignment survives without inventing clock times.
+ */
 export const LINEUP_ONLY_CATALOG_ACTIVITY_LEGACY_IDS = [
   ITINERARY_TOMORROWLAND_THAILAND_ACTIVITY_LEGACY_ID,
   ITINERARY_EDC_THAILAND_ACTIVITY_LEGACY_ID,
