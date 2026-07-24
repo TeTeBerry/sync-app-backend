@@ -10,6 +10,8 @@ import {
   FestivalSquadProfileDocument,
 } from '../../database/schemas/festival-squad-profile.schema';
 
+type DeleteOneResult = { acknowledged: boolean; deletedCount: number };
+
 @Injectable()
 export class FestivalSquadRepository {
   constructor(
@@ -75,7 +77,7 @@ export class FestivalSquadRepository {
   findProfileById(id: string) {
     return this.profiles.findById(id).exec();
   }
-  deleteProfile(userId: string, eventId: number) {
+  deleteProfile(userId: string, eventId: number): Promise<DeleteOneResult> {
     return this.profiles.deleteOne({ userId, eventId }).exec();
   }
   async deleteProfileAndRequests(
